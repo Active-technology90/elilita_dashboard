@@ -12,7 +12,7 @@ import {
   ChevronDown,
   AlertCircle,
   X,
-  Package,
+  // Package,
 } from "lucide-react";
 import {
   getCompanyBankAccounts,
