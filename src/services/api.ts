@@ -1227,4 +1227,4 @@ export const rejectDispute = (id: number, data?: { admin_notes?: string }) =>
 export const vendorRequestRefund = (vendorOrderId: number, data: { reason: string; explanation?: string }) =>
   api.post<{ detail: string; dispute: OrderDispute }>(`/orders/vendor-orders/${vendorOrderId}/vendor-request-refund/`, data);
 
-export default api;
+export default api;

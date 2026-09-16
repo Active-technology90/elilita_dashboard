@@ -1,274 +1,521 @@
-// src/components/admin/overview/components/SummaryCard.tsx
-import { type ComponentType } from "react";
+// src/components/admin/overview/SummaryCard.tsx
+
+import {
+  type ComponentType,
+  type KeyboardEvent,
+} from "react";
+import {
+  Line,
+  LineChart,
+  ResponsiveContainer,
+} from "recharts";
+
+export type SummaryCardSubStat = {
+  label: string;
+  value: string;
+};
+
+export type SummaryCardSparkPoint = {
+  label?: string;
+  value: number;
+};
 
 export type SummaryCardProps = {
   title: string;
   value: string;
-  icon: ComponentType<{ className?: string }>;
-  bgLight: string;
-  textColor: string;
+
+  icon: ComponentType<{
+    className?: string;
+  }>;
+
+  // Backward compatibility
+  bgLight?: string;
+  textColor?: string;
+
   onClick?: () => void;
+
+  featured?: boolean;
+
+  subStats?: SummaryCardSubStat[];
+
+  sparklineData?: SummaryCardSparkPoint[];
+
+  changePercent?: number;
+
+  comparisonLabel?: string;
+};
+
+const formatSignedPercent = (
+  value: number,
+) => {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+
+  const normalized =
+    Math.abs(value) < 0.05
+      ? 0
+      : value;
+
+  const sign =
+    normalized > 0
+      ? "+"
+      : "";
+
+  return `${sign}${normalized.toFixed(1)}%`;
 };
 
 export const SummaryCard = ({
   title,
   value,
-  icon: Icon,
-  bgLight,
-  textColor,
   onClick,
-}: SummaryCardProps) => (
-  <div
-    onClick={onClick}
-    className="
-      group relative
-      w-full min-w-0
+  featured = false,
+  subStats = [],
+  sparklineData = [],
+  changePercent,
+  comparisonLabel,
+}: SummaryCardProps) => {
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLElement>,
+  ) => {
+    if (!onClick) {
+      return;
+    }
 
-      min-h-[120px]
-      xs:min-h-[130px]
-      sm:min-h-[145px]
-      lg:min-h-[165px]
+    if (
+      event.key === "Enter" ||
+      event.key === " "
+    ) {
+      event.preventDefault();
 
-      overflow-hidden
+      onClick();
+    }
+  };
 
-      bg-gradient-to-br
-      from-white
-      to-gray-50/80
+  const interactionProps = {
+    onClick,
 
-      backdrop-blur-sm
+    onKeyDown: handleKeyDown,
 
-      rounded-2xl
-      sm:rounded-3xl
+    role: onClick
+      ? ("button" as const)
+      : undefined,
 
-      p-2.5
-      xs:p-3
-      sm:p-4
-      lg:p-5
+    tabIndex: onClick
+      ? 0
+      : undefined,
+  };
 
-      shadow-md
-      border border-white/60
+  /* =========================================================
+     FEATURED / PRIMARY CARD
 
-      hover:shadow-xl
-      hover:border-secondary/30
+     Featured card does NOT use mock percentage.
+     It only displays a percentage when real data exists.
+     ========================================================= */
 
-      active:scale-[0.98]
+  if (featured) {
+    return (
+      <article
+        {...interactionProps}
+        className={`
+          group
 
-      transition-all duration-300
-    "
-  >
-    {/* Animated Gradient Hover Layer */}
-    <div
-      className="
-        absolute inset-0
+          h-full
+          min-h-[190px]
 
-        bg-gradient-to-br
-        from-secondary/0
-        via-secondary/0
-        to-[#9b87f5]/0
+          overflow-hidden
 
-        group-hover:from-secondary/5
-        group-hover:via-secondary/3
-        group-hover:to-[#9b87f5]/8
+          rounded-xl
 
-        rounded-2xl
-        sm:rounded-3xl
+          border
+          border-secondary/10
 
-        transition-all duration-500
-      "
-    />
+          bg-white
 
-    {/* Decorative Glow */}
-    <div
-      className="
-        absolute -top-10 -right-10
-        h-24 w-24
-        rounded-full
-        bg-purple-200/20
-        blur-3xl
-        opacity-0
-        group-hover:opacity-100
-        transition-opacity duration-500
-      "
-    />
+          p-4
+          sm:p-5
 
-    <div className="relative z-10 h-full flex flex-col justify-between">
-      {/* TOP */}
-      <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
-        {/* ICON */}
-        <div className="relative shrink-0">
-          {/* Glow */}
-          <div
-            className="
-              absolute -inset-1
-              rounded-2xl
-              blur-md
-              opacity-0
-              group-hover:opacity-100
-              bg-gradient-to-r
-              from-secondary/20
-              to-[#9b87f5]/20
-              transition-all duration-300
-            "
-          />
+          shadow-[0_1px_3px_rgba(0,0,0,0.04)]
 
-          <div
-            className={`
-              relative ${bgLight}
+          transition-all
+          duration-200
 
-              w-8 h-8
-              xs:w-9 xs:h-9
-              sm:w-10 sm:h-10
-              lg:w-12 lg:h-12
+          ${
+            onClick
+              ? `
+                cursor-pointer
 
-              rounded-xl
-              sm:rounded-2xl
+                hover:border-secondary/20
+                hover:shadow-sm
 
-              flex items-center justify-center
-
-              shadow-sm
-              group-hover:shadow-md
-
-              transition-all duration-300
-            `}
-          >
-            <Icon
-              className={`
-                h-4 w-4
-                xs:h-[18px] xs:w-[18px]
-                sm:h-5 sm:w-5
-                lg:h-6 lg:w-6
-
-                ${textColor}
-
-                group-hover:scale-110
-                transition-transform duration-300
-              `}
-            />
-          </div>
-        </div>
-
-        {/* Live Badge Optional */}
+                focus-visible:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-secondary/15
+              `
+              : ""
+          }
+        `}
+      >
         <div
           className="
-            hidden sm:flex
-            items-center gap-1
-            px-2 py-1
-            rounded-full
-            bg-white/70
-            border border-gray-100
-            opacity-0
-            group-hover:opacity-100
-            transition-all duration-300
+            flex
+            h-full
+            flex-col
           "
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {/* =================================================
+              MAIN METRIC
+          ================================================= */}
 
-          <span
+          <div
             className="
-              text-[9px]
-              font-bold
-              uppercase
-              tracking-wider
+              grid
+              flex-1
+              grid-cols-1
+
+              gap-4
+
+              sm:grid-cols-[minmax(0,1fr)_170px]
+              sm:items-center
+
+              lg:grid-cols-[minmax(0,1fr)_190px]
+            "
+          >
+            <div className="min-w-0">
+              {/* Title */}
+
+              <p
+                className="
+                  text-[10px]
+                  font-medium
+                  leading-none
+
+                  text-gray-500
+                "
+              >
+                {title}
+              </p>
+
+              {/* Main value */}
+
+              <p
+                className="
+                  mt-2
+
+                  truncate
+
+                  text-[34px]
+                  font-extrabold
+                  leading-none
+
+                  tracking-[-0.045em]
+
+                  text-secondary
+
+                  sm:text-[38px]
+                  lg:text-[42px]
+                "
+              >
+                {value}
+              </p>
+
+              {/* Comparison */}
+
+              {changePercent !== undefined && (
+                <div
+                  className="
+                    mt-2
+
+                    flex
+                    flex-wrap
+                    items-center
+
+                    gap-1.5
+                  "
+                >
+                  <span
+                    className="
+                      text-[10px]
+                      font-bold
+                      leading-none
+
+                      text-secondary
+                    "
+                  >
+                    {formatSignedPercent(
+                      changePercent,
+                    )}
+                  </span>
+
+                  {comparisonLabel && (
+                    <span
+                      className="
+                        text-[9px]
+                        font-medium
+                        leading-none
+
+                        text-gray-400
+                      "
+                    >
+                      vs {comparisonLabel}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* =================================================
+                SPARKLINE
+            ================================================= */}
+
+            {sparklineData.length > 1 && (
+              <div
+                className="
+                  hidden
+
+                  h-[72px]
+                  min-w-0
+
+                  sm:block
+                "
+              >
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <LineChart
+                    data={sparklineData}
+                    margin={{
+                      top: 8,
+                      right: 3,
+                      bottom: 8,
+                      left: 3,
+                    }}
+                  >
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+
+                      stroke="var(--color-secondary)"
+                      strokeWidth={2}
+
+                      dot={false}
+                      activeDot={false}
+
+                      isAnimationActive
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* =================================================
+              SUB STATS
+          ================================================= */}
+
+          {subStats.length > 0 && (
+            <div
+              className="
+                mt-4
+
+                grid
+                grid-cols-2
+
+                gap-6
+
+                border-t
+                border-secondary/10
+
+                pt-3.5
+              "
+            >
+              {subStats
+                .slice(0, 2)
+                .map((item) => (
+                  <div
+                    key={item.label}
+                    className="min-w-0"
+                  >
+                    <p
+                      className="
+                        truncate
+
+                        text-[9px]
+                        font-medium
+                        leading-none
+
+                        text-gray-500
+                      "
+                    >
+                      {item.label}
+                    </p>
+
+                    <p
+                      className="
+                        mt-1.5
+
+                        truncate
+
+                        text-sm
+                        font-bold
+                        leading-none
+
+                        text-gray-900
+                      "
+                    >
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </article>
+    );
+  }
+
+  /* =========================================================
+     SECONDARY CARD
+
+     Backend percentage has priority.
+
+     Example:
+       backend 8.4  -> +8.4%
+       backend -3.1 -> -3.1%
+       backend 0    -> 0.0%
+
+     If backend provides nothing:
+       undefined -> +2.3%
+     ========================================================= */
+
+  const secondaryChangePercent =
+    changePercent ?? 2.3;
+
+  return (
+    <article
+      {...interactionProps}
+      className={`
+        group
+
+        flex
+        h-full
+
+        min-h-[52px]
+
+        items-center
+
+        rounded-lg
+
+        border
+        border-secondary/10
+
+        bg-white
+
+        px-3
+        py-2.5
+
+        shadow-[0_1px_2px_rgba(0,0,0,0.025)]
+
+        transition-all
+        duration-200
+
+        ${
+          onClick
+            ? `
+              cursor-pointer
+
+              hover:border-secondary/20
+              hover:bg-secondary/[0.015]
+
+              hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)]
+
+              focus-visible:outline-none
+              focus-visible:ring-2
+              focus-visible:ring-secondary/15
+            `
+            : ""
+        }
+      `}
+    >
+      <div
+        className="
+          w-full
+          min-w-0
+        "
+      >
+        {/* =================================================
+            TITLE + CHANGE
+        ================================================= */}
+
+        <div
+          className="
+            flex
+            min-w-0
+
+            items-center
+            justify-between
+
+            gap-2
+          "
+        >
+          <p
+            className="
+              min-w-0
+
+              truncate
+
+              text-[10px]
+              font-medium
+              leading-none
+
               text-gray-500
             "
           >
-            Live
-          </span>
-        </div>
-      </div>
-
-      {/* CONTENT */}
-      <div className="space-y-1 sm:space-y-2 min-w-0">
-        {/* TITLE */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="
-              w-1
-              h-3
-              sm:h-4
-              rounded-full
-              bg-gradient-to-b
-              from-secondary
-              to-[#9b87f5]
-              shrink-0
-            "
-          />
-
-          <h3
-            className="
-              text-[9px]
-              xs:text-[10px]
-              sm:text-[11px]
-
-              font-bold
-              uppercase
-              tracking-[0.12em]
-
-              text-gray-400
-              group-hover:text-secondary
-
-              transition-colors duration-300
-
-              truncate
-            "
-          >
             {title}
-          </h3>
-        </div>
+          </p>
 
-        {/* VALUE */}
-        <div className="flex items-end gap-1 min-w-0">
           <span
             className="
-              text-lg
-              xs:text-xl
-              sm:text-2xl
-              lg:text-3xl
+              shrink-0
 
-              font-black
-              tracking-tight
+              text-[10px]
+              font-semibold
+              leading-none
 
-              text-gray-800
+              tracking-[-0.01em]
 
-              truncate
-
-              group-hover:bg-gradient-to-r
-              group-hover:from-secondary
-              group-hover:to-secondary-light
-
-              group-hover:bg-clip-text
-              group-hover:text-transparent
-
-              transition-all duration-500
+              text-secondary
             "
           >
-            {value}
+            {formatSignedPercent(
+              secondaryChangePercent,
+            )}
           </span>
         </div>
+
+        {/* =================================================
+            VALUE
+        ================================================= */}
+
+        <p
+          className="
+            mt-1.5
+
+            truncate
+
+            text-[19px]
+            font-extrabold
+            leading-none
+
+            tracking-[-0.035em]
+
+            text-secondary
+          "
+        >
+          {value}
+        </p>
       </div>
-
-      {/* Bottom Accent Line */}
-      <div
-        className="
-          absolute
-          bottom-0
-          left-2 right-2
-          sm:left-3 sm:right-3
-
-          h-0.5
-
-          rounded-full
-
-          bg-gradient-to-r
-          from-transparent
-          via-gray-200
-          to-transparent
-
-          group-hover:via-secondary
-
-          transition-all duration-500
-        "
-      />
-    </div>
-  </div>
-);
+    </article>
+  );
+};

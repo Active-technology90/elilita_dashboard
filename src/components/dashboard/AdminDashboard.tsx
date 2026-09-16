@@ -135,37 +135,12 @@ function OrdersMenu({
   ordersMenuOpen: boolean;
   onToggleOrdersMenu: () => void;
 }) {
-  // If user only has Company Orders (no Master Orders), show simple single button without dropdown
-  if (!showMasterOrders) {
-    if (!collapsed) {
-      return (
-        <button
-          onClick={() => onNavigate("companyOrders")}
-          className={`flex items-center gap-3.5 w-full px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 group ${activeTab === "companyOrders"
-            ? "bg-white/40 text-white shadow-lg"
-            : "text-gray-300 hover:bg-white/5 hover:text-white"
-            }`}
-        >
-          <ShoppingBag className="h-5 w-5" />
-          <span>All Orders</span>
-        </button>
-      );
-    } else {
-      return (
-        <button
-          onClick={() => onNavigate("companyOrders")}
-          className={`flex items-center justify-center w-full px-2 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 ${activeTab === "companyOrders"
-            ? "bg-white/40 text-white shadow-lg"
-            : "text-gray-300 hover:bg-white/5 hover:text-white"
-            }`}
-        >
-          <ShoppingBag className="h-5 w-5" />
-        </button>
-      );
-    }
-  }
   const [collapsedOrdersOpen, setCollapsedOrdersOpen] = useState(false);
   const ordersRef = useRef<HTMLDivElement>(null);
+
+  const isActive =
+    activeTab === "masterOrders" ||
+    activeTab === "companyOrders";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -176,58 +151,167 @@ function OrdersMenu({
         setCollapsedOrdersOpen(false);
       }
     };
+
     if (collapsedOrdersOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, [collapsedOrdersOpen]);
 
+  if (!showMasterOrders) {
+    return (
+      <button
+        type="button"
+        title={collapsed ? "All Orders" : undefined}
+        onClick={() => onNavigate("companyOrders")}
+        className={`
+          group
+          flex
+          h-9
+          w-full
+          items-center
+          rounded-lg
+          text-[12px]
+          font-medium
+          transition-colors
+          duration-150
+          [&_svg]:h-4
+          [&_svg]:w-4
+
+          ${
+            collapsed
+              ? "justify-center px-2"
+              : "gap-2.5 px-3"
+          }
+
+          ${
+            activeTab === "companyOrders"
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
+          }
+        `}
+      >
+        <ShoppingBag className="shrink-0" />
+
+        {!collapsed && (
+          <span className="truncate">All Orders</span>
+        )}
+      </button>
+    );
+  }
+
   if (!collapsed) {
-    const isActive =
-      activeTab === "masterOrders" || activeTab === "companyOrders";
     return (
       <div>
         <button
+          type="button"
           onClick={onToggleOrdersMenu}
-          className={`flex items-center justify-between w-full px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 group ${isActive
-            ? "bg-white/40 text-white shadow-lg"
-            : "text-gray-300 hover:bg-white/5 hover:text-white"
-            }`}
+          className={`
+            group
+            flex
+            h-9
+            w-full
+            items-center
+            justify-between
+            rounded-lg
+            px-3
+            text-[12px]
+            font-medium
+            transition-colors
+            duration-150
+            [&_svg]:h-4
+            [&_svg]:w-4
+
+            ${
+              isActive
+                ? "bg-white text-secondary shadow-sm"
+                : "text-white/75 hover:bg-white/10 hover:text-white"
+            }
+          `}
         >
-          <div className="flex items-center gap-3.5">
-            <ShoppingBag className="h-5 w-5" />
-            <span>Orders</span>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ShoppingBag className="shrink-0" />
+            <span className="truncate">Orders</span>
           </div>
+
           {ordersMenuOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="shrink-0" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="shrink-0" />
           )}
         </button>
 
         {ordersMenuOpen && (
-          <div className="ml-4 mt-1 space-y-1">
+          <div
+            className="
+              ml-4
+              mt-1
+              space-y-0.5
+              border-l
+              border-white/20
+              pl-2
+            "
+          >
             {showMasterOrders && (
               <button
+                type="button"
                 onClick={() => onNavigate("masterOrders")}
-                className={`flex items-center gap-3 w-full px-4 py-2 text-sm rounded-lg transition ${activeTab === "masterOrders"
-                  ? "bg-white/20 text-white font-semibold"
-                  : "text-gray-300 hover:bg-white/5 hover:text-white"
-                  }`}
+                className={`
+                  flex
+                  h-8
+                  w-full
+                  items-center
+                  gap-2
+                  rounded-md
+                  px-2.5
+                  text-left
+                  text-[11px]
+                  transition-colors
+                  duration-150
+                  [&_svg]:h-3.5
+                  [&_svg]:w-3.5
+
+                  ${
+                    activeTab === "masterOrders"
+                      ? "bg-white/15 font-semibold text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }
+                `}
               >
-                <FileText className="h-4 w-4" />
-                Master Orders
+                <FileText className="shrink-0" />
+                <span className="truncate">Master Orders</span>
               </button>
             )}
+
             <button
+              type="button"
               onClick={() => onNavigate("companyOrders")}
-              className={`flex items-center gap-3 w-full px-4 py-2 text-sm rounded-lg transition ${activeTab === "companyOrders"
-                ? "bg-white/20 text-white font-semibold"
-                : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
+              className={`
+                flex
+                h-8
+                w-full
+                items-center
+                gap-2
+                rounded-md
+                px-2.5
+                text-left
+                text-[11px]
+                transition-colors
+                duration-150
+                [&_svg]:h-3.5
+                [&_svg]:w-3.5
+
+                ${
+                  activeTab === "companyOrders"
+                    ? "bg-white/15 font-semibold text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                }
+              `}
             >
-              <ListOrdered className="h-4 w-4" />
-              All Orders
+              <ListOrdered className="shrink-0" />
+              <span className="truncate">All Orders</span>
             </button>
           </div>
         )}
@@ -238,43 +322,113 @@ function OrdersMenu({
   return (
     <div className="relative" ref={ordersRef}>
       <button
-        onClick={() => setCollapsedOrdersOpen(!collapsedOrdersOpen)}
-        className={`flex items-center justify-center w-full px-2 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 ${activeTab === "masterOrders" || activeTab === "companyOrders"
-          ? "bg-white/40 text-white shadow-lg"
-          : "text-gray-300 hover:bg-white/5 hover:text-white"
-          }`}
+        type="button"
+        title="Orders"
+        onClick={() =>
+          setCollapsedOrdersOpen(!collapsedOrdersOpen)
+        }
+        className={`
+          flex
+          h-9
+          w-full
+          items-center
+          justify-center
+          rounded-lg
+          px-2
+          transition-colors
+          duration-150
+          [&_svg]:h-4
+          [&_svg]:w-4
+
+          ${
+            isActive
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
+          }
+        `}
       >
-        <ShoppingBag className="h-5 w-5" />
+        <ShoppingBag />
       </button>
 
       {collapsedOrdersOpen && (
-        <div className="absolute left-full top-0 ml-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+        <div
+          className="
+            absolute
+            left-full
+            top-0
+            z-[70]
+            ml-2
+            w-44
+            overflow-hidden
+            rounded-lg
+            border
+            border-secondary/10
+            bg-white
+            p-1
+            shadow-[0_12px_32px_rgba(0,0,0,0.14)]
+          "
+        >
           {showMasterOrders && (
             <button
+              type="button"
               onClick={() => {
                 onNavigate("masterOrders");
                 setCollapsedOrdersOpen(false);
               }}
-              className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition ${activeTab === "masterOrders"
-                ? "bg-indigo-50 text-indigo-700 font-medium"
-                : "text-gray-700 hover:bg-gray-50"
-                }`}
+              className={`
+                flex
+                h-8
+                w-full
+                items-center
+                gap-2
+                rounded-md
+                px-2.5
+                text-left
+                text-[11px]
+                transition-colors
+                [&_svg]:h-3.5
+                [&_svg]:w-3.5
+
+                ${
+                  activeTab === "masterOrders"
+                    ? "bg-secondary/[0.08] font-semibold text-secondary"
+                    : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+                }
+              `}
             >
-              <FileText className="h-4 w-4 text-gray-500" />
+              <FileText />
               Master Orders
             </button>
           )}
+
           <button
+            type="button"
             onClick={() => {
               onNavigate("companyOrders");
               setCollapsedOrdersOpen(false);
             }}
-            className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition ${activeTab === "companyOrders"
-              ? "bg-indigo-50 text-indigo-700 font-medium"
-              : "text-gray-700 hover:bg-gray-50"
-              }`}
+            className={`
+              flex
+              h-8
+              w-full
+              items-center
+              gap-2
+              rounded-md
+              px-2.5
+              text-left
+              text-[11px]
+              transition-colors
+              [&_svg]:h-3.5
+              [&_svg]:w-3.5
+
+              ${
+                activeTab === "companyOrders"
+                  ? "bg-secondary/[0.08] font-semibold text-secondary"
+                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+              }
+            `}
           >
-            <Building2 className="h-4 w-4 text-gray-500" />
+            <Building2 />
             Company Orders
           </button>
         </div>
@@ -603,63 +757,137 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex h-screen font-sans bg-gray-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-secondary/[0.025] font-sans text-gray-900">
       {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-secondary/25 backdrop-blur-[1px] lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative top-0 left-0 h-screen text-white flex flex-col shadow-2xl z-50 transform transition-all duration-300
-          bg-sidebar-gradient
-          ${sidebarCollapsed ? "w-20" : "w-72"}
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        className={`
+          fixed
+          left-0
+          top-0
+          z-50
+          flex
+          h-screen
+          flex-col
+          border-r
+          border-white/15
+          bg-secondary
+          text-white
+          shadow-[4px_0_18px_rgba(0,0,0,0.08)]
+          transition-all
+          duration-200
+          lg:relative
+
+          ${sidebarCollapsed ? "w-14" : "w-[232px]"}
+
+          ${
+            isSidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full lg:translate-x-0"
+          }
         `}
       >
-        {/* Logo & title */}
+        {/* Brand */}
         <div
-          className={`mx-2 mt-2 px-3 py-2 border-b border-gray-800 rounded-2xl ${sidebarCollapsed ? "flex justify-center" : "flex items-center gap-2"}`}
+          className={`
+            flex
+            h-12
+            shrink-0
+            items-center
+            border-b
+            border-white/15
+            px-2
+
+            ${
+              sidebarCollapsed
+                ? "justify-center"
+                : "gap-2"
+            }
+          `}
         >
-          {/* Logo - Always visible, left side when expanded, centered when collapsed */}
           <div
-            className={`bg-white/10 p-1 rounded-full backdrop-blur-sm flex-shrink-0 ${sidebarCollapsed ? "w-10 h-10" : "w-18 h-18"}`}
+            className="
+              h-8
+              w-8
+              shrink-0
+              overflow-hidden
+              rounded-lg
+              border
+              border-white/20
+              bg-white
+              p-0.5
+            "
           >
             <img
               src="/elilta1.jpg"
               alt="Elilita Logo"
-              className="w-full h-full object-cover rounded-full"
+              className="h-full w-full rounded-md object-cover"
             />
           </div>
 
-          {/* Branding Text - Only visible when sidebar is NOT collapsed */}
           {!sidebarCollapsed && (
-            <div className="px-2 py-1 rounded-md bg-white/5 backdrop-blur-sm border border-white/10">
-              <div className="flex items-center gap-1">
-                <div className="w-0.5 h-2 rounded-full bg-gradient-to-b from-amber-400 to-amber-600"></div>
-                <span className="text-[14px] font-bold text-white/80 tracking-wide whitespace-nowrap">
-                  Elilita
-                </span>
-                <div className="w-0.5 h-2 rounded-full bg-gradient-to-b from-amber-600 to-amber-400"></div>
-              </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className="
+                  truncate
+                  text-[13px]
+                  font-bold
+                  leading-none
+                  tracking-[-0.02em]
+                  text-white
+                "
+              >
+                Elilita
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  text-[8px]
+                  font-medium
+                  uppercase
+                  leading-none
+                  tracking-[0.12em]
+                  text-white/55
+                "
+              >
+                Admin
+              </p>
             </div>
           )}
 
-          {/* Close button for mobile - only visible when not collapsed */}
           {!sidebarCollapsed && (
             <button
+              type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white transition ml-auto"
+              className="
+                ml-auto
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-md
+                text-white/60
+                transition-colors
+                hover:bg-white/10
+                hover:text-white
+                lg:hidden
+              "
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        <nav className="flex-1 px-2 py-6 space-y-1.5 overflow-y-auto scrollbar-thin custom-scrollbar">
+        <nav className="custom-scrollbar flex-1 space-y-0.5 overflow-y-auto px-2 py-2.5 scrollbar-thin">
           {isMarketing ? (
             <>
               <SidebarItem
@@ -735,7 +963,7 @@ export default function AdminDashboard() {
               {showPlatformAdmin && (
                 <>
                   <div
-                    className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 mt-8 ${sidebarCollapsed ? "hidden" : ""
+                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""
                       }`}
                   >
                     Platform Admin
@@ -812,7 +1040,7 @@ export default function AdminDashboard() {
               />
 
               <div
-                className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 mt-8 ${sidebarCollapsed ? "hidden" : ""
+                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""
                   }`}
               >
                 Management
@@ -855,7 +1083,7 @@ export default function AdminDashboard() {
               {showServiceMenu && (
                 <>
                   <div
-                    className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 mt-6 ${sidebarCollapsed ? "hidden" : ""}`}
+                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""}`}
                   >
                     Services
                   </div>
@@ -905,7 +1133,7 @@ export default function AdminDashboard() {
               )}
               {/* Only for super admin (not viewer) */}
               <div
-                className={`px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 mt-6 ${sidebarCollapsed ? "hidden" : ""}`}
+                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""}`}
               >
                 Platform
               </div>
@@ -982,246 +1210,451 @@ export default function AdminDashboard() {
         </nav>
 
         <div
-          className="mx-2 mb-2 p-2 flex justify-end"
-          style={{
-            borderTop: "1px solid rgba(31, 41, 55, 0.5)",
-            borderRadius: "16px",
-          }}
+          className={`
+            mx-2
+            mb-2
+            flex
+            shrink-0
+            border-t
+            border-white/15
+            pt-2
+
+            ${
+              sidebarCollapsed
+                ? "justify-center"
+                : "justify-end"
+            }
+          `}
         >
           <button
             onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className="p-2 rounded-lg text-gray-300 hover:bg-white/10 hover:text-white transition"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white/60 transition-colors hover:bg-white/10 hover:text-white"
             title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
-              <PanelLeftOpen className="h-5 w-5" />
+              <PanelLeftOpen className="h-4 w-4" />
             ) : (
-              <PanelLeftClose className="h-5 w-5" />
+              <PanelLeftClose className="h-4 w-4" />
             )}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-white overflow-hidden">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden ">
         <header
-          className={`h-14 md:h-20 flex items-center justify-between px-0 md:px-6 lg:px-10 sticky top-0 z-30 transition-all duration-500 flex-shrink-0 ${isScrolled
-            ? "bg-secondary/10 shadow-xl border-b border-secondary/20"
-            : "bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm"
-            }`}
+          className={`
+            sticky
+            top-0
+            z-30
+            flex
+            h-12
+            shrink-0
+            items-center
+            justify-between
+            border-b
+            border-secondary/10
+            bg-white
+            px-2.5
+            transition-shadow
+            duration-150
+            sm:px-3
+            lg:px-4
+
+            ${
+              isScrolled
+                ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                : ""
+            }
+          `}
         >
-          <div className="flex items-center gap-4 flex-1">
+          {/* Left context */}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <button
-              onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              type="button"
+              onClick={() =>
+                setIsSidebarOpen((prev) => !prev)
+              }
+              className="
+                flex
+                h-8
+                w-8
+                shrink-0
+                items-center
+                justify-center
+                rounded-md
+                border
+                border-secondary/10
+                bg-white
+                text-secondary
+                transition-colors
+                hover:bg-secondary/[0.04]
+                lg:hidden
+              "
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-4 w-4" />
             </button>
 
-            {/* Role display - Modern badge design for Super Admin */}
             {isSuperAdmin && (
-              <div className="hidden sm:block">
-                <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-2 rounded-full border border-indigo-200 shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
-                  <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-                    Role:
-                  </span>
-                  <span className="text-sm font-black bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-transparent">
-                    {user?.role === "super_admin"
-                      ? "Super Administrator"
-                      : user?.role || "Super Admin"}
-                  </span>
-                  <div className="w-px h-4 bg-indigo-200 mx-1"></div>
-                  <div className="flex items-center">
-                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm">
-                      Full Control
-                    </span>
-                  </div>
-                </div>
+              <div
+                className="
+                  hidden
+                  h-8
+                  items-center
+                  gap-1.5
+                  rounded-md
+                  border
+                  border-secondary/10
+                  bg-secondary/[0.035]
+                  px-2.5
+                  sm:flex
+                "
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+
+                <span
+                  className="
+                    text-[9px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.1em]
+                    text-secondary/65
+                  "
+                >
+                  Role
+                </span>
+
+                <span
+                  className="
+                    text-[11px]
+                    font-bold
+                    text-secondary
+                  "
+                >
+                  {user?.role === "super_admin"
+                    ? "Super Admin"
+                    : user?.role || "Super Admin"}
+                </span>
               </div>
             )}
+
             {isMarketing && (
-              <div className="hidden sm:block">
-                <div className="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-2 rounded-full border border-orange-200 shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-                  <span className="text-xs font-semibold text-orange-600 uppercase tracking-wider">
-                    Role:
-                  </span>
-                  <span className="text-sm font-black bg-gradient-to-r from-orange-700 to-amber-700 bg-clip-text text-transparent">
-                    Elilita Marketing Agent
-                  </span>
-                </div>
+              <div
+                className="
+                  hidden
+                  h-8
+                  items-center
+                  gap-1.5
+                  rounded-md
+                  border
+                  border-secondary/10
+                  bg-secondary/[0.035]
+                  px-2.5
+                  sm:flex
+                "
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+
+                <span className="text-[11px] font-bold text-secondary">
+                  Marketing Agent
+                </span>
               </div>
             )}
-            {/* Company name – show for non‑super‑admin and non‑marketing users */}
-            {company && !isSuperAdmin && !isMarketing && (
-              <div className="hidden sm:flex sm:items-center sm:gap-3 group cursor-default">
-                <div className="relative flex-shrink-0 group">
-                  {/* Outer glow effect */}
-                  <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-secondary-dark via-secondary to-secondary-dark opacity-50 blur-lg group-hover:opacity-100 transition duration-500"></div>
-                  {/* Animated gradient border */}
+
+            {company &&
+              !isSuperAdmin &&
+              !isMarketing && (
+                <div
+                  className="
+                    hidden
+                    min-w-0
+                    items-center
+                    gap-2
+                    sm:flex
+                  "
+                >
                   <div
-                    className="absolute -inset-px rounded-2xl bg-gradient-to-r from-secondary-dark via-secondary to-secondary-dark animate-spin-slow"
-                    style={{ animationDuration: "3s" }}
-                  ></div>
-                  {/* Logo container - Modern Squircle */}
-                  <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-white/95 to-gray-100/95 backdrop-blur-sm flex items-center justify-center shadow-2xl border-2 border-secondary/50 shadow-[0_0_10px_var(--color-secondary)] p-1">
+                    className="
+                      flex
+                      h-8
+                      w-8
+                      shrink-0
+                      items-center
+                      justify-center
+                      overflow-hidden
+                      rounded-lg
+                      border
+                      border-secondary/10
+                      bg-secondary/[0.05]
+                    "
+                  >
                     {companyLogo ? (
                       <img
                         src={companyLogo}
                         alt={company.name}
-                        className="w-full h-full rounded-xl object-cover shadow-md"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full rounded-xl bg-gradient-to-br from-secondary-dark to-secondary flex items-center justify-center shadow-inner">
-                        <Building2 className="w-6 h-6 text-white drop-shadow-sm" />
-                      </div>
+                      <Building2 className="h-4 w-4 text-secondary" />
                     )}
                   </div>
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
+
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <p
+                        className="
+                          max-w-[130px]
+                          truncate
+                          text-[11px]
+                          font-bold
+                          leading-none
+                          text-gray-900
+                          md:max-w-[200px]
+                          lg:max-w-[280px]
+                        "
+                        title={company.name}
+                      >
+                        {company.name}
+                      </p>
+
+                      <span
+                        className="
+                          shrink-0
+                          rounded-full
+                          border
+                          border-secondary/10
+                          bg-secondary/[0.035]
+                          px-1.5
+                          py-0.5
+                          text-[8px]
+                          font-semibold
+                          capitalize
+                          leading-none
+                          text-secondary
+                        "
+                      >
+                        {company.role === "staff"
+                          ? "Dispatcher"
+                          : company.role}
+                      </span>
+                    </div>
+
                     <p
-                      className="text-lg font-black text-indigo-700 truncate max-w-[180px] md:max-w-[240px] lg:max-w-[300px] tracking-tight"
-                      title={company.name}
+                      className="
+                        mt-1
+                        text-[8px]
+                        font-medium
+                        uppercase
+                        leading-none
+                        tracking-[0.08em]
+                        text-gray-400
+                      "
                     >
-                      {company.name}
-                    </p>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shadow-sm ${company.role === "admin"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : company.role === "staff"
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : company.role === "viewer"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-gray-50 text-gray-600 border-gray-200"
-                        }`}
-                    >
-                      {company.role === "staff" ? "Dispatcher" : company.role}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-secondary"></div>
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                      Active Company
+                      Active company
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
-          {/* Right side buttons */}
-          <div className="flex items-center gap-3">
-            {/* Notification Bell */}
-            <NotificationBell onViewAll={() => navigate("notifications")} />
-            {/* Refresh Button */}
-            <RefreshButton onRefresh={handleRefresh} isLoading={isRefreshing} />
-            {/* Profile Dropdown */}
+          {/* Right actions */}
+          <div className="flex shrink-0 items-center gap-1">
+            <NotificationBell
+              onViewAll={() =>
+                navigate("notifications")
+              }
+            />
+
+            <RefreshButton
+              onRefresh={handleRefresh}
+              isLoading={isRefreshing}
+            />
+
             <div className="relative">
               <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className={`flex items-center gap-3 group focus:outline-none cursor-pointer hover:bg-gradient-to-r hover:from-secondary/5 hover:to-transparent rounded-xl p-4 transition-all duration-300 ${profileDropdownOpen ? "bg-gradient-to-r from-secondary/10 to-transparent" : ""}`}
+                type="button"
+                onClick={() =>
+                  setProfileDropdownOpen(
+                    !profileDropdownOpen,
+                  )
+                }
+                className={`
+                  flex
+                  h-8
+                  items-center
+                  gap-1.5
+                  rounded-lg
+                  border
+                  px-1
+                  transition-colors
+                  duration-150
+
+                  ${
+                    profileDropdownOpen
+                      ? "border-secondary/20 bg-secondary/[0.04]"
+                      : "border-transparent hover:border-secondary/10 hover:bg-secondary/[0.025]"
+                  }
+                `}
               >
-                <div className="text-right hidden md:block">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-0.5">
-                      Welcome,
-                    </span>
-                    <p className="text-base font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent tracking-tight">
-                      {user?.username || user?.email?.split("@")[0] || "User"}
-                    </p>
-                  </div>
+                <div className="hidden min-w-0 text-right md:block">
+                  <p
+                    className="
+                      max-w-[110px]
+                      truncate
+                      text-[10px]
+                      font-bold
+                      leading-none
+                      text-gray-800
+                    "
+                  >
+                    {user?.username ||
+                      user?.email?.split("@")[0] ||
+                      "User"}
+                  </p>
                 </div>
-                <div className="relative">
-                  {/* Pulsing ring effect */}
-                  <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-secondary to-indigo-500 opacity-75 blur-sm animate-pulse"></div>
-                  {/* Outer ring - secondary color */}
-                  <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-secondary to-secondary-dark opacity-100"></div>
-                  {/* Avatar container */}
-                  <div className="relative h-11 w-11 rounded-full bg-gradient-to-br from-white to-gray-50 flex items-center justify-center shadow-xl border-2 border-secondary p-0.5 group-hover:scale-110 transition-all duration-300">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-secondary to-secondary-dark">
-                      {user?.profile_image ? (
-                        <img
-                          src={user.profile_image}
-                          alt={user?.username || "User"}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-white font-bold text-sm uppercase">
-                            {user?.username?.[0] ||
-                              user?.first_name?.[0] ||
-                              "A"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
+                <div
+                  className="
+                    flex
+                    h-7
+                    w-7
+                    shrink-0
+                    items-center
+                    justify-center
+                    overflow-hidden
+                    rounded-full
+                    bg-secondary
+                    ring-2
+                    ring-secondary/10
+                  "
+                >
+                  {user?.profile_image ? (
+                    <img
+                      src={user.profile_image}
+                      alt={user?.username || "User"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase text-white">
+                      {user?.username?.[0] ||
+                        user?.first_name?.[0] ||
+                        "A"}
+                    </span>
+                  )}
                 </div>
               </button>
 
               {profileDropdownOpen && (
                 <>
                   <div
-                    className="fixed inset-0 z-9999"
-                    onClick={() => setProfileDropdownOpen(false)}
+                    className="fixed inset-0 z-[60]"
+                    onClick={() =>
+                      setProfileDropdownOpen(false)
+                    }
                   />
-                  <div className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-transparent">
-                      <p className="text-xs text-gray-500">{user?.email}</p>
+
+                  <div
+                    className="
+                      absolute
+                      right-0
+                      z-[70]
+                      mt-1.5
+                      w-52
+                      overflow-hidden
+                      rounded-lg
+                      border
+                      border-secondary/10
+                      bg-white
+                      p-1
+                      shadow-[0_12px_30px_rgba(0,0,0,0.12)]
+                    "
+                  >
+                    <div
+                      className="
+                        border-b
+                        border-secondary/[0.07]
+                        px-2.5
+                        py-2
+                      "
+                    >
+                      <p
+                        className="
+                          truncate
+                          text-[10px]
+                          font-medium
+                          text-gray-700
+                        "
+                      >
+                        {user?.email}
+                      </p>
+
                       {company && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
-                          <p className="text-xs font-medium text-indigo-700">
-                            Role: {company.role === "staff" ? "Dispatcher" : company.role}
-                          </p>
-                        </div>
+                        <p
+                          className="
+                            mt-1
+                            text-[9px]
+                            font-semibold
+                            capitalize
+                            text-secondary
+                          "
+                        >
+                          {company.role === "staff"
+                            ? "Dispatcher"
+                            : company.role}
+                        </p>
                       )}
                     </div>
 
                     <button
-                      onClick={() => navigate("profile")}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors group cursor-pointer"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
-                        <Users className="h-4 w-4 text-indigo-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold">My Profile</p>
-                      </div>
-                    </button>
-
-                    {/* Switch Back – always visible when a company is selected */}
-                    {/* {company && !isSuperAdmin && (
-                    <button
+                      type="button"
                       onClick={() => {
-                        clearCompany();
+                        navigate("profile");
                         setProfileDropdownOpen(false);
-                        navigate("overview");
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-amber-600 hover:bg-amber-50 transition-colors group border-t border-gray-100 cursor-pointer"
+                      className="
+                        mt-1
+                        flex
+                        h-8
+                        w-full
+                        items-center
+                        gap-2
+                        rounded-md
+                        px-2.5
+                        text-left
+                        text-[11px]
+                        font-medium
+                        text-gray-700
+                        transition-colors
+                        hover:bg-secondary/[0.04]
+                        hover:text-secondary
+                      "
                     >
-                      <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center group-hover:bg-amber-200 transition-colors">
-                        <Building2 className="h-4 w-4 text-amber-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold">Switch Back</p>
-                        <p className="text-xs text-gray-400">to default</p>
-                      </div>
+                      <Users className="h-3.5 w-3.5" />
+                      My Profile
                     </button>
-                  )} */}
 
                     <button
+                      type="button"
                       onClick={handleLogoutClick}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors group border-t border-gray-100 mt-1 cursor-pointer"
+                      className="
+                        mt-0.5
+                        flex
+                        h-8
+                        w-full
+                        items-center
+                        gap-2
+                        rounded-md
+                        px-2.5
+                        text-left
+                        text-[11px]
+                        font-medium
+                        text-red-600
+                        transition-colors
+                        hover:bg-secondary/[0.04]
+                      "
                     >
-                      <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                        <LogOut className="h-4 w-4 text-red-600" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-semibold">Sign Out</p>
-                      </div>
+                      <LogOut className="h-3.5 w-3.5" />
+                      Sign Out
                     </button>
                   </div>
                 </>
@@ -1231,41 +1664,120 @@ export default function AdminDashboard() {
         </header>
         {/* add div and padding - scrollable content area */}
 
-        <div ref={scrollableRef} className="flex-1 overflow-y-auto p-6 lg:p-8">
+        <div ref={scrollableRef} className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4">
           {renderContent()}
         </div>
       </main>
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="relative p-6 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <LogOut className="h-5 w-5 text-red-600" />
+        <div
+          className="
+            fixed
+            inset-0
+            z-[80]
+            flex
+            items-center
+            justify-center
+            bg-secondary/25
+            p-4
+            backdrop-blur-[1px]
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-xs
+              overflow-hidden
+              rounded-xl
+              border
+              border-secondary/10
+              bg-white
+              shadow-[0_18px_48px_rgba(0,0,0,0.14)]
+            "
+          >
+            <div className="p-4">
+              <div className="flex items-start gap-2.5">
+                <div
+                  className="
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-lg
+                    bg-secondary/[0.07]
+                  "
+                >
+                  <LogOut className="h-4 w-4 text-secondary" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Sign Out</h3>
+
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    Sign out
+                  </h3>
+
+                  <p className="mt-1 text-[10px] leading-4 text-gray-500">
+                    Are you sure you want to sign out of your account?
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-500 mt-2 ml-13">
-                Are you sure you want to sign out of your account?
-              </p>
             </div>
 
-            {/* Modal Body */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+            <div
+              className="
+                flex
+                justify-end
+                gap-2
+                border-t
+                border-secondary/[0.07]
+                bg-secondary/[0.02]
+                px-4
+                py-2.5
+              "
+            >
               <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all duration-200"
+                type="button"
+                onClick={() =>
+                  setShowLogoutConfirm(false)
+                }
+                className="
+                  h-8
+                  rounded-md
+                  border
+                  border-secondary/10
+                  bg-white
+                  px-3
+                  text-[10px]
+                  font-semibold
+                  text-secondary
+                  transition-colors
+                  hover:bg-secondary/[0.04]
+                "
               >
                 Cancel
               </button>
+
               <button
+                type="button"
                 onClick={confirmLogout}
-                className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl text-sm font-medium hover:from-red-700 hover:to-rose-700 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                className="
+                  inline-flex
+                  h-8
+                  items-center
+                  gap-1.5
+                  rounded-md
+                  bg-red-500
+                  px-3
+                  text-[10px]
+                  font-semibold
+                  text-white
+                  transition-opacity
+                  hover:opacity-90
+                "
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-3.5 w-3.5" />
                 Sign Out
               </button>
             </div>
@@ -1297,7 +1809,7 @@ export default function AdminDashboard() {
   );
 }
 
-// Reusable SidebarItem (unchanged)
+// Reusable SidebarItem
 function SidebarItem({
   icon,
   label,
@@ -1313,14 +1825,45 @@ function SidebarItem({
 }) {
   return (
     <button
+      type="button"
+      title={collapsed ? label : undefined}
       onClick={onClick}
-      className={`flex items-center gap-3.5 w-full px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 group ${active
-        ? "bg-white/40 text-white shadow-lg"
-        : "text-gray-300 hover:bg-white/5 hover:text-white"
-        } ${collapsed ? "justify-center px-2" : ""}`}
+      className={`
+        group
+        flex
+        h-9
+        w-full
+        items-center
+        rounded-lg
+        text-[12px]
+        font-medium
+        transition-colors
+        duration-150
+        [&_svg]:h-4
+        [&_svg]:w-4
+
+        ${
+          collapsed
+            ? "justify-center px-2"
+            : "gap-2.5 px-3"
+        }
+
+        ${
+          active
+            ? "bg-white text-secondary shadow-sm"
+            : "text-white/75 hover:bg-white/10 hover:text-white"
+        }
+      `}
     >
-      <span className="flex-shrink-0">{icon}</span>
-      {!collapsed && <span>{label}</span>}
+      <span className="shrink-0">
+        {icon}
+      </span>
+
+      {!collapsed && (
+        <span className="truncate">
+          {label}
+        </span>
+      )}
     </button>
   );
 }

@@ -1,4 +1,4 @@
-// src/components/admin/overview/components/ChartsSection.tsx
+// src/components/admin/overview/ChartsSection.tsx
 import {
   BarChart,
   Bar,
@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { TrendingUp, Building2 } from "lucide-react";
 import { SkeletonChart, EmptyState } from "./LoadingStates";
-import { formatCurrency, CHART_COLORS } from "./uiHelpers";
+import { formatCurrency } from "./uiHelpers";
 import type { DashboardTab } from "./Overview";
 
 type Period = "week" | "month" | "year";
@@ -31,11 +31,32 @@ interface ChartsSectionProps {
   hasTopProductsData: boolean;
   currentData: any[];
   orderStatusData: { name: string; value: number; color: string }[];
-  productSalesData: { name: string; sales: number; company_name: string; color: string }[];
+  productSalesData: {
+    name: string;
+    sales: number;
+    company_name: string;
+    color: string;
+  }[];
   productTrendData: any[];
   topProductNames: string[];
   onNavigate?: (tab: DashboardTab) => void;
 }
+
+const CARD =
+  "rounded-xl border border-secondary/10 bg-white p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] transition-all duration-200 hover:border-secondary/20 hover:shadow-sm sm:p-4";
+
+const SECONDARY = "var(--color-secondary)";
+
+const pieOpacity = [1, 0.82, 0.64, 0.48, 0.34, 0.24];
+
+const lineDashPatterns = [
+  undefined,
+  "7 4",
+  "3 4",
+  "10 4 2 4",
+  "2 3",
+  "12 5",
+];
 
 export default function ChartsSection({
   loading,
@@ -54,70 +75,76 @@ export default function ChartsSection({
   onNavigate,
 }: ChartsSectionProps) {
   return (
-    <>
-      {/* =========== Revenue & Order Status Row =========== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-4 lg:gap-5">
-        {/* -------- Revenue Bar Chart (lg:col-span-2) -------- */}
-        <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-3xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+    <div className="space-y-3">
+      {/* Revenue + order status */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <article className={`${CARD} lg:col-span-2`}>
           {loading ? (
-            <SkeletonChart height="h-64 sm:h-72 lg:h-80" />
+            <SkeletonChart height="h-52 sm:h-56 lg:h-60" />
           ) : (
             <>
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div className="space-y-1">
-                  <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                    Revenue
-                  </h3>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                    <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
+                      Revenue
+                    </span>
+                  </div>
+
+                  <p className="text-xl font-extrabold tracking-[-0.03em] text-secondary sm:text-2xl">
                     {formatCurrency(totalRevenue)}
                   </p>
-                  {/* Legend */}
-                  <div className="flex items-center gap-3 mt-2">
+
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] font-medium text-gray-500">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                      <span className="text-xs text-gray-500">Current</span>
+                      <span className="h-2 w-4 rounded-[3px] bg-secondary" />
+                      Current
                     </div>
+
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full border-2 border-[#D6BCFA]" />
-                      <span className="text-xs text-gray-500">Previous</span>
+                      <span className="h-2 w-4 rounded-[3px] border border-secondary/50 bg-secondary/[0.08]" />
+                      Previous
                     </div>
                   </div>
                 </div>
-                {/* Period switcher + icon */}
-                <div className="flex items-center gap-2">
-                  <div className="flex bg-gray-100 rounded-xl p-1">
+
+                <div className="flex items-center gap-1.5">
+                  <div className="flex rounded-lg border border-secondary/10 bg-secondary/[0.035] p-0.5">
                     {(["week", "month", "year"] as Period[]).map((p) => (
                       <button
                         key={p}
+                        type="button"
                         onClick={() => setPeriod(p)}
-                        className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
+                        className={`rounded-md px-2.5 py-1 text-[10px] font-semibold transition-all ${
                           period === p
-                            ? "bg-white shadow text-secondary ring-1 ring-gray-200/50"
-                            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                            ? "bg-secondary text-white shadow-sm"
+                            : "text-gray-500 hover:bg-white hover:text-secondary"
                         }`}
                       >
                         {p.charAt(0).toUpperCase() + p.slice(1)}
                       </button>
                     ))}
                   </div>
-                  <div className="p-2 bg-purple-50 rounded-xl hidden sm:block">
-                    <TrendingUp className="h-5 w-5 text-secondary" />
+
+                  <div className="hidden h-7 w-7 items-center justify-center rounded-lg border border-secondary/10 bg-secondary/[0.05] sm:flex">
+                    <TrendingUp className="h-3.5 w-3.5 text-secondary" />
                   </div>
                 </div>
               </div>
 
-              {/* Chart container */}
               {hasRevenueData ? (
-                <div className="h-64 sm:h-72 lg:h-80">
+                <div className="h-52 sm:h-56 lg:h-60">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={currentData}
+                      barGap={4}
+                      barCategoryGap="30%"
                       margin={{ top: 5, right: 10, left: -10, bottom: 5 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="#f0f0f0"
+                        stroke="rgba(107,114,128,0.09)"
                         vertical={false}
                       />
                       <XAxis
@@ -131,33 +158,46 @@ export default function ChartsSection({
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+                        tickFormatter={(val) =>
+                          `${(val / 1000).toFixed(0)}k`
+                        }
                       />
                       <Tooltip
                         formatter={(value, name) => [
                           typeof value === "number"
                             ? formatCurrency(value)
                             : String(value ?? ""),
-                          name === "revenue" ? "Revenue" : "Prev. Revenue",
+                          name === "revenue"
+                            ? "Current"
+                            : "Previous",
                         ]}
                         contentStyle={{
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
-                          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(107,114,128,0.14)",
+                          boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+                          background: "#ffffff",
                         }}
                       />
                       <Bar
                         dataKey="prevRevenue"
-                        fill="#D6BCFA"
-                        radius={[6, 6, 0, 0]}
-                        barSize={28}
-                        opacity={0.6}
+                        name="Previous"
+                        fill={SECONDARY}
+                        fillOpacity={0.1}
+                        stroke={SECONDARY}
+                        strokeOpacity={0.55}
+                        strokeWidth={1.25}
+                        strokeDasharray="3 2"
+                        radius={[4, 4, 0, 0]}
+                        barSize={20}
                       />
+
                       <Bar
                         dataKey="revenue"
-                        fill="var(--color-secondary)"
-                        radius={[6, 6, 0, 0]}
-                        barSize={28}
+                        name="Current"
+                        fill={SECONDARY}
+                        fillOpacity={1}
+                        radius={[4, 4, 0, 0]}
+                        barSize={20}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -170,55 +210,82 @@ export default function ChartsSection({
               )}
             </>
           )}
-        </div>
+        </article>
 
-        {/* -------- Order Status Donut Chart -------- */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+        <article className={CARD}>
           {loading ? (
-            <SkeletonChart height="h-64 sm:h-72 lg:h-80" />
+            <SkeletonChart height="h-52 sm:h-56 lg:h-60" />
           ) : (
             <>
-              <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
-                Orders by Status
-              </h3>
+              <div className="mb-3">
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
+                    Orders
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
+                  Status distribution
+                </h3>
+              </div>
+
               {hasOrderStatusData ? (
                 <>
-                  <div className="h-48 sm:h-56 lg:h-64 flex items-center justify-center">
+                  <div className="flex h-44 items-center justify-center sm:h-48 lg:h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={orderStatusData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={55}
-                          outerRadius={80}
+                          innerRadius={50}
+                          outerRadius={70}
                           paddingAngle={3}
                           dataKey="value"
                         >
                           {orderStatusData.map((entry, idx) => (
-                            <Cell key={`cell-${idx}`} fill={entry.color} />
+                            <Cell
+                              key={`${entry.name}-${idx}`}
+                              fill={SECONDARY}
+                              fillOpacity={
+                                pieOpacity[idx % pieOpacity.length]
+                              }
+                            />
                           ))}
                         </Pie>
                         <Tooltip
                           formatter={(value) => [`${value ?? 0} orders`]}
                           contentStyle={{
-                            borderRadius: "12px",
-                            border: "1px solid #e5e7eb",
+                            borderRadius: "8px",
+                            border: "1px solid rgba(107,114,128,0.14)",
+                            background: "#ffffff",
                           }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  {/* Legend – wraps nicely on all screens */}
-                  <div className="flex flex-wrap gap-3 mt-3 justify-center sm:justify-start">
-                    {orderStatusData.map((s) => (
-                      <div key={s.name} className="flex items-center gap-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: s.color }}
-                        />
-                        <span className="text-xs text-gray-600">
-                          {s.name} ({s.value})
+
+                  <div className="mt-2 grid grid-cols-2 gap-1.5">
+                    {orderStatusData.map((status, idx) => (
+                      <div
+                        key={status.name}
+                        className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-secondary/[0.06] bg-secondary/[0.025] px-2 py-1.5"
+                      >
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-secondary"
+                            style={{
+                              opacity:
+                                pieOpacity[idx % pieOpacity.length],
+                            }}
+                          />
+                          <span className="truncate text-[10px] font-medium text-gray-600">
+                            {status.name}
+                          </span>
+                        </div>
+
+                        <span className="text-[10px] font-bold text-secondary">
+                          {status.value}
                         </span>
                       </div>
                     ))}
@@ -233,41 +300,53 @@ export default function ChartsSection({
               )}
             </>
           )}
-        </div>
+        </article>
       </div>
 
-      {/* =========== Product Trend & Top Products =========== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-4 lg:gap-5 mt-4 md:mt-6">
-        {/* -------- Product Trend Line Chart (lg:col-span-2) -------- */}
-        <div className="lg:col-span-2 bg-white/90 backdrop-blur-sm rounded-3xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+      {/* Product trend + top products */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <article className={`${CARD} lg:col-span-2`}>
           {loading ? (
-            <SkeletonChart height="h-64 sm:h-72 lg:h-80" />
+            <SkeletonChart height="h-52 sm:h-56 lg:h-60" />
           ) : (
             <>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                    Product Sales Trend
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                    <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
+                      Products
+                    </span>
+                  </div>
+
+                  <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
+                    Sales trend
                   </h3>
-                  <p className="text-xs text-gray-500 mt-1">Monthly comparison</p>
+                  <p className="mt-0.5 text-[10px] text-gray-500">
+                    Monthly product comparison
+                  </p>
                 </div>
-                {/* Legend – wraps on small screens */}
-                <div className="flex flex-wrap items-center gap-3 xs:gap-4">
+
+                <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1.5">
                   {topProductNames.map((name, idx) => (
-                    <div key={name} className="flex items-center gap-1.5">
+                    <div key={name} className="flex min-w-0 items-center gap-1.5">
                       <span
-                        className="w-3 h-3 rounded-full"
+                        className="h-1.5 w-3 shrink-0 rounded-full bg-secondary"
                         style={{
-                          backgroundColor: CHART_COLORS[idx % CHART_COLORS.length],
+                          opacity:
+                            1 - (idx % 5) * 0.13,
                         }}
                       />
-                      <span className="text-xs text-gray-600">{name}</span>
+                      <span className="max-w-[130px] truncate text-[10px] text-gray-600">
+                        {name}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
+
               {hasProductTrendData ? (
-                <div className="h-64 sm:h-72 lg:h-80">
+                <div className="h-52 sm:h-56 lg:h-60">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={productTrendData}
@@ -275,7 +354,7 @@ export default function ChartsSection({
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="#f0f0f0"
+                        stroke="rgba(107,114,128,0.12)"
                         vertical={false}
                       />
                       <XAxis
@@ -288,7 +367,9 @@ export default function ChartsSection({
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+                        tickFormatter={(val) =>
+                          `${(val / 1000).toFixed(0)}k`
+                        }
                       />
                       <Tooltip
                         formatter={(value) => [
@@ -298,19 +379,30 @@ export default function ChartsSection({
                           "",
                         ]}
                         contentStyle={{
-                          borderRadius: "12px",
-                          border: "1px solid #e5e7eb",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(107,114,128,0.14)",
+                          background: "#ffffff",
                         }}
                       />
+
                       {topProductNames.map((name, idx) => (
                         <Line
                           key={name}
                           type="monotone"
                           dataKey={name}
-                          stroke={CHART_COLORS[idx % CHART_COLORS.length]}
-                          strokeWidth={2}
+                          stroke={SECONDARY}
+                          strokeOpacity={1 - (idx % 5) * 0.13}
+                          strokeDasharray={
+                            lineDashPatterns[idx % lineDashPatterns.length]
+                          }
+                          strokeWidth={2.25}
                           dot={false}
-                          activeDot={{ r: 5 }}
+                          activeDot={{
+                            r: 4,
+                            fill: SECONDARY,
+                            stroke: "#ffffff",
+                            strokeWidth: 2,
+                          }}
                         />
                       ))}
                     </LineChart>
@@ -324,72 +416,82 @@ export default function ChartsSection({
               )}
             </>
           )}
-        </div>
+        </article>
 
-        {/* -------- Top Products -------- */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-4 sm:p-5 md:p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+        <article className={CARD}>
           {loading ? (
-            <SkeletonChart height="h-64 sm:h-72 lg:h-80" />
+            <SkeletonChart height="h-52 sm:h-56 lg:h-60" />
           ) : (
             <>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                  Top Products
-                </h3>
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+                    <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
+                      Ranking
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
+                    Top products
+                  </h3>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => onNavigate?.("products")}
-                  className="text-xs font-medium text-secondary hover:underline cursor-pointer"
+                  className="rounded-md border border-secondary/10 bg-secondary/[0.035] px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary hover:text-white"
                 >
                   View all
                 </button>
               </div>
+
               {hasTopProductsData ? (
-                <div className="space-y-4 overflow-y-auto pr-1">
-                  {productSalesData.map((product) => (
-                    <div
-                      key={product.name}
-                      className="group flex items-center gap-3 hover:bg-gray-50/50 p-2 -mx-2 rounded-xl transition-colors"
-                    >
+                <div className="space-y-1.5">
+                  {productSalesData.map((product, idx) => {
+                    const maxSales = productSalesData[0]?.sales || 0;
+                    const width = maxSales
+                      ? Math.max((product.sales / maxSales) * 100, 4)
+                      : 0;
+
+                    return (
                       <div
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: product.color }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                          <p
-                            className="text-sm font-medium truncate pr-2"
-                            style={{ color: product.color }}
-                          >
-                            {product.name}
-                          </p>
-                          <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                            {formatCurrency(product.sales)}
-                          </span>
-                        </div>
-                        {/* Company badge */}
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-white"
-                            style={{ backgroundColor: product.color }}
-                          >
-                            <Building2 className="h-3 w-3" />
-                            {product.company_name}
-                          </span>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="mt-2 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                              width: `${productSalesData[0]?.sales ? (product.sales / productSalesData[0].sales) * 100 : 0}%`,
-                              backgroundColor: product.color,
-                            }}
-                          />
+                        key={`${product.name}-${idx}`}
+                        className="rounded-lg border border-secondary/[0.07] bg-white p-2.5 transition hover:border-secondary/20 hover:bg-secondary/[0.01]"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-secondary/[0.06] text-[10px] font-bold text-secondary">
+                            {String(idx + 1).padStart(2, "0")}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="truncate text-xs font-semibold text-gray-900">
+                                {product.name}
+                              </p>
+
+                              <span className="shrink-0 text-xs font-extrabold text-secondary">
+                                {formatCurrency(product.sales)}
+                              </span>
+                            </div>
+
+                            <div className="mt-1 flex min-w-0 items-center gap-1 text-[10px] text-secondary/80">
+                              <Building2 className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate">
+                                {product.company_name}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 h-1 overflow-hidden rounded-full bg-secondary/[0.08]">
+                              <div
+                                className="h-full rounded-full bg-secondary transition-all duration-500"
+                                style={{ width: `${width}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <EmptyState
@@ -400,8 +502,8 @@ export default function ChartsSection({
               )}
             </>
           )}
-        </div>
+        </article>
       </div>
-    </>
+    </div>
   );
 }
