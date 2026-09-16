@@ -37,6 +37,7 @@ import {
   updateDeliveryPerson,
   prepareVendorOrder,
   confirmCODPayment,
+  vendorRequestRefund,
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { ConfirmationModal } from "../../ui/confimationModal";
@@ -185,6 +186,9 @@ const getDisplayStatus = (
     pending: "Assigned",
     out_for_delivery: "In Transit",
     delivered: "Completed",
+    disputed: "Disputed",
+    replacement_in_progress: "Redelivery Required",
+    refunded: "Refunded",
     ...customLabels,
   };
   return statusMap[status?.toLowerCase()] || status;
@@ -202,9 +206,11 @@ const getStatusBadge = (status: string) => {
       base +
       "bg-violet-50 text-violet-700 border-violet-200 flex flex-row w-24 items-center justify-center"
     );
-  if (s === "pending")
+  if (s === "replacement_in_progress")
+    return base + "bg-purple-50 text-purple-700 border-purple-200";
+  if (s === "pending" || s === "disputed")
     return base + "bg-amber-50 text-amber-700 border-amber-200";
-  if (s === "rejected" || s === "cancelled" || s === "failed")
+  if (s === "rejected" || s === "cancelled" || s === "failed" || s === "refunded")
     return base + "bg-rose-50 text-rose-700 border-rose-200";
   return base + "bg-gray-50 text-gray-600 border-gray-200";
 };
@@ -256,6 +262,9 @@ const StatusBadge = ({
     approved: "bg-green-100 text-green-700 border-green-200",
     rejected: "bg-rose-100 text-rose-700 border-rose-200",
     cancelled: "bg-rose-100 text-rose-700 border-rose-200",
+    disputed: "bg-amber-100 text-amber-800 border-amber-200",
+    replacement_in_progress: "bg-purple-100 text-purple-800 border-purple-200",
+    refunded: "bg-rose-100 text-rose-800 border-rose-200",
   };
 
   const displayStatus = getDisplayStatus(status, customLabels);
@@ -1850,6 +1859,26 @@ const ReceiptReviewCard = ({
       </Card>
     );
   }
+  if (paymentMethod === "telebirr") {
+    return (
+      <Card
+        title="Payment Information"
+        icon={CreditCard}
+        status="approved"
+        className="ring-1 ring-indigo-100"
+      >
+        <div className="flex flex-col items-center ">
+          <div className="flex items-center gap-2 bg-white px-4 ">
+            <div className="w-9 md:w-12 h-9 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-2 shadow-inner">
+              <ShieldCheck className="h-5 w-5 md:h-8 md:w-8 text-indigo-600" />
+            </div>
+            <p className="text-sm font-semibold text-gray-700">Verified by</p>
+            <img src="/telebirr.png" alt="Telebirr" className="h-8 object-contain" />
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   if (paymentMethod === "cod") {
     const isPaid = status?.toLowerCase() === "paid";
@@ -2194,10 +2223,15 @@ const ReceiptReviewCard = ({
 // ─── PREPARATION CARD ──────────────────────────────────────────────
 const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showOutOfStockModal, setShowOutOfStockModal] = useState(false);
+  const [outOfStockReason, setOutOfStockReason] = useState("out_of_stock");
+  const [outOfStockExplanation, setOutOfStockExplanation] = useState("");
+  const [submittingRefundRequest, setSubmittingRefundRequest] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const { showToast } = useToast();
   const status = order.status?.toLowerCase();
   const isCOD = order.payment_method === "cod";
+  const isReplacement = status === "replacement_in_progress";
 
   const handlePrepare = async () => {
     setShowConfirm(false);
@@ -2205,7 +2239,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
     try {
       await prepareVendorOrder(order.company.slug, order.id);
       await onUpdate();
-      showToast("success", "Order marked as Prepared!");
+      showToast("success", isReplacement ? "Replacement marked as Prepared!" : "Order marked as Prepared!");
     } catch (err: any) {
       showToast(
         "error",
@@ -2216,49 +2250,76 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
     }
   };
 
-  if (
-    status !== "confirmed" &&
-    status !== "processing" &&
-    !(isCOD && status === "pending")
-  ) {
+  const handleOutOfStockSubmit = async () => {
+    if (!outOfStockExplanation.trim()) {
+      showToast("error", "Please provide a reason or note for the customer.");
+      return;
+    }
+    setSubmittingRefundRequest(true);
+    try {
+      await vendorRequestRefund(order.id, {
+        reason: outOfStockReason,
+        explanation: outOfStockExplanation,
+      });
+      await onUpdate();
+      setShowOutOfStockModal(false);
+      showToast("success", "Refund request sent to Superadmin for approval.");
+    } catch (err: any) {
+      showToast(
+        "error",
+        err.response?.data?.detail || "Failed to submit refund request",
+      );
+    } finally {
+      setSubmittingRefundRequest(false);
+    }
+  };
+
+  const canPrepare = status === "confirmed" || (isCOD && status === "pending") || isReplacement;
+  const canRequestRefund = !readOnly && status !== "fulfilled" && status !== "cancelled" && status !== "refunded";
+
+  if (!canPrepare && !canRequestRefund) {
     return null;
   }
 
   return (
     <>
       <Card
-        title="Order Preparation"
+        title={isReplacement ? "Replacement Preparation" : "Order Preparation"}
         icon={Package}
         status={status}
         className={
-          status === "confirmed" || (isCOD && status === "pending")
-            ? "ring-2 ring-purple-100 border-purple-200"
-            : ""
+          canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""
         }
       >
-        <div className="flex flex-col items-center text-center py-4">
-          {(status === "confirmed" || (isCOD && status === "pending")) && (
-            <>
-              {!readOnly && (
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  disabled={preparing}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-secondary to-secondary text-white text-sm font-bold shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {preparing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Marking...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4" />
-                      Mark as Prepared
-                    </>
-                  )}
-                </button>
+        <div className="flex flex-col items-center text-center py-4 space-y-3">
+          {canPrepare && !readOnly && (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={preparing}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-secondary to-secondary text-white text-sm font-bold shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {preparing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Marking...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  {isReplacement ? "Mark Replacement as Prepared" : "Mark as Prepared"}
+                </>
               )}
-            </>
+            </button>
+          )}
+
+          {canRequestRefund && !readOnly && (
+            <button
+              onClick={() => setShowOutOfStockModal(true)}
+              className="w-full py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
+            >
+              <AlertCircle className="h-4 w-4 text-rose-600" />
+              {isReplacement ? "Cannot Replace / Request Refund" : "Out of Stock / Request Refund"}
+            </button>
           )}
         </div>
       </Card>
@@ -2267,13 +2328,94 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handlePrepare}
-        title="Mark Order as Prepared"
-        description="Are you sure you want to mark this order as prepared and ready for dispatch?"
+        title={isReplacement ? "Mark Replacement as Prepared" : "Mark Order as Prepared"}
+        description={
+          isReplacement
+            ? "Are you sure the replacement items are prepared and ready for dispatch?"
+            : "Are you sure you want to mark this order as prepared and ready for dispatch?"
+        }
         confirmText={preparing ? "Marking..." : "Yes, Prepared"}
         confirmVariant="primary"
         loading={false}
         autoClose={false}
       />
+
+      {/* Out of Stock / Refund Request Modal */}
+      <AnimatePresence>
+        {showOutOfStockModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100"
+            >
+              <div className="flex items-center gap-3 mb-4 text-rose-700 font-bold text-base">
+                <AlertCircle className="h-5 w-5" />
+                Request Customer Refund
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                If items are unavailable or cannot be replaced, submit a refund request. A Superadmin will review and disburse funds back to the customer.
+              </p>
+
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Reason
+                  </label>
+                  <select
+                    value={outOfStockReason}
+                    onChange={(e) => setOutOfStockReason(e.target.value)}
+                    className="w-full text-xs rounded-xl border border-gray-300 p-2.5 focus:ring-2 focus:ring-secondary/20 focus:outline-none"
+                  >
+                    <option value="out_of_stock">Item Out of Stock</option>
+                    <option value="damaged_item">Ingredients/Items Damaged</option>
+                    <option value="other">Store Closed / Cannot Fulfill</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Explanation for Customer & Admin
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={outOfStockExplanation}
+                    onChange={(e) => setOutOfStockExplanation(e.target.value)}
+                    placeholder="e.g. Current batch of item is unavailable. Requesting refund for customer."
+                    className="w-full text-xs rounded-xl border border-gray-300 p-2.5 focus:ring-2 focus:ring-secondary/20 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOutOfStockModal(false)}
+                  className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOutOfStockSubmit}
+                  disabled={submittingRefundRequest}
+                  className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {submittingRefundRequest ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Refund Request"
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
@@ -2461,6 +2603,29 @@ export function VendorOrderDetailModal({
 
             {/* Scrollable Content Grid */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+              {/* Alert banners for dispute / replacement */}
+              {order.status?.toLowerCase() === "replacement_in_progress" && (
+                <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
+                  <AlertCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-bold text-purple-900">Replacement In Progress</div>
+                    <p className="mt-0.5 text-purple-700 text-xs">
+                      The customer rejected delivery due to an issue and requested redelivery. Please prepare the replacement items. Vendor payout remains held in escrow until redelivery is fulfilled.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {order.status?.toLowerCase() === "disputed" && (
+                <div className="mb-4 sm:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-bold text-amber-900">Order Under Dispute Review</div>
+                    <p className="mt-0.5 text-amber-700 text-xs">
+                      An issue was reported for this order and is under review by Superadmin. Escrow payout is currently frozen.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-12 gap-4 sm:gap-6 md:gap-8 items-start">
                 {/* Left Side: Order Composition & Shipping (8 cols) */}
                 <div className="col-span-12 lg:col-span-8 space-y-4 sm:space-y-6 md:space-y-8 lg:sticky lg:top-0">

@@ -6,6 +6,7 @@ import {
   Package,
   ShoppingBag,
   CreditCard,
+  AlertTriangle,
   LogOut,
   Menu,
   X,
@@ -38,6 +39,7 @@ import Overview, { type DashboardTab } from "./overview/Overview";
 import CompanyUsers from "./companyUser/CompanyUsers";
 import CompanyOrders from "./vedorOrders/CompanyOrders";
 import Payments from "./Payments";
+import DisputesManagement from "./disputes/DisputesManagement";
 import BankManagement from "./bank/BankManagement";
 import CompanyProducts from "./company-products/CompanyProducts";
 import CategoryManagement from "./CategoryManagement";
@@ -92,6 +94,7 @@ type Tab =
   | "masterOrders"
   | "companyOrders"
   | "payments"
+  | "disputes"
   | "bankAccounts"
   | "profile"
   | "add advertisment"
@@ -539,6 +542,8 @@ export default function AdminDashboard() {
           return <CompanyOrders key={componentKey} />;
         case "payments":
           return <Payments key={componentKey} />;
+        case "disputes":
+          return <DisputesManagement key={componentKey} />;
         case "bankAccounts":
           return <BankManagement key={componentKey} />;
         case "profile":
@@ -829,6 +834,16 @@ export default function AdminDashboard() {
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("payments")}
               />
+
+              {showPlatformAdmin && (
+                <SidebarItem
+                  icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
+                  label="Disputes & Refunds"
+                  active={activeTab === "disputes"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("disputes")}
+                />
+              )}
 
               <SidebarItem
                 icon={<Package className="h-5 w-5" />}

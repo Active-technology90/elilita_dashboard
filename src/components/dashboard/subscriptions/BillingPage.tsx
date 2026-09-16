@@ -78,6 +78,83 @@ interface ActiveSubscription {
 }
 
 type PlanAction = "current" | "upgrade" | "downgrade" | "free_locked" | "subscribe";
+type PlanTier = "free" | "basic" | "advanced" | "premium";
+
+interface PlanFeature {
+  label: string;
+  included: boolean;
+}
+
+const PLAN_TIER_FEATURES: Record<PlanTier, PlanFeature[]> = {
+  free: [
+    { label: "Vendor profile & basic storefront", included: true },
+    { label: "Basic order management & notifications", included: true },
+    { label: "Business analytics & reports", included: false },
+    { label: "Promotions & discount campaigns", included: false },
+    { label: "Customer insights", included: false },
+    { label: "Multiple staff accounts", included: false },
+    { label: "Advanced inventory & exportable reports", included: false },
+    { label: "Advanced marketing & campaign tracking", included: false },
+    { label: "Premium visibility & dedicated support", included: false },
+  ],
+  basic: [
+    { label: "Professional vendor storefront", included: true },
+    { label: "Full order management & notifications", included: true },
+    { label: "Business analytics & reports", included: true },
+    { label: "Promotions & discount campaigns", included: true },
+    { label: "Customer insights", included: true },
+    { label: "Multiple staff accounts", included: true },
+    { label: "Advanced inventory & exportable reports", included: false },
+    { label: "Advanced marketing & campaign tracking", included: false },
+    { label: "Premium visibility & dedicated support", included: false },
+  ],
+  advanced: [
+    { label: "Advanced storefront customization", included: true },
+    { label: "Advanced order management & tracking", included: true },
+    { label: "Business analytics & reports", included: true },
+    { label: "Promotions & discount campaigns", included: true },
+    { label: "Customer insights", included: true },
+    { label: "Multiple staff accounts", included: true },
+    { label: "Advanced inventory & exportable reports", included: true },
+    { label: "Advanced marketing & campaign tracking", included: true },
+    { label: "Premium visibility & dedicated support", included: false },
+  ],
+  premium: [
+    { label: "Premium storefront customization", included: true },
+    { label: "Advanced order management & tracking", included: true },
+    { label: "Business analytics & reports", included: true },
+    { label: "Promotions & discount campaigns", included: true },
+    { label: "Customer insights", included: true },
+    { label: "Multiple staff accounts", included: true },
+    { label: "Advanced inventory & exportable reports", included: true },
+    { label: "Advanced marketing & campaign tracking", included: true },
+    { label: "Premium visibility & dedicated support", included: true },
+  ],
+};
+
+const getPlanTier = (plan: SubscriptionPlan, planIndex: number): PlanTier => {
+  const normalizedName = plan.name.toLowerCase();
+
+  if (parseFloat(plan.price) === 0 || /\b(free|starter)\b/.test(normalizedName)) return "free";
+  if (/\bbasic\b/.test(normalizedName)) return "basic";
+  if (/\b(advanced|professional|pro)\b/.test(normalizedName)) return "advanced";
+  if (/\b(premium|business|bussiness|enterprise)\b/.test(normalizedName)) return "premium";
+
+  return (["free", "basic", "advanced", "premium"] as PlanTier[])[Math.min(planIndex, 3)];
+};
+
+const PlanFeatureRow = ({ label, included }: PlanFeature) => (
+  <li className="flex items-start gap-3">
+    {included ? (
+      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" aria-hidden="true" />
+    ) : (
+      <XCircle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" aria-hidden="true" />
+    )}
+    <span className={`text-sm ${included ? "text-gray-700" : "text-gray-400 line-through"}`}>
+      {label}
+    </span>
+  </li>
+);
 
 export default function BillingPage() {
   const { company } = useCurrentCompany();
@@ -390,10 +467,13 @@ export default function BillingPage() {
         )}
 
             <div className="grid md:grid-cols-3 gap-8">
-              {plans.map((plan) => {
+              {plans.map((plan, planIndex) => {
             const action = getPlanAction(plan);
             const btnCfg = getButtonConfig(action);
             const cardPrice = parseFloat(plan.price);
+            const planTier = getPlanTier(plan, planIndex);
+            const maxProducts = plan.max_products ?? 15;
+            const maxFeaturedProducts = plan.max_featured_products ?? 0;
 
             return (
               <motion.div
@@ -431,53 +511,32 @@ export default function BillingPage() {
                   {cardPrice > 0 && <span className="text-gray-500">/mo</span>}
                 </div>
 
+                <p className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-400">
+                  What's included
+                </p>
                 <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">
-                      {plan.max_products === -1 
+                  <PlanFeatureRow
+                    included={maxProducts !== 0}
+                    label={
+                      maxProducts === -1
                         ? "Unlimited public products" 
-                        : `Post up to ${plan.max_products ?? 15} public products`}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700">
-                      {plan.max_featured_products === -1 
+                        : `Post up to ${maxProducts} public products`
+                    }
+                  />
+                  <PlanFeatureRow
+                    included={maxFeaturedProducts !== 0}
+                    label={
+                      maxFeaturedProducts === -1
                         ? "Unlimited featured products" 
-                        : `Can feature up to ${plan.max_featured_products} products`}
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    {plan.can_ad_company_detail ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
-                    )}
-                    <span className={`text-sm ${plan.can_ad_company_detail ? "text-gray-700" : "text-gray-400 line-through"}`}>
-                      Ads on Company Detail Page
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    {plan.can_ad_companies_list ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
-                    )}
-                    <span className={`text-sm ${plan.can_ad_companies_list ? "text-gray-700" : "text-gray-400 line-through"}`}>
-                      Ads on Companies List Page
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    {plan.can_ad_home_page ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-gray-300 shrink-0 mt-0.5" />
-                    )}
-                    <span className={`text-sm ${plan.can_ad_home_page ? "text-gray-700" : "text-gray-400 line-through"}`}>
-                      Premium Homepage Ads
-                    </span>
-                  </li>
+                        : `Can feature up to ${maxFeaturedProducts} products`
+                    }
+                  />
+                  <PlanFeatureRow label="Ads on Company Detail Page" included={plan.can_ad_company_detail} />
+                  <PlanFeatureRow label="Ads on Companies List Page" included={plan.can_ad_companies_list} />
+                  <PlanFeatureRow label="Premium Homepage Ads" included={plan.can_ad_home_page} />
+                  {PLAN_TIER_FEATURES[planTier].map((feature) => (
+                    <PlanFeatureRow key={feature.label} {...feature} />
+                  ))}
                 </ul>
 
                 <button

@@ -39,8 +39,8 @@ import type {
 } from "../types";
 
 // const API_URL = import.meta.env.VITE_API_URL || "";
-// const API_URL = "http://localhost:8000/api/v1/";
-const API_URL = "https://backend.elilitapp.com/api/v1/";
+const API_URL = "http://localhost:8000/api/v1/";
+// const API_URL = "https://backend.elilitapp.com/api/v1/";
 
 
 const api = axios.create({
@@ -119,7 +119,7 @@ api.interceptors.response.use(
     }
 
     try {
-      const { data } = await axios.post(`${API_URL}/auth/jwt/refresh/`, {
+      const { data } = await axios.post(`${API_URL.replace(/\/+$/, "")}/auth/jwt/refresh/`, {
         refresh: refreshToken,
       });
       if (data.access) {
@@ -1173,4 +1173,58 @@ export const createSubscriptionSessionLog = (
 
 export type { IntakeFormField };
 
-export default api;
+// ── Disputes & Refunds ──
+export interface OrderDispute {
+  id: number;
+  master_order: number;
+  vendor_order: number | null;
+  customer_id?: number;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  raised_by: number;
+  raised_by_name: string;
+  raised_by_email: string;
+  raised_by_phone: string;
+  initiator_role: "customer" | "vendor" | "superadmin";
+  company_name: string;
+  company_slug: string;
+  master_order_total: string;
+  payment_method: string;
+  reason: string;
+  explanation: string;
+  evidence_image: string | null;
+  requested_resolution: "redelivery" | "refund";
+  refund_amount: string;
+  status: "pending_review" | "redelivery_in_progress" | "refund_approved" | "refunded" | "rejected" | "resolved";
+  admin_notes: string;
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  gateway: string;
+  gateway_refund_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getAdminDisputes = (params?: { status?: string; resolution?: string; search?: string }) =>
+  api.get<OrderDispute[] | { count: number; results: OrderDispute[] }>("/orders/admin/disputes/", { params });
+
+export const getAdminDisputeDetail = (id: number) =>
+  api.get<OrderDispute>(`/orders/admin/disputes/${id}/`);
+
+export const approveDisputeRefund = (id: number, data?: { admin_notes?: string; refund_amount?: string | number; force_manual?: boolean }) =>
+  api.post<{ detail: string; dispute: OrderDispute; gateway_result: any }>(`/orders/admin/disputes/${id}/approve-refund/`, data || {});
+
+export const approveDisputeRedelivery = (id: number, data?: { admin_notes?: string }) =>
+  api.post<{ detail: string; dispute: OrderDispute }>(`/orders/admin/disputes/${id}/approve-redelivery/`, data || {});
+
+export const convertDisputeToRefund = (id: number, data?: { admin_notes?: string }) =>
+  api.post<{ detail: string; dispute: OrderDispute }>(`/orders/admin/disputes/${id}/convert-to-refund/`, data || {});
+
+export const rejectDispute = (id: number, data?: { admin_notes?: string }) =>
+  api.post<{ detail: string; dispute: OrderDispute }>(`/orders/admin/disputes/${id}/reject/`, data || {});
+
+export const vendorRequestRefund = (vendorOrderId: number, data: { reason: string; explanation?: string }) =>
+  api.post<{ detail: string; dispute: OrderDispute }>(`/orders/vendor-orders/${vendorOrderId}/vendor-request-refund/`, data);
+
+export default api;
