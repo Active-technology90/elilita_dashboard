@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Edit, CheckCircle2, XCircle, CreditCard, Building2 } from "lucide-react";
+import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   getAdminSubscriptionPlans,
@@ -72,78 +72,80 @@ type DocumentPlanBaseline = {
   tier: DocumentTier;
   name: string;
   monthlyPrice: number;
-  purpose: string;
   positioning: string;
-  storefront: string;
-  inventoryOrders: string;
-  analytics: string;
-  marketingVisibility: string;
+  productListing: string;
+  expectedProductLimit: number | null;
   featuredProducts: string;
-  staffSupport: string;
+  advertising: string;
+  staff: string;
 };
 
+// Approved Vendor Subscription Plan V1.0 reference.
+// Numeric limits below are taken only where the PDF explicitly defines them.
 const DOCUMENT_PLAN_BASELINES: DocumentPlanBaseline[] = [
   {
     tier: "free",
     name: "Free",
     monthlyPrice: 0,
-    purpose: "Start",
     positioning: "Start Selling",
-    storefront: "Basic",
-    inventoryOrders: "Basic",
-    analytics: "Basic dashboard",
-    marketingVisibility: "Not included",
+    productListing: "Limited (no numeric cap specified)",
+    expectedProductLimit: null,
     featuredProducts: "Not included",
-    staffSupport: "Standard support",
+    advertising: "Not included",
+    staff: "1 staff account",
   },
   {
     tier: "basic",
     name: "Basic",
     monthlyPrice: 499,
-    purpose: "Grow",
     positioning: "Grow Your Store",
-    storefront: "Professional",
-    inventoryOrders: "Full / standard",
-    analytics: "Basic",
-    marketingVisibility: "Limited / paid ads",
+    productListing: "Up to 100 products",
+    expectedProductLimit: 100,
     featuredProducts: "Not included",
-    staffSupport: "Limited staff + priority support",
+    advertising: "Paid advertising opportunities",
+    staff: "2 staff accounts",
   },
   {
     tier: "advanced",
     name: "Advanced",
     monthlyPrice: 1000,
-    purpose: "Scale",
     positioning: "Scale Your Business",
-    storefront: "Advanced",
-    inventoryOrders: "Advanced",
-    analytics: "Advanced",
-    marketingVisibility: "Included",
+    productListing: "Up to 500 products",
+    expectedProductLimit: 500,
     featuredProducts: "Included",
-    staffSupport: "Multiple staff + priority support",
+    advertising: "Included",
+    staff: "5 authorized staff accounts",
   },
   {
     tier: "premium",
     name: "Premium",
     monthlyPrice: 2000,
-    purpose: "Maximize",
     positioning: "Maximize Your Business",
-    storefront: "Premium",
-    inventoryOrders: "Advanced",
-    analytics: "Advanced / premium insights",
-    marketingVisibility: "Priority",
+    productListing: "Unlimited",
+    expectedProductLimit: -1,
     featuredProducts: "Priority",
-    staffSupport: "Multiple staff + dedicated support",
+    advertising: "Priority",
+    staff: "Multiple authorised staff accounts",
   },
 ];
 
 const resolveDocumentTier = (plan: any): DocumentTier | null => {
   const name = String(plan?.name || "").trim().toLowerCase();
-  const price = Number(plan?.price ?? 0);
+
   if (name.includes("premium") || name.includes("enterprise")) return "premium";
-  if (name.includes("advanced") || name.includes("professional") || name === "pro") return "advanced";
+  if (
+    name.includes("advanced") ||
+    name.includes("professional") ||
+    name === "pro" ||
+    name.includes("standard")
+  ) {
+    // Legacy backend aliases are compared against the PDF's Advanced tier.
+    return "advanced";
+  }
   if (name.includes("basic")) return "basic";
-  if (name.includes("free") || name.includes("starter") || price === 0) return "free";
+  if (name.includes("free") || name.includes("starter")) return "free";
+
+  // Do not infer a document tier from price alone; custom plans can share a price.
   return null;
 };
 
@@ -152,17 +154,112 @@ const formatEtb = (value: number) =>
 
 const getDocumentBaseline = (plan: any): DocumentPlanBaseline | null => {
   const tier = resolveDocumentTier(plan);
+  return DOCUMENT_PLAN_BASELINES.find((item) => item.tier === tier) || null;
+};
 
-  return (
-    DOCUMENT_PLAN_BASELINES.find((item) => item.tier === tier) ||
-    null
+const getConfiguredProductLimit = (plan: any): number | null => {
+  const raw = plan?.max_products;
+  if (raw === null || raw === undefined || raw === "") return null;
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+};
+
+const getProductLimitForPlan = (plan: any): number | null => {
+  const baseline = getDocumentBaseline(plan);
+
+  // For the standard paid plans, the approved V1.0 document is the source of truth.
+  if (baseline?.expectedProductLimit !== null && baseline?.expectedProductLimit !== undefined) {
+    return baseline.expectedProductLimit;
+  }
+
+  // Free is only described as "Limited" in the document, so keep its configured cap.
+  return getConfiguredProductLimit(plan);
+};
+
+const formatProductLimit = (plan: any): string => {
+  const baseline = getDocumentBaseline(plan);
+  const limit = getProductLimitForPlan(plan);
+
+  // V1.0 defines Free qualitatively as Limited, without an approved numeric cap.
+  if (baseline?.tier === "free") return "Limited";
+
+  if (limit === -1) return "Unlimited";
+  if (limit === null) return "—";
+  return formatEtb(limit);
+};
+
+const hasAnyAdvertisingPlacement = (plan: any) =>
+  Boolean(
+    plan?.can_ad_company_detail ||
+      plan?.can_ad_companies_list ||
+      plan?.can_ad_home_page,
   );
+
+const getDocumentIssues = (
+  plan: any,
+  baseline: DocumentPlanBaseline,
+): string[] => {
+  const issues: string[] = [];
+  const price = Number(plan?.price ?? 0);
+  const featuredLimit = Number(plan?.max_featured_products ?? 0);
+  const productLimit = Number(plan?.max_products ?? 0);
+  const hasAds = hasAnyAdvertisingPlacement(plan);
+
+  if (price !== baseline.monthlyPrice) {
+    issues.push(
+      `Price should be ${
+        baseline.monthlyPrice === 0
+          ? "ETB 0"
+          : `ETB ${formatEtb(baseline.monthlyPrice)}`
+      }`,
+    );
+  }
+
+  // The PDF gives exact product caps for Basic (100), Advanced (500)
+  // and Premium (unlimited). Free is only described as "Limited".
+  if (baseline.expectedProductLimit === null) {
+    if (productLimit <= 0 || productLimit === -1) {
+      issues.push("Free product listing should be a positive limited amount");
+    }
+  } else if (productLimit !== baseline.expectedProductLimit) {
+    issues.push(
+      baseline.expectedProductLimit === -1
+        ? "Premium product listing should be unlimited (-1)"
+        : `${baseline.name} product limit should be ${baseline.expectedProductLimit}`,
+    );
+  }
+
+  if (baseline.tier === "free") {
+    if (featuredLimit !== 0) issues.push("Free does not include featured products");
+    if (hasAds) issues.push("Free does not include advertising opportunities");
+  }
+
+  if (baseline.tier === "basic") {
+    if (featuredLimit !== 0) issues.push("Basic does not include featured products");
+    if (!hasAds) issues.push("Basic should allow paid advertising opportunities");
+  }
+
+  if (baseline.tier === "advanced") {
+    if (featuredLimit <= 0) issues.push("Advanced includes featured products");
+    if (!hasAds) issues.push("Advanced includes advertising opportunities");
+  }
+
+  if (baseline.tier === "premium") {
+    if (featuredLimit <= 0) issues.push("Premium includes priority featured products");
+    if (!hasAds) issues.push("Premium includes priority advertising opportunities");
+  }
+
+  return issues;
 };
 
 export default function SuperadminSubscriptions() {
   const [plans, setPlans] = useState<any[]>([]);
   const [companySubscriptions, setCompanySubscriptions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [pageError, setPageError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
   // ========== FILTER, SORT, PAGINATION STATE ==========
   const [pageSize, setPageSize] = useState(10);
@@ -187,25 +284,31 @@ export default function SuperadminSubscriptions() {
 
   const documentAlignment = useMemo(() => {
     return DOCUMENT_PLAN_BASELINES.map((baseline) => {
-      const plan = plans.find((candidate) => resolveDocumentTier(candidate) === baseline.tier);
+      const plan = plans.find(
+        (candidate) => resolveDocumentTier(candidate) === baseline.tier,
+      );
 
       if (!plan) {
-        return { ...baseline, plan: null, status: "missing" as const };
+        return {
+          ...baseline,
+          plan: null,
+          issues: [] as string[],
+          status: "missing" as const,
+        };
       }
 
-      const currentPrice = Number(plan.price || 0);
+      const issues = getDocumentIssues(plan, baseline);
       return {
         ...baseline,
         plan,
-        status: currentPrice === baseline.monthlyPrice
-          ? ("aligned" as const)
-          : ("price_mismatch" as const),
+        issues,
+        status: issues.length === 0 ? ("match" as const) : ("review" as const),
       };
     });
   }, [plans]);
 
-  const documentAlignedCount = documentAlignment.filter(
-    (item) => item.status === "aligned",
+  const documentMatchCount = documentAlignment.filter(
+    (item) => item.status === "match",
   ).length;
 
   // Modal State
@@ -215,11 +318,11 @@ export default function SuperadminSubscriptions() {
     name: "",
     description: "",
     price: 0,
-    can_ad_company_detail: true,
+    can_ad_company_detail: false,
     can_ad_companies_list: false,
     can_ad_home_page: false,
     max_featured_products: 0,
-    max_products: 15,
+    max_products: 0,
     is_active: true,
   });
 
@@ -238,6 +341,7 @@ export default function SuperadminSubscriptions() {
 
   const fetchData = async () => {
     setIsLoading(true);
+    setPageError("");
     try {
       const [plansRes, subsRes] = await Promise.all([
         getAdminSubscriptionPlans(),
@@ -247,6 +351,7 @@ export default function SuperadminSubscriptions() {
       setCompanySubscriptions(subsRes.data?.results || subsRes.data || []);
     } catch (error) {
       console.error("Error fetching admin subscription data", error);
+      setPageError("Could not load subscription data.");
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +408,7 @@ export default function SuperadminSubscriptions() {
   }, []);
 
   const handleEditClick = (plan: any) => {
+    setSaveError("");
     setEditingPlan(plan);
     setFormData({
       name: plan.name,
@@ -312,23 +418,24 @@ export default function SuperadminSubscriptions() {
       can_ad_companies_list: plan.can_ad_companies_list,
       can_ad_home_page: plan.can_ad_home_page,
       max_featured_products: plan.max_featured_products,
-      max_products: plan.max_products !== undefined ? plan.max_products : 15,
+      max_products: getProductLimitForPlan(plan) ?? 0,
       is_active: plan.is_active,
     });
     setIsModalOpen(true);
   };
 
   const handleCreateClick = () => {
+    setSaveError("");
     setEditingPlan(null);
     setFormData({
       name: "",
       description: "",
       price: 0,
-      can_ad_company_detail: true,
+      can_ad_company_detail: false,
       can_ad_companies_list: false,
       can_ad_home_page: false,
       max_featured_products: 0,
-      max_products: 15,
+      max_products: 0,
       is_active: true,
     });
     setIsModalOpen(true);
@@ -336,491 +443,384 @@ export default function SuperadminSubscriptions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    setSaveError("");
+
     try {
       if (editingPlan) {
         await updateAdminSubscriptionPlan(editingPlan.id, formData);
       } else {
         await createAdminSubscriptionPlan(formData);
       }
+
       setIsModalOpen(false);
-      fetchData();
+      await fetchData();
     } catch (error) {
       console.error("Error saving plan", error);
-      alert("Failed to save plan. Please check the inputs.");
+      setSaveError("Could not save the plan.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex items-center justify-center h-full">
-  //       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
-  //     </div>
-  //   );
-  // }
+  const exportPlans = () => {
+    const headers = [
+      "Plan Name",
+      "Price",
+      "Public Products Limit",
+      "Featured Limit",
+      "Detail Ad",
+      "List Ad",
+      "Home Ad",
+      "Status",
+      "Subscribers",
+    ];
+
+    const rows = plans.map((plan) => [
+      plan.name,
+      plan.price,
+      formatProductLimit(plan),
+      plan.max_featured_products === -1 ? "Unlimited" : plan.max_featured_products,
+      plan.can_ad_company_detail ? "Yes" : "No",
+      plan.can_ad_companies_list ? "Yes" : "No",
+      plan.can_ad_home_page ? "Yes" : "No",
+      plan.is_active ? "Active" : "Inactive",
+      companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length,
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `subscription_plans_${new Date().toISOString().split("T")[0]}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const activePlans = plans.filter((plan) => plan.is_active).length;
+  const activeSubscriptions = companySubscriptions.filter(
+    (subscription) => subscription.is_active && !subscription.is_expired,
+  ).length;
 
   return (
-    <div className="px-2 sm:px-3 md:px-4 lg:px-6 pt-1 pb-2 max-w-7xl mx-auto space-y-1 sm:space-y-2 md:space-y-3">
-      <div className="flex items-center gap-3">
-        {isLoading ? (
-          <div className="h-8 sm:h-10 w-1 rounded-full bg-gray-200 animate-pulse flex-shrink-0" />
-        ) : (
-          <div className="h-8 sm:h-10 w-1 rounded-full bg-gradient-to-b from-secondary to-secondary/20 flex-shrink-0" />
-        )}
-        {isLoading ? (
-          <div className="flex-1 animate-pulse">
-            <div className="h-6 sm:h-7 md:h-8 bg-gray-200 rounded w-48 sm:w-64 mb-1" />
-            <div className="h-3 sm:h-4 bg-gray-200 rounded w-64 sm:w-80" />
-          </div>
-        ) : (
-          <div>
-            <h1 className="text-base sm:text-xl md:text-2xl font-bold text-secondary">Subscription Management</h1>
-            <p className="text-[10px] sm:text-xs text-secondary/60">Manage pricing tiers and view active company subscriptions.</p>
-          </div>
-        )}
-      </div>
+    <div className="mx-auto w-full max-w-[1440px] space-y-5 px-3 pb-8 pt-2 sm:px-5 lg:px-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-secondary/55">
+            Admin
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl">
+            Subscriptions
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">Plans and company subscriptions.</p>
+        </div>
 
-      {/* V1.0 subscription document alignment */}
-      <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-        <div className="flex flex-col gap-2 border-b border-secondary/10 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={exportPlans}
+            disabled={isLoading || plans.length === 0}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateClick}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary-dark"
+          >
+            <Plus className="h-4 w-4" />
+            New plan
+          </button>
+        </div>
+      </header>
+
+      {pageError && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {pageError}
+          </span>
+          <button
+            type="button"
+            onClick={() => void fetchData()}
+            className="font-semibold hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">Active plans</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950">{isLoading ? "—" : activePlans}</p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">Active subscriptions</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950">
+            {isLoading ? "—" : activeSubscriptions}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-gray-500">V1.0 aligned</p>
+          <p className="mt-1 text-2xl font-bold text-gray-950">
+            {isLoading ? "—" : `${documentMatchCount}/4`}
+          </p>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
           <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/60">Vendor Subscription Plan V1.0</p>
-            <h2 className="mt-0.5 text-sm font-bold text-gray-900">Launch pricing alignment</h2>
+            <h2 className="text-sm font-bold text-gray-950">Plan standards</h2>
+            <p className="mt-0.5 text-xs text-gray-500">Vendor Subscription Plan V1.0</p>
           </div>
-          <span className="w-fit rounded-full bg-secondary/[0.06] px-2 py-1 text-[9px] font-semibold text-secondary">
-            {documentAlignedCount}/4 prices aligned
+          <span className="rounded-full bg-secondary/[0.07] px-2.5 py-1 text-xs font-semibold text-secondary">
+            {documentMatchCount}/4 aligned
           </span>
         </div>
 
-        <div className="grid gap-px bg-secondary/[0.07] sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-px bg-gray-100 sm:grid-cols-2 xl:grid-cols-4">
           {documentAlignment.map((item) => (
-            <div key={item.tier} className="bg-white p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-[10px] font-bold text-gray-900">{item.name}</p>
-                  <p className="mt-0.5 text-[9px] text-gray-400">{item.positioning}</p>
+            <article key={item.tier} className="bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-sm font-bold text-gray-950">{item.name}</h3>
+                    <span className="text-xs font-semibold text-gray-500">
+                      {item.monthlyPrice === 0 ? "Free" : `ETB ${formatEtb(item.monthlyPrice)}/mo`}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-500">{item.positioning}</p>
                 </div>
-                <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-semibold ${
-                  item.status === "aligned"
-                    ? "bg-secondary/[0.07] text-secondary"
-                    : item.status === "missing"
-                    ? "bg-gray-100 text-gray-500"
-                    : "bg-secondary/[0.035] text-secondary"
-                }`}>
-                  {item.status === "aligned" ? "Aligned" : item.status === "missing" ? "Missing" : "Review price"}
+
+                <span
+                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
+                    item.status === "match"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : item.status === "missing"
+                        ? "bg-gray-100 text-gray-500"
+                        : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {item.status === "match" ? "Aligned" : item.status === "missing" ? "Missing" : "Review"}
                 </span>
               </div>
 
-              <div className="mt-2 flex items-end justify-between gap-2">
+              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>
-                  <p className="text-[8px] uppercase tracking-[0.08em] text-gray-400">V1.0 monthly</p>
-                  <p className="mt-0.5 text-xs font-extrabold text-secondary">
-                    {item.monthlyPrice === 0 ? "Free" : `ETB ${formatEtb(item.monthlyPrice)}`}
-                  </p>
+                  <dt className="text-gray-400">Products</dt>
+                  <dd className="mt-0.5 font-semibold text-gray-700">{item.productListing}</dd>
                 </div>
-                {item.plan && (
-                  <div className="text-right">
-                    <p className="text-[8px] uppercase tracking-[0.08em] text-gray-400">Current</p>
-                    <p className="mt-0.5 text-[10px] font-bold text-gray-700">
-                      {Number(item.plan.price || 0) === 0 ? "Free" : `ETB ${formatEtb(Number(item.plan.price || 0))}`}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <p className="mt-2 text-[9px] text-gray-500">
-                Purpose: {item.purpose}
-              </p>
+                <div>
+                  <dt className="text-gray-400">Staff</dt>
+                  <dd className="mt-0.5 font-semibold text-gray-700">{item.staff}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">Featured</dt>
+                  <dd className="mt-0.5 font-semibold text-gray-700">{item.featuredProducts}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">Ads</dt>
+                  <dd className="mt-0.5 font-semibold text-gray-700">{item.advertising}</dd>
+                </div>
+              </dl>
 
-              <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-secondary/[0.07] pt-2.5">
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Storefront
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.storefront}
-                  </p>
+              {item.status === "review" && item.issues.length > 0 && (
+                <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-700">
+                  {item.issues.join(" · ")}
                 </div>
-
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Orders / Inventory
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.inventoryOrders}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Analytics
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.analytics}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Marketing
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.marketingVisibility}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Featured
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.featuredProducts}
-                  </p>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                    Staff / Support
-                  </p>
-                  <p className="mt-0.5 truncate text-[9px] font-semibold text-gray-700">
-                    {item.staffSupport}
-                  </p>
-                </div>
-              </div>
-            </div>
+              )}
+            </article>
           ))}
         </div>
       </section>
 
-      {/* Subscription Plans Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          {isLoading ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 animate-pulse">
-              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 bg-gray-200 rounded" />
-              <div className="h-5 sm:h-6 bg-gray-200 rounded w-32 sm:w-40" />
-            </div>
-          ) : (
-            <h2 className="text-sm sm:text-base md:text-lg font-bold text-secondary flex items-center gap-1.5 sm:gap-2">
-              <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-secondary" />
-              <span>Subscription Plans</span>
-            </h2>
-          )}
+      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                // Export plans data
-                const headers = ['Plan Name', 'Price', 'Public Products Limit', 'Featured Limit', 'Detail Ad', 'List Ad', 'Home Ad', 'Status', 'Subscribers'];
-                const rows = plans.map(p => [
-                  p.name,
-                  p.price,
-                  p.max_products === -1 ? 'Unlimited' : (p.max_products ?? 15),
-                  p.max_featured_products === -1 ? 'Unlimited' : p.max_featured_products,
-                  p.can_ad_company_detail ? 'Yes' : 'No',
-                  p.can_ad_companies_list ? 'Yes' : 'No',
-                  p.can_ad_home_page ? 'Yes' : 'No',
-                  p.is_active ? 'Active' : 'Inactive',
-                  companySubscriptions.filter(s => s.plan?.id === p.id).length
-                ]);
-                const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `subscription_plans_${new Date().toISOString().split('T')[0]}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="text-secondary/80 hover:text-secondary hover:bg-secondary/15 bg-secondary/10 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors flex items-center gap-1 sm:gap-1.5 border border-secondary/20 hover:border-secondary/40 whitespace-nowrap"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 sm:w-3.5 h-3 sm:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span className="hidden xs:inline">Export</span>
-              <span className="xs:hidden">📤</span>
-            </button>
-            <button
-              onClick={handleCreateClick}
-              className="bg-secondary text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-sm font-medium flex items-center gap-1 sm:gap-2 hover:bg-secondary-dark transition-all"
-            >
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              New Plan
-            </button>
+            <CreditCard className="h-4 w-4 text-secondary" />
+            <h2 className="text-sm font-bold text-gray-950">Plans</h2>
           </div>
+          <span className="text-xs font-medium text-gray-400">{plans.length} total</span>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5 backdrop-blur-sm shadow-sm">
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Plan Name
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Price
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden xs:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Public Limit
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden xs:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Featured Limit
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Detail Ad
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    List Ad
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Home Ad
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Status
-                  </span>
-                </th>
-                <th className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-right text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Actions
-                  </span>
-                </th>
+          <table className="w-full min-w-[820px] text-left">
+            <thead className="bg-gray-50/80">
+              <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3">Plan</th>
+                <th className="px-4 py-3">Price</th>
+                <th className="px-4 py-3">Products</th>
+                <th className="px-4 py-3">Featured</th>
+                <th className="px-4 py-3">Ads</th>
+                <th className="px-4 py-3">Subscribers</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
+                Array.from({ length: 4 }).map((_, index) => <SkeletonRow key={index} />)
               ) : plans.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                        <CreditCard className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <p className="text-gray-500 font-medium">No subscription plans created yet</p>
-                      <p className="text-sm text-gray-400 mt-1">Click "New Plan" to create your first pricing tier</p>
-                    </div>
+                  <td colSpan={8} className="px-5 py-12 text-center text-sm text-gray-500">
+                    No plans yet.
                   </td>
                 </tr>
               ) : (
-                plans.map((plan) => (
-                  <tr key={plan.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-bold text-gray-900">
-                      <div className="flex items-center gap-2">
-                        {plan.name}
-                      </div>
-                    </td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-medium">{plan.price}</td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 hidden xs:table-cell font-medium text-secondary">{plan.max_products === -1 ? 'Unlimited' : (plan.max_products ?? 15)}</td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 hidden xs:table-cell">{plan.max_featured_products === -1 ? 'Unlimited' : plan.max_featured_products}</td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center hidden sm:table-cell">
-                      {plan.can_ad_company_detail ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /> : <XCircle className="w-4 h-4 text-gray-300 mx-auto" />}
-                    </td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center hidden lg:table-cell">
-                      {plan.can_ad_companies_list ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /> : <XCircle className="w-4 h-4 text-gray-300 mx-auto" />}
-                    </td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center hidden xl:table-cell">
-                      {plan.can_ad_home_page ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" /> : <XCircle className="w-4 h-4 text-gray-300 mx-auto" />}
-                    </td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-center hidden sm:table-cell">
-                      <span className={`px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wider ${plan.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {plan.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="p-4 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-right">
-                      <button
-                        onClick={() => handleEditClick(plan)}
-                        className="p-1 xs:p-1.5 text-gray-400 hover:text-secondary hover:bg-secondary/10 rounded-lg transition-colors"
-                      >
-                        <Edit className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                plans.map((plan) => {
+                  const adsCount = [
+                    plan.can_ad_company_detail,
+                    plan.can_ad_companies_list,
+                    plan.can_ad_home_page,
+                  ].filter(Boolean).length;
+                  const subscribers = companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length;
+
+                  return (
+                    <tr key={plan.id} className="text-sm text-gray-700 transition hover:bg-gray-50/60">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`h-2.5 w-2.5 rounded-full ${getPlanColor(plan.name).split(" ")[0]}`} />
+                          <span className="font-semibold text-gray-950">{plan.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 font-medium">
+                        {Number(plan.price || 0) === 0 ? "Free" : `ETB ${formatEtb(Number(plan.price || 0))}`}
+                      </td>
+                      <td className="px-4 py-3.5 font-medium text-secondary">
+                        {formatProductLimit(plan)}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        {plan.max_featured_products === -1 ? "Unlimited" : plan.max_featured_products}
+                      </td>
+                      <td className="px-4 py-3.5">{adsCount}/3</td>
+                      <td className="px-4 py-3.5">{subscribers}</td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                            plan.is_active
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {plan.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleEditClick(plan)}
+                          aria-label={`Edit ${plan.name}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-secondary/10 hover:text-secondary"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
-            {/* ========== TOTAL REVENUE FOOTER ========== */}
-            {/* {plans.length > 0 && (
-              <tfoot className="bg-gray-50/80 border-t-2 border-gray-200">
-                <tr>
-                  <td className="px-4 py-3 font-bold text-gray-700">Total</td>
-                  <td className="px-4 py-3 font-bold text-secondary">
-                    {plans.reduce((sum, p) => sum + parseFloat(p.price || 0), 0).toFixed(2)} ETB
-                  </td>
-                  <td colSpan={6}></td>
-                </tr>
-              </tfoot>
-            )} */}
           </table>
         </div>
-      </div>
+      </section>
 
-      {/* Active Company Subscriptions Table */}
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50/50">
-          {isLoading ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 animate-pulse">
-              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 bg-gray-200 rounded" />
-              <div className="h-5 sm:h-6 bg-gray-200 rounded w-40 sm:w-48" />
-            </div>
-          ) : (
-            <h2 className="text-sm sm:text-base md:text-lg font-bold text-secondary flex items-center gap-1.5 sm:gap-2">
-              <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-secondary" />
-              <span>Company Subscriptions</span>
-            </h2>
-          )}
+      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-secondary" />
+            <h2 className="text-sm font-bold text-gray-950">Company subscriptions</h2>
+          </div>
+          <span className="text-xs font-medium text-gray-400">{companySubscriptions.length} total</span>
         </div>
 
-        {/* ========== FILTERS & TABLE CONTROLS ========== */}
-        <div className="px-3 sm:px-4 md:px-6 pt-3 sm:pt-4">
+        <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
           <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
-              {/* Search */}
-              <div className="flex-1 min-w-0">
+            <div className="flex w-full flex-col gap-2.5 sm:flex-row">
+              <div className="min-w-0 flex-1">
                 <SearchInput
                   value={inputValue}
                   onChange={handleInputChange}
                   debounceMs={0}
                   loading={isLoading}
                   showClearButton={false}
-                  placeholder="Search by company name..."
+                  placeholder="Search company"
                 />
               </div>
-              {/* Plan Filter */}
               <div className="w-full sm:w-48">
                 <CustomSelect
                   value={planFilter}
                   onChange={setPlanFilter}
-                  placeholder="Filter by Plan"
+                  placeholder="Plan"
                   options={[
-                    { value: "all", label: "All Plans" },
-                    ...plans.map((plan) => ({
-                      value: String(plan.id),
-                      label: plan.name,
-                      icon: (
-                        <span
-                          className={`inline-block w-2 h-2 rounded-full ${getPlanColor(plan.name).split(' ')[0]}`}
-                          style={{
-                            backgroundColor: getPlanColor(plan.name).includes('gray') ? '#6B7280' :
-                              getPlanColor(plan.name).includes('blue') ? '#3B82F6' :
-                                getPlanColor(plan.name).includes('purple') ? '#8B5CF6' :
-                                  getPlanColor(plan.name).includes('amber') ? '#F59E0B' :
-                                    getPlanColor(plan.name).includes('rose') ? '#F43F5E' :
-                                      '#6366F1'
-                          }}
-                        />
-                      )
-                    })),
+                    { value: "all", label: "All plans" },
+                    ...plans.map((plan) => ({ value: String(plan.id), label: plan.name })),
                   ]}
                 />
               </div>
-              {/* Clear Filters Button */}
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="flex items-center justify-center gap-2 border border-red-500/70 text-red-600 rounded-xl px-4 py-2.5 text-sm font-medium hover:bg-red-50 hover:border-red-600 hover:text-red-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/30 active:scale-[0.98] min-h-[42px] w-full sm:w-auto"
+                  className="h-[42px] rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span>Clear Filters</span>
+                  Clear
                 </button>
               )}
             </div>
           </TableControls>
         </div>
 
-        {/* ========== TABLE ========== */}
-        <div className="overflow-x-auto px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5 backdrop-blur-sm shadow-sm">
-                <th className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Company
-                  </span>
-                </th>
-                <th className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Plan
-                  </span>
-                </th>
-                <th className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Start Date
-                  </span>
-                </th>
-                <th className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    End Date
-                  </span>
-                </th>
-                <th className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Status
-                  </span>
-                </th>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left">
+            <thead className="bg-gray-50/80">
+              <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                <th className="px-5 py-3">Company</th>
+                <th className="px-4 py-3">Plan</th>
+                <th className="px-4 py-3">Started</th>
+                <th className="px-4 py-3">Ends</th>
+                <th className="px-5 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => <SkeletonSubscriptionRow key={i} />)
+                Array.from({ length: 5 }).map((_, index) => <SkeletonSubscriptionRow key={index} />)
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-gray-500">
-                    No subscriptions found matching your filters.
+                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-gray-500">
+                    No subscriptions found.
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((sub) => {
                   const isSubscriptionActive = sub.is_active && !sub.is_expired;
                   return (
-                    <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-bold text-gray-900 text-xs sm:text-sm truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
-                        {sub.company_name}
-                      </td>
-                      <td className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-medium">
-                        <span className={`px-1.5 xs:px-2 py-0.5 xs:py-1 rounded-md text-[9px] xs:text-xs font-semibold border ${getPlanColor(sub.plan?.name)}`}>
+                    <tr key={sub.id} className="text-sm text-gray-700 transition hover:bg-gray-50/60">
+                      <td className="px-5 py-3.5 font-semibold text-gray-950">{sub.company_name}</td>
+                      <td className="px-4 py-3.5">
+                        <span className={`rounded-lg border px-2 py-1 text-xs font-semibold ${getPlanColor(sub.plan?.name)}`}>
                           {sub.plan?.name || "Unknown"}
                         </span>
                       </td>
-                      <td className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-gray-500 text-[10px] xs:text-xs sm:text-sm">
+                      <td className="px-4 py-3.5 text-gray-500">
                         {new Date(sub.start_date).toLocaleDateString()}
                       </td>
-                      <td className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-gray-500 text-[10px] xs:text-xs sm:text-sm">
-                        {sub.end_date ? new Date(sub.end_date).toLocaleDateString() : 'Lifetime'}
+                      <td className="px-4 py-3.5 text-gray-500">
+                        {sub.end_date ? new Date(sub.end_date).toLocaleDateString() : "Lifetime"}
                       </td>
-                      <td className="p-2 xs:p-3 sm:px-4 py-2 xs:py-2.5 sm:py-3">
-                        <span className={`px-1.5 xs:px-2 py-0.5 xs:py-1 text-[8px] xs:text-[10px] font-bold rounded-full uppercase tracking-wider ${isSubscriptionActive
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
-                          }`}>
-                          {isSubscriptionActive ? 'Active' : 'Expired'}
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                            isSubscriptionActive
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {isSubscriptionActive ? "Active" : "Expired"}
                         </span>
                       </td>
                     </tr>
@@ -831,9 +831,8 @@ export default function SuperadminSubscriptions() {
           </table>
         </div>
 
-        {/* ========== PAGINATION ========== */}
         {!isLoading && totalPages > 1 && (
-          <div className="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
+          <div className="border-t border-gray-100 px-4 py-3 sm:px-5">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -841,243 +840,203 @@ export default function SuperadminSubscriptions() {
             />
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Plan Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/45 p-4 backdrop-blur-[2px]">
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="bg-white rounded-3xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]"
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
           >
-            <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-              <h3 className="text-base sm:text-lg md:text-xl font-bold text-secondary">
-                {editingPlan ? 'Edit Subscription Plan' : 'New Subscription Plan'}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
-                <XCircle className="w-5 h-5" />
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
+              <div>
+                <h3 className="text-lg font-bold text-gray-950">
+                  {editingPlan ? "Edit plan" : "New plan"}
+                </h3>
+                {selectedDocumentBaseline && (
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {selectedDocumentBaseline.name} · {selectedDocumentBaseline.positioning}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Close"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
-              <form id="plan-form" onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex flex-row">
-                   <div className="flex-1 mr-2">
-                  <label className="block text-xs sm:text-sm font-medium text-secondary/80 mb-1">Plan Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
-                    placeholder="e.g. Advanced"
-                  />
-                </div>
+            <div className="overflow-y-auto px-5 py-5 sm:px-6">
+              <form id="plan-form" onSubmit={handleSubmit} className="space-y-5">
+                {saveError && (
+                  <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                    <AlertCircle className="h-4 w-4" />
+                    {saveError}
+                  </div>
+                )}
 
-                <div className="flex-1 ml-2">
-                  <label className="block text-xs sm:text-sm font-medium text-secondary/80 mb-1">Price (ETB)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
-                  />
-                </div>
-                </div>
-               
-                <div className="space-y-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-secondary/80">
-                      Description
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          description: e.target.value,
-                        })
-                      }
-                      className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
-                      placeholder="Short description shown to vendors"
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Plan name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const baseline = getDocumentBaseline({ name });
+                        setFormData((current) => ({
+                          ...current,
+                          name,
+                          ...(baseline?.expectedProductLimit !== null &&
+                          baseline?.expectedProductLimit !== undefined
+                            ? { max_products: baseline.expectedProductLimit }
+                            : {}),
+                        }));
+                      }}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      placeholder="Advanced"
                     />
                   </div>
-
-                  {selectedDocumentBaseline && (
-                    <div className="rounded-xl border border-secondary/10 bg-secondary/[0.025] p-3">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/60">
-                            V1.0 reference
-                          </p>
-
-                          <p className="mt-0.5 text-sm font-bold text-gray-900">
-                            {selectedDocumentBaseline.name} ·{" "}
-                            {selectedDocumentBaseline.positioning}
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 sm:text-right">
-                          <p className="text-[8px] uppercase tracking-[0.08em] text-gray-400">
-                            Recommended monthly
-                          </p>
-
-                          <p className="mt-0.5 text-xs font-extrabold text-secondary">
-                            {selectedDocumentBaseline.monthlyPrice === 0
-                              ? "Free"
-                              : `ETB ${formatEtb(
-                                  selectedDocumentBaseline.monthlyPrice,
-                                )}`}
-                          </p>
-                        </div>
-                      </div>
-
-                      {Number(formData.price || 0) !==
-                        selectedDocumentBaseline.monthlyPrice && (
-                        <div className="mt-2 rounded-lg border border-secondary/10 bg-white px-2.5 py-2 text-[10px] text-gray-600">
-                          Current price:{" "}
-                          <span className="font-bold text-secondary">
-                            {Number(formData.price || 0) === 0
-                              ? "Free"
-                              : `ETB ${formatEtb(
-                                  Number(formData.price || 0),
-                                )}`}
-                          </span>
-                          {" · "}
-                          V1.0:{" "}
-                          <span className="font-bold text-secondary">
-                            {selectedDocumentBaseline.monthlyPrice === 0
-                              ? "Free"
-                              : `ETB ${formatEtb(
-                                  selectedDocumentBaseline.monthlyPrice,
-                                )}`}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {[
-                          ["Storefront", selectedDocumentBaseline.storefront],
-                          ["Orders / Inventory", selectedDocumentBaseline.inventoryOrders],
-                          ["Analytics", selectedDocumentBaseline.analytics],
-                          ["Marketing", selectedDocumentBaseline.marketingVisibility],
-                          ["Featured", selectedDocumentBaseline.featuredProducts],
-                          ["Staff / Support", selectedDocumentBaseline.staffSupport],
-                        ].map(([label, value]) => (
-                          <div
-                            key={label}
-                            className="rounded-lg border border-secondary/[0.07] bg-white px-2.5 py-2"
-                          >
-                            <p className="text-[8px] uppercase tracking-[0.06em] text-gray-400">
-                              {label}
-                            </p>
-
-                            <p className="mt-0.5 text-[9px] font-semibold leading-4 text-gray-700">
-                              {value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <p className="mt-2 text-[9px] leading-4 text-gray-400">
-                        V1.0 guidance only. The saved plan still uses the
-                        backend-supported fields below.
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Price (ETB)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">Description</label>
+                  <textarea
+                    rows={2}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full resize-none rounded-xl border border-gray-200 px-3.5 py-3 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    placeholder="Short vendor-facing description"
+                  />
+                </div>
+
+                {selectedDocumentBaseline && (
+                  <div className="grid gap-2 rounded-xl border border-secondary/10 bg-secondary/[0.025] px-3.5 py-3 text-xs text-gray-600 sm:grid-cols-3">
+                    <div>
+                      <span className="text-gray-400">V1.0 price</span>
+                      <p className="mt-0.5 font-semibold text-gray-800">
+                        {selectedDocumentBaseline.monthlyPrice === 0
+                          ? "Free"
+                          : `ETB ${formatEtb(selectedDocumentBaseline.monthlyPrice)}`}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Products</span>
+                      <p className="mt-0.5 font-semibold text-gray-800">{selectedDocumentBaseline.productListing}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Staff</span>
+                      <p className="mt-0.5 font-semibold text-gray-800">{selectedDocumentBaseline.staff}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-secondary/80 mb-1">Max Public Products</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Product limit</label>
                     <input
                       type="number"
                       required
                       value={formData.max_products}
-                      onChange={(e) => setFormData({ ...formData, max_products: parseInt(e.target.value, 10) })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
+                      onChange={(e) => setFormData({ ...formData, max_products: parseInt(e.target.value, 10) || 0 })}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Use -1 for unlimited</p>
+                    <p className="mt-1 text-[11px] text-gray-400">
+                      {selectedDocumentBaseline?.expectedProductLimit === -1
+                        ? "Premium: unlimited (-1)"
+                        : selectedDocumentBaseline?.expectedProductLimit != null
+                          ? `${selectedDocumentBaseline.name}: ${selectedDocumentBaseline.expectedProductLimit}`
+                          : selectedDocumentBaseline?.tier === "free"
+                            ? "Free: limited (cap not specified in V1.0)"
+                            : "-1 = unlimited"}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-secondary/80 mb-1">Max Featured Products</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Featured limit</label>
                     <input
                       type="number"
                       required
                       value={formData.max_featured_products}
-                      onChange={(e) => setFormData({ ...formData, max_featured_products: parseInt(e.target.value, 10) })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
+                      onChange={(e) => setFormData({ ...formData, max_featured_products: parseInt(e.target.value, 10) || 0 })}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Use 0 for none, -1 for unlimited</p>
+                    <p className="mt-1 text-[11px] text-gray-400">0 = none · -1 = unlimited</p>
                   </div>
                 </div>
 
-                <div className="pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Active</p>
+                      <p className="text-xs text-gray-500">Available for subscription.</p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary"
+                      className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
                     />
-                    <span className="text-xs sm:text-sm font-bold text-secondary">Plan is Active</span>
-                  </label>
-                </div>
-               
-
-                <div className="space-y-3 pt-2">
-                  <label className="block text-xs sm:text-sm font-medium text-secondary/80 mb-2 border-b pb-1">Advertising Placements</label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.can_ad_company_detail}
-                      onChange={(e) => setFormData({ ...formData, can_ad_company_detail: e.target.checked })}
-                      className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary"
-                    />
-                    <span className="text-xs sm:text-sm text-secondary/70">Company Detail Page</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.can_ad_companies_list}
-                      onChange={(e) => setFormData({ ...formData, can_ad_companies_list: e.target.checked })}
-                      className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary"
-                    />
-                    <span className="text-sm">Companies List Page</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.can_ad_home_page}
-                      onChange={(e) => setFormData({ ...formData, can_ad_home_page: e.target.checked })}
-                      className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary"
-                    />
-                    <span className="text-sm">Home Page</span>
-                  </label>
+                  </div>
                 </div>
 
-               
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-gray-700">Advertising</p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                      ["Company page", "can_ad_company_detail"],
+                      ["Company list", "can_ad_companies_list"],
+                      ["Home page", "can_ad_home_page"],
+                    ].map(([label, key]) => (
+                      <label
+                        key={key}
+                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData[key as keyof typeof formData])}
+                          onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
+                          className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </form>
             </div>
 
-            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+            <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50/70 px-5 py-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-6 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                disabled={isSaving}
+                className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 form="plan-form"
-                className="px-6 py-2.5 rounded-xl bg-secondary text-white font-medium hover:bg-secondary-dark shadow-sm transition-colors"
+                disabled={isSaving}
+                className="h-10 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Save Plan
+                {isSaving ? "Saving…" : "Save"}
               </button>
             </div>
           </motion.div>
