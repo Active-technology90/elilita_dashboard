@@ -39,8 +39,8 @@ import type {
 } from "../types";
 
 // const API_URL = import.meta.env.VITE_API_URL || "";
-const API_URL = "http://localhost:8000/api/v1/";
-// const API_URL = "https://backend.elilitapp.com/api/v1/";
+// const API_URL = "http://localhost:8000/api/v1/";
+const API_URL = "https://backend.elilitapp.com/api/v1/";
 
 
 const api = axios.create({
@@ -1212,7 +1212,7 @@ export const getAdminDisputes = (params?: { status?: string; resolution?: string
 export const getAdminDisputeDetail = (id: number) =>
   api.get<OrderDispute>(`/orders/admin/disputes/${id}/`);
 
-export const approveDisputeRefund = (id: number, data?: { admin_notes?: string; refund_amount?: string | number; force_manual?: boolean }) =>
+export const approveDisputeRefund = (id: number, data?: { admin_notes?: string; refund_amount?: string | number }) =>
   api.post<{ detail: string; dispute: OrderDispute; gateway_result: any }>(`/orders/admin/disputes/${id}/approve-refund/`, data || {});
 
 export const approveDisputeRedelivery = (id: number, data?: { admin_notes?: string }) =>

@@ -42,7 +42,6 @@ export default function DisputesManagement() {
   const [actionLoading, setActionLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [gatewayError, setGatewayError] = useState<string | null>(null);
-  const [canForceManual, setCanForceManual] = useState(false);
 
   const fetchDisputes = useCallback(async () => {
     try {
@@ -114,7 +113,6 @@ export default function DisputesManagement() {
     setAdminNotes(dispute.admin_notes || "");
     setCustomRefundAmount(dispute.refund_amount || dispute.master_order_total || "");
     setGatewayError(null);
-    setCanForceManual(false);
   };
 
   const closeReviewModal = () => {
@@ -122,20 +120,18 @@ export default function DisputesManagement() {
     setAdminNotes("");
     setCustomRefundAmount("");
     setGatewayError(null);
-    setCanForceManual(false);
   };
 
   // Actions
-  const handleApproveRefund = async (forceManual: boolean | unknown = false) => {
+  const handleApproveRefund = async () => {
     if (!selectedDispute) return;
-    const isForce = typeof forceManual === "boolean" ? forceManual : false;
     try {
       setActionLoading(true);
+      setGatewayError(null);
       const parsedAmount = customRefundAmount ? parseFloat(customRefundAmount) : undefined;
       const res = await approveDisputeRefund(selectedDispute.id, {
         admin_notes: adminNotes,
         refund_amount: parsedAmount && !isNaN(parsedAmount) ? parsedAmount : undefined,
-        force_manual: isForce,
       });
       showToast("success", res.data.detail || "Refund approved and executed successfully");
       closeReviewModal();
@@ -148,10 +144,7 @@ export default function DisputesManagement() {
         err?.message ||
         "Failed to approve refund";
       showToast("error", detail);
-      if (err?.response?.data?.can_force_manual) {
-        setCanForceManual(true);
-        setGatewayError(detail);
-      }
+      setGatewayError(detail);
     } finally {
       setActionLoading(false);
     }
@@ -621,29 +614,13 @@ export default function DisputesManagement() {
                 </div>
               )}
 
-              {/* Gateway Error and Force Manual Fallback */}
+              {/* Gateway Error Notice */}
               {gatewayError && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex flex-col gap-2">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="font-semibold">Provider Gateway Notice:</span> {gatewayError}
-                    </div>
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                  <div>
+                    <span className="font-semibold">Provider Gateway Error:</span> {gatewayError}
                   </div>
-                  {canForceManual && (
-                    <div className="flex items-center justify-between pt-2 border-t border-amber-200/80">
-                      <span className="text-[11px] text-amber-700">
-                        Provider gateway rejected or is offline. You can force manual approval to settle customer dispute:
-                      </span>
-                      <button
-                        onClick={() => handleApproveRefund(true)}
-                        disabled={actionLoading}
-                        className="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-sm"
-                      >
-                        Force Manual Refund
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -681,7 +658,7 @@ export default function DisputesManagement() {
                   )}
 
                   <button
-                    onClick={() => handleApproveRefund(false)}
+                    onClick={handleApproveRefund}
                     disabled={actionLoading}
                     className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
                   >
