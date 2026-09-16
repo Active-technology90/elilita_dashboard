@@ -1,6 +1,4 @@
-// src/components/admin/companyUser/CompanyUsers.tsx
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
@@ -15,17 +13,15 @@ import {
 import { useDebounce } from "../../../hooks/useDebounce";
 import type { User, UserRole } from "../../../types";
 import {
+  Briefcase,
   Building2,
+  Eye,
+  Repeat,
+  Shield,
+  Truck,
   UserPlus,
   Users,
-  Shield,
-  Briefcase,
-  Truck,
-  Eye,
-  Search,
   X,
-  ChevronDown,
-  Repeat,
 } from "lucide-react";
 import { Pagination } from "../../ui/Pagination";
 import { ErrorView } from "../../ui/ErrorView";
@@ -41,140 +37,80 @@ import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
 
-// ----------------------------------------------------------------------
-// Compact skeletons
-// ----------------------------------------------------------------------
-const StatsSkeleton: React.FC = () => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-    {[...Array(5)].map((_, i) => (
+const SkeletonBar = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse rounded bg-secondary/[0.08] ${className}`} />
+);
+
+const StatsSkeleton = () => (
+  <div className="hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
+    {Array.from({ length: 5 }).map((_, index) => (
       <div
-        key={i}
-        className="rounded-xl border border-gray-100 bg-white p-2 animate-pulse"
+        key={index}
+        className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3"
       >
-        <div className="h-3 w-12 bg-gray-200 rounded mb-1" />
-        <div className="h-5 w-8 bg-gray-200 rounded" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <SkeletonBar className="h-2.5 w-16" />
+            <SkeletonBar className="h-5 w-8" />
+          </div>
+          <SkeletonBar className="h-9 w-9 rounded-lg" />
+        </div>
       </div>
     ))}
   </div>
 );
 
-// const TableSkeleton: React.FC<{ rows?: number }> = ({ rows = 5 }) => (
-//   <div className="divide-y divide-gray-100">
-//     {[...Array(rows)].map((_, i) => (
-//       <div key={i} className="flex items-center gap-3 p-3 animate-pulse">
-//         <div className="h-8 w-8 rounded-full bg-gray-200" />
-//         <div className="flex-1 space-y-1">
-//           <div className="h-3 w-28 bg-gray-200 rounded" />
-//           <div className="h-2 w-40 bg-gray-100 rounded" />
-//         </div>
-//         <div className="h-5 w-14 bg-gray-200 rounded-full" />
-//         <div className="h-7 w-7 bg-gray-200 rounded" />
-//       </div>
-//     ))}
-//   </div>
-// );
+const ToolbarSkeleton = () => (
+  <div className="rounded-xl border border-secondary/10 bg-white p-2.5">
+    <div className="flex items-center gap-2">
+      <SkeletonBar className="h-9 flex-1" />
+      <SkeletonBar className="hidden h-9 w-44 lg:block" />
+      <SkeletonBar className="h-9 w-24" />
+    </div>
+  </div>
+);
 
-// ----------------------------------------------------------------------
-// Main Component
-// ----------------------------------------------------------------------
+const StatCard = ({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: number;
+  icon: React.FC<{ className?: string }>;
+}) => (
+  <div className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+          {title}
+        </p>
+        <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+          {value}
+        </p>
+      </div>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+        <Icon className="h-4 w-4" />
+      </div>
+    </div>
+  </div>
+);
+
 export default function CompanyUsers() {
   const { user: currentUser } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
   const readOnly = useReadOnly();
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
-
-  const companySlug = company?.slug ?? null;
-  const companyName = company?.name ?? "";
-
-  const isSuperAdmin = !currentUser?.memberships?.length;
-  const showSelector = isSuperAdmin && !companySlug;
-
   const [roleFilter, setRoleFilter] = useState<
     "all" | "admin" | "staff" | "viewer" | "delivery"
   >("all");
-
-  const currentUserRole = useMemo(() => {
-    if (!currentUser || !companySlug) return null;
-    if (isSuperAdmin) return "superAdmin";
-    const membership = currentUser.memberships?.find(
-      (m: any) => m.company_slug === companySlug,
-    );
-    return membership?.role || null;
-  }, [currentUser, companySlug, isSuperAdmin]);
-
-  const canViewUsers =
-    isSuperAdmin ||
-    currentUserRole === "admin" ||
-    currentUserRole === "staff" ||
-    readOnly;
-  const canManageUsers =
-    (isSuperAdmin || currentUserRole === "admin") && !readOnly;
-
-  const { users, loading, error, refetch } = useCompanyUsers(companySlug);
   const [tableSearch, setTableSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-    // Active filter count for mobile filter badge
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (tableSearch) count++;
-    if (roleFilter !== "all") count++;
-    return count;
-  }, [tableSearch, roleFilter]);
-
-  // Options for Page Size dropdown
-  const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
-  ];
-
-
-  // Filtered users (search + role)
-  const filteredUsers = (users || []).filter((u: any) => {
-    const matchesSearch =
-      `${u.first_name} ${u.last_name}`
-        .toLowerCase()
-        .includes(tableSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(tableSearch.toLowerCase());
-    const matchesRole = roleFilter === "all" ? true : u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const totalPages = Math.ceil(filteredUsers.length / pageSize);
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
-
-  // Role counts for stats
-  const roleCounts = useMemo(() => {
-    const counts = { admin: 0, staff: 0, viewer: 0, delivery: 0 };
-    (users || []).forEach((u: any) => {
-      if (counts.hasOwnProperty(u.role))
-        counts[u.role as keyof typeof counts]++;
-    });
-    return counts;
-  }, [users]);
-
-  // Options for Role dropdown
-  const roleOptions: SelectOption[] = [
-    { value: "all", label: "All Roles" },
-    { value: "admin", label: `Admin (${roleCounts.admin || 0})` },
-    { value: "staff", label: `Dispatcher (${roleCounts.staff || 0})` },
-    { value: "viewer", label: `Viewer (${roleCounts.viewer || 0})` },
-    { value: "delivery", label: `Delivery (${roleCounts.delivery || 0})` },
-  ];
-  
-
-  const { addUser } = useAddCompanyUser();
-
-  // Add user modal state
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -184,39 +120,136 @@ export default function CompanyUsers() {
     "admin" | "staff" | "viewer" | "delivery"
   >("staff");
   const [showAddModal, setShowAddModal] = useState(false);
-  const debouncedQuery = useDebounce(searchTerm, 500);
-
-  // Edit user modal state
   const [editingUser, setEditingUser] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
-
-  // Delete modal state
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Fetch search results when debounced query changes
+  const companySlug = company?.slug ?? null;
+  const companyName = company?.name ?? "";
+  const isSuperAdmin = !currentUser?.memberships?.length;
+  const showSelector = isSuperAdmin && !companySlug;
+  const { users, loading, error, refetch } = useCompanyUsers(companySlug);
+  const { addUser } = useAddCompanyUser();
+  const debouncedQuery = useDebounce(searchTerm, 500);
+
+  const currentUserRole = useMemo(() => {
+    if (!currentUser || !companySlug) return null;
+    if (isSuperAdmin) return "superAdmin";
+    return (
+      currentUser.memberships?.find(
+        (membership: any) => membership.company_slug === companySlug,
+      )?.role || null
+    );
+  }, [currentUser, companySlug, isSuperAdmin]);
+
+  const canViewUsers =
+    isSuperAdmin ||
+    currentUserRole === "admin" ||
+    currentUserRole === "staff" ||
+    readOnly;
+
+  const canManageUsers =
+    (isSuperAdmin || currentUserRole === "admin") && !readOnly;
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (tableSearch.trim()) count += 1;
+    if (roleFilter !== "all") count += 1;
+    return count;
+  }, [tableSearch, roleFilter]);
+
+  const pageSizeOptions: SelectOption[] = [
+    { value: "5", label: "5 / page" },
+    { value: "10", label: "10 / page" },
+    { value: "15", label: "15 / page" },
+    { value: "30", label: "30 / page" },
+    { value: "60", label: "60 / page" },
+  ];
+
+  const roleCounts = useMemo(() => {
+    const counts = { admin: 0, staff: 0, viewer: 0, delivery: 0 };
+
+    (users || []).forEach((member: any) => {
+      if (member.role in counts) {
+        counts[member.role as keyof typeof counts] += 1;
+      }
+    });
+
+    return counts;
+  }, [users]);
+
+  const roleOptions: SelectOption[] = [
+    { value: "all", label: "All roles" },
+    { value: "admin", label: `Admin (${roleCounts.admin})` },
+    { value: "staff", label: `Dispatcher (${roleCounts.staff})` },
+    { value: "viewer", label: `Viewer (${roleCounts.viewer})` },
+    { value: "delivery", label: `Delivery (${roleCounts.delivery})` },
+  ];
+
+  const filteredUsers = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+
+    return (users || []).filter((member: any) => {
+      const matchesSearch =
+        !query ||
+        `${member.first_name || ""} ${member.last_name || ""}`
+          .toLowerCase()
+          .includes(query) ||
+        String(member.email || "").toLowerCase().includes(query);
+
+      const matchesRole =
+        roleFilter === "all" ? true : member.role === roleFilter;
+
+      return matchesSearch && matchesRole;
+    });
+  }, [users, tableSearch, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+  const paginatedUsers = useMemo(
+    () =>
+      filteredUsers.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize,
+      ),
+    [filteredUsers, currentPage, pageSize],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter, tableSearch, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   useEffect(() => {
     const fetchSearchResults = async () => {
       if (!debouncedQuery.trim()) {
         setSearchResults([]);
         return;
       }
+
       setSearching(true);
+
       try {
-        const res = await searchUsers(debouncedQuery);
-        setSearchResults(res.data.results || []);
-      } catch (err) {
-        console.error(err);
+        const response = await searchUsers(debouncedQuery);
+        setSearchResults(response.data.results || []);
+      } catch (error) {
+        console.error(error);
         setSearchResults([]);
       } finally {
         setSearching(false);
       }
     };
-    fetchSearchResults();
+
+    void fetchSearchResults();
   }, [debouncedQuery]);
 
   const openAddDispatcher = () => {
-    // Frontend-only naming: the backend role remains "staff".
     setSelectedRole("staff");
     setSelectedUser(null);
     setSearchTerm("");
@@ -225,7 +258,9 @@ export default function CompanyUsers() {
 
   const handleAddUser = async () => {
     if (!companySlug || !selectedUser) return;
+
     setAdding(true);
+
     try {
       await addUser(companySlug, selectedUser.email, selectedRole);
       setShowAddModal(false);
@@ -233,8 +268,8 @@ export default function CompanyUsers() {
       setSearchTerm("");
       setSelectedRole("staff");
       await refetch();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     } finally {
       setAdding(false);
     }
@@ -242,13 +277,15 @@ export default function CompanyUsers() {
 
   const handleCreateUser = async (data: any) => {
     if (!companySlug) return;
+
     setCreatingUser(true);
+
     try {
       await onboardCompanyStaff(companySlug, data);
       setShowCreateModal(false);
       await refetch();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     } finally {
       setCreatingUser(false);
     }
@@ -263,24 +300,28 @@ export default function CompanyUsers() {
     role: string;
   }) => {
     if (!companySlug) return;
+
     setUpdating(true);
+
     try {
       const userId = editingUser?.user_id || Number(updatedUser.id);
+
       await updateUserCompanyRole(
         companySlug,
         userId,
         updatedUser.role as UserRole,
       );
+
       setEditingUser(null);
       await refetch();
-    } catch (err: any) {
-      console.error("Role update error:", err);
-      const errorMessage =
-        err.response?.data?.detail ||
-        err.response?.data?.user_role?.[0] ||
-        err.response?.data?.role?.[0] ||
+    } catch (error: any) {
+      console.error("Role update error:", error);
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.user_role?.[0] ||
+        error.response?.data?.role?.[0] ||
         "Failed to update role.";
-      alert(errorMessage);
+      window.alert(message);
     } finally {
       setUpdating(false);
     }
@@ -288,52 +329,50 @@ export default function CompanyUsers() {
 
   const handleDeleteUser = async () => {
     if (!companySlug || !deletingUser) return;
+
     setDeleting(true);
+
     try {
       await removeUserFromCompany(companySlug, deletingUser.user_id);
       setDeletingUser(null);
       await refetch();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     } finally {
       setDeleting(false);
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [roleFilter, tableSearch]);
-
-  // Permission guard
   if (!canViewUsers) {
     return (
-      <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 text-center mx-4 sm:mx-0">
-        <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gray-50 text-gray-400 mb-2">
-          <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
+      <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6">
+        <div className="rounded-xl border border-secondary/10 bg-white px-4 py-10 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+            <Shield className="h-4 w-4" />
+          </div>
+          <h3 className="mt-3 text-sm font-semibold text-secondary">
+            Access restricted
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-secondary/50">
+            You do not have permission to manage this company&apos;s users.
+          </p>
         </div>
-        <h3 className="text-xs sm:text-sm font-semibold text-gray-900">
-          Access Restricted
-        </h3>
-        <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
-          You don't have permission to view team and dispatcher management.
-        </p>
       </div>
     );
   }
 
-  // Company selector (super admin, no company selected)
   if (showSelector) {
     return (
       <CompanySelector
         companies={companies}
         title="Team & Dispatcher Management"
-        subtitle="Select a company to manage dispatchers, delivery personnel and access"
+        subtitle="Select a company to manage users, dispatchers and access."
         searchPlaceholder="Search companies by name..."
         isLoading={isLoadingCompanies}
         disableProductSearch={true}
         onSelect={(slug, name) => {
           const membership = currentUser?.memberships?.find(
-            (m: any) => m.company_slug === slug,
+            (item: any) => item.company_slug === slug,
           );
           const role = membership?.role ?? (isSuperAdmin ? "admin" : "staff");
           switchCompany({ slug, name, role });
@@ -349,28 +388,27 @@ export default function CompanyUsers() {
 
   if (!companySlug) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 sm:py-10 px-4 sm:px-0 text-gray-500 bg-white rounded-xl border border-gray-100 mx-4 sm:mx-0">
-        <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-gray-300 mb-2" />
-        <p className="text-xs sm:text-sm text-center">
-          No company selected. Please select a company first.
-        </p>
+      <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6">
+        <div className="rounded-xl border border-secondary/10 bg-white px-4 py-10 text-center">
+          <Building2 className="mx-auto h-7 w-7 text-secondary/30" />
+          <p className="mt-2 text-xs font-medium text-secondary/55">
+            Select a company to manage its users.
+          </p>
+        </div>
       </div>
     );
   }
 
-  // ----------------------------------------------------------------------
-  // RENDER - LAYOUT: Header → Unified Toolbar → Stats → Table
-  // ----------------------------------------------------------------------
   return (
-    <div className="space-y-3 px-4 sm:px-0">
+    <div className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 sm:px-4 md:px-6">
       <PageHeader
         title={isSuperAdmin ? companyName || "Company Users" : "All Users"}
         eyebrow={isSuperAdmin ? "User Management" : undefined}
-        description="Manage dispatchers, delivery personnel, and organization access."
+        description="Manage dispatchers, delivery personnel and company access."
         icon={Users}
         badge={
           !loading ? (
-            <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary sm:text-xs">
+            <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary">
               {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
             </span>
           ) : undefined
@@ -380,384 +418,262 @@ export default function CompanyUsers() {
             <button
               type="button"
               onClick={clearCompany}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-secondary/30 bg-white px-3.5 py-2.5 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary hover:bg-secondary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
             >
-              <Repeat className="h-4 w-4" />
-              Switch Company
+              <Repeat className="h-3.5 w-3.5" />
+              Switch company
             </button>
           ) : undefined
         }
         loading={loading}
       />
-      {/* ===== DISPATCHER MANAGEMENT ===== */}
-      {!loading && (
-        <div className="rounded-2xl border border-secondary/15 bg-gradient-to-r from-secondary/[0.08] via-white to-white p-3 sm:p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/20">
-                <Briefcase className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-bold text-gray-900">Dispatcher Management</h2>
-                  <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-bold text-secondary">
-                    {roleCounts.staff} {roleCounts.staff === 1 ? "dispatcher" : "dispatchers"}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[10px] sm:text-xs text-gray-500">
-                  Manage dispatchers, delivery personnel and company access from one place.
-                </p>
-              </div>
-            </div>
-            {canManageUsers && (
-              <button
-                onClick={openAddDispatcher}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-secondary px-3.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                Add Dispatcher
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* ===== 3. COMPACT STATS ROW ===== */}
       {loading ? (
         <StatsSkeleton />
       ) : (
-        <div className="hidden sm:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          <StatCard
-            title="Total"
-            value={users?.length || 0}
-            icon={Users}
-            color="gray"
-          />
-          <StatCard
-            title="Admins"
-            value={roleCounts.admin}
-            icon={Shield}
-            color="purple"
-          />
-          <StatCard
-            title="Dispatchers"
-            value={roleCounts.staff}
-            icon={Briefcase}
-            color="blue"
-          />
-          <StatCard
-            title="Delivery"
-            value={roleCounts.delivery}
-            icon={Truck}
-            color="green"
-          />
-          <StatCard
-            title="Viewers"
-            value={roleCounts.viewer}
-            icon={Eye}
-            color="amber"
-          />
+        <section className="hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
+          <StatCard title="Total" value={users?.length || 0} icon={Users} />
+          <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
+          <StatCard title="Dispatchers" value={roleCounts.staff} icon={Briefcase} />
+          <StatCard title="Delivery" value={roleCounts.delivery} icon={Truck} />
+          <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
+        </section>
+      )}
+
+      {canManageUsers && (
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Create user
+          </button>
+          <button
+            type="button"
+            onClick={openAddDispatcher}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Add member
+          </button>
         </div>
       )}
-      
-      {/* Mobile Action Buttons - Outside Table (visible only on mobile) */}
-      <div className="flex lg:hidden items-center justify-between gap-2 mb-4">
-        {canManageUsers && (
-          <>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="
-                py-1 px-3
-                rounded-lg
-                border-2 border-secondary
-                bg-white
-                text-xs font-medium text-secondary
-                hover:bg-secondary/5
-                transition-all
-                flex items-center justify-center gap-1
-                whitespace-nowrap
-                min-w-[115px]
-              "
-            >
-              <UserPlus className="h-3 w-3 text-secondary" />
-              Create User
-            </button>
-            <button
-              onClick={() => { setSelectedRole("staff"); setShowAddModal(true); }}
-              className="
-                py-1 px-3
-                rounded-lg
-                bg-secondary
-                text-white
-                text-xs font-medium
-                hover:bg-[#4c3789]
-                transition-all
-                flex items-center justify-center gap-1
-                shadow-sm
-                whitespace-nowrap
-                min-w-[115px]
-              "
-            >
-              <UserPlus className="h-3 w-3" />
-              Add Member
-            </button>
-          </>
-        )}
-      </div>
-                  {/* Search Bar with Filter Button - MOBILE ONLY */}
-      <div className="mb-4 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex-[2]">
-            <SearchInput
-              value={tableSearch}
-              onChange={setTableSearch}
-              placeholder="Search team members..."
-              loading={loading}
-              showMobileFilter={true}
-              onMobileFilterClick={() => setShowMobileFilterModal(true)}
-              activeFilterCount={activeFilterCount}
-            />
-          </div>
-          <div className="w-24 flex-shrink-0">
-            <CustomSelect
-              value={String(pageSize)}
-              onChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* ===== 4. MAIN TABLE CARD ===== */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-    
-        {/* TableControls wraps search + page size selector */}
-        {/* TableControls - Hidden on mobile, visible on desktop */}
-        <div className="hidden lg:block">
-          <TableControls
-            pageSize={pageSize}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setCurrentPage(1);
-            }}
-          >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-            {/* LEFT SIDE - SEARCH (Hidden on mobile) */}
-            <div className="hidden sm:flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
-              {/* SEARCH */}
-              <div className="relative w-full sm:w-[380px]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search team members..."
+      {loading ? (
+        <ToolbarSkeleton />
+      ) : (
+        <div className="lg:hidden">
+          <div className="relative z-30 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <SearchInput
                   value={tableSearch}
-                  onChange={(e) => setTableSearch(e.target.value)}
-                  className="
-                    w-full h-11
-                    pl-10 pr-10
-                    rounded-xl
-                    border border-gray-200
-                    bg-white
-                    text-sm text-gray-700
-                    placeholder:text-gray-400
-                    shadow-sm
-                    focus:outline-none
-                    focus:ring-2 focus:ring-gray-100
-                    focus:border-gray-300
-                    transition-all
-                  "
+                  onChange={setTableSearch}
+                  placeholder="Search team members"
+                  loading={loading}
+                  showMobileFilter={true}
+                  onMobileFilterClick={() => setShowMobileFilterModal(true)}
+                  activeFilterCount={activeFilterCount}
                 />
-                {tableSearch && (
-                  <button
-                    onClick={() => setTableSearch("")}
-                    className="
-                      absolute right-2.5 top-1/2 -translate-y-1/2
-                      h-6 w-6
-                      rounded-md
-                      flex items-center justify-center
-                      hover:bg-gray-100
-                      active:scale-95
-                      transition
-                    "
-                  >
-                    <X className="h-3.5 w-3.5 text-gray-500" />
-                  </button>
-                )}
+              </div>
+              <div className="relative z-50 w-[104px] shrink-0 sm:w-[118px]">
+                <CustomSelect
+                  value={String(pageSize)}
+                  onChange={(value) => setPageSize(Number(value))}
+                  options={pageSizeOptions}
+                  placeholder="10 / page"
+                  className="h-9 text-xs"
+                />
               </div>
             </div>
-            {/* RIGHT SIDE */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* ROLE FILTERS (Hidden on mobile) */}
-              <div className="hidden sm:block relative w-44">
-                <select
-                  value={roleFilter}
-                  onChange={(e) =>
-                    setRoleFilter(
-                      e.target.value as
-                        | "all"
-                        | "admin"
-                        | "staff"
-                        | "viewer"
-                        | "delivery"
-                    )
-                  }
-                  className="
-                    w-full h-9 px-3 pr-8
-                    rounded-xl
-                    border border-gray-200
-                    bg-white
-                    text-sm text-gray-700
-                    font-medium
-                    shadow-sm
-                    focus:outline-none
-                    focus:ring-2 focus:ring-gray-200
-                    transition
-                  "
-                >
-                  <option value="all">All</option>
-                  <option value="admin">Admin ({roleCounts.admin || 0})</option>
-                  <option value="staff">Dispatcher ({roleCounts.staff || 0})</option>
-                  <option value="viewer">Viewer ({roleCounts.viewer || 0})</option>
-                  <option value="delivery">Delivery ({roleCounts.delivery || 0})</option>
-                </select>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  <ChevronDown className="h-3 w-3" />
+          </div>
+        </div>
+      )}
+
+      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        {!loading && (
+          <div className="relative z-40 hidden border-b border-secondary/10 p-2.5 lg:block">
+            <TableControls
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+            >
+              <div className="flex w-full items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <SearchInput
+                    value={tableSearch}
+                    onChange={setTableSearch}
+                    placeholder="Search team members"
+                    loading={loading}
+                    showClearButton={true}
+                  />
                 </div>
-              </div>
-              {/* DESKTOP: Buttons on right side (original layout) */}
-              <div className="hidden lg:flex items-center gap-2">
+
+                <div className="relative z-50 w-[180px] shrink-0">
+                  <CustomSelect
+                    value={roleFilter}
+                    onChange={(value) =>
+                      setRoleFilter(
+                        value as
+                          | "all"
+                          | "admin"
+                          | "staff"
+                          | "viewer"
+                          | "delivery",
+                      )
+                    }
+                    options={roleOptions}
+                    placeholder="All roles"
+                    className="h-9 text-xs"
+                  />
+                </div>
+
                 {canManageUsers && (
                   <>
                     <button
-                      onClick={() => { setSelectedRole("staff"); setShowAddModal(true); }}
-                      className="
-                        h-9 px-3.5
-                        rounded-xl
-                        bg-secondary
-                        text-white
-                        text-xs font-medium
-                        hover:bg-secondary/80
-                        transition-all
-                        flex items-center gap-1.5
-                        shadow-sm
-                      "
+                      type="button"
+                      onClick={openAddDispatcher}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
                     >
                       <UserPlus className="h-3.5 w-3.5" />
-                      Add Member
+                      Add member
                     </button>
                     <button
+                      type="button"
                       onClick={() => setShowCreateModal(true)}
-                      className="
-                        h-9 px-3.5
-                        rounded-xl
-                        border-2 border-secondary
-                        bg-white
-                        text-xs font-medium text-secondary
-                        hover:bg-secondary/5
-                        transition-all
-                        flex items-center gap-1.5
-                      "
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
                     >
-                      <UserPlus className="h-3.5 w-3.5 text-secondary" />
-                      Create User
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Create user
                     </button>
                   </>
                 )}
               </div>
-            </div>
+            </TableControls>
           </div>
-          </TableControls>
+        )}
+
+        <div className="relative z-0">
+          <CompanyUsersTable
+            users={paginatedUsers}
+            loading={loading}
+            currentUser={currentUser}
+            isAdmin={canManageUsers}
+            onEdit={(member) =>
+              setEditingUser({ ...member, user_id: member.id })
+            }
+            onDelete={setDeletingUser}
+          />
         </div>
 
-          <>
-            <CompanyUsersTable
-              users={paginatedUsers}
-              loading={loading}
-              currentUser={currentUser}
-              isAdmin={canManageUsers}
-              onEdit={(user) => setEditingUser({ ...user, user_id: user.id })}
-              onDelete={setDeletingUser}
-            />
-          {!loading && totalPages > 1 && (
+        {!loading && filteredUsers.length > 0 && (
+          <div className="border-t border-secondary/10 px-3 py-2.5 sm:px-4">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
               pageSize={pageSize}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[5, 10, 15, 30, 60]}
               enableUrlSync={true}
             />
-          )}
-        </>
-      </div>
+          </div>
+        )}
 
-      {/* Mobile Filter Modal - Bottom Sheet */}
+        {!loading && filteredUsers.length === 0 && (
+          <div className="border-t border-secondary/10 px-4 py-12 text-center">
+            <Users className="mx-auto h-7 w-7 text-secondary/30" />
+            <p className="mt-2 text-sm font-semibold text-secondary">
+              No users found
+            </p>
+            <p className="mt-1 text-xs text-secondary/50">
+              Try another search or role filter.
+            </p>
+            {(tableSearch || roleFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTableSearch("");
+                  setRoleFilter("all");
+                }}
+                className="mt-3 h-9 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
       {showMobileFilterModal && (
         <div
-          className="fixed inset-0 z-50 lg:hidden"
+          className="fixed inset-0 z-[70] lg:hidden"
           onClick={() => setShowMobileFilterModal(false)}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          
-          {/* Bottom Sheet Content */}
+          <div className="absolute inset-0 bg-secondary/35 backdrop-blur-[2px]" />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-secondary/10 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
-              <h3 className="text-lg font-extrabold text-secondary">Filters</h3>
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-secondary/10 bg-white px-4 py-3">
+              <div>
+                <h3 className="text-sm font-bold text-secondary">Filters</h3>
+                <p className="mt-0.5 text-[11px] text-secondary/50">
+                  Narrow the user list by role.
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowMobileFilterModal(false)}
-                className="p-2 rounded-full hover:bg-gray-100 transition"
+                aria-label="Close filters"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary/50 transition hover:bg-secondary/[0.05] hover:text-secondary"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <X className="h-4 w-4" />
               </button>
             </div>
-            {/* Content */}
-            <div className="p-4 space-y-4">
 
-              {/* Role Filter */}
+            <div className="space-y-4 p-4">
               <div>
-                <label className="block text-sm font-medium text-secondary mb-1.5">
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/50">
                   Role
                 </label>
                 <CustomSelect
                   value={roleFilter}
-                  onChange={(val) => setRoleFilter(val as any)}
+                  onChange={(value) =>
+                    setRoleFilter(
+                      value as
+                        | "all"
+                        | "admin"
+                        | "staff"
+                        | "viewer"
+                        | "delivery",
+                    )
+                  }
                   options={roleOptions}
-                  placeholder="All Roles"
+                  placeholder="All roles"
                 />
               </div>
 
-              {/* Action Buttons - Equal width, side by side */}
-              <div className="flex items-center gap-3 pt-2">
-                {(tableSearch || roleFilter !== "all") && (
-                  <button
-                    onClick={() => {
-                      setTableSearch("");
-                      setRoleFilter("all");
-                      setCurrentPage(1);
-                    }}
-                    className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
-                  >
-                    Clear all
-                  </button>
-                )}
+              <div className="grid grid-cols-2 gap-2 border-t border-secondary/10 pt-3">
                 <button
-                  onClick={() => setShowMobileFilterModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
+                  type="button"
+                  onClick={() => {
+                    setTableSearch("");
+                    setRoleFilter("all");
+                    setCurrentPage(1);
+                  }}
+                  disabled={!tableSearch && roleFilter === "all"}
+                  className="h-10 rounded-lg border border-secondary/15 bg-white text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Apply Filters
+                  Clear all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilterModal(false)}
+                  className="h-10 rounded-lg bg-secondary text-xs font-semibold text-white transition hover:bg-secondary/90"
+                >
+                  Show {filteredUsers.length}
                 </button>
               </div>
             </div>
@@ -765,7 +681,6 @@ export default function CompanyUsers() {
         </div>
       )}
 
-      {/* ===== Modals ===== */}
       <AddUserModal
         isOpen={showAddModal}
         onClose={() => {
@@ -784,12 +699,14 @@ export default function CompanyUsers() {
         adding={adding}
         onAdd={handleAddUser}
       />
+
       <CreateCompanyUserModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         loading={creatingUser}
         onSubmit={handleCreateUser}
       />
+
       <EditUserModal
         isOpen={!!editingUser}
         user={editingUser}
@@ -797,6 +714,7 @@ export default function CompanyUsers() {
         onClose={() => setEditingUser(null)}
         onSave={handleEditUser}
       />
+
       <DeleteUserModal
         isOpen={!!deletingUser}
         user={deletingUser}
@@ -807,62 +725,3 @@ export default function CompanyUsers() {
     </div>
   );
 }
-
-// ----------------------------------------------------------------------
-// Ultra-compact Stat Card
-// ----------------------------------------------------------------------
-const StatCard: React.FC<{
-  title: string;
-  value: number;
-  icon: React.FC<{ className?: string }>;
-  color: "gray" | "purple" | "blue" | "green" | "amber";
-}> = ({ title, value, icon: Icon, color }) => {
-  const colorClasses = {
-    gray: "bg-gray-50 text-gray-600",
-    purple: "bg-purple-50 text-purple-600",
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    amber: "bg-amber-50 text-amber-600",
-  };
-
-  return (
-    <motion.div
-      whileHover={{ y: -1 }}
-      transition={{ duration: 0.15 }}
-      className="
-        rounded-xl
-        border border-gray-100
-        bg-white
-        p-2 sm:p-4
-        shadow-sm
-        hover:shadow-md
-        transition-all
-      "
-    >
-      <div className="flex items-center justify-between gap-2 p-1 sm:p-2">
-        {/* LEFT */}
-        <div className="space-y-0.5 sm:space-y-1">
-          <p className="text-[9px] sm:text-[11px] font-medium text-gray-500 uppercase tracking-wide">
-            {title}
-          </p>
-
-          <p className="text-base sm:text-xl font-semibold text-gray-900 leading-none">
-            {value}
-          </p>
-        </div>
-
-        {/* RIGHT ICON */}
-        <div
-          className={`
-            h-7 w-7 sm:h-9 sm:w-9
-            rounded-lg
-            flex items-center justify-center
-            ${colorClasses[color]}
-          `}
-        >
-          <Icon className="h-6 w-6 sm:h-8 sm:w-8" />
-        </div>
-      </div>
-    </motion.div>
-  );
-};

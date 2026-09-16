@@ -794,41 +794,42 @@ export default function AdminDashboard() {
           }
         `}
       >
-        {/* Brand */}
+        {/* Brand — matches the h-16 app header so the divider stays perfectly aligned */}
         <div
           className={`
             flex
-            h-12
+            h-16
             shrink-0
             items-center
             border-b
             border-white/15
-            px-2
+            px-2.5
 
             ${
               sidebarCollapsed
                 ? "justify-center"
-                : "gap-2"
+                : "gap-2.5"
             }
           `}
         >
           <div
             className="
-              h-8
-              w-8
+              h-9
+              w-9
               shrink-0
               overflow-hidden
-              rounded-lg
+              rounded-xl
               border
               border-white/20
               bg-white
               p-0.5
+              shadow-sm
             "
           >
             <img
               src="/elilta1.jpg"
               alt="Elilita Logo"
-              className="h-full w-full rounded-md object-cover"
+              className="h-full w-full rounded-[9px] object-cover"
             />
           </div>
 
@@ -837,7 +838,7 @@ export default function AdminDashboard() {
               <p
                 className="
                   truncate
-                  text-[13px]
+                  text-[14px]
                   font-bold
                   leading-none
                   tracking-[-0.02em]
@@ -849,13 +850,13 @@ export default function AdminDashboard() {
 
               <p
                 className="
-                  mt-1
-                  text-[8px]
-                  font-medium
+                  mt-1.5
+                  text-[9px]
+                  font-semibold
                   uppercase
                   leading-none
-                  tracking-[0.12em]
-                  text-white/55
+                  tracking-[0.11em]
+                  text-white/50
                 "
               >
                 Admin
@@ -1248,7 +1249,7 @@ export default function AdminDashboard() {
             top-0
             z-30
             flex
-            h-12
+            h-16
             shrink-0
             items-center
             justify-between
