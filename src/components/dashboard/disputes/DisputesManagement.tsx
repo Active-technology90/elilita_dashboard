@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   DollarSign,
   AlertTriangle,
+  Filter,
+  X,
 } from "lucide-react";
 import {
   getAdminDisputes,
@@ -23,6 +25,7 @@ import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { PageHeader } from "../../ui/PageHeader";
+import BottomSheet from "../../ui/BottomSheet";
 
 export default function DisputesManagement() {
   const { toast, showToast } = useToast();
@@ -34,6 +37,7 @@ export default function DisputesManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [resolutionFilter, setResolutionFilter] = useState("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Active modal
   const [selectedDispute, setSelectedDispute] = useState<OrderDispute | null>(null);
@@ -220,231 +224,381 @@ export default function DisputesManagement() {
     return map[reason] || reason;
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending_review":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200">Pending Review</span>;
-      case "redelivery_in_progress":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200">Redelivery In Progress</span>;
-      case "refund_approved":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">Refund Approved</span>;
-      case "refunded":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Refunded</span>;
-      case "rejected":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200">Rejected</span>;
-      case "resolved":
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">Resolved</span>;
-      default:
-        return <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">{status}</span>;
-    }
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      pending_review: "Pending Review",
+      redelivery_in_progress: "Redelivery In Progress",
+      refund_approved: "Refund Approved",
+      refunded: "Refunded",
+      rejected: "Rejected",
+      resolved: "Resolved",
+    };
+    return labels[status] || status;
   };
 
+  const getStatusBadge = (status: string) => (
+    <span className="inline-flex items-center rounded-full border border-secondary/15 bg-secondary/[0.06] px-2.5 py-1 text-[11px] font-semibold text-secondary">
+      {getStatusLabel(status)}
+    </span>
+  );
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 || statusFilter !== "all" || resolutionFilter !== "all";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setResolutionFilter("all");
+  };
+
+  const statusOptions = [
+    { value: "all", label: "All statuses" },
+    { value: "pending_review", label: "Pending Review" },
+    { value: "redelivery_in_progress", label: "Redelivery Active" },
+    { value: "refunded", label: "Refunded" },
+    { value: "rejected", label: "Rejected" },
+  ];
+
+  const resolutionOptions = [
+    { value: "all", label: "All resolutions" },
+    { value: "redelivery", label: "Redelivery" },
+    { value: "refund", label: "Refund" },
+  ];
+
+  const mobileFilterCount =
+    (statusFilter !== "all" ? 1 : 0) + (resolutionFilter !== "all" ? 1 : 0);
+
+  const metricCards = [
+    { label: "Pending", value: metrics.pending, note: "Awaiting review", icon: Clock },
+    { label: "Redelivery", value: metrics.redelivery, note: "In progress", icon: RotateCcw },
+    {
+      label: "Refunded",
+      value: metrics.refunded,
+      note: `${metrics.totalRefundedETB.toLocaleString()} ETB`,
+      icon: CheckCircle2,
+    },
+    { label: "Rejected", value: metrics.rejected, note: "Closed disputes", icon: XCircle },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Toast toast={toast} />
 
       <PageHeader
         title="Disputes & Refunds"
-        description="Review customer issue reports, redelivery requests, and execute superadmin-authorized refunds."
+        description="Review disputes, redelivery requests, and refunds."
         icon={AlertTriangle}
         actions={
           <button
+            type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </button>
         }
       />
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-white rounded-xl border border-amber-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Pending Review</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{metrics.pending}</h3>
-            <p className="text-xs text-gray-500 mt-1">Awaiting superadmin action</p>
+      <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        {metricCards.map(({ label, value, note, icon: Icon }) => (
+          <div
+            key={label}
+            className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+          >
+            {loading ? (
+              <div className="animate-pulse">
+                <div className="h-3 w-20 rounded bg-secondary/10" />
+                <div className="mt-2 h-7 w-12 rounded bg-secondary/10" />
+                <div className="mt-2 h-2.5 w-24 rounded bg-secondary/[0.07]" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/55">
+                    {label}
+                  </p>
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">{value}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-secondary/55">{note}</p>
+                </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+                  <Icon className="h-4 w-4" />
+                </div>
+              </div>
+            )}
           </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-            <Clock className="w-6 h-6" />
+        ))}
+      </section>
+
+      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="relative z-40 border-b border-secondary/10 px-3 py-2.5 sm:px-4">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
+              <input
+                type="text"
+                placeholder="Search order, customer, vendor or issue"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label="Filter disputes"
+              className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition md:hidden ${
+                mobileFilterCount > 0
+                  ? "border-secondary bg-secondary text-white"
+                  : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
+              }`}
+            >
+              <Filter className="h-3.5 w-3.5" />
+              {mobileFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-secondary px-1 text-[9px] font-bold leading-none text-white shadow-sm">
+                  {mobileFilterCount}
+                </span>
+              )}
+            </button>
+
+            <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
+              <CustomSelect
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val)}
+                options={statusOptions}
+                placeholder="All statuses"
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
+              <CustomSelect
+                value={resolutionFilter}
+                onChange={(val) => setResolutionFilter(val)}
+                options={resolutionOptions}
+                placeholder="All resolutions"
+                className="h-9 text-xs"
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] md:inline-flex"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="p-5 bg-white rounded-xl border border-blue-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-blue-600 uppercase tracking-wider">Redeliveries Active</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{metrics.redelivery}</h3>
-            <p className="text-xs text-gray-500 mt-1">Replacements in progress</p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-            <RotateCcw className="w-6 h-6" />
-          </div>
-        </div>
+        <BottomSheet
+          open={filterSheetOpen}
+          onClose={() => setFilterSheetOpen(false)}
+          title="Filter disputes"
+        >
+          <div className="space-y-4">
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                  Status
+                </p>
+                {statusFilter !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("all")}
+                    className="text-[10px] font-semibold text-secondary"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {statusOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setStatusFilter(option.value)}
+                    className={`min-h-11 rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${
+                      statusFilter === option.value
+                        ? "border-secondary bg-secondary text-white"
+                        : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="p-5 bg-white rounded-xl border border-emerald-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Refunds Completed</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{metrics.refunded}</h3>
-            <p className="text-xs text-emerald-600 mt-1 font-medium">{metrics.totalRefundedETB.toLocaleString()} ETB Total</p>
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                  Resolution
+                </p>
+                {resolutionFilter !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setResolutionFilter("all")}
+                    className="text-[10px] font-semibold text-secondary"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {resolutionOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setResolutionFilter(option.value)}
+                    className={`min-h-11 rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${
+                      resolutionFilter === option.value
+                        ? "border-secondary bg-secondary text-white"
+                        : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 border-t border-secondary/10 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  clearFilters();
+                  setFilterSheetOpen(false);
+                }}
+                disabled={!hasActiveFilters}
+                className="h-10 flex-1 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Clear all
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterSheetOpen(false)}
+                className="h-10 flex-1 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
+              >
+                Show {filteredDisputes.length}
+              </button>
+            </div>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-        </div>
+        </BottomSheet>
 
-        <div className="p-5 bg-white rounded-xl border border-rose-200 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-rose-600 uppercase tracking-wider">Disputes Rejected</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1">{metrics.rejected}</h3>
-            <p className="text-xs text-gray-500 mt-1">Vendor orders restored</p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
-            <XCircle className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search Order #, customer, vendor..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3 w-full md:w-auto">
-          <CustomSelect
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            options={[
-              { value: "all", label: "All Statuses" },
-              { value: "pending_review", label: "Pending Review" },
-              { value: "redelivery_in_progress", label: "Redelivery Active" },
-              { value: "refunded", label: "Refunded" },
-              { value: "rejected", label: "Rejected" },
-            ]}
-          />
-
-          <CustomSelect
-            value={resolutionFilter}
-            onChange={(val) => setResolutionFilter(val)}
-            options={[
-              { value: "all", label: "All Resolutions" },
-              { value: "redelivery", label: "Redelivery Only" },
-              { value: "refund", label: "Refund Only" },
-            ]}
-          />
-        </div>
-      </div>
-
-      {/* Disputes Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500 font-semibold border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4">Dispute & Order</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Vendor</th>
-                <th className="px-6 py-4">Gateway</th>
-                <th className="px-6 py-4">Reported Issue</th>
-                <th className="px-6 py-4">Resolution</th>
-                <th className="px-6 py-4">Amount</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Action</th>
+        <div className="relative z-0 overflow-x-auto rounded-b-xl">
+          <table className="w-full min-w-[1120px] table-fixed text-left">
+            <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
+              <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                <th className="w-[150px] px-4 py-2.5">Dispute</th>
+                <th className="w-[190px] px-4 py-2.5">Customer</th>
+                <th className="w-[160px] px-4 py-2.5">Vendor</th>
+                <th className="w-[100px] px-4 py-2.5">Gateway</th>
+                <th className="w-[210px] px-4 py-2.5">Issue</th>
+                <th className="w-[120px] px-4 py-2.5">Resolution</th>
+                <th className="w-[110px] px-4 py-2.5">Amount</th>
+                <th className="w-[155px] px-4 py-2.5">Status</th>
+                <th className="w-[90px] px-4 py-2.5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-secondary/[0.08]">
               {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-purple-600 mb-2" />
-                    Loading disputes...
-                  </td>
-                </tr>
+                Array.from({ length: 6 }).map((_, index) => (
+                  <tr key={index} className="animate-pulse">
+                    {Array.from({ length: 9 }).map((__, cell) => (
+                      <td key={cell} className="px-4 py-3">
+                        <div className={`h-3 rounded bg-secondary/[0.08] ${cell === 4 ? "w-32" : cell === 8 ? "ml-auto w-14" : "w-20"}`} />
+                        {cell < 4 && <div className="mt-1.5 h-2.5 w-14 rounded bg-secondary/[0.05]" />}
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : filteredDisputes.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                    <ShieldCheck className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    No disputes match your current filters.
+                  <td colSpan={9} className="px-4 py-14 text-center">
+                    <ShieldCheck className="mx-auto h-7 w-7 text-secondary/30" />
+                    <p className="mt-2 text-sm font-semibold text-secondary">No disputes found</p>
+                    <p className="mt-0.5 text-xs text-secondary/50">
+                      {hasActiveFilters ? "Try changing your search or filters." : "New disputes will appear here."}
+                    </p>
                   </td>
                 </tr>
               ) : (
                 filteredDisputes.map((d) => (
-                  <tr key={d.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-900">Dispute #{d.id}</div>
-                      <div className="text-xs text-gray-500">Order #{d.master_order}</div>
-                      <div className="text-[11px] text-gray-400 mt-0.5">
+                  <tr key={d.id} className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]">
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-semibold text-secondary">#{d.id}</p>
+                      <p className="mt-0.5 text-[11px] text-secondary/50">Order #{d.master_order}</p>
+                      <p className="mt-0.5 text-[10px] text-secondary/35">
                         {new Date(d.created_at).toLocaleDateString()}
-                      </div>
+                      </p>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{d.customer_name || d.raised_by_name}</div>
-                      <div className="text-xs text-gray-500">{d.customer_email || d.raised_by_email}</div>
+                    <td className="px-4 py-3 align-top">
+                      <p className="truncate font-medium text-secondary">{d.customer_name || d.raised_by_name}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-secondary/50">{d.customer_email || d.raised_by_email}</p>
                       {(d.customer_phone || d.raised_by_phone) && (
-                        <div className="text-xs text-gray-400">{d.customer_phone || d.raised_by_phone}</div>
+                        <p className="mt-0.5 truncate text-[10px] text-secondary/40">{d.customer_phone || d.raised_by_phone}</p>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{d.company_name || "Multi-Vendor"}</div>
-                      <div className="text-xs">
-                        {d.initiator_role === "vendor" ? (
-                          <span className="text-amber-600 font-medium">Initiated by Vendor</span>
-                        ) : d.initiator_role === "superadmin" ? (
-                          <span className="text-purple-600 font-medium">Initiated by Admin ({d.raised_by_name})</span>
-                        ) : (
-                          <span className="text-blue-600 font-medium">Customer Claim</span>
-                        )}
-                      </div>
+                    <td className="px-4 py-3 align-top">
+                      <p className="truncate font-medium text-secondary">{d.company_name || "Multi-Vendor"}</p>
+                      <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+                        {d.initiator_role === "vendor"
+                          ? "Vendor initiated"
+                          : d.initiator_role === "superadmin"
+                            ? `Admin · ${d.raised_by_name}`
+                            : "Customer claim"}
+                      </p>
                     </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase ${
-                          d.payment_method === "telebirr"
-                            ? "bg-sky-100 text-sky-800"
-                            : d.payment_method === "chapa"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {d.payment_method}
+                    <td className="px-4 py-3 align-top">
+                      <span className="inline-flex rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold uppercase text-secondary">
+                        {d.payment_method || "—"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{formatReason(d.reason)}</div>
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-medium text-secondary">{formatReason(d.reason)}</p>
                       {d.explanation && (
-                        <div className="text-xs text-gray-500 truncate max-w-xs">{d.explanation}</div>
+                        <p className="mt-0.5 truncate text-[11px] text-secondary/50" title={d.explanation}>
+                          {d.explanation}
+                        </p>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      {d.requested_resolution === "redelivery" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
-                          <RotateCcw className="w-3 h-3" /> Redeliver
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
-                          <DollarSign className="w-3 h-3" /> Refund
-                        </span>
-                      )}
+                    <td className="px-4 py-3 align-top">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold text-secondary">
+                        {d.requested_resolution === "redelivery" ? (
+                          <RotateCcw className="h-3 w-3" />
+                        ) : (
+                          <DollarSign className="h-3 w-3" />
+                        )}
+                        {d.requested_resolution === "redelivery" ? "Redelivery" : "Refund"}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 font-semibold text-gray-900">
+                    <td className="px-4 py-3 align-top font-semibold text-secondary">
                       {d.refund_amount || d.master_order_total} ETB
                     </td>
-                    <td className="px-6 py-4">{getStatusBadge(d.status)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 align-top">{getStatusBadge(d.status)}</td>
+                    <td className="px-4 py-3 text-right align-top">
                       <button
+                        type="button"
                         onClick={() => openReviewModal(d)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold text-white transition hover:bg-secondary/90 focus:outline-none focus:ring-2 focus:ring-secondary/20"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="h-3.5 w-3.5" />
                         Review
                       </button>
                     </td>
@@ -454,248 +608,239 @@ export default function DisputesManagement() {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Review & Resolution Modal */}
+        {!loading && filteredDisputes.length > 0 && (
+          <div className="flex flex-col gap-1 border-t border-secondary/10 px-4 py-2.5 text-[11px] text-secondary/50 sm:flex-row sm:items-center sm:justify-between">
+            <span>{filteredDisputes.length} dispute{filteredDisputes.length === 1 ? "" : "s"}</span>
+            <span>{disputes.length} total</span>
+          </div>
+        )}
+      </section>
+
       {selectedDispute && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
-            {/* Modal Header */}
-            <div className="p-6 bg-gradient-to-r from-purple-700 to-indigo-800 text-white rounded-t-2xl flex justify-between items-start">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold">Dispute #{selectedDispute.id} Review</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary/35 p-3 backdrop-blur-[2px] sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-secondary/10 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-secondary/10 px-5 py-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold text-secondary">Dispute #{selectedDispute.id}</h2>
                   {getStatusBadge(selectedDispute.status)}
                 </div>
-                <p className="text-xs text-purple-200 mt-1">
-                  Master Order #{selectedDispute.master_order} • Created on{" "}
-                  {new Date(selectedDispute.created_at).toLocaleString()}
+                <p className="mt-1 text-[11px] text-secondary/50">
+                  Order #{selectedDispute.master_order} · {new Date(selectedDispute.created_at).toLocaleString()}
                 </p>
               </div>
               <button
+                type="button"
                 onClick={closeReviewModal}
-                className="text-white/80 hover:text-white text-lg font-bold p-1 rounded-lg"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-secondary/55 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                aria-label="Close dispute review"
               >
-                ✕
+                <XCircle className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-5">
-              {/* Escrow Status Indicator */}
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-semibold text-emerald-900">Funds Held in Platform Escrow</h4>
-                  <p className="text-xs text-emerald-700 mt-0.5 leading-relaxed">
-                    Vendor payout is locked in escrow. Approving a financial refund will return funds directly from
-                    the central Qine account via <strong>{selectedDispute.payment_method.toUpperCase()}</strong>.
-                    The vendor will not receive a payout.
+            <div className="overflow-y-auto px-5 py-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 rounded-xl border border-secondary/10 bg-secondary/[0.035] px-3.5 py-3">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
+                  <div>
+                    <p className="text-xs font-semibold text-secondary">Funds held in platform escrow</p>
+                    <p className="mt-0.5 text-[11px] leading-4 text-secondary/55">
+                      Approved refunds return funds through {String(selectedDispute.payment_method || "the payment provider").toUpperCase()} before vendor payout.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-secondary/10 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Customer</p>
+                    <p className="mt-1 text-xs font-semibold text-secondary">
+                      {selectedDispute.customer_name || selectedDispute.raised_by_name}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                      {selectedDispute.customer_email || selectedDispute.raised_by_email}
+                    </p>
+                    {(selectedDispute.customer_phone || selectedDispute.raised_by_phone) && (
+                      <p className="mt-0.5 text-[11px] text-secondary/45">
+                        {selectedDispute.customer_phone || selectedDispute.raised_by_phone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-secondary/10 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Vendor</p>
+                    <p className="mt-1 text-xs font-semibold text-secondary">{selectedDispute.company_name || "Multi-Vendor"}</p>
+                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                      Payment: <span className="font-medium uppercase text-secondary">{selectedDispute.payment_method}</span>
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                      Order total: <span className="font-semibold text-secondary">{selectedDispute.master_order_total} ETB</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-secondary/10 bg-secondary/[0.025] p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Reported issue</p>
+                    <span className="rounded-md border border-secondary/10 bg-white px-2 py-1 text-[10px] font-semibold text-secondary">
+                      {formatReason(selectedDispute.reason)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-secondary/70">
+                    {selectedDispute.explanation || "No additional explanation provided."}
                   </p>
-                </div>
-              </div>
 
-              {/* Claim Overview */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
-                  <span className="text-[11px] font-semibold uppercase text-gray-500 tracking-wider">Customer</span>
-                  <div className="font-semibold text-gray-900 mt-1">
-                    {selectedDispute.customer_name || selectedDispute.raised_by_name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {selectedDispute.customer_email || selectedDispute.raised_by_email}
-                  </div>
-                  {(selectedDispute.customer_phone || selectedDispute.raised_by_phone) && (
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {selectedDispute.customer_phone || selectedDispute.raised_by_phone}
-                    </div>
-                  )}
-                  {selectedDispute.initiator_role !== "customer" && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 text-[11px] text-amber-700 font-medium">
-                      Opened by: <span className="font-bold">{selectedDispute.raised_by_name}</span> ({selectedDispute.initiator_role})
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
-                  <span className="text-[11px] font-semibold uppercase text-gray-500 tracking-wider">Vendor</span>
-                  <div className="font-semibold text-gray-900 mt-1">{selectedDispute.company_name}</div>
-                  <div className="text-xs text-gray-500">
-                    Payment: <span className="font-medium uppercase">{selectedDispute.payment_method}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
-                    Total Order: <span className="font-semibold text-gray-900">{selectedDispute.master_order_total} ETB</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Reported Reason & Details */}
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-semibold uppercase text-gray-500">Reported Problem</span>
-                  <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                    {formatReason(selectedDispute.reason)}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-800 leading-relaxed">
-                  {selectedDispute.explanation || "No additional explanation provided."}
-                </p>
-
-                {/* Evidence Image Preview */}
-                {selectedDispute.evidence_image && (
-                  <div className="mt-3">
-                    <span className="text-xs font-semibold text-gray-500 block mb-1.5">Evidence Photo:</span>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImage(selectedDispute.evidence_image)}
-                      className="group relative inline-block rounded-lg overflow-hidden border border-gray-200"
-                    >
-                      <img
-                        src={selectedDispute.evidence_image}
-                        alt="Evidence"
-                        className="w-24 h-24 object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-medium">
-                        Zoom
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Requested Resolution */}
-              <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold uppercase text-purple-800">Requested Resolution</span>
-                  <p className="text-sm font-bold text-gray-900 mt-0.5">
-                    {selectedDispute.requested_resolution === "redelivery"
-                      ? "🔄 Redeliver Correct Item (Replacement)"
-                      : "💰 Financial Refund to Customer"}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-gray-500">Dispute Amount</span>
-                  <p className="text-base font-bold text-purple-700">
-                    {selectedDispute.refund_amount || selectedDispute.master_order_total} ETB
-                  </p>
-                </div>
-              </div>
-
-              {/* Custom Refund Amount (Editable if approving refund) */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                  Refund Amount (ETB)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={customRefundAmount}
-                  onChange={(e) => setCustomRefundAmount(e.target.value)}
-                  disabled={selectedDispute.status === "refunded"}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <span className="text-[11px] text-gray-400 mt-0.5 block">
-                  Defaults to the full dispute amount. Can be adjusted for partial refunds.
-                </span>
-              </div>
-
-              {/* Admin Notes */}
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                  Superadmin Action Notes & Audit
-                </label>
-                <textarea
-                  rows={3}
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  disabled={selectedDispute.status === "refunded"}
-                  placeholder="e.g., Verified with vendor; item was out of stock. Approving full Telebirr refund."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              {/* Gateway Refund Details if already completed */}
-              {selectedDispute.gateway_refund_id && (
-                <div className="p-3 bg-gray-50 rounded-lg text-xs font-mono text-gray-700 border border-gray-200">
-                  Gateway Refund ID: {selectedDispute.gateway_refund_id} ({selectedDispute.gateway})
-                </div>
-              )}
-
-              {/* Gateway Error and Force Manual Fallback */}
-              {gatewayError && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex flex-col gap-2">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                      <span className="font-semibold">Provider Gateway Notice:</span> {gatewayError}
-                    </div>
-                  </div>
-                  {canForceManual && (
-                    <div className="flex items-center justify-between pt-2 border-t border-amber-200/80">
-                      <span className="text-[11px] text-amber-700">
-                        Provider gateway rejected or is offline. You can force manual approval to settle customer dispute:
-                      </span>
+                  {selectedDispute.evidence_image && (
+                    <div className="mt-3">
                       <button
-                        onClick={() => handleApproveRefund(true)}
-                        disabled={actionLoading}
-                        className="px-3 py-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-sm"
+                        type="button"
+                        onClick={() => setPreviewImage(selectedDispute.evidence_image)}
+                        className="group relative overflow-hidden rounded-lg border border-secondary/10"
                       >
-                        Force Manual Refund
+                        <img
+                          src={selectedDispute.evidence_image}
+                          alt="Dispute evidence"
+                          className="h-20 w-20 object-cover transition group-hover:scale-105"
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center bg-secondary/50 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                          View
+                        </span>
                       </button>
                     </div>
                   )}
                 </div>
-              )}
+
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3.5 py-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">Requested resolution</p>
+                    <p className="mt-0.5 text-xs font-semibold text-secondary">
+                      {selectedDispute.requested_resolution === "redelivery" ? "Redelivery" : "Financial refund"}
+                    </p>
+                  </div>
+                  <div className="sm:text-right">
+                    <p className="text-[10px] text-secondary/45">Amount</p>
+                    <p className="text-sm font-bold text-secondary">
+                      {selectedDispute.refund_amount || selectedDispute.master_order_total} ETB
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                      Refund amount (ETB)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={customRefundAmount}
+                      onChange={(e) => setCustomRefundAmount(e.target.value)}
+                      disabled={selectedDispute.status === "refunded"}
+                      className="h-9 w-full rounded-lg border border-secondary/15 bg-white px-3 text-xs text-secondary outline-none focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10 disabled:bg-secondary/[0.03] disabled:opacity-60"
+                    />
+                    <p className="mt-1 text-[10px] text-secondary/40">Adjust only for partial refunds.</p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                      Admin notes
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={adminNotes}
+                      onChange={(e) => setAdminNotes(e.target.value)}
+                      disabled={selectedDispute.status === "refunded"}
+                      placeholder="Add review notes"
+                      className="w-full resize-none rounded-lg border border-secondary/15 bg-white px-3 py-2 text-xs text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10 disabled:bg-secondary/[0.03] disabled:opacity-60"
+                    />
+                  </div>
+                </div>
+
+                {selectedDispute.gateway_refund_id && (
+                  <div className="rounded-lg border border-secondary/10 bg-secondary/[0.025] px-3 py-2 text-[11px] text-secondary/65">
+                    Refund ID: <span className="font-mono text-secondary">{selectedDispute.gateway_refund_id}</span>
+                  </div>
+                )}
+
+                {gatewayError && (
+                  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.05] p-3 text-[11px] leading-4 text-secondary">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <p>{gatewayError}</p>
+                    </div>
+                    {canForceManual && (
+                      <div className="mt-2 flex items-center justify-end border-t border-secondary/10 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleApproveRefund(true)}
+                          disabled={actionLoading}
+                          className="h-8 rounded-lg bg-secondary px-3 text-[11px] font-semibold text-white transition hover:bg-secondary/90 disabled:opacity-50"
+                        >
+                          Force manual refund
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="p-6 bg-gray-50 rounded-b-2xl border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-2 border-t border-secondary/10 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <button
+                type="button"
                 onClick={closeReviewModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="h-9 w-full rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] sm:w-auto"
               >
                 Close
               </button>
 
               {selectedDispute.status !== "refunded" && selectedDispute.status !== "resolved" && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
                   {selectedDispute.requested_resolution === "redelivery" && (
                     <>
                       <button
+                        type="button"
                         onClick={handleApproveRedelivery}
                         disabled={actionLoading}
-                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:opacity-50"
                       >
-                        <RotateCcw className="w-4 h-4" />
-                        Approve Redelivery
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Approve redelivery
                       </button>
-
                       <button
+                        type="button"
                         onClick={handleConvertToRefund}
                         disabled={actionLoading}
-                        className="px-3 py-2 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors"
+                        className="h-9 rounded-lg border border-secondary/15 bg-secondary/[0.05] px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.08] disabled:opacity-50"
                       >
-                        Convert to Refund
+                        Convert to refund
                       </button>
                     </>
                   )}
 
                   <button
-                    onClick={() => handleApproveRefund(false)}
+                    type="button"
+                    onClick={handleReject}
                     disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/20 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05] disabled:opacity-50"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Approve & Disburse Refund
+                    <XCircle className="h-3.5 w-3.5" />
+                    Reject
                   </button>
 
                   <button
-                    onClick={handleReject}
+                    type="button"
+                    onClick={() => handleApproveRefund(false)}
                     disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <XCircle className="w-4 h-4" />
-                    Reject Dispute
+                    {actionLoading ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    Approve refund
                   </button>
                 </div>
               )}
@@ -704,16 +849,15 @@ export default function DisputesManagement() {
         </div>
       )}
 
-      {/* Image Zoom Modal */}
       {previewImage && (
         <div
           onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-[60] flex cursor-pointer items-center justify-center bg-secondary/90 p-4"
         >
           <img
             src={previewImage}
-            alt="Enlarged Evidence"
-            className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+            alt="Enlarged evidence"
+            className="max-h-[88vh] max-w-full rounded-xl object-contain shadow-2xl"
           />
         </div>
       )}
