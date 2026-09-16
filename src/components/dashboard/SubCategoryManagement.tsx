@@ -16,7 +16,6 @@ import {
 } from "../../services/api";
 import type { SubCategory, Category } from "../../types";
 import { SearchInput } from "../ui/SearchInput";
-import { TableControls } from "../ui/TableControls";
 import { DataTable, type Column } from "../ui/DataTable";
 import { Pagination } from "../ui/Pagination";
 import { FormModal } from "../ui/FormModal";
@@ -450,7 +449,7 @@ export default function SubCategoryManagement() {
   ];
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4">
+    <div className="mx-auto w-full max-w-[1600px] px-2 sm:px-4">
       <Toast toast={toast} />
       <PageHeader
         title="Subcategories"
@@ -482,78 +481,104 @@ export default function SubCategoryManagement() {
         className="mb-4 sm:mb-6"
       />
 
-      {/* ========== DESKTOP CONTROLS (hidden on mobile) ========== */}
-      <div className="hidden md:block  bg-white/90 backdrop-blur-sm border-b border-gray-200/80 px-4 py-3 mb-6">
-        <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:flex gap-3 w-full">
-            <div className="md:col-span-2 lg:flex-1">
-              <SearchInput
-                value={inputValue}
-                onChange={handleInputChange}
-                debounceMs={0}
-                showClearButton={false}
-                placeholder="Search by name, Amharic name, slug, item code, or category..."
-                loading={loading}
-              />
-            </div>
-            <div className="w-full lg:w-56">
-              <CustomSelect
-                value={`${sortField}|${sortOrder}`}
-                onChange={(val) => {
-                  const [field, desiredOrder] = val.split("|");
-                  if (field === sortField) {
-                    if (desiredOrder !== sortOrder) handleSort(field);
-                  } else {
-                    handleSort(field);
-                    if (desiredOrder === "desc") handleSort(field);
-                  }
-                }}
-                options={sortOptions}
-                placeholder="Sort by..."
-                className="w-full"
-              />
-            </div>
-            <div className="w-full lg:w-48">
-              <CustomSelect
-                value={categoryFilter}
-                onChange={setCategoryFilter}
-                options={categoryOptions}
-                placeholder="Filter category..."
-                className="w-full"
-              />
-            </div>
+      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+        <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:flex">
+          <div className="min-w-0 flex-1">
+            <SearchInput
+              value={inputValue}
+              onChange={handleInputChange}
+              debounceMs={0}
+              showClearButton={false}
+              placeholder="Search by name, Amharic name, slug, item code, or category..."
+              loading={loading}
+            />
           </div>
-        </TableControls>
+
+          <div className="relative z-[110] w-[290px] shrink-0">
+            <CustomSelect
+              value={`${sortField}|${sortOrder}`}
+              onChange={(val) => {
+                const [field, desiredOrder] = val.split("|");
+                if (field === sortField) {
+                  if (desiredOrder !== sortOrder) handleSort(field);
+                } else {
+                  handleSort(field);
+                  if (desiredOrder === "desc") handleSort(field);
+                }
+              }}
+              options={sortOptions}
+              placeholder="Sort by..."
+              className="w-full"
+            />
+          </div>
+
+          <div className="relative z-[110] w-[250px] shrink-0">
+            <CustomSelect
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={categoryOptions}
+              placeholder="Filter category..."
+              className="w-full"
+            />
+          </div>
+
+          <div className="relative z-[110] w-[138px] shrink-0">
+            <CustomSelect
+              value={String(pageSize)}
+              onChange={(value) => setPageSize(Number(value))}
+              options={[
+                { value: "5", label: "5 / page" },
+                { value: "10", label: "10 / page" },
+                { value: "15", label: "15 / page" },
+                { value: "30", label: "30 / page" },
+                { value: "60", label: "60 / page" },
+              ]}
+              placeholder="10 / page"
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:hidden">
+          <div className="relative min-w-0 flex-1">
+            <SearchInput
+              value={inputValue}
+              onChange={handleInputChange}
+              debounceMs={0}
+              loading={loading}
+              showClearButton={false}
+              placeholder="Search subcategories..."
+              className="rounded-xl border-secondary shadow-sm focus:ring-2 focus:ring-secondary/30"
+            />
+
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              aria-label="Open filters"
+              className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-secondary text-white shadow-sm transition hover:bg-secondary/90 active:scale-95"
+            >
+              <Filter size={14} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="relative z-[110] w-[104px] shrink-0">
+            <CustomSelect
+              value={String(pageSize)}
+              onChange={(value) => setPageSize(Number(value))}
+              options={[
+                { value: "5", label: "5 / page" },
+                { value: "10", label: "10 / page" },
+                { value: "15", label: "15 / page" },
+                { value: "30", label: "30 / page" },
+                { value: "60", label: "60 / page" },
+              ]}
+              placeholder="10 / page"
+              className="w-full text-xs"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* ========== MOBILE SEARCH (visible below md) ========== */}
-      {/* ========== MOBILE SEARCH + FILTER (visible below md) ========== */}
-    {/* ========== MOBILE TABLE CONTROLS (visible below md) ========== */}
-<div className="md:hidden sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200">
-  <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
-    <div className="relative flex-1 ">
-      <SearchInput
-        value={inputValue}
-        onChange={handleInputChange}
-        debounceMs={0}
-        loading={loading}
-        showClearButton={false}
-        placeholder="Search subcategories..."
-        className="rounded-xl shadow-sm border-secondary focus:ring-2 focus:ring-secondary/30"
-      />
-
-      <button
-        onClick={() => setSheetOpen(true)}
-        className="absolute right-4 top-1/2 -translate-y-1/2
-          h-6 w-6 rounded-full bg-secondary text-white
-          flex items-center justify-center shadow-md
-          active:scale-95 transition"
-      >
-        <Filter size={14} strokeWidth={2.5} />
-      </button>
-    </div>
-  </TableControls>
-</div>
       {/* Mobile card view (below md) */}
       <div className="block md:hidden">
         {loading ? (
@@ -656,7 +681,7 @@ export default function SubCategoryManagement() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4">
+      <div className="hidden w-full md:block">
         <MemoizedDataTable<SubCategory>
           data={paginatedItemsWithRowNumber}
           columns={columns}

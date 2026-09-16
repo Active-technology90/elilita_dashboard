@@ -15,6 +15,7 @@ import { Toast } from "../../ui/Toast";
 import { useToast } from "../../../hooks/useToast";
 import { DragDropImageUpload } from "../../ui/DragDropImageUpload";
 import PageHeader from "../../ui/PageHeader";
+import { SearchInput } from "../../ui/SearchInput";
 
 interface HeadCompanyFormData {
   name: string;
@@ -201,38 +202,26 @@ export default function HeadCompanyManagement() {
         className="mb-4 sm:mb-6"
       />
 
-      {/* Search - Responsive */}
-      <div className="mb-3 sm:mb-4">
-        <div className="relative w-full sm:max-w-xs md:max-w-sm">
-          <input
-            type="text"
+      <div className="sticky -top-6 z-[100] -mt-6 mb-3 w-full bg-white pt-6">
+        <div className="w-full rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <SearchInput
             value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
+            onChange={handleInputChange}
+            debounceMs={0}
+            loading={loading}
+            showClearButton={true}
             placeholder="Search head companies..."
-            className="w-full border border-gray-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary bg-gray-50/80 focus:bg-white transition"
+            className="w-full"
           />
-          {inputValue && (
-            <button
-              onClick={() => {
-                setInputValue("");
-                setSearchTerm("");
-              }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Table - Responsive */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm">
+      <div className="w-full overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-track-secondary/[0.04] scrollbar-thumb-secondary/20">
+          <table className="w-full min-w-[760px] text-xs sm:text-sm">
             <thead>
-              <tr className="bg-gray-50 text-left text-gray-500 text-[10px] xs:text-xs uppercase tracking-wider">
+              <tr className="border-b border-secondary/10 bg-secondary/[0.035] text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55 xs:text-xs">
                 <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">No.</th>
                 <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">Logo</th>
                 <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">Name</th>

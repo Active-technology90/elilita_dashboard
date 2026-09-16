@@ -13,7 +13,6 @@ import {
   Flag,
   FileDown,
 } from "lucide-react";
-import { TableControls } from "../ui/TableControls";
 import { SearchInput } from "../ui/SearchInput";
 import { Pagination } from "../ui/Pagination";
 import { CustomSelect } from "../ui/CustomSelect";
@@ -86,49 +85,73 @@ const mockTasks: Task[] = [
 
 // ─── Configs ─────────────────────────────────────────────
 const statusConfig: Record<Task["status"], { label: string; color: string; icon: React.ReactNode }> = {
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: <Clock className="h-3 w-3" /> },
-  in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <AlertCircle className="h-3 w-3" /> },
-  completed: { label: "Completed", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <CheckCircle className="h-3 w-3" /> },
+  pending: {
+    label: "Pending",
+    color: "border-secondary/15 bg-secondary/[0.07] text-secondary",
+    icon: <Clock className="h-3 w-3" />,
+  },
+  in_progress: {
+    label: "In Progress",
+    color: "border-secondary/15 bg-secondary/[0.07] text-secondary",
+    icon: <AlertCircle className="h-3 w-3" />,
+  },
+  completed: {
+    label: "Completed",
+    color: "border-secondary/15 bg-secondary/[0.07] text-secondary",
+    icon: <CheckCircle className="h-3 w-3" />,
+  },
 };
 
 const priorityConfig: Record<Task["priority"], { label: string; color: string; icon: React.ReactNode }> = {
-  low: { label: "Low", color: "bg-gray-100 text-gray-600 border-gray-200", icon: <Flag className="h-3 w-3" /> },
-  medium: { label: "Medium", color: "bg-blue-100 text-blue-600 border-blue-200", icon: <Flag className="h-3 w-3" /> },
-  high: { label: "High", color: "bg-red-100 text-red-600 border-red-200", icon: <Flag className="h-3 w-3" /> },
+  low: {
+    label: "Low",
+    color: "border-secondary/15 bg-white text-secondary/65",
+    icon: <Flag className="h-3 w-3" />,
+  },
+  medium: {
+    label: "Medium",
+    color: "border-secondary/15 bg-secondary/[0.04] text-secondary",
+    icon: <Flag className="h-3 w-3" />,
+  },
+  high: {
+    label: "High",
+    color: "border-secondary/20 bg-secondary/[0.08] text-secondary",
+    icon: <Flag className="h-3 w-3" />,
+  },
 };
 
 // ─── Component ──────────────────────────────────────────
 // ─── Skeleton Components ──────────────────────────────────
 const SkeletonTaskRow: React.FC = () => (
-  <tr className="group transition-all duration-150 border-b border-gray-100/80 animate-pulse">
+  <tr className="group transition-all duration-150 border-b border-secondary/[0.08] animate-pulse">
     <td className="py-3.5 px-5">
       <div className="space-y-1">
-        <div className="h-4 w-32 bg-gray-300/70 rounded"></div>
-        <div className="h-3 w-48 bg-gray-300/70 rounded"></div>
+        <div className="h-4 w-32 bg-secondary/[0.09] rounded"></div>
+        <div className="h-3 w-48 bg-secondary/[0.09] rounded"></div>
       </div>
     </td>
-    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-gray-300/70 rounded-full"></div></td>
-    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-gray-300/70 rounded-full"></div></td>
-    <td className="py-3.5 px-5"><div className="h-4 w-20 bg-gray-300/70 rounded"></div></td>
+    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div></td>
+    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div></td>
+    <td className="py-3.5 px-5"><div className="h-4 w-20 bg-secondary/[0.09] rounded"></div></td>
     <td className="py-3.5 px-5 text-right">
       <div className="flex items-center justify-end gap-1.5">
-        <div className="h-8 w-8 rounded-full bg-gray-300/70"></div>
-        <div className="h-8 w-8 rounded-full bg-gray-300/70"></div>
-        <div className="h-8 w-8 rounded-full bg-gray-300/70"></div>
+        <div className="h-8 w-8 rounded-full bg-secondary/[0.09]"></div>
+        <div className="h-8 w-8 rounded-full bg-secondary/[0.09]"></div>
+        <div className="h-8 w-8 rounded-full bg-secondary/[0.09]"></div>
       </div>
     </td>
   </tr>
 );
 
 const SkeletonTaskTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) => (
-  <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden animate-pulse">
-    <div className="hidden lg:block overflow-x-auto">
+  <div className="bg-white rounded-2xl border border-secondary/15/60 shadow-sm overflow-hidden animate-pulse">
+    <div className="hidden w-full overflow-x-auto lg:block scrollbar-thin scrollbar-track-secondary/[0.04] scrollbar-thumb-secondary/20">
       <table className="w-full">
         <thead>
-          <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/50 border-b border-gray-200/60">
+          <tr className="border-b border-secondary/10 bg-secondary/[0.035]">
             {["Task", "Status", "Priority", "Due Date", "Actions"].map((h) => (
               <th key={h} className="text-left py-3.5 px-5">
-                <div className="h-4 w-12 bg-gray-300/70 rounded"></div>
+                <div className="h-4 w-12 bg-secondary/[0.09] rounded"></div>
               </th>
             ))}
           </tr>
@@ -141,24 +164,24 @@ const SkeletonTaskTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) =>
       </table>
     </div>
     {/* Mobile skeleton cards */}
-    <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+    <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:hidden">
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col gap-3">
+        <div key={i} className="bg-white rounded-2xl border border-secondary/10 p-4 shadow-sm flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <div className="h-4 w-24 bg-gray-300/70 rounded mb-1"></div>
-              <div className="h-3 w-32 bg-gray-300/70 rounded"></div>
+              <div className="h-4 w-24 bg-secondary/[0.09] rounded mb-1"></div>
+              <div className="h-3 w-32 bg-secondary/[0.09] rounded"></div>
             </div>
-            <div className="h-5 w-16 bg-gray-300/70 rounded-full"></div>
+            <div className="h-5 w-16 bg-secondary/[0.09] rounded-full"></div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-5 w-16 bg-gray-300/70 rounded-full"></div>
-            <div className="h-3 w-20 bg-gray-300/70 rounded"></div>
+            <div className="h-5 w-16 bg-secondary/[0.09] rounded-full"></div>
+            <div className="h-3 w-20 bg-secondary/[0.09] rounded"></div>
           </div>
-          <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
-            <div className="h-6 w-6 rounded-full bg-gray-300/70"></div>
-            <div className="h-6 w-6 rounded-full bg-gray-300/70"></div>
-            <div className="h-6 w-6 rounded-full bg-gray-300/70"></div>
+          <div className="flex items-center justify-end gap-1 border-t border-secondary/[0.08] pt-2">
+            <div className="h-6 w-6 rounded-full bg-secondary/[0.09]"></div>
+            <div className="h-6 w-6 rounded-full bg-secondary/[0.09]"></div>
+            <div className="h-6 w-6 rounded-full bg-secondary/[0.09]"></div>
           </div>
         </div>
       ))}
@@ -359,27 +382,27 @@ export default function TasksManagement() {
   // ─── Loading & error states ────────────────────────────
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 font-sans bg-gray-50/50 min-h-screen animate-pulse">
+      <div className="min-h-screen space-y-4 bg-white p-3 font-sans sm:p-4 lg:p-6 animate-pulse">
         {/* ─── Header Skeleton ──────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="h-8 w-32 bg-gray-300/70 rounded mb-2"></div>
-            <div className="h-4 w-64 bg-gray-300/70 rounded"></div>
+            <div className="h-8 w-32 bg-secondary/[0.09] rounded mb-2"></div>
+            <div className="h-4 w-64 bg-secondary/[0.09] rounded"></div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="h-8 w-20 bg-gray-300/70 rounded-xl"></div>
-            <div className="h-10 w-28 bg-gray-300/70 rounded-xl"></div>
+            <div className="h-8 w-20 bg-secondary/[0.09] rounded-xl"></div>
+            <div className="h-10 w-28 bg-secondary/[0.09] rounded-xl"></div>
           </div>
         </div>
 
         {/* ─── Table Controls Skeleton ────────────────────────── */}
         <div className="flex flex-col md:flex-row gap-3 w-full items-start md:items-center">
-          <div className="w-full md:flex-1 h-10 bg-gray-300/70 rounded-xl"></div>
+          <div className="w-full md:flex-1 h-10 bg-secondary/[0.09] rounded-xl"></div>
           <div className="hidden md:flex flex-col sm:flex-row items-center gap-2">
-            <div className="w-44 h-10 bg-gray-300/70 rounded-xl"></div>
-            <div className="w-36 h-10 bg-gray-300/70 rounded-xl"></div>
-            <div className="w-36 h-10 bg-gray-300/70 rounded-xl"></div>
-            <div className="w-10 h-10 bg-gray-300/70 rounded-xl"></div>
+            <div className="w-44 h-10 bg-secondary/[0.09] rounded-xl"></div>
+            <div className="w-36 h-10 bg-secondary/[0.09] rounded-xl"></div>
+            <div className="w-36 h-10 bg-secondary/[0.09] rounded-xl"></div>
+            <div className="w-10 h-10 bg-secondary/[0.09] rounded-xl"></div>
           </div>
         </div>
 
@@ -387,14 +410,14 @@ export default function TasksManagement() {
         <SkeletonTaskTable rowCount={pageSize} />
 
         {/* ─── Pagination Skeleton ────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-t border-secondary/15 bg-secondary/[0.035]">
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-            <div className="h-6 w-24 bg-gray-300/70 rounded-full"></div>
-            <div className="h-8 w-24 bg-gray-300/70 rounded-full"></div>
+            <div className="h-6 w-24 bg-secondary/[0.09] rounded-full"></div>
+            <div className="h-8 w-24 bg-secondary/[0.09] rounded-full"></div>
           </div>
           <div className="flex items-center gap-2">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
+              <div key={i} className="h-8 w-8 bg-secondary/[0.09] rounded-full"></div>
             ))}
           </div>
         </div>
@@ -404,9 +427,9 @@ export default function TasksManagement() {
 
   if (error) {
     return (
-      <div className="p-6 text-center bg-red-50 rounded-2xl border border-red-100">
-        <p className="text-red-600">{error}</p>
-        <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-xl text-sm">
+      <div className="rounded-xl border border-secondary/10 bg-white p-6 text-center">
+        <p className="text-secondary">{error}</p>
+        <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-secondary text-white rounded-xl text-sm">
           Retry
         </button>
       </div>
@@ -414,30 +437,30 @@ export default function TasksManagement() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 font-sans bg-gray-50/50 min-h-screen">
+    <div className="min-h-screen space-y-4 bg-white p-3 font-sans sm:p-4 lg:p-6">
       <Toast toast={toast} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-secondary tracking-tight flex items-center gap-2.5">
-            <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-secondary" />
+          <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight text-secondary sm:text-xl">
+            <ClipboardList className="h-5 w-5 text-secondary" />
             Tasks
           </h1>
-          <p className="text-xs sm:text-sm text-secondary-light/80 mt-1">
+          <p className="text-xs sm:text-sm text-secondary/50 mt-1">
             Manage your daily to‑dos and follow‑ups efficiently
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-50 transition shadow-sm"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-secondary/10 bg-white px-3 text-xs font-semibold text-secondary/65 transition hover:bg-secondary/[0.04]"
           >
             <FileDown className="h-4 w-4" />
             Export
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white rounded-xl text-sm font-bold hover:shadow-lg transition active:scale-95"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-secondary px-3.5 text-xs font-semibold text-white transition hover:bg-secondary/90 active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             Add Task
@@ -445,50 +468,89 @@ export default function TasksManagement() {
         </div>
       </div>
 
-      {/* Table Controls */}
-      <TableControls
-        pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setCurrentPage(1);
-        }}
-      >
-        <div className="flex flex-col md:flex-row gap-3 w-full items-start md:items-center">
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search tasks by title or description..."
-            debounceMs={300}
-            showClearButton={true}
-            showMobileFilter={true}
-            onMobileFilterClick={() => setFilterSheetOpen(true)}
-            activeFilterCount={(statusFilter !== "all" ? 1 : 0) + (priorityFilter !== "all" ? 1 : 0)}
-            className="w-full md:flex-1"
-          />
-          <div className="hidden md:flex flex-col sm:flex-row items-center gap-2">
-            <CustomSelect
-              value={sort}
-              onChange={(val) => { setSort(val); setCurrentPage(1); }}
-              options={sortOptions}
-              placeholder="Sort by..."
-              className="w-full sm:w-44"
-            />
-            <CustomSelect
-              value={statusFilter}
-              onChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}
-              options={statusOptions}
-              placeholder="Status..."
-              className="w-full sm:w-36"
-            />
-            <CustomSelect
-              value={priorityFilter}
-              onChange={(val) => { setPriorityFilter(val); setCurrentPage(1); }}
-              options={priorityOptions}
-              placeholder="Priority..."
-              className="w-full sm:w-36"
-            />
-            {(statusFilter !== "all" || priorityFilter !== "all" || searchTerm.trim() !== "" || sort !== "due_date|asc") && (
+      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+        <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="flex w-full items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <SearchInput
+                value={searchTerm}
+                onChange={setSearchTerm}
+                placeholder="Search tasks by title or description..."
+                debounceMs={300}
+                showClearButton={true}
+                showMobileFilter={true}
+                onMobileFilterClick={() => setFilterSheetOpen(true)}
+                activeFilterCount={
+                  (statusFilter !== "all" ? 1 : 0) +
+                  (priorityFilter !== "all" ? 1 : 0)
+                }
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] hidden w-44 shrink-0 md:block">
+              <CustomSelect
+                value={sort}
+                onChange={(value) => {
+                  setSort(value);
+                  setCurrentPage(1);
+                }}
+                options={sortOptions}
+                placeholder="Sort by..."
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] hidden w-36 shrink-0 md:block">
+              <CustomSelect
+                value={statusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                }}
+                options={statusOptions}
+                placeholder="Status"
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] hidden w-36 shrink-0 md:block">
+              <CustomSelect
+                value={priorityFilter}
+                onChange={(value) => {
+                  setPriorityFilter(value);
+                  setCurrentPage(1);
+                }}
+                options={priorityOptions}
+                placeholder="Priority"
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
+              <CustomSelect
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+                options={[
+                  { value: "5", label: "5 / page" },
+                  { value: "10", label: "10 / page" },
+                  { value: "25", label: "25 / page" },
+                  { value: "50", label: "50 / page" },
+                ]}
+                placeholder="10 / page"
+                className="w-full text-xs"
+              />
+            </div>
+
+            {(statusFilter !== "all" ||
+              priorityFilter !== "all" ||
+              searchTerm.trim() !== "" ||
+              sort !== "due_date|asc") && (
               <button
+                type="button"
                 onClick={() => {
                   setStatusFilter("all");
                   setPriorityFilter("all");
@@ -496,43 +558,44 @@ export default function TasksManagement() {
                   setSearchTerm("");
                   setCurrentPage(1);
                 }}
-                className="flex items-center justify-center h-10 w-10 rounded-xl bg-red-100 hover:bg-red-200 transition text-red-600 shadow-sm flex-shrink-0"
+                aria-label="Clear all filters"
                 title="Clear all filters"
+                className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary/15 bg-white text-secondary transition hover:bg-secondary/[0.05] focus:outline-none focus:ring-2 focus:ring-secondary/15 md:flex"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
         </div>
-      </TableControls>
+      </div>
 
       {/* Table */}
       {filteredTasks.length === 0 ? (
-        <div className="py-16 text-center bg-white rounded-3xl shadow-sm border border-gray-100">
-          <ClipboardList className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 font-medium">No tasks found</p>
-          <p className="text-sm text-gray-400">Try adjusting your search or filters.</p>
+        <div className="rounded-xl border border-secondary/10 bg-white px-4 py-14 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <ClipboardList className="mx-auto mb-3 h-10 w-10 text-secondary/25" />
+          <p className="text-sm font-semibold text-secondary">No tasks found</p>
+          <p className="mt-1 text-xs text-secondary/45">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <div className="hidden lg:block overflow-x-auto">
+        <div className="w-full overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="hidden w-full overflow-x-auto lg:block scrollbar-thin scrollbar-track-secondary/[0.04] scrollbar-thumb-secondary/20">
             <table className="w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/50 border-b border-gray-200/60">
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Task</th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Priority</th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Due Date</th>
-                  <th className="text-right py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <tr className="border-b border-secondary/10 bg-secondary/[0.035]">
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Task</th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Status</th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Priority</th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Due Date</th>
+                  <th className="text-right py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedTasks.map((task, index) => (
-                  <tr key={task.id} className={`group transition-all duration-150 ${index !== paginatedTasks.length - 1 ? "border-b border-gray-100/80" : ""} hover:bg-gray-50/60`}>
+                  <tr key={task.id} className={`group transition-all duration-150 ${index !== paginatedTasks.length - 1 ? "border-b border-secondary/[0.08]" : ""} hover:bg-secondary/[0.025]`}>
                     <td className="py-3.5 px-5">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">{task.title}</p>
-                        <p className="text-xs text-gray-500 truncate max-w-[300px]">{task.description}</p>
+                        <p className="font-semibold text-secondary text-sm">{task.title}</p>
+                        <p className="text-xs text-secondary/50 truncate max-w-[300px]">{task.description}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-5">
@@ -547,17 +610,17 @@ export default function TasksManagement() {
                         {priorityConfig[task.priority].label}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-sm text-gray-600">{task.due_date}</td>
+                    <td className="py-3.5 px-5 text-sm text-secondary/65">{task.due_date}</td>
                     <td className="py-3.5 px-5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => handleView(task)} className="p-1.5 rounded-full hover:bg-gray-100 transition" title="View">
-                          <Eye className="h-4 w-4 text-gray-400 hover:text-secondary" />
+                        <button onClick={() => handleView(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition" title="View">
+                          <Eye className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
-                        <button onClick={() => handleEdit(task)} className="p-1.5 rounded-full hover:bg-gray-100 transition" title="Edit">
-                          <Edit className="h-4 w-4 text-gray-400 hover:text-secondary" />
+                        <button onClick={() => handleEdit(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition" title="Edit">
+                          <Edit className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
-                        <button onClick={() => handleDelete(task)} className="p-1.5 rounded-full hover:bg-red-50 transition" title="Delete">
-                          <Trash2 className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                        <button onClick={() => handleDelete(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.05] transition" title="Delete">
+                          <Trash2 className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
                       </div>
                     </td>
@@ -568,13 +631,13 @@ export default function TasksManagement() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+          <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:hidden">
             {paginatedTasks.map((task) => (
-              <div key={task.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition flex flex-col gap-3">
+              <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-secondary/[0.015]">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{task.title}</p>
-                    <p className="text-xs text-gray-500 truncate">{task.description}</p>
+                    <p className="font-semibold text-secondary text-sm truncate">{task.title}</p>
+                    <p className="text-xs text-secondary/50 truncate">{task.description}</p>
                   </div>
                   <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusConfig[task.status].color}`}>
                     {statusConfig[task.status].icon}
@@ -586,15 +649,15 @@ export default function TasksManagement() {
                     {priorityConfig[task.priority].icon}
                     {priorityConfig[task.priority].label}
                   </span>
-                  <span className="text-gray-500 flex items-center gap-1">
+                  <span className="text-secondary/50 flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {task.due_date}
                   </span>
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
-                  <button className="p-1 rounded-full hover:bg-gray-100 transition"><Eye className="h-4 w-4 text-gray-400" /></button>
-                  <button className="p-1 rounded-full hover:bg-gray-100 transition"><Edit className="h-4 w-4 text-gray-400" /></button>
-                  <button className="p-1 rounded-full hover:bg-red-50 transition"><Trash2 className="h-4 w-4 text-gray-400" /></button>
+                <div className="flex items-center justify-end gap-1 border-t border-secondary/[0.08] pt-2">
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition"><Eye className="h-4 w-4 text-secondary/35" /></button>
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition"><Edit className="h-4 w-4 text-secondary/35" /></button>
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.05] transition"><Trash2 className="h-4 w-4 text-secondary/35" /></button>
                 </div>
               </div>
             ))}
@@ -648,34 +711,34 @@ export default function TasksManagement() {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Title <span className="text-red-500">*</span>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+              Title <span className="text-secondary">*</span>
             </label>
             <input
               type="text"
               value={newTask.title || ""}
               onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+              className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               placeholder="e.g. Follow up with client"
               required
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Description</label>
             <textarea
               value={newTask.description || ""}
               onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
+              className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
               rows={2}
               placeholder="Describe the task..."
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Status</label>
             <select
               value={newTask.status || "pending"}
               onChange={(e) => setNewTask({ ...newTask, status: e.target.value as Task["status"] })}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+              className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             >
               <option value="pending">Pending</option>
               <option value="in_progress">In Progress</option>
@@ -683,11 +746,11 @@ export default function TasksManagement() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Priority</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Priority</label>
             <select
               value={newTask.priority || "medium"}
               onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Task["priority"] })}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+              className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -695,12 +758,12 @@ export default function TasksManagement() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Due Date</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Due Date</label>
             <input
               type="date"
               value={newTask.due_date || ""}
               onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+              className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             />
           </div>
         </div>
@@ -708,33 +771,33 @@ export default function TasksManagement() {
 
       {/* ─── View Modal ───────────────────────────────────── */}
       {viewingTask && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-secondary/35 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold text-gray-900">Task Details</h2>
-              <button onClick={() => setViewingTask(null)} className="p-1.5 rounded-full hover:bg-gray-100 transition">
-                <X className="h-5 w-5 text-gray-500" />
+              <h2 className="text-xl font-bold text-secondary">Task Details</h2>
+              <button onClick={() => setViewingTask(null)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition">
+                <X className="h-5 w-5 text-secondary/50" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Title</p>
-                <p className="text-lg font-semibold text-gray-900">{viewingTask.title}</p>
+                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Title</p>
+                <p className="text-lg font-semibold text-secondary">{viewingTask.title}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</p>
-                <p className="text-gray-700">{viewingTask.description || "No description"}</p>
+                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Description</p>
+                <p className="text-secondary/75">{viewingTask.description || "No description"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Status</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Status</p>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[viewingTask.status].color}`}>
                     {statusConfig[viewingTask.status].icon}
                     {statusConfig[viewingTask.status].label}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Priority</p>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${priorityConfig[viewingTask.priority].color}`}>
                     {priorityConfig[viewingTask.priority].icon}
                     {priorityConfig[viewingTask.priority].label}
@@ -743,12 +806,12 @@ export default function TasksManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Due Date</p>
-                  <p className="text-sm text-gray-700">{viewingTask.due_date}</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Due Date</p>
+                  <p className="text-sm text-secondary/75">{viewingTask.due_date}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Created</p>
-                  <p className="text-sm text-gray-700">{new Date(viewingTask.created_at).toLocaleString()}</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Created</p>
+                  <p className="text-sm text-secondary/75">{new Date(viewingTask.created_at).toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -773,32 +836,32 @@ export default function TasksManagement() {
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                Title <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+                Title <span className="text-secondary">*</span>
               </label>
               <input
                 type="text"
                 value={editFormData.title || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+                className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Description</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Description</label>
               <textarea
                 value={editFormData.description || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
+                className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
                 rows={2}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Status</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Status</label>
               <select
                 value={editFormData.status || "pending"}
                 onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as Task["status"] })}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+                className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               >
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
@@ -806,11 +869,11 @@ export default function TasksManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Priority</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Priority</label>
               <select
                 value={editFormData.priority || "medium"}
                 onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value as Task["priority"] })}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+                className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -818,12 +881,12 @@ export default function TasksManagement() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Due Date</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Due Date</label>
               <input
                 type="date"
                 value={editFormData.due_date || ""}
                 onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
-                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+                className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               />
             </div>
           </div>
