@@ -275,7 +275,7 @@ const BankLogo = ({
 const urlToFile = async (url: string, filename: string): Promise<File> => {
   const response = await fetch(url);
   const blob = await response.blob();
-  const extension = blob.type.split('/')[1] || 'jpg';
+  const extension = blob.type.split("/")[1] || "jpg";
   return new File([blob], `${filename}.${extension}`, { type: blob.type });
 };
 
@@ -363,7 +363,9 @@ const BankSelector = ({
 
     if (!selectedBankName) return undefined;
     const selectedKey = getBankIdentityKey(selectedBankName);
-    return banks.find((bank) => getBankIdentityKey(bank.bank_name) === selectedKey);
+    return banks.find(
+      (bank) => getBankIdentityKey(bank.bank_name) === selectedKey,
+    );
   }, [banks, selectedBankId, selectedBankName]);
 
   const selectedBankKey = selectedBank
@@ -585,7 +587,11 @@ const BankSelector = ({
                           : "border-transparent hover:border-gray-200 hover:bg-gray-50"
                       }`}
                     >
-                      <BankLogo logo={bank.logo} name={bank.bank_name} size="sm" />
+                      <BankLogo
+                        logo={bank.logo}
+                        name={bank.bank_name}
+                        size="sm"
+                      />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-gray-800 group-hover:text-gray-950">
                           {bank.bank_name}
@@ -633,8 +639,7 @@ export default function BankManagement() {
   const isSuperAdmin = !user?.memberships?.length;
   const companySlug = company?.slug;
   const companyName = company?.name || "Your Company";
-  const canWrite =
-    isSuperAdmin || company?.role === "owner";
+  const canWrite = isSuperAdmin || company?.role === "owner";
 
   // Fetch bank accounts - depends only on stable values
   const fetchBanks = useCallback(async () => {
@@ -718,7 +723,7 @@ export default function BankManagement() {
       // For Company Admin
       if (!isSuperAdmin) {
         let logoFileToSend: File | undefined = logoFile;
-        
+
         // New company-admin choices use image files from public/.
         // Existing remote logos are still supported while editing older records.
         if (!logoFileToSend && data.logo && typeof data.logo === "string") {
@@ -737,20 +742,20 @@ export default function BankManagement() {
             console.error("Failed to prepare bank logo:", error);
           }
         }
-        
+
         // Create FormData with all fields
         const fd = new FormData();
-        fd.append('bank_name', data.bank_name || '');
-        fd.append('account_number', data.account_number || '');
-        fd.append('account_name', data.account_name || '');
-        fd.append('is_active', String(data.is_active ?? true));
-        fd.append('order', String(data.order ?? 0));
-        
+        fd.append("bank_name", data.bank_name || "");
+        fd.append("account_number", data.account_number || "");
+        fd.append("account_name", data.account_name || "");
+        fd.append("is_active", String(data.is_active ?? true));
+        fd.append("order", String(data.order ?? 0));
+
         // Only append logo if we have a file
         if (logoFileToSend) {
-          fd.append('logo', logoFileToSend);
+          fd.append("logo", logoFileToSend);
         }
-        
+
         if (editingBank) {
           if (companySlug) {
             await updateCompanyBankAccount(companySlug, editingBank.id, fd);
@@ -760,8 +765,13 @@ export default function BankManagement() {
             await createCompanyBankAccount(companySlug, fd);
           }
         }
-        
-        showToast("success", editingBank ? "Bank account updated successfully" : "Bank account created successfully");
+
+        showToast(
+          "success",
+          editingBank
+            ? "Bank account updated successfully"
+            : "Bank account created successfully",
+        );
         setShowModal(false);
         setEditingBank(null);
         fetchBanks();
@@ -769,7 +779,10 @@ export default function BankManagement() {
       }
 
       // Super Admin logic (existing behavior)
-      let payload: Record<string, unknown> | FormData = data as Record<string, unknown>;
+      let payload: Record<string, unknown> | FormData = data as Record<
+        string,
+        unknown
+      >;
 
       // Only use FormData when there's an actual file to upload
       if (logoFile) {
@@ -853,7 +866,7 @@ export default function BankManagement() {
         }
         className="mb-5 sm:mb-6"
       />
-      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
         <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
           <SearchInput
             value={searchTerm}
@@ -958,7 +971,7 @@ export default function BankManagement() {
                             {bank.bank_name}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {bank.bank_id || 'Bank'}
+                            {bank.bank_id || "Bank"}
                           </span>
                         </div>
                       </div>
@@ -1075,7 +1088,9 @@ function BankAccountForm({
     company_slug: "",
   });
   const [saving, setSaving] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   // Initialize form data when bank changes
   useEffect(() => {
@@ -1104,17 +1119,17 @@ function BankAccountForm({
   }, [bank]);
 
   const handleBankSelect = (selectedBank: AvailableBank) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       bank_id: selectedBank.id,
       bank_name: selectedBank.bank_name,
     }));
-    setValidationErrors(prev => ({ ...prev, bank_id: "", bank_name: "" }));
+    setValidationErrors((prev) => ({ ...prev, bank_id: "", bank_name: "" }));
   };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     const selectedCatalogBank = availableBanks.find(
       (availableBank) =>
         availableBank.id === formData.bank_id ||
@@ -1126,22 +1141,22 @@ function BankAccountForm({
     if (!selectedCatalogBank) {
       errors.bank_id = "Please select a bank";
     }
-    
+
     if (!formData.account_number.trim()) {
       errors.account_number = "Account number is required";
     }
-    
+
     if (!formData.account_name.trim()) {
       errors.account_name = "Account holder name is required";
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -1239,9 +1254,7 @@ function BankAccountForm({
           <div className="p-6 space-y-6">
             {/* Same static bank selector for Super Admin and Company Admin */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">
-                Bank
-              </h4>
+              <h4 className="text-sm font-semibold text-gray-900 mb-4">Bank</h4>
               <BankSelector
                 banks={availableBanks}
                 selectedBankId={formData.bank_id}
@@ -1277,7 +1290,10 @@ function BankAccountForm({
                   type="text"
                   value={formData.company_slug}
                   onChange={(e) =>
-                    setFormData(prev => ({ ...prev, company_slug: e.target.value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      company_slug: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-secondary focus:ring-4 focus:ring-secondary/20 focus:outline-none transition text-sm placeholder-gray-400"
                   placeholder="e.g. abc-trading"
@@ -1302,8 +1318,14 @@ function BankAccountForm({
                     type="text"
                     value={formData.account_number}
                     onChange={(e) => {
-                      setFormData(prev => ({ ...prev, account_number: e.target.value }));
-                      setValidationErrors(prev => ({ ...prev, account_number: "" }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        account_number: e.target.value,
+                      }));
+                      setValidationErrors((prev) => ({
+                        ...prev,
+                        account_number: "",
+                      }));
                     }}
                     className={`w-full px-4 py-3 rounded-xl border ${
                       validationErrors.account_number
@@ -1327,8 +1349,14 @@ function BankAccountForm({
                     type="text"
                     value={formData.account_name}
                     onChange={(e) => {
-                      setFormData(prev => ({ ...prev, account_name: e.target.value }));
-                      setValidationErrors(prev => ({ ...prev, account_name: "" }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        account_name: e.target.value,
+                      }));
+                      setValidationErrors((prev) => ({
+                        ...prev,
+                        account_name: "",
+                      }));
                     }}
                     className={`w-full px-4 py-3 rounded-xl border ${
                       validationErrors.account_name
@@ -1362,7 +1390,7 @@ function BankAccountForm({
                     min="0"
                     value={formData.order}
                     onChange={(e) =>
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
                         order: parseInt(e.target.value) || 0,
                       }))
@@ -1376,7 +1404,10 @@ function BankAccountForm({
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) =>
-                        setFormData(prev => ({ ...prev, is_active: e.target.checked }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          is_active: e.target.checked,
+                        }))
                       }
                       className="w-4 h-4 rounded border-gray-300 text-secondary focus:ring-secondary/20"
                     />

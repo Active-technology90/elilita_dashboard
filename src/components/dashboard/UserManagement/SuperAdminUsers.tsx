@@ -97,12 +97,36 @@ const isCreatedToday = (user: User): boolean => {
 };
 
 const roleOptions = [
-  { label: "All roles", value: "all", icon: <Users className="h-4 w-4 text-secondary" /> },
-  { label: "Admin", value: "admin", icon: <Shield className="h-4 w-4 text-secondary" /> },
-  { label: "Staff", value: "staff", icon: <Users className="h-4 w-4 text-secondary" /> },
-  { label: "Viewer", value: "viewer", icon: <Eye className="h-4 w-4 text-secondary" /> },
-  { label: "Delivery", value: "delivery", icon: <Package className="h-4 w-4 text-secondary" /> },
-  { label: "No company", value: "no_company", icon: <Briefcase className="h-4 w-4 text-secondary" /> },
+  {
+    label: "All roles",
+    value: "all",
+    icon: <Users className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Admin",
+    value: "admin",
+    icon: <Shield className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Staff",
+    value: "staff",
+    icon: <Users className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Viewer",
+    value: "viewer",
+    icon: <Eye className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Delivery",
+    value: "delivery",
+    icon: <Package className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "No company",
+    value: "no_company",
+    icon: <Briefcase className="h-4 w-4 text-secondary" />,
+  },
 ];
 
 interface StatCardProps {
@@ -118,7 +142,9 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
         <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/55">
           {title}
         </p>
-        <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">{value}</p>
+        <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+          {value}
+        </p>
       </div>
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
         {icon}
@@ -159,7 +185,7 @@ const UserFilters: React.FC<FiltersProps> = ({
 
   return (
     <>
-      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
         <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
@@ -215,9 +241,15 @@ const UserFilters: React.FC<FiltersProps> = ({
         </div>
       </div>
 
-      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Filter users">
+      <BottomSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="Filter users"
+      >
         <div className="space-y-3">
-          <p className="text-xs text-secondary/55">Choose a role to narrow the user list.</p>
+          <p className="text-xs text-secondary/55">
+            Choose a role to narrow the user list.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {roleOptions.map((opt) => (
               <button
@@ -233,7 +265,13 @@ const UserFilters: React.FC<FiltersProps> = ({
                     : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
                 }`}
               >
-                <span className={roleFilter === opt.value ? "text-white" : "text-secondary"}>{opt.icon}</span>
+                <span
+                  className={
+                    roleFilter === opt.value ? "text-white" : "text-secondary"
+                  }
+                >
+                  {opt.icon}
+                </span>
                 <span className="text-center">{opt.label}</span>
               </button>
             ))}
@@ -305,7 +343,11 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   const buttonRect = buttonRef.current?.getBoundingClientRect();
   const portalStyle: React.CSSProperties = {
     position: "fixed",
-    top: buttonRect ? (isAbove ? buttonRect.top - 8 : buttonRect.bottom + 8) : 0,
+    top: buttonRect
+      ? isAbove
+        ? buttonRect.top - 8
+        : buttonRect.bottom + 8
+      : 0,
     right: buttonRect ? window.innerWidth - buttonRect.right : 0,
     width: 208,
     zIndex: 99999,
@@ -315,7 +357,11 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   const menuItems = [
     { label: "View profile", icon: Eye, action: () => onView(user) },
     { label: "Edit user", icon: Edit, action: () => onEdit(user) },
-    { label: "Manage memberships", icon: Building2, action: () => onManageMemberships(user) },
+    {
+      label: "Manage memberships",
+      icon: Building2,
+      action: () => onManageMemberships(user),
+    },
     { label: "Remove user", icon: Trash2, action: () => onRemove(user) },
   ];
 
@@ -425,20 +471,32 @@ const UserTable: React.FC<UserTableProps> = ({
         </thead>
         <tbody className="divide-y divide-secondary/[0.08]">
           {users.map((user) => (
-            <tr key={user.id} className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]">
+            <tr
+              key={user.id}
+              className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]"
+            >
               <td className="px-4 py-3 align-top">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-white">
                     {user.profile_image ? (
-                      <img src={user.profile_image} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={user.profile_image}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
-                      getInitials(user.first_name, user.last_name, user.username)
+                      getInitials(
+                        user.first_name,
+                        user.last_name,
+                        user.username,
+                      )
                     )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <p className="truncate text-xs font-semibold text-secondary">
-                        {user.first_name || user.username}{user.last_name && ` ${user.last_name}`}
+                        {user.first_name || user.username}
+                        {user.last_name && ` ${user.last_name}`}
                       </p>
                       {isCreatedToday(user) && (
                         <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
@@ -446,91 +504,119 @@ const UserTable: React.FC<UserTableProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-[10px] text-secondary/45">@{user.username}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+                      @{user.username}
+                    </p>
                   </div>
                 </div>
               </td>
               <td className="px-4 py-3 align-top">
-                <p className="truncate font-medium text-secondary/75" title={user.email}>{user.email}</p>
+                <p
+                  className="truncate font-medium text-secondary/75"
+                  title={user.email}
+                >
+                  {user.email}
+                </p>
               </td>
-              <td className="px-4 py-3 align-top font-medium text-secondary/70">{formatPhone(user.phone_number)}</td>
-              <td className="px-4 py-3 align-top text-secondary/60">{formatDate(user)}</td>
+              <td className="px-4 py-3 align-top font-medium text-secondary/70">
+                {formatPhone(user.phone_number)}
+              </td>
+              <td className="px-4 py-3 align-top text-secondary/60">
+                {formatDate(user)}
+              </td>
               <td className="px-4 py-3 align-top">
                 {user.memberships.length > 0 ? (
                   <div className="max-h-[116px] space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
-                    {user.memberships.map((membership: Membership, index: number) => (
-                      <div
-                        key={`${membership.company_id}-${index}`}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] bg-white px-2 py-1.5"
-                      >
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                          <span className="truncate text-[10px] font-medium text-secondary/70">{membership.company_name}</span>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          {editingRoleInTable === `role-${user.id}-${membership.company_id}` ? (
-                            <select
-                              value={membership.role}
-                              onChange={(event) =>
-                                handleRoleChangeFromTable(
-                                  membership,
-                                  event.target.value as UserRole,
-                                  user.id,
-                                )
-                              }
-                              onBlur={() => {
-                                setEditingRoleInTable(null);
-                                setEditingCompanyInTable(null);
-                              }}
-                              autoFocus
-                              className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-secondary outline-none focus:ring-2 focus:ring-secondary/10"
-                            >
-                              {["admin", "staff", "viewer", "delivery"].map((role) => (
-                                <option key={role} value={role}>{role}</option>
-                              ))}
-                            </select>
-                          ) : (
+                    {user.memberships.map(
+                      (membership: Membership, index: number) => (
+                        <div
+                          key={`${membership.company_id}-${index}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] bg-white px-2 py-1.5"
+                        >
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
+                            <span className="truncate text-[10px] font-medium text-secondary/70">
+                              {membership.company_name}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1">
+                            {editingRoleInTable ===
+                            `role-${user.id}-${membership.company_id}` ? (
+                              <select
+                                value={membership.role}
+                                onChange={(event) =>
+                                  handleRoleChangeFromTable(
+                                    membership,
+                                    event.target.value as UserRole,
+                                    user.id,
+                                  )
+                                }
+                                onBlur={() => {
+                                  setEditingRoleInTable(null);
+                                  setEditingCompanyInTable(null);
+                                }}
+                                autoFocus
+                                className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-secondary outline-none focus:ring-2 focus:ring-secondary/10"
+                              >
+                                {["admin", "staff", "viewer", "delivery"].map(
+                                  (role) => (
+                                    <option key={role} value={role}>
+                                      {role}
+                                    </option>
+                                  ),
+                                )}
+                              </select>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingRoleInTable(
+                                    `role-${user.id}-${membership.company_id}`,
+                                  );
+                                  setEditingCompanyInTable(membership);
+                                }}
+                                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold capitalize transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
+                              >
+                                {membership.role}
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => {
-                                setEditingRoleInTable(`role-${user.id}-${membership.company_id}`);
-                                setEditingCompanyInTable(membership);
-                              }}
-                              className={`rounded-full px-2 py-0.5 text-[9px] font-semibold capitalize transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
+                              onClick={() =>
+                                handleRemoveMembershipFromTable(
+                                  membership.company_id,
+                                  membership.company_name,
+                                  user.id,
+                                  user.first_name || user.username,
+                                )
+                              }
+                              aria-label={`Remove ${membership.company_name}`}
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-secondary/35 transition hover:bg-secondary/[0.06] hover:text-secondary"
                             >
-                              {membership.role}
+                              <X className="h-3 w-3" />
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRemoveMembershipFromTable(
-                                membership.company_id,
-                                membership.company_name,
-                                user.id,
-                                user.first_name || user.username,
-                              )
-                            }
-                            aria-label={`Remove ${membership.company_name}`}
-                            className="flex h-6 w-6 items-center justify-center rounded-md text-secondary/35 transition hover:bg-secondary/[0.06] hover:text-secondary"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 ) : (
-                  <span className="text-[10px] text-secondary/40">No companies</span>
+                  <span className="text-[10px] text-secondary/40">
+                    No companies
+                  </span>
                 )}
               </td>
               <td className="px-4 py-3 align-top">
-                <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
-                  user.is_active
-                    ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
-                    : "border-secondary/[0.08] bg-white text-secondary/45"
-                }`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-secondary/30"}`} />
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
+                    user.is_active
+                      ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
+                      : "border-secondary/[0.08] bg-white text-secondary/45"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-secondary/30"}`}
+                  />
                   {user.is_active ? "Active" : "Inactive"}
                 </span>
               </td>
@@ -545,15 +631,25 @@ const UserTable: React.FC<UserTableProps> = ({
   </div>
 );
 
-const UserMobileCards: React.FC<UserMobileCardsProps> = ({ users, ...actionProps }) => (
+const UserMobileCards: React.FC<UserMobileCardsProps> = ({
+  users,
+  ...actionProps
+}) => (
   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:hidden">
     {users.map((user) => (
-      <article key={user.id} className="flex flex-col rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <article
+        key={user.id}
+        className="flex flex-col rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-bold text-white">
               {user.profile_image ? (
-                <img src={user.profile_image} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={user.profile_image}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 getInitials(user.first_name, user.last_name, user.username)
               )}
@@ -561,13 +657,18 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({ users, ...actionProps
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-1.5">
                 <p className="truncate text-xs font-semibold text-secondary">
-                  {user.first_name || user.username}{user.last_name && ` ${user.last_name}`}
+                  {user.first_name || user.username}
+                  {user.last_name && ` ${user.last_name}`}
                 </p>
                 {isCreatedToday(user) && (
-                  <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">New</span>
+                  <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
+                    New
+                  </span>
                 )}
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-secondary/45">{user.email}</p>
+              <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+                {user.email}
+              </p>
             </div>
           </div>
           <ActionsDropdown user={user} {...actionProps} />
@@ -576,35 +677,56 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({ users, ...actionProps
         <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
           <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
             <p className="font-medium text-secondary/40">Phone</p>
-            <p className="mt-0.5 truncate font-semibold text-secondary/70">{formatPhone(user.phone_number)}</p>
+            <p className="mt-0.5 truncate font-semibold text-secondary/70">
+              {formatPhone(user.phone_number)}
+            </p>
           </div>
           <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
             <p className="font-medium text-secondary/40">Joined</p>
-            <p className="mt-0.5 truncate font-semibold text-secondary/70">{formatDate(user)}</p>
+            <p className="mt-0.5 truncate font-semibold text-secondary/70">
+              {formatDate(user)}
+            </p>
           </div>
         </div>
 
         <div className="mt-3 flex-1">
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-secondary/40">Companies</p>
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-secondary/40">
+            Companies
+          </p>
           {user.memberships.length > 0 ? (
             <div className="max-h-24 space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
               {user.memberships.map((membership: Membership, index: number) => (
-                <div key={`${membership.company_id}-${index}`} className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] px-2 py-1.5">
-                  <span className="truncate text-[10px] font-medium text-secondary/70">{membership.company_name}</span>
-                  <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold capitalize ${roleStyles[membership.role]}`}>
+                <div
+                  key={`${membership.company_id}-${index}`}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] px-2 py-1.5"
+                >
+                  <span className="truncate text-[10px] font-medium text-secondary/70">
+                    {membership.company_name}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold capitalize ${roleStyles[membership.role]}`}
+                  >
                     {membership.role}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-secondary/40">No companies assigned</p>
+            <p className="text-[10px] text-secondary/40">
+              No companies assigned
+            </p>
           )}
         </div>
 
         <div className="mt-3 border-t border-secondary/[0.08] pt-2.5">
-          <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${user.is_active ? "text-secondary" : "text-secondary/45"}`}>
-            {user.is_active ? <CheckCircle className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+          <span
+            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${user.is_active ? "text-secondary" : "text-secondary/45"}`}
+          >
+            {user.is_active ? (
+              <CheckCircle className="h-3.5 w-3.5" />
+            ) : (
+              <Minus className="h-3.5 w-3.5" />
+            )}
             {user.is_active ? "Active" : "Inactive"}
           </span>
         </div>
@@ -622,8 +744,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onReset }) => (
     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
       <Users className="h-5 w-5" />
     </div>
-    <h3 className="mt-3 text-sm font-semibold text-secondary">No users found</h3>
-    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-secondary/50">Try a different search or role filter.</p>
+    <h3 className="mt-3 text-sm font-semibold text-secondary">
+      No users found
+    </h3>
+    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-secondary/50">
+      Try a different search or role filter.
+    </p>
     <button
       type="button"
       onClick={onReset}
@@ -650,7 +776,10 @@ const LoadingSkeleton: React.FC = () => (
 
     <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="rounded-xl border border-secondary/10 bg-white p-3.5">
+        <div
+          key={index}
+          className="rounded-xl border border-secondary/10 bg-white p-3.5"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-2">
               <SkeletonBar className="h-2.5 w-20" />
@@ -672,17 +801,24 @@ const LoadingSkeleton: React.FC = () => (
 
     <div className="hidden overflow-hidden rounded-xl border border-secondary/10 bg-white lg:block">
       <div className="grid grid-cols-[220px_210px_150px_120px_280px_105px_80px] gap-0 border-b border-secondary/10 bg-secondary/[0.03] px-4 py-3">
-        {Array.from({ length: 7 }).map((_, index) => <SkeletonBar key={index} className="h-2.5 w-16" />)}
+        {Array.from({ length: 7 }).map((_, index) => (
+          <SkeletonBar key={index} className="h-2.5 w-16" />
+        ))}
       </div>
       <div className="divide-y divide-secondary/[0.08]">
         {Array.from({ length: 6 }).map((_, row) => (
           <div key={row} className="flex items-center gap-4 px-4 py-3">
             <SkeletonBar className="h-9 w-9 shrink-0 rounded-full" />
-            <div className="w-40 space-y-1.5"><SkeletonBar className="h-3 w-28" /><SkeletonBar className="h-2.5 w-20" /></div>
+            <div className="w-40 space-y-1.5">
+              <SkeletonBar className="h-3 w-28" />
+              <SkeletonBar className="h-2.5 w-20" />
+            </div>
             <SkeletonBar className="h-3 w-44" />
             <SkeletonBar className="h-3 w-28" />
             <SkeletonBar className="h-3 w-24" />
-            <div className="min-w-0 flex-1"><SkeletonBar className="h-8 w-full max-w-[240px]" /></div>
+            <div className="min-w-0 flex-1">
+              <SkeletonBar className="h-8 w-full max-w-[240px]" />
+            </div>
             <SkeletonBar className="h-6 w-16 rounded-full" />
             <SkeletonBar className="ml-auto h-8 w-8 rounded-lg" />
           </div>
@@ -692,13 +828,22 @@ const LoadingSkeleton: React.FC = () => (
 
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:hidden">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="rounded-xl border border-secondary/10 bg-white p-3">
+        <div
+          key={index}
+          className="rounded-xl border border-secondary/10 bg-white p-3"
+        >
           <div className="flex items-center gap-2.5">
             <SkeletonBar className="h-9 w-9 shrink-0 rounded-full" />
-            <div className="flex-1 space-y-1.5"><SkeletonBar className="h-3 w-28" /><SkeletonBar className="h-2.5 w-40 max-w-full" /></div>
+            <div className="flex-1 space-y-1.5">
+              <SkeletonBar className="h-3 w-28" />
+              <SkeletonBar className="h-2.5 w-40 max-w-full" />
+            </div>
             <SkeletonBar className="h-8 w-8 rounded-lg" />
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2"><SkeletonBar className="h-11" /><SkeletonBar className="h-11" /></div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <SkeletonBar className="h-11" />
+            <SkeletonBar className="h-11" />
+          </div>
           <SkeletonBar className="mt-3 h-16 w-full" />
         </div>
       ))}
@@ -793,7 +938,9 @@ const SuperAdminUsers: React.FC = () => {
         (user) =>
           user.username.toLowerCase().includes(term) ||
           user.email.toLowerCase().includes(term) ||
-          `${user.first_name || ""} ${user.last_name || ""}`.toLowerCase().includes(term) ||
+          `${user.first_name || ""} ${user.last_name || ""}`
+            .toLowerCase()
+            .includes(term) ||
           (user.phone_number && user.phone_number.includes(term)) ||
           user.memberships.some((m) =>
             m.company_name.toLowerCase().includes(term),
@@ -999,7 +1146,9 @@ const SuperAdminUsers: React.FC = () => {
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
           <Users className="h-5 w-5" />
         </div>
-        <p className="mt-3 text-sm font-semibold text-secondary">Could not load users</p>
+        <p className="mt-3 text-sm font-semibold text-secondary">
+          Could not load users
+        </p>
         <p className="mt-1 max-w-sm text-xs text-secondary/50">{error}</p>
         <button
           type="button"
@@ -1020,8 +1169,12 @@ const SuperAdminUsers: React.FC = () => {
             <div className="flex items-center gap-2">
               <div className="h-7 w-1 rounded-full bg-secondary" />
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-secondary sm:text-xl">User Management</h1>
-                <p className="mt-0.5 text-xs text-secondary/50">Manage users, roles, and company access.</p>
+                <h1 className="text-lg font-bold tracking-tight text-secondary sm:text-xl">
+                  User Management
+                </h1>
+                <p className="mt-0.5 text-xs text-secondary/50">
+                  Manage users, roles, and company access.
+                </p>
               </div>
             </div>
           </div>
@@ -1042,11 +1195,31 @@ const SuperAdminUsers: React.FC = () => {
         </header>
 
         <section className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
-          <StatCard title="Admins" value={stats.totalAdmins} icon={<Shield className="h-4 w-4" />} />
-          <StatCard title="Staff" value={stats.totalStaff} icon={<UserCheck className="h-4 w-4" />} />
-          <StatCard title="Viewers" value={stats.totalViewers} icon={<UserMinus className="h-4 w-4" />} />
-          <StatCard title="Delivery" value={stats.totalDelivery} icon={<Package className="h-4 w-4" />} />
-          <StatCard title="No company" value={stats.noCompany} icon={<Briefcase className="h-4 w-4" />} />
+          <StatCard
+            title="Admins"
+            value={stats.totalAdmins}
+            icon={<Shield className="h-4 w-4" />}
+          />
+          <StatCard
+            title="Staff"
+            value={stats.totalStaff}
+            icon={<UserCheck className="h-4 w-4" />}
+          />
+          <StatCard
+            title="Viewers"
+            value={stats.totalViewers}
+            icon={<UserMinus className="h-4 w-4" />}
+          />
+          <StatCard
+            title="Delivery"
+            value={stats.totalDelivery}
+            icon={<Package className="h-4 w-4" />}
+          />
+          <StatCard
+            title="No company"
+            value={stats.noCompany}
+            icon={<Briefcase className="h-4 w-4" />}
+          />
         </section>
 
         <UserFilters

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Package, Building2, Settings, X, Navigation, Package2 } from "lucide-react";
+import {
+  Package,
+  Building2,
+  Settings,
+  X,
+  Navigation,
+  Package2,
+} from "lucide-react";
 import { Pagination } from "../../ui/Pagination";
 
 import {
@@ -275,7 +282,7 @@ export default function CompanyOrders() {
   const fetchOrders = useCallback(
     async (
       page: number,
-      options?: { silent?: boolean }
+      options?: { silent?: boolean },
     ): Promise<VendorOrder[]> => {
       const token = localStorage.getItem("access");
       if (!token) {
@@ -384,7 +391,7 @@ export default function CompanyOrders() {
       shouldFetchAll,
       effectiveSlug,
       showToast,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -468,7 +475,9 @@ export default function CompanyOrders() {
     const freshOrders = await fetchOrders(currentPage, { silent: true });
 
     if (selectedOrder) {
-      const updated = freshOrders.find((order) => order.id === selectedOrder.id);
+      const updated = freshOrders.find(
+        (order) => order.id === selectedOrder.id,
+      );
       if (updated) {
         setSelectedOrder(updated);
       }
@@ -481,7 +490,7 @@ export default function CompanyOrders() {
 
       <PageHeader
         title="All Orders"
-          icon={Package2}
+        icon={Package2}
         description={
           isAdminLike
             ? "View and manage orders across all companies."
@@ -509,7 +518,7 @@ export default function CompanyOrders() {
         className="mb-4 sm:mb-6"
       />
 
-      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
+      <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
         <div className="w-full lg:hidden">
           <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
             <div className="min-w-0 flex-1">

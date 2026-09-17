@@ -40,7 +40,9 @@ export default function DisputesManagement() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Active modal
-  const [selectedDispute, setSelectedDispute] = useState<OrderDispute | null>(null);
+  const [selectedDispute, setSelectedDispute] = useState<OrderDispute | null>(
+    null,
+  );
   const [adminNotes, setAdminNotes] = useState("");
   const [customRefundAmount, setCustomRefundAmount] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -55,11 +57,14 @@ export default function DisputesManagement() {
       const items: OrderDispute[] = Array.isArray(rawData)
         ? rawData
         : Array.isArray(rawData?.results)
-        ? rawData.results
-        : [];
+          ? rawData.results
+          : [];
       setDisputes(items);
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Failed to load disputes");
+      showToast(
+        "error",
+        err?.response?.data?.detail || "Failed to load disputes",
+      );
       setDisputes([]);
     } finally {
       setLoading(false);
@@ -80,7 +85,9 @@ export default function DisputesManagement() {
   const metrics = useMemo(() => {
     const list = Array.isArray(disputes) ? disputes : [];
     const pending = list.filter((d) => d.status === "pending_review").length;
-    const redelivery = list.filter((d) => d.status === "redelivery_in_progress").length;
+    const redelivery = list.filter(
+      (d) => d.status === "redelivery_in_progress",
+    ).length;
     const refunded = list.filter((d) => d.status === "refunded").length;
     const rejected = list.filter((d) => d.status === "rejected").length;
     const totalRefundedETB = list
@@ -95,18 +102,32 @@ export default function DisputesManagement() {
     const list = Array.isArray(disputes) ? disputes : [];
     return list.filter((d) => {
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
-      if (resolutionFilter !== "all" && d.requested_resolution !== resolutionFilter) return false;
+      if (
+        resolutionFilter !== "all" &&
+        d.requested_resolution !== resolutionFilter
+      )
+        return false;
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesOrder = String(d.master_order).includes(query);
-        const matchesCompany = (d.company_name || "").toLowerCase().includes(query);
-        const matchesCustomer = (d.customer_name || "").toLowerCase().includes(query) ||
+        const matchesCompany = (d.company_name || "")
+          .toLowerCase()
+          .includes(query);
+        const matchesCustomer =
+          (d.customer_name || "").toLowerCase().includes(query) ||
           (d.customer_email || "").toLowerCase().includes(query) ||
           (d.customer_phone || "").toLowerCase().includes(query);
-        const matchesUser = (d.raised_by_name || "").toLowerCase().includes(query) ||
+        const matchesUser =
+          (d.raised_by_name || "").toLowerCase().includes(query) ||
           (d.raised_by_email || "").toLowerCase().includes(query);
         const matchesReason = (d.reason || "").toLowerCase().includes(query);
-        return matchesOrder || matchesCompany || matchesCustomer || matchesUser || matchesReason;
+        return (
+          matchesOrder ||
+          matchesCompany ||
+          matchesCustomer ||
+          matchesUser ||
+          matchesReason
+        );
       }
       return true;
     });
@@ -115,7 +136,9 @@ export default function DisputesManagement() {
   const openReviewModal = (dispute: OrderDispute) => {
     setSelectedDispute(dispute);
     setAdminNotes(dispute.admin_notes || "");
-    setCustomRefundAmount(dispute.refund_amount || dispute.master_order_total || "");
+    setCustomRefundAmount(
+      dispute.refund_amount || dispute.master_order_total || "",
+    );
     setGatewayError(null);
   };
 
@@ -132,12 +155,18 @@ export default function DisputesManagement() {
     try {
       setActionLoading(true);
       setGatewayError(null);
-      const parsedAmount = customRefundAmount ? parseFloat(customRefundAmount) : undefined;
+      const parsedAmount = customRefundAmount
+        ? parseFloat(customRefundAmount)
+        : undefined;
       const res = await approveDisputeRefund(selectedDispute.id, {
         admin_notes: adminNotes,
-        refund_amount: parsedAmount && !isNaN(parsedAmount) ? parsedAmount : undefined,
+        refund_amount:
+          parsedAmount && !isNaN(parsedAmount) ? parsedAmount : undefined,
       });
-      showToast("success", res.data.detail || "Refund approved and executed successfully");
+      showToast(
+        "success",
+        res.data.detail || "Refund approved and executed successfully",
+      );
       closeReviewModal();
       fetchDisputes();
     } catch (err: any) {
@@ -158,12 +187,20 @@ export default function DisputesManagement() {
     if (!selectedDispute) return;
     try {
       setActionLoading(true);
-      const res = await approveDisputeRedelivery(selectedDispute.id, { admin_notes: adminNotes });
-      showToast("success", res.data.detail || "Redelivery approved. Vendor notified.");
+      const res = await approveDisputeRedelivery(selectedDispute.id, {
+        admin_notes: adminNotes,
+      });
+      showToast(
+        "success",
+        res.data.detail || "Redelivery approved. Vendor notified.",
+      );
       closeReviewModal();
       fetchDisputes();
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Failed to approve redelivery");
+      showToast(
+        "error",
+        err?.response?.data?.detail || "Failed to approve redelivery",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -173,12 +210,20 @@ export default function DisputesManagement() {
     if (!selectedDispute) return;
     try {
       setActionLoading(true);
-      const res = await convertDisputeToRefund(selectedDispute.id, { admin_notes: adminNotes });
-      showToast("success", res.data.detail || "Dispute converted to financial refund.");
+      const res = await convertDisputeToRefund(selectedDispute.id, {
+        admin_notes: adminNotes,
+      });
+      showToast(
+        "success",
+        res.data.detail || "Dispute converted to financial refund.",
+      );
       setSelectedDispute(res.data.dispute);
       fetchDisputes();
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Failed to convert to refund");
+      showToast(
+        "error",
+        err?.response?.data?.detail || "Failed to convert to refund",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -187,17 +232,28 @@ export default function DisputesManagement() {
   const handleReject = async () => {
     if (!selectedDispute) return;
     if (!adminNotes.trim()) {
-      showToast("error", "Please provide an administrative reason for rejecting the dispute.");
+      showToast(
+        "error",
+        "Please provide an administrative reason for rejecting the dispute.",
+      );
       return;
     }
     try {
       setActionLoading(true);
-      const res = await rejectDispute(selectedDispute.id, { admin_notes: adminNotes });
-      showToast("success", res.data.detail || "Dispute rejected. Vendor order restored.");
+      const res = await rejectDispute(selectedDispute.id, {
+        admin_notes: adminNotes,
+      });
+      showToast(
+        "success",
+        res.data.detail || "Dispute rejected. Vendor order restored.",
+      );
       closeReviewModal();
       fetchDisputes();
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Failed to reject dispute");
+      showToast(
+        "error",
+        err?.response?.data?.detail || "Failed to reject dispute",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -236,7 +292,9 @@ export default function DisputesManagement() {
   );
 
   const hasActiveFilters =
-    searchQuery.trim().length > 0 || statusFilter !== "all" || resolutionFilter !== "all";
+    searchQuery.trim().length > 0 ||
+    statusFilter !== "all" ||
+    resolutionFilter !== "all";
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -262,15 +320,30 @@ export default function DisputesManagement() {
     (statusFilter !== "all" ? 1 : 0) + (resolutionFilter !== "all" ? 1 : 0);
 
   const metricCards = [
-    { label: "Pending", value: metrics.pending, note: "Awaiting review", icon: Clock },
-    { label: "Redelivery", value: metrics.redelivery, note: "In progress", icon: RotateCcw },
+    {
+      label: "Pending",
+      value: metrics.pending,
+      note: "Awaiting review",
+      icon: Clock,
+    },
+    {
+      label: "Redelivery",
+      value: metrics.redelivery,
+      note: "In progress",
+      icon: RotateCcw,
+    },
     {
       label: "Refunded",
       value: metrics.refunded,
       note: `${metrics.totalRefundedETB.toLocaleString()} ETB`,
       icon: CheckCircle2,
     },
-    { label: "Rejected", value: metrics.rejected, note: "Closed disputes", icon: XCircle },
+    {
+      label: "Rejected",
+      value: metrics.rejected,
+      note: "Closed disputes",
+      icon: XCircle,
+    },
   ];
 
   return (
@@ -288,7 +361,9 @@ export default function DisputesManagement() {
             disabled={refreshing}
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         }
@@ -312,8 +387,12 @@ export default function DisputesManagement() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/55">
                     {label}
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">{value}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-secondary/55">{note}</p>
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+                    {value}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-secondary/55">
+                    {note}
+                  </p>
                 </div>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
                   <Icon className="h-4 w-4" />
@@ -325,80 +404,81 @@ export default function DisputesManagement() {
       </section>
 
       <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-        <div className="sticky -top-6 z-[100] -mt-6 bg-white pt-6"><div className="relative z-[110] border-b border-secondary/10 bg-white px-3 py-2.5 sm:px-4">
-          <div className="flex items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
-              <input
-                type="text"
-                placeholder="Search order, customer, vendor or issue"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
-              />
-              {searchQuery && (
+        <div className="sticky -top-6 z-[2] -mt-6 bg-white pt-6">
+          <div className="relative z-[110] border-b border-secondary/10 bg-white px-3 py-2.5 sm:px-4">
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
+                <input
+                  type="text"
+                  placeholder="Search order, customer, vendor or issue"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setFilterSheetOpen(true)}
+                aria-label="Filter disputes"
+                className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition md:hidden ${
+                  mobileFilterCount > 0
+                    ? "border-secondary bg-secondary text-white"
+                    : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
+                }`}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                {mobileFilterCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-secondary px-1 text-[9px] font-bold leading-none text-white shadow-sm">
+                    {mobileFilterCount}
+                  </span>
+                )}
+              </button>
+
+              <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
+                <CustomSelect
+                  value={statusFilter}
+                  onChange={(val) => setStatusFilter(val)}
+                  options={statusOptions}
+                  placeholder="All statuses"
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
+                <CustomSelect
+                  value={resolutionFilter}
+                  onChange={(val) => setResolutionFilter(val)}
+                  options={resolutionOptions}
+                  placeholder="All resolutions"
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              {hasActiveFilters && (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="Clear search"
-                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                  onClick={clearFilters}
+                  className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] md:inline-flex"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <XCircle className="h-3.5 w-3.5" />
+                  Clear
                 </button>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => setFilterSheetOpen(true)}
-              aria-label="Filter disputes"
-              className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition md:hidden ${
-                mobileFilterCount > 0
-                  ? "border-secondary bg-secondary text-white"
-                  : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
-              }`}
-            >
-              <Filter className="h-3.5 w-3.5" />
-              {mobileFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-white bg-secondary px-1 text-[9px] font-bold leading-none text-white shadow-sm">
-                  {mobileFilterCount}
-                </span>
-              )}
-            </button>
-
-            <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
-              <CustomSelect
-                value={statusFilter}
-                onChange={(val) => setStatusFilter(val)}
-                options={statusOptions}
-                placeholder="All statuses"
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <div className="relative z-50 hidden w-[170px] shrink-0 md:block">
-              <CustomSelect
-                value={resolutionFilter}
-                onChange={(val) => setResolutionFilter(val)}
-                options={resolutionOptions}
-                placeholder="All resolutions"
-                className="h-9 text-xs"
-              />
-            </div>
-
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] md:inline-flex"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                Clear
-              </button>
-            )}
           </div>
         </div>
-      </div>
 
         <BottomSheet
           open={filterSheetOpen}
@@ -516,8 +596,12 @@ export default function DisputesManagement() {
                   <tr key={index} className="animate-pulse">
                     {Array.from({ length: 9 }).map((__, cell) => (
                       <td key={cell} className="px-4 py-3">
-                        <div className={`h-3 rounded bg-secondary/[0.08] ${cell === 4 ? "w-32" : cell === 8 ? "ml-auto w-14" : "w-20"}`} />
-                        {cell < 4 && <div className="mt-1.5 h-2.5 w-14 rounded bg-secondary/[0.05]" />}
+                        <div
+                          className={`h-3 rounded bg-secondary/[0.08] ${cell === 4 ? "w-32" : cell === 8 ? "ml-auto w-14" : "w-20"}`}
+                        />
+                        {cell < 4 && (
+                          <div className="mt-1.5 h-2.5 w-14 rounded bg-secondary/[0.05]" />
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -526,31 +610,48 @@ export default function DisputesManagement() {
                 <tr>
                   <td colSpan={9} className="px-4 py-14 text-center">
                     <ShieldCheck className="mx-auto h-7 w-7 text-secondary/30" />
-                    <p className="mt-2 text-sm font-semibold text-secondary">No disputes found</p>
+                    <p className="mt-2 text-sm font-semibold text-secondary">
+                      No disputes found
+                    </p>
                     <p className="mt-0.5 text-xs text-secondary/50">
-                      {hasActiveFilters ? "Try changing your search or filters." : "New disputes will appear here."}
+                      {hasActiveFilters
+                        ? "Try changing your search or filters."
+                        : "New disputes will appear here."}
                     </p>
                   </td>
                 </tr>
               ) : (
                 filteredDisputes.map((d) => (
-                  <tr key={d.id} className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]">
+                  <tr
+                    key={d.id}
+                    className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]"
+                  >
                     <td className="px-4 py-3 align-top">
                       <p className="font-semibold text-secondary">#{d.id}</p>
-                      <p className="mt-0.5 text-[11px] text-secondary/50">Order #{d.master_order}</p>
+                      <p className="mt-0.5 text-[11px] text-secondary/50">
+                        Order #{d.master_order}
+                      </p>
                       <p className="mt-0.5 text-[10px] text-secondary/35">
                         {new Date(d.created_at).toLocaleDateString()}
                       </p>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <p className="truncate font-medium text-secondary">{d.customer_name || d.raised_by_name}</p>
-                      <p className="mt-0.5 truncate text-[11px] text-secondary/50">{d.customer_email || d.raised_by_email}</p>
+                      <p className="truncate font-medium text-secondary">
+                        {d.customer_name || d.raised_by_name}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] text-secondary/50">
+                        {d.customer_email || d.raised_by_email}
+                      </p>
                       {(d.customer_phone || d.raised_by_phone) && (
-                        <p className="mt-0.5 truncate text-[10px] text-secondary/40">{d.customer_phone || d.raised_by_phone}</p>
+                        <p className="mt-0.5 truncate text-[10px] text-secondary/40">
+                          {d.customer_phone || d.raised_by_phone}
+                        </p>
                       )}
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <p className="truncate font-medium text-secondary">{d.company_name || "Multi-Vendor"}</p>
+                      <p className="truncate font-medium text-secondary">
+                        {d.company_name || "Multi-Vendor"}
+                      </p>
                       <p className="mt-0.5 truncate text-[10px] text-secondary/45">
                         {d.initiator_role === "vendor"
                           ? "Vendor initiated"
@@ -565,9 +666,14 @@ export default function DisputesManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <p className="font-medium text-secondary">{formatReason(d.reason)}</p>
+                      <p className="font-medium text-secondary">
+                        {formatReason(d.reason)}
+                      </p>
                       {d.explanation && (
-                        <p className="mt-0.5 truncate text-[11px] text-secondary/50" title={d.explanation}>
+                        <p
+                          className="mt-0.5 truncate text-[11px] text-secondary/50"
+                          title={d.explanation}
+                        >
                           {d.explanation}
                         </p>
                       )}
@@ -579,13 +685,17 @@ export default function DisputesManagement() {
                         ) : (
                           <DollarSign className="h-3 w-3" />
                         )}
-                        {d.requested_resolution === "redelivery" ? "Redelivery" : "Refund"}
+                        {d.requested_resolution === "redelivery"
+                          ? "Redelivery"
+                          : "Refund"}
                       </span>
                     </td>
                     <td className="px-4 py-3 align-top font-semibold text-secondary">
                       {d.refund_amount || d.master_order_total} ETB
                     </td>
-                    <td className="px-4 py-3 align-top">{getStatusBadge(d.status)}</td>
+                    <td className="px-4 py-3 align-top">
+                      {getStatusBadge(d.status)}
+                    </td>
                     <td className="px-4 py-3 text-right align-top">
                       <button
                         type="button"
@@ -605,7 +715,10 @@ export default function DisputesManagement() {
 
         {!loading && filteredDisputes.length > 0 && (
           <div className="flex flex-col gap-1 border-t border-secondary/10 px-4 py-2.5 text-[11px] text-secondary/50 sm:flex-row sm:items-center sm:justify-between">
-            <span>{filteredDisputes.length} dispute{filteredDisputes.length === 1 ? "" : "s"}</span>
+            <span>
+              {filteredDisputes.length} dispute
+              {filteredDisputes.length === 1 ? "" : "s"}
+            </span>
             <span>{disputes.length} total</span>
           </div>
         )}
@@ -617,11 +730,14 @@ export default function DisputesManagement() {
             <div className="flex items-start justify-between gap-4 border-b border-secondary/10 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-secondary">Dispute #{selectedDispute.id}</h2>
+                  <h2 className="text-base font-bold text-secondary">
+                    Dispute #{selectedDispute.id}
+                  </h2>
                   {getStatusBadge(selectedDispute.status)}
                 </div>
                 <p className="mt-1 text-[11px] text-secondary/50">
-                  Order #{selectedDispute.master_order} · {new Date(selectedDispute.created_at).toLocaleString()}
+                  Order #{selectedDispute.master_order} ·{" "}
+                  {new Date(selectedDispute.created_at).toLocaleString()}
                 </p>
               </div>
               <button
@@ -639,56 +755,84 @@ export default function DisputesManagement() {
                 <div className="flex items-start gap-3 rounded-xl border border-secondary/10 bg-secondary/[0.035] px-3.5 py-3">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
                   <div>
-                    <p className="text-xs font-semibold text-secondary">Funds held in platform escrow</p>
+                    <p className="text-xs font-semibold text-secondary">
+                      Funds held in platform escrow
+                    </p>
                     <p className="mt-0.5 text-[11px] leading-4 text-secondary/55">
-                      Approved refunds return funds through {String(selectedDispute.payment_method || "the payment provider").toUpperCase()} before vendor payout.
+                      Approved refunds return funds through{" "}
+                      {String(
+                        selectedDispute.payment_method ||
+                          "the payment provider",
+                      ).toUpperCase()}{" "}
+                      before vendor payout.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="rounded-xl border border-secondary/10 bg-white p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Customer</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                      Customer
+                    </p>
                     <p className="mt-1 text-xs font-semibold text-secondary">
-                      {selectedDispute.customer_name || selectedDispute.raised_by_name}
+                      {selectedDispute.customer_name ||
+                        selectedDispute.raised_by_name}
                     </p>
                     <p className="mt-0.5 text-[11px] text-secondary/50">
-                      {selectedDispute.customer_email || selectedDispute.raised_by_email}
+                      {selectedDispute.customer_email ||
+                        selectedDispute.raised_by_email}
                     </p>
-                    {(selectedDispute.customer_phone || selectedDispute.raised_by_phone) && (
+                    {(selectedDispute.customer_phone ||
+                      selectedDispute.raised_by_phone) && (
                       <p className="mt-0.5 text-[11px] text-secondary/45">
-                        {selectedDispute.customer_phone || selectedDispute.raised_by_phone}
+                        {selectedDispute.customer_phone ||
+                          selectedDispute.raised_by_phone}
                       </p>
                     )}
                   </div>
 
                   <div className="rounded-xl border border-secondary/10 bg-white p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Vendor</p>
-                    <p className="mt-1 text-xs font-semibold text-secondary">{selectedDispute.company_name || "Multi-Vendor"}</p>
-                    <p className="mt-0.5 text-[11px] text-secondary/50">
-                      Payment: <span className="font-medium uppercase text-secondary">{selectedDispute.payment_method}</span>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                      Vendor
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-secondary">
+                      {selectedDispute.company_name || "Multi-Vendor"}
                     </p>
                     <p className="mt-0.5 text-[11px] text-secondary/50">
-                      Order total: <span className="font-semibold text-secondary">{selectedDispute.master_order_total} ETB</span>
+                      Payment:{" "}
+                      <span className="font-medium uppercase text-secondary">
+                        {selectedDispute.payment_method}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                      Order total:{" "}
+                      <span className="font-semibold text-secondary">
+                        {selectedDispute.master_order_total} ETB
+                      </span>
                     </p>
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-secondary/10 bg-secondary/[0.025] p-3.5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">Reported issue</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                      Reported issue
+                    </p>
                     <span className="rounded-md border border-secondary/10 bg-white px-2 py-1 text-[10px] font-semibold text-secondary">
                       {formatReason(selectedDispute.reason)}
                     </span>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-secondary/70">
-                    {selectedDispute.explanation || "No additional explanation provided."}
+                    {selectedDispute.explanation ||
+                      "No additional explanation provided."}
                   </p>
                   {selectedDispute.evidence_image && (
                     <div className="mt-3">
                       <button
                         type="button"
-                        onClick={() => setPreviewImage(selectedDispute.evidence_image)}
+                        onClick={() =>
+                          setPreviewImage(selectedDispute.evidence_image)
+                        }
                         className="group relative overflow-hidden rounded-lg border border-secondary/10"
                       >
                         <img
@@ -701,20 +845,26 @@ export default function DisputesManagement() {
                         </span>
                       </button>
                     </div>
-                  )} 
+                  )}
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3.5 py-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">Requested resolution</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                      Requested resolution
+                    </p>
                     <p className="mt-0.5 text-xs font-semibold text-secondary">
-                      {selectedDispute.requested_resolution === "redelivery" ? "Redelivery" : "Financial refund"}
+                      {selectedDispute.requested_resolution === "redelivery"
+                        ? "Redelivery"
+                        : "Financial refund"}
                     </p>
                   </div>
                   <div className="sm:text-right">
                     <p className="text-[10px] text-secondary/45">Amount</p>
                     <p className="text-sm font-bold text-secondary">
-                      {selectedDispute.refund_amount || selectedDispute.master_order_total} ETB
+                      {selectedDispute.refund_amount ||
+                        selectedDispute.master_order_total}{" "}
+                      ETB
                     </p>
                   </div>
                 </div>
@@ -732,7 +882,9 @@ export default function DisputesManagement() {
                       disabled={selectedDispute.status === "refunded"}
                       className="h-9 w-full rounded-lg border border-secondary/15 bg-white px-3 text-xs text-secondary outline-none focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10 disabled:bg-secondary/[0.03] disabled:opacity-60"
                     />
-                    <p className="mt-1 text-[10px] text-secondary/40">Adjust only for partial refunds.</p>
+                    <p className="mt-1 text-[10px] text-secondary/40">
+                      Adjust only for partial refunds.
+                    </p>
                   </div>
 
                   <div>
@@ -752,7 +904,10 @@ export default function DisputesManagement() {
 
                 {selectedDispute.gateway_refund_id && (
                   <div className="rounded-lg border border-secondary/10 bg-secondary/[0.025] px-3 py-2 text-[11px] text-secondary/65">
-                    Refund ID: <span className="font-mono text-secondary">{selectedDispute.gateway_refund_id}</span>
+                    Refund ID:{" "}
+                    <span className="font-mono text-secondary">
+                      {selectedDispute.gateway_refund_id}
+                    </span>
                   </div>
                 )}
 
@@ -788,56 +943,56 @@ export default function DisputesManagement() {
                 Close
               </button>
 
-              {selectedDispute.status !== "refunded" && selectedDispute.status !== "resolved" && (
-                <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-                  {selectedDispute.requested_resolution === "redelivery" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleApproveRedelivery}
-                        disabled={actionLoading}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:opacity-50"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Approve redelivery
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleConvertToRefund}
-                        disabled={actionLoading}
-                        className="h-9 rounded-lg border border-secondary/15 bg-secondary/[0.05] px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.08] disabled:opacity-50"
-                      >
-                        Convert to refund
-                      </button>
-                    </>
-                  )}
-
-                  <button
- 
-                    type="button"
-                    onClick={handleReject} 
-                    disabled={actionLoading}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/20 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05] disabled:opacity-50"
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    Reject
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleApproveRefund()}
-                    disabled={actionLoading}
-                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {actionLoading ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
+              {selectedDispute.status !== "refunded" &&
+                selectedDispute.status !== "resolved" && (
+                  <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                    {selectedDispute.requested_resolution === "redelivery" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleApproveRedelivery}
+                          disabled={actionLoading}
+                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:opacity-50"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          Approve redelivery
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleConvertToRefund}
+                          disabled={actionLoading}
+                          className="h-9 rounded-lg border border-secondary/15 bg-secondary/[0.05] px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.08] disabled:opacity-50"
+                        >
+                          Convert to refund
+                        </button>
+                      </>
                     )}
-                    Approve refund
-                  </button>
-                </div>
-              )}
+
+                    <button
+                      type="button"
+                      onClick={handleReject}
+                      disabled={actionLoading}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/20 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05] disabled:opacity-50"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      Reject
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleApproveRefund()}
+                      disabled={actionLoading}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {actionLoading ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      )}
+                      Approve refund
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
         </div>

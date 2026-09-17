@@ -161,35 +161,35 @@ const Button: React.FC<{
   className = "",
   disabled = false,
 }) => {
-    const base =
-      "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
-    const variants = {
-      primary:
-        "bg-secondary  text-white shadow-md hover:shadow-lg focus:ring-[#674FA3]",
-      secondary:
-        "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500",
-      outline:
-        "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-gray-500",
-      ghost: "text-gray-600 hover:bg-gray-100 focus:ring-gray-500",
-      danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-    };
-    const sizes = {
-      sm: "px-3 py-1.5 text-sm",
-      md: "px-4 py-2 text-sm",
-      lg: "px-5 py-2.5 text-base",
-    };
-    return (
-      <button
-        type={type}
-        onClick={onClick}
-        className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
-        disabled={disabled || isLoading}
-      >
-        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-        {children}
-      </button>
-    );
+  const base =
+    "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
+  const variants = {
+    primary:
+      "bg-secondary  text-white shadow-md hover:shadow-lg focus:ring-[#674FA3]",
+    secondary:
+      "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500",
+    outline:
+      "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-gray-500",
+    ghost: "text-gray-600 hover:bg-gray-100 focus:ring-gray-500",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
   };
+  const sizes = {
+    sm: "px-3 py-1.5 text-sm",
+    md: "px-4 py-2 text-sm",
+    lg: "px-5 py-2.5 text-base",
+  };
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+      disabled={disabled || isLoading}
+    >
+      {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {children}
+    </button>
+  );
+};
 
 const Input: React.FC<{
   label?: string;
@@ -208,22 +208,23 @@ const Input: React.FC<{
   required,
   error,
 }) => (
-    <div className="space-y-1.5">
-      {label && (
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-      )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className={`w-full px-4 py-2.5 border rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-secondary  transition-all ${error ? "border-red-300 focus:ring-red-500" : "border-gray-200"
-          }`}
-      />
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
-  );
+  <div className="space-y-1.5">
+    {label && (
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+    )}
+    <input
+      type={type}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      required={required}
+      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-secondary  transition-all ${
+        error ? "border-red-300 focus:ring-red-500" : "border-gray-200"
+      }`}
+    />
+    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+  </div>
+);
 
 const Badge: React.FC<{
   children: React.ReactNode;
@@ -280,13 +281,13 @@ const ImageUploader: React.FC<{
 }> = ({ onFileChange, previewUrl, existingImage }) => {
   const [preview, setPreview] = useState<string | null>(
     previewUrl ||
-    (existingImage
-      ? existingImage.startsWith("http") || existingImage.startsWith("blob:")
-        ? existingImage
-        : existingImage.startsWith("/")
-          ? `https://backend.elilitapp.com${existingImage}`
-          : `https://backend.elilitapp.com/media/${existingImage}`
-      : null),
+      (existingImage
+        ? existingImage.startsWith("http") || existingImage.startsWith("blob:")
+          ? existingImage
+          : existingImage.startsWith("/")
+            ? `https://backend.elilitapp.com${existingImage}`
+            : `https://backend.elilitapp.com/media/${existingImage}`
+        : null),
   );
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -303,9 +304,7 @@ const ImageUploader: React.FC<{
       } else if (existingImage.startsWith("/")) {
         setPreview(`https://backend.elilitapp.com${existingImage}`);
       } else {
-        setPreview(
-          `https://backend.elilitapp.com/media/${existingImage}`,
-        );
+        setPreview(`https://backend.elilitapp.com/media/${existingImage}`);
       }
     } else {
       setPreview(null);
@@ -349,8 +348,11 @@ const ImageUploader: React.FC<{
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
-        className={`relative w-full rounded-xl overflow-hidden transition-all duration-200 ${isDragging ? "ring-2 ring-secondary  ring-offset-2 bg-[#674FA3]/5" : ""
-          }`}
+        className={`relative w-full rounded-xl overflow-hidden transition-all duration-200 ${
+          isDragging
+            ? "ring-2 ring-secondary  ring-offset-2 bg-[#674FA3]/5"
+            : ""
+        }`}
       >
         <input
           ref={fileInputRef}
@@ -366,8 +368,11 @@ const ImageUploader: React.FC<{
         />
         {!preview ? (
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-gray-50 ${isDragging ? "border-secondary  bg-[#674FA3]/5" : "border-gray-200"
-              }`}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-gray-50 ${
+              isDragging
+                ? "border-secondary  bg-[#674FA3]/5"
+                : "border-gray-200"
+            }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="mx-auto h-10 w-10 text-gray-400" />
@@ -443,9 +448,11 @@ const AdCard: React.FC<{
         <h3 className="font-semibold text-xl text-gray-900 mb-1 truncate">
           {ad.title}
         </h3>
-        {isSuperAdmin && <h3 className="font-semibold text-sm text-gray-900 mb-1 truncate">
-          {ad?.company_name}
-        </h3>}
+        {isSuperAdmin && (
+          <h3 className="font-semibold text-sm text-gray-900 mb-1 truncate">
+            {ad?.company_name}
+          </h3>
+        )}
         {ad.target_link && (
           <a
             href={ad.target_link}
@@ -600,7 +607,7 @@ const SearchFilterBar: React.FC<{
   filterStatus: "all" | "active" | "inactive";
   onFilterChange: (status: "all" | "active" | "inactive") => void;
 }> = ({ searchQuery, onSearchChange, filterStatus, onFilterChange }) => (
-  <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+  <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
     <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
       <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
@@ -1138,8 +1145,9 @@ export default function AdManagement() {
             </label>
             <div className="space-y-2">
               <label
-                className={`flex items-center gap-2 ${!activeSub?.plan?.can_ad_home_page ? "opacity-50" : ""
-                  }`}
+                className={`flex items-center gap-2 ${
+                  !activeSub?.plan?.can_ad_home_page ? "opacity-50" : ""
+                }`}
               >
                 <input
                   type="checkbox"
@@ -1162,8 +1170,9 @@ export default function AdManagement() {
               </label>
 
               <label
-                className={`flex items-center gap-2 ${!activeSub?.plan?.can_ad_companies_list ? "opacity-50" : ""
-                  }`}
+                className={`flex items-center gap-2 ${
+                  !activeSub?.plan?.can_ad_companies_list ? "opacity-50" : ""
+                }`}
               >
                 <input
                   type="checkbox"
@@ -1188,8 +1197,9 @@ export default function AdManagement() {
               </label>
 
               <label
-                className={`flex items-center gap-2 ${!activeSub?.plan?.can_ad_company_detail ? "opacity-50" : ""
-                  }`}
+                className={`flex items-center gap-2 ${
+                  !activeSub?.plan?.can_ad_company_detail ? "opacity-50" : ""
+                }`}
               >
                 <input
                   type="checkbox"

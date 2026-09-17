@@ -65,7 +65,7 @@ export default function HeadCompanyManagement() {
       setError(null);
       const res = await getHeadCompanies();
       const data = res.data;
-      setHeadCompanies(Array.isArray(data) ? data : data.results ?? []);
+      setHeadCompanies(Array.isArray(data) ? data : (data.results ?? []));
     } catch (err: any) {
       setError(err.message || "Failed to load head companies");
     } finally {
@@ -202,7 +202,7 @@ export default function HeadCompanyManagement() {
         className="mb-4 sm:mb-6"
       />
 
-      <div className="sticky -top-6 z-[100] -mt-6 mb-3 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 mb-3 w-full bg-white pt-6">
         <div className="w-full rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
           <SearchInput
             value={inputValue}
@@ -222,26 +222,46 @@ export default function HeadCompanyManagement() {
           <table className="w-full min-w-[760px] text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-secondary/10 bg-secondary/[0.035] text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55 xs:text-xs">
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">No.</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">Logo</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">Name</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden sm:table-cell">Slug</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">Branches</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden xs:table-cell">Active</th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold text-right">Actions</th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
+                  No.
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
+                  Logo
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
+                  Name
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden sm:table-cell">
+                  Slug
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
+                  Branches
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden xs:table-cell">
+                  Active
+                </th>
+                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400">
+                  <td
+                    colSpan={7}
+                    className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400"
+                  >
                     <div className="animate-spin rounded-full h-6 w-6 sm:h-7 sm:w-7 border-b-2 border-secondary mx-auto mb-2 sm:mb-3" />
                     <span className="text-xs sm:text-sm">Loading...</span>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400 text-xs sm:text-sm">
+                  <td
+                    colSpan={7}
+                    className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400 text-xs sm:text-sm"
+                  >
                     No head companies found
                   </td>
                 </tr>
@@ -260,7 +280,10 @@ export default function HeadCompanyManagement() {
                         />
                       ) : (
                         <div className="h-8 w-8 xs:h-9 xs:w-9 rounded-full bg-gray-100 flex items-center justify-center">
-                          <ImageIcon size={14} className="xs:h-4 xs:w-4 text-gray-400" />
+                          <ImageIcon
+                            size={14}
+                            className="xs:h-4 xs:w-4 text-gray-400"
+                          />
                         </div>
                       )}
                     </td>
@@ -277,14 +300,19 @@ export default function HeadCompanyManagement() {
                     </td>
                     <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3">
                       <span className="inline-flex items-center gap-0.5 xs:gap-1 text-gray-600 text-[10px] xs:text-xs sm:text-sm">
-                        <Building2 size={12} className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-secondary" />
+                        <Building2
+                          size={12}
+                          className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-secondary"
+                        />
                         {head.branch_count ?? 0}
                       </span>
                     </td>
                     <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 hidden xs:table-cell">
                       <span
                         className={`px-1.5 xs:px-2 py-0.5 xs:py-1 text-[9px] xs:text-xs rounded-full ${
-                          head.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                          head.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                         }`}
                       >
                         {head.is_active ? "Yes" : "No"}
@@ -297,14 +325,20 @@ export default function HeadCompanyManagement() {
                           className="p-1 xs:p-1.5 rounded-lg text-gray-500 hover:bg-secondary/10 hover:text-secondary transition"
                           title="Edit"
                         >
-                          <Pencil size={14} className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                          <Pencil
+                            size={14}
+                            className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4"
+                          />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(head)}
                           className="p-1 xs:p-1.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
                           title="Delete"
                         >
-                          <Trash2 size={14} className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                          <Trash2
+                            size={14}
+                            className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4"
+                          />
                         </button>
                       </div>
                     </td>
@@ -366,9 +400,7 @@ export default function HeadCompanyManagement() {
                 label="Logo (Square)"
                 size="sm"
                 value={formData.logo}
-                onChange={(file) =>
-                  setFormData((p) => ({ ...p, logo: file }))
-                }
+                onChange={(file) => setFormData((p) => ({ ...p, logo: file }))}
                 previewUrl={formData.logoPreview}
                 required={false}
               />
