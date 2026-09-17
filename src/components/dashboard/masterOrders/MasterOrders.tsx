@@ -286,51 +286,70 @@ export default function Orders() {
         className="mb-4 sm:mb-6"
       />
 
-      {/* Search Bar with Mobile Filter Button Inside - HIDDEN ON DESKTOP, VISIBLE ON MOBILE */}
-      <div className="mb-4 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <SearchInput
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Search by order ID, customer name, phone, or address..."
-              loading={loading}
-              showMobileFilter={true}
-              onMobileFilterClick={() => setShowMobileFilterModal(true)}
-              activeFilterCount={activeFilterCount}
-            />
-          </div>
-          <div className="w-24 flex-shrink-0">
-            <CustomSelect
-              value={String(pageSize)}
-              onChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
+      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
+        <div className="w-full lg:hidden">
+          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="min-w-0 flex-1">
+              <SearchInput
+                value={searchTerm}
+                onChange={(value) => {
+                  setSearchTerm(value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search by order ID, customer name, phone, or address..."
+                loading={loading}
+                showMobileFilter={true}
+                onMobileFilterClick={() => setShowMobileFilterModal(true)}
+                activeFilterCount={activeFilterCount}
+                showClearButton={true}
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] w-[104px] shrink-0">
+              <CustomSelect
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+                options={pageSizeOptions}
+                placeholder="10 / page"
+                className="w-full text-xs"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Filters row - visible on desktop, hidden on mobile (filter button opens modal) */}
-      <div className="hidden lg:block mb-6">
-        <OrderFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          deliveryStatusFilter={deliveryStatusFilter}
-          paymentStatusFilter={paymentStatusFilter}
-          onPaymentStatusChange={(val) => { setPaymentStatusFilter(val); setCurrentPage(1); }}
-          fulfillmentTypeFilter={fulfillmentTypeFilter}
-          onFulfillmentTypeChange={(val) => { setFulfillmentTypeFilter(val); setCurrentPage(1); }}
-          pageSize={pageSize}
-          onPageSizeChange={setPageSize}
-          onClear={clearFilters}
-          showMobile={showMobileFilters}
-          onToggleMobile={() => setShowMobileFilters(false)}
-        />
+        <div className="hidden w-full lg:block">
+          <OrderFilters
+            searchTerm={searchTerm}
+            onSearchChange={(value) => {
+              setSearchTerm(value);
+              setCurrentPage(1);
+            }}
+            statusFilter={statusFilter}
+            deliveryStatusFilter={deliveryStatusFilter}
+            paymentStatusFilter={paymentStatusFilter}
+            onPaymentStatusChange={(value) => {
+              setPaymentStatusFilter(value);
+              setCurrentPage(1);
+            }}
+            fulfillmentTypeFilter={fulfillmentTypeFilter}
+            onFulfillmentTypeChange={(value) => {
+              setFulfillmentTypeFilter(value);
+              setCurrentPage(1);
+            }}
+            pageSize={pageSize}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            onClear={clearFilters}
+            showMobile={showMobileFilters}
+            onToggleMobile={() => setShowMobileFilters(false)}
+          />
+        </div>
       </div>
 
       {/* Orders Table */}

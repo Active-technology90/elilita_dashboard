@@ -3,7 +3,6 @@ import { Search, Download, RefreshCw, X, Building2, Package2 } from "lucide-reac
 import { useToast } from "../../hooks/useToast";
 import { Toast } from "../ui/Toast";
 import { Pagination } from "../ui/Pagination";
-import { TableControls } from "../ui/TableControls";
 import { getAdminPayouts, getPayouts } from "../../services/api";
 import { useAuth } from "../../context/authContext";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
@@ -276,88 +275,107 @@ export default function Payments() {
           </div>
         </div>
       )}
-            {/* Mobile Search + Filter Row - MOBILE ONLY */}
-      <div className="mb-4 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex-[2]">
-            <SearchInput
-              value={searchTerm}
-              onChange={(val) => {
-                setSearchTerm(val);
-                setCurrentPage(1);
-              }}
-              placeholder="Search by company or status..."
-              loading={loading}
-              showMobileFilter={true}
-              onMobileFilterClick={() => setShowMobileFilterModal(true)}
-              activeFilterCount={activeFilterCount}
-            />
-          </div>
-          <div className="flex-1">
-            <CustomSelect
-              value={String(pageSize)}
-              onChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
-          </div>
-        </div>
-      </div>
-
-       {/* Table Controls - DESKTOP ONLY (hidden on mobile) */}
-      <div className="hidden lg:block">
-        <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by company, or status..."
+      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
+        <div className="w-full lg:hidden">
+          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="min-w-0 flex-1">
+              <SearchInput
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                onChange={(value) => {
+                  setSearchTerm(value);
                   setCurrentPage(1);
                 }}
-                className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition"
+                placeholder="Search by company or status..."
+                loading={loading}
+                showMobileFilter={true}
+                onMobileFilterClick={() => setShowMobileFilterModal(true)}
+                activeFilterCount={activeFilterCount}
+                showClearButton={true}
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] w-[104px] shrink-0">
+              <CustomSelect
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+                options={pageSizeOptions}
+                placeholder="10 / page"
+                className="w-full text-xs"
               />
             </div>
           </div>
-          <div className="w-full sm:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-secondary/50 focus:border-secondary"
-            >
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-            </select>
-          </div>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("");
-                setCurrentPage(1);
-              }}
-              className="w-full sm:w-auto px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition flex items-center justify-center gap-1.5"
-            >
-              <X className="h-4 w-4" />
-              Clear
-            </button>
-          )}
         </div>
-        </TableControls>
+
+        <div className="hidden w-full lg:block">
+          <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="flex w-full items-center gap-3">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/40" />
+                <input
+                  type="text"
+                  placeholder="Search by company or status..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 w-full rounded-xl border border-secondary/15 bg-white pl-10 pr-4 text-sm text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+                />
+              </div>
+
+              <div className="relative z-[110] w-[180px] shrink-0">
+                <CustomSelect
+                  value={statusFilter}
+                  onChange={(value) => {
+                    setStatusFilter(value);
+                    setCurrentPage(1);
+                  }}
+                  options={[
+                    { value: "", label: "All statuses" },
+                    { value: "pending", label: "Pending" },
+                    { value: "processing", label: "Processing" },
+                    { value: "completed", label: "Completed" },
+                    { value: "failed", label: "Failed" },
+                  ]}
+                  placeholder="All statuses"
+                  className="w-full"
+                />
+              </div>
+
+              <div className="relative z-[110] w-[138px] shrink-0">
+                <CustomSelect
+                  value={String(pageSize)}
+                  onChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                  options={pageSizeOptions}
+                  placeholder="10 / page"
+                  className="w-full"
+                />
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStatusFilter("");
+                    setCurrentPage(1);
+                  }}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05] focus:outline-none focus:ring-2 focus:ring-secondary/15"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Payouts Table */}

@@ -70,9 +70,9 @@ export function VendorOrderFilters({
       {/* Mobile Toggle Button - REMOVED (now using floating button in parent) */}
 
       {/* Filters Container - Hidden on mobile, visible on desktop */}
-      <div className="hidden lg:block w-full bg-white rounded-2xl border border-gray-100 shadow-sm transition-all">
+      <div className="relative z-[110] hidden w-full overflow-visible rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)] lg:block">
         {/* Header – only title & utility buttons */}
-        <div className="flex items-center justify-between px-3 sm:px-4 border-b border-gray-100">
+        <div className="flex items-center justify-between border-b border-secondary/10 px-3 py-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-gray-700">Filters</h2>
             {hasFilters && (
@@ -97,7 +97,7 @@ export function VendorOrderFilters({
         </div>
 
         {/* Body – search + filters + page size inline */}
-        <div className="p-3 sm:p-5 space-y-3 sm:space-y-5">
+        <div className="space-y-2 p-2.5">
         {/* Search with Refresh Button */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
@@ -125,7 +125,7 @@ export function VendorOrderFilters({
         </div>
 
         {/* Filters + Page Size – all in one grid row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5 xl:gap-3">
           {/* Order Status - Desktop uses CustomSelect, Mobile uses native select */}
           <div className="hidden md:block">
             <CustomSelect
