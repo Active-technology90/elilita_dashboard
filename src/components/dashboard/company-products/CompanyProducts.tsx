@@ -347,69 +347,36 @@ export default function CompanyProducts() {
         )}
       </div>
 
-            {/* Search Bar with Page Size Selector - MOBILE ONLY (visible on mobile, hidden on desktop) */}
-<div className="mb-2 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex-[2]">
-            <SearchInput
-              value={search}
-              onChange={(val) => {
-                setSearch(val);
-                setCurrentPage(1);
-              }}
-              placeholder="Search products..."
-              loading={loading}
-            />
-          </div>
-          <div className="w-24 flex-shrink-0">
-            <CustomSelect
-              key={pageSize}
-              value={String(pageSize)}
-              onChange={(val) => {
-                console.log("🟢 CustomSelect onChange called with:", val);
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
-          </div>
-        </div>
-      </div>
+      <div className="sticky -top-6 z-[100] -mt-6 mb-2 w-full bg-white pt-6">
+        <div className="w-full px-3 sm:px-5 md:px-6">
+          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="min-w-0 flex-1">
+              <SearchInput
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search products..."
+                loading={loading}
+                debounceMs={0}
+                showClearButton={true}
+                className="w-full"
+              />
+            </div>
 
-
-      <div className="mt-1 px-3 sm:px-5 md:px-6 py-1">
-        {/* Unified container - border only on desktop, hidden on mobile */}
-        <div className="hidden lg:flex flex-row items-center justify-between gap-2 sm:gap-3 sm:border sm:border-gray-200 sm:rounded-xl bg-white p-0 sm:p-1.5">
-          {/* LEFT SIDE - Search (reduced width on mobile) */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
-            <input
-              value={search}
-              type="search"
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search..."
-              className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary bg-white transition-all duration-200 [&:focus]:ring-secondary [&:focus]:border-secondary"
-              style={{ outline: "none" }}
-            />
-          </div>
-
-          {/* RIGHT SIDE - Custom Page Size Selector (reduced size) */}
-          <div className="w-24 flex-shrink-0">
-            <CustomSelect
-              key={pageSize}
-              value={String(pageSize)}
-              onChange={(val) => {
-                console.log("🟢 Desktop CustomSelect onChange called with:", val);
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
+            <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
+              <CustomSelect
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+                options={pageSizeOptions}
+                placeholder="10 / page"
+                className="w-full text-xs"
+              />
+            </div>
           </div>
         </div>
       </div>

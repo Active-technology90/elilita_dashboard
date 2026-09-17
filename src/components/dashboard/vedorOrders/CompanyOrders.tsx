@@ -509,54 +509,67 @@ export default function CompanyOrders() {
         className="mb-4 sm:mb-6"
       />
 
-      {/* Mobile Search Bar with Filter Button */}
-      <div className="mb-4 lg:hidden">
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
-            <SearchInput
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Search by order ID, customer name, or company..."
-              loading={loading}
-              showMobileFilter={true}
-              onMobileFilterClick={() => setShowMobileFilterModal(true)}
-              activeFilterCount={activeFilterCount}
-            />
-          </div>
-          <div className="w-24 flex-shrink-0">
-            <CustomSelect
-              value={String(pageSize)}
-              onChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={pageSizeOptions}
-              placeholder="5"
-            />
+      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
+        <div className="w-full lg:hidden">
+          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="min-w-0 flex-1">
+              <SearchInput
+                value={searchTerm}
+                onChange={(value) => {
+                  setSearchTerm(value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search by order ID, customer name, or company..."
+                loading={loading}
+                showMobileFilter={true}
+                onMobileFilterClick={() => setShowMobileFilterModal(true)}
+                activeFilterCount={activeFilterCount}
+                showClearButton={true}
+                className="w-full"
+              />
+            </div>
+
+            <div className="relative z-[110] w-[104px] shrink-0">
+              <CustomSelect
+                value={String(pageSize)}
+                onChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+                options={pageSizeOptions}
+                placeholder="10 / page"
+                className="w-full text-xs"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <VendorOrderFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        orderStatusFilter={orderStatusFilter}
-        onOrderStatusChange={handleOrderStatusChange}
-        deliveryStatusFilter={deliveryStatusFilter}
-        onDeliveryStatusChange={handleDeliveryStatusChange}
-        paymentMethodFilter={paymentMethodFilter}
-        onPaymentMethodChange={handlePaymentMethodChange}
-        selectedCompanyId={selectedCompanyId}
-        onCompanyChange={handleCompanyChange}
-        companies={isAdminLike ? companies : []}
-        onClear={clearFilters}
-        hideCompanyFilter={!isAdminLike}
-        pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setCurrentPage(1);
-        }}
-      />
+        <div className="hidden w-full lg:block">
+          <VendorOrderFilters
+            searchTerm={searchTerm}
+            onSearchChange={(value) => {
+              setSearchTerm(value);
+              setCurrentPage(1);
+            }}
+            orderStatusFilter={orderStatusFilter}
+            onOrderStatusChange={handleOrderStatusChange}
+            deliveryStatusFilter={deliveryStatusFilter}
+            onDeliveryStatusChange={handleDeliveryStatusChange}
+            paymentMethodFilter={paymentMethodFilter}
+            onPaymentMethodChange={handlePaymentMethodChange}
+            selectedCompanyId={selectedCompanyId}
+            onCompanyChange={handleCompanyChange}
+            companies={isAdminLike ? companies : []}
+            onClear={clearFilters}
+            hideCompanyFilter={!isAdminLike}
+            pageSize={pageSize}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+      </div>
 
       {error ? (
         <ErrorState error={error} onRetry={() => fetchOrders(currentPage)} />

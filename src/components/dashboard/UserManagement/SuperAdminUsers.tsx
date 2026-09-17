@@ -160,57 +160,59 @@ const UserFilters: React.FC<FiltersProps> = ({
 
   return (
     <>
-      <div className="relative z-30 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
-            <input
-              type="text"
-              placeholder="Search users, email, phone or company"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+        <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
+              <input
+                type="text"
+                placeholder="Search users, email, phone or company"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
 
-          <div className="relative z-50 hidden w-[180px] shrink-0 md:block">
-            <CustomSelect
-              value={roleFilter}
-              onChange={setRoleFilter}
-              options={roleOptions}
-              placeholder="All roles"
-              className="h-9 text-xs"
-            />
-          </div>
+            <div className="relative z-[110] hidden w-[180px] shrink-0 md:block">
+              <CustomSelect
+                value={roleFilter}
+                onChange={setRoleFilter}
+                options={roleOptions}
+                placeholder="All roles"
+                className="h-9 text-xs"
+              />
+            </div>
 
-          <div className="relative z-50 w-[106px] shrink-0 sm:w-[120px]">
-            <CustomSelect
-              value={pageSize.toString()}
-              onChange={(val) => setPageSize(parseInt(val, 10))}
-              options={pageSizeOptions}
-              placeholder="10 rows"
-              className="h-9 text-xs"
-            />
-          </div>
+            <div className="relative z-[110] w-[106px] shrink-0 sm:w-[120px]">
+              <CustomSelect
+                value={pageSize.toString()}
+                onChange={(val) => setPageSize(parseInt(val, 10))}
+                options={pageSizeOptions}
+                placeholder="10 rows"
+                className="h-9 text-xs"
+              />
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            aria-label="Filter users"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-white text-secondary transition hover:bg-secondary/[0.05] md:hidden"
-          >
-            <Filter className="h-3.5 w-3.5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              aria-label="Filter users"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-white text-secondary transition hover:bg-secondary/[0.05] md:hidden"
+            >
+              <Filter className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

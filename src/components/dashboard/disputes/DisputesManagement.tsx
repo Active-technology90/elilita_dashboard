@@ -325,7 +325,7 @@ export default function DisputesManagement() {
       </section>
 
       <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-        <div className="relative z-40 border-b border-secondary/10 px-3 py-2.5 sm:px-4">
+        <div className="sticky -top-6 z-[100] -mt-6 bg-white pt-6"><div className="relative z-[110] border-b border-secondary/10 bg-white px-3 py-2.5 sm:px-4">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
@@ -398,6 +398,7 @@ export default function DisputesManagement() {
             )}
           </div>
         </div>
+      </div>
 
         <BottomSheet
           open={filterSheetOpen}

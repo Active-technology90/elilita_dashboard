@@ -38,33 +38,9 @@ const SkeletonSubscriptionRow = () => (
   </tr>
 );
 
-// ========== PLAN COLOR MAPPING ==========
-const getPlanColor = (planName: string): string => {
-  const name = planName?.toLowerCase() || "";
-
-  // Basic plans
-  if (name.includes("basic") || name.includes("free")) {
-    return "bg-gray-100 text-gray-700 border-gray-200";
-  }
-  // Starter plans
-  if (name.includes("starter") || name.includes("beginner")) {
-    return "bg-blue-100 text-blue-700 border-blue-200";
-  }
-  // Professional plans
-  if (name.includes("professional") || name.includes("pro")) {
-    return "bg-purple-100 text-purple-700 border-purple-200";
-  }
-  // Premium plans
-  if (name.includes("premium") || name.includes("advanced")) {
-    return "bg-amber-100 text-amber-700 border-amber-200";
-  }
-  // Enterprise plans
-  if (name.includes("enterprise") || name.includes("corporate")) {
-    return "bg-rose-100 text-rose-700 border-rose-200";
-  }
-  // Default fallback
-  return "bg-indigo-100 text-indigo-700 border-indigo-200";
-};
+// ========== PLAN THEME ==========
+const getPlanColor = (_planName: string): string =>
+  "bg-secondary/[0.06] text-secondary border-secondary/15";
 
 type DocumentTier = "free" | "basic" | "advanced" | "premium";
 
@@ -554,56 +530,56 @@ export default function SuperadminSubscriptions() {
       )}
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">Active plans</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">{isLoading ? "—" : activePlans}</p>
+        <div className="rounded-xl border border-secondary/10 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <p className="text-xs font-medium text-secondary/50">Active plans</p>
+          <p className="mt-1 text-2xl font-bold text-secondary">{isLoading ? "—" : activePlans}</p>
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">Active subscriptions</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">
+        <div className="rounded-xl border border-secondary/10 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <p className="text-xs font-medium text-secondary/50">Active subscriptions</p>
+          <p className="mt-1 text-2xl font-bold text-secondary">
             {isLoading ? "—" : activeSubscriptions}
           </p>
         </div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-gray-500">V1.0 aligned</p>
-          <p className="mt-1 text-2xl font-bold text-gray-950">
+        <div className="rounded-xl border border-secondary/10 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <p className="text-xs font-medium text-secondary/50">V1.0 aligned</p>
+          <p className="mt-1 text-2xl font-bold text-secondary">
             {isLoading ? "—" : `${documentMatchCount}/4`}
           </p>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+      <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="flex items-center justify-between border-b border-secondary/10 bg-secondary/[0.025] px-4 py-3 sm:px-5">
           <div>
-            <h2 className="text-sm font-bold text-gray-950">Plan standards</h2>
-            <p className="mt-0.5 text-xs text-gray-500">Vendor Subscription Plan V1.0</p>
+            <h2 className="text-sm font-bold text-secondary">Plan standards</h2>
+            <p className="mt-0.5 text-xs text-secondary/50">Vendor Subscription Plan V1.0</p>
           </div>
-          <span className="rounded-full bg-secondary/[0.07] px-2.5 py-1 text-xs font-semibold text-secondary">
+          <span className="rounded-lg border border-secondary/10 bg-white px-2.5 py-1 text-xs font-semibold text-secondary">
             {documentMatchCount}/4 aligned
           </span>
         </div>
 
-        <div className="grid gap-px bg-gray-100 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-px bg-secondary/10 sm:grid-cols-2 xl:grid-cols-4">
           {documentAlignment.map((item) => (
-            <article key={item.tier} className="bg-white p-4">
+            <article key={item.tier} className="bg-white p-4 transition hover:bg-secondary/[0.018]">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-sm font-bold text-gray-950">{item.name}</h3>
+                    <h3 className="text-sm font-bold text-secondary">{item.name}</h3>
                     <span className="text-xs font-semibold text-gray-500">
                       {item.monthlyPrice === 0 ? "Free" : `ETB ${formatEtb(item.monthlyPrice)}/mo`}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs text-gray-500">{item.positioning}</p>
+                  <p className="mt-0.5 text-xs text-secondary/50">{item.positioning}</p>
                 </div>
 
                 <span
-                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
+                  className={`shrink-0 rounded-lg border px-2 py-1 text-[10px] font-bold ${
                     item.status === "match"
-                      ? "bg-emerald-50 text-emerald-700"
+                      ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
                       : item.status === "missing"
-                        ? "bg-gray-100 text-gray-500"
-                        : "bg-amber-50 text-amber-700"
+                        ? "border-secondary/10 bg-white text-secondary/45"
+                        : "border-secondary/15 bg-secondary/[0.035] text-secondary/70"
                   }`}
                 >
                   {item.status === "match" ? "Aligned" : item.status === "missing" ? "Missing" : "Review"}
@@ -612,25 +588,25 @@ export default function SuperadminSubscriptions() {
 
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
                 <div>
-                  <dt className="text-gray-400">Products</dt>
-                  <dd className="mt-0.5 font-semibold text-gray-700">{item.productListing}</dd>
+                  <dt className="text-secondary/40">Products</dt>
+                  <dd className="mt-0.5 font-semibold text-secondary/75">{item.productListing}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-400">Staff</dt>
-                  <dd className="mt-0.5 font-semibold text-gray-700">{item.staff}</dd>
+                  <dt className="text-secondary/40">Staff</dt>
+                  <dd className="mt-0.5 font-semibold text-secondary/75">{item.staff}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-400">Featured</dt>
-                  <dd className="mt-0.5 font-semibold text-gray-700">{item.featuredProducts}</dd>
+                  <dt className="text-secondary/40">Featured</dt>
+                  <dd className="mt-0.5 font-semibold text-secondary/75">{item.featuredProducts}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-400">Ads</dt>
-                  <dd className="mt-0.5 font-semibold text-gray-700">{item.advertising}</dd>
+                  <dt className="text-secondary/40">Ads</dt>
+                  <dd className="mt-0.5 font-semibold text-secondary/75">{item.advertising}</dd>
                 </div>
               </dl>
 
               {item.status === "review" && item.issues.length > 0 && (
-                <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-2.5 py-2 text-[11px] leading-4 text-amber-700">
+                <div className="mt-3 rounded-lg border border-secondary/10 bg-secondary/[0.035] px-2.5 py-2 text-[11px] leading-4 text-secondary/65">
                   {item.issues.join(" · ")}
                 </div>
               )}
@@ -639,19 +615,19 @@ export default function SuperadminSubscriptions() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+      <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="flex items-center justify-between border-b border-secondary/10 bg-secondary/[0.025] px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-secondary" />
-            <h2 className="text-sm font-bold text-gray-950">Plans</h2>
+            <h2 className="text-sm font-bold text-secondary">Plans</h2>
           </div>
-          <span className="text-xs font-medium text-gray-400">{plans.length} total</span>
+          <span className="text-xs font-medium text-secondary/45">{plans.length} total</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left">
-            <thead className="bg-gray-50/80">
-              <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
+              <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
                 <th className="px-5 py-3">Plan</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Products</th>
@@ -662,7 +638,7 @@ export default function SuperadminSubscriptions() {
                 <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-secondary/[0.08]">
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => <SkeletonRow key={index} />)
               ) : plans.length === 0 ? (
@@ -681,11 +657,11 @@ export default function SuperadminSubscriptions() {
                   const subscribers = companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length;
 
                   return (
-                    <tr key={plan.id} className="text-sm text-gray-700 transition hover:bg-gray-50/60">
+                    <tr key={plan.id} className="text-sm text-secondary/70 transition hover:bg-secondary/[0.025]">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <span className={`h-2.5 w-2.5 rounded-full ${getPlanColor(plan.name).split(" ")[0]}`} />
-                          <span className="font-semibold text-gray-950">{plan.name}</span>
+                          <span className="h-2.5 w-2.5 rounded-full bg-secondary/35" />
+                          <span className="font-semibold text-secondary">{plan.name}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3.5 font-medium">
@@ -701,10 +677,10 @@ export default function SuperadminSubscriptions() {
                       <td className="px-4 py-3.5">{subscribers}</td>
                       <td className="px-4 py-3.5">
                         <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                          className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
                             plan.is_active
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-gray-100 text-gray-500"
+                              ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
+                              : "border-secondary/10 bg-white text-secondary/45"
                           }`}
                         >
                           {plan.is_active ? "Active" : "Inactive"}
@@ -715,7 +691,7 @@ export default function SuperadminSubscriptions() {
                           type="button"
                           onClick={() => handleEditClick(plan)}
                           aria-label={`Edit ${plan.name}`}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-secondary/10 hover:text-secondary"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
@@ -729,16 +705,16 @@ export default function SuperadminSubscriptions() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+      <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="flex items-center justify-between border-b border-secondary/10 bg-secondary/[0.025] px-4 py-3 sm:px-5">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-secondary" />
-            <h2 className="text-sm font-bold text-gray-950">Company subscriptions</h2>
+            <h2 className="text-sm font-bold text-secondary">Company subscriptions</h2>
           </div>
-          <span className="text-xs font-medium text-gray-400">{companySubscriptions.length} total</span>
+          <span className="text-xs font-medium text-secondary/45">{companySubscriptions.length} total</span>
         </div>
 
-        <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
+        <div className="border-b border-secondary/10 px-4 py-3 sm:px-5">
           <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
             <div className="flex w-full flex-col gap-2.5 sm:flex-row">
               <div className="min-w-0 flex-1">
@@ -766,7 +742,7 @@ export default function SuperadminSubscriptions() {
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="h-[42px] rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+                  className="h-[42px] rounded-xl border border-secondary/15 bg-white px-3.5 text-sm font-semibold text-secondary transition hover:bg-secondary/[0.04]"
                 >
                   Clear
                 </button>
@@ -777,8 +753,8 @@ export default function SuperadminSubscriptions() {
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
-            <thead className="bg-gray-50/80">
-              <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
+              <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
                 <th className="px-5 py-3">Company</th>
                 <th className="px-4 py-3">Plan</th>
                 <th className="px-4 py-3">Started</th>
@@ -786,7 +762,7 @@ export default function SuperadminSubscriptions() {
                 <th className="px-5 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-secondary/[0.08]">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, index) => <SkeletonSubscriptionRow key={index} />)
               ) : paginatedItems.length === 0 ? (
@@ -799,25 +775,25 @@ export default function SuperadminSubscriptions() {
                 paginatedItems.map((sub) => {
                   const isSubscriptionActive = sub.is_active && !sub.is_expired;
                   return (
-                    <tr key={sub.id} className="text-sm text-gray-700 transition hover:bg-gray-50/60">
-                      <td className="px-5 py-3.5 font-semibold text-gray-950">{sub.company_name}</td>
+                    <tr key={sub.id} className="text-sm text-secondary/70 transition hover:bg-secondary/[0.025]">
+                      <td className="px-5 py-3.5 font-semibold text-secondary">{sub.company_name}</td>
                       <td className="px-4 py-3.5">
                         <span className={`rounded-lg border px-2 py-1 text-xs font-semibold ${getPlanColor(sub.plan?.name)}`}>
                           {sub.plan?.name || "Unknown"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-gray-500">
+                      <td className="px-4 py-3.5 text-secondary/50">
                         {new Date(sub.start_date).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3.5 text-gray-500">
+                      <td className="px-4 py-3.5 text-secondary/50">
                         {sub.end_date ? new Date(sub.end_date).toLocaleDateString() : "Lifetime"}
                       </td>
                       <td className="px-5 py-3.5">
                         <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                          className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
                             isSubscriptionActive
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-red-50 text-red-700"
+                              ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
+                              : "border-secondary/10 bg-white text-secondary/45"
                           }`}
                         >
                           {isSubscriptionActive ? "Active" : "Expired"}
@@ -832,7 +808,7 @@ export default function SuperadminSubscriptions() {
         </div>
 
         {!isLoading && totalPages > 1 && (
-          <div className="border-t border-gray-100 px-4 py-3 sm:px-5">
+          <div className="border-t border-secondary/10 px-4 py-3 sm:px-5">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

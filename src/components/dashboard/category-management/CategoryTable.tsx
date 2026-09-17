@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { DataTable, type Column } from "../../ui/DataTable";
 import { Pagination } from "../../ui/Pagination";
-import { TableControls } from "../../ui/TableControls";
 import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import MobileCardSkeleton from "../../ui/MobileCardSkeleton";
@@ -183,75 +182,88 @@ export default function CategoryTable({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-0">
-      {/* Mobile sticky search */}
-     {/* Mobile Sticky Table Controls */}
-<div className="sm:hidden sticky top-0 z-20 bg-white/90 backdrop-blur-lg border-b border-gray-200/80 py-3">
-  <TableControls
-    pageSize={pageSize}
-    onPageSizeChange={onPageSizeChange}
-  >
-    <div className="flex items-center gap-2 w-full">
-      
-      {/* Search */}
-      <div className="flex-1 min-w-0">
-        <SearchInput
-          value={inputValue}
-          onChange={onInputChange}
-          loading={loading}
-          placeholder="Search by name, slug, code..."
-          debounceMs={0}
-          className="w-full"
-        />
-      </div>
+    <div className="w-full space-y-4 sm:space-y-0">
+      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+        <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] sm:flex">
+          <div className="min-w-0 flex-1">
+            <SearchInput
+              value={inputValue}
+              onChange={onInputChange}
+              loading={loading}
+              placeholder="Search by name, slug, code..."
+              debounceMs={0}
+              showClearButton={false}
+            />
+          </div>
 
-      {/* Sort button */}
-      <button
-        type="button"
-        onClick={() => {
-          setTempSort(`${sortField}|${sortOrder}`);
-          setSheetOpen(true);
-        }}
-        aria-label="Open sort options"
-        className="
-          relative shrink-0
-          h-7 w-7
-          rounded-full
-          bg-secondary text-white
-          shadow-md
-          flex items-center justify-center
-          active:scale-95
-          transition-all duration-200
-        "
-      >
-        <ArrowDownUp size={16} />
-      </button>
-
-    </div>
-  </TableControls>
-</div>
-
-      {/* Desktop controls */}
-      <div className="hidden sm:block">
-        <TableControls pageSize={pageSize} onPageSizeChange={onPageSizeChange}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-            <div className="flex-1 w-full min-w-0">
-              <SearchInput
-                value={inputValue}
-                onChange={onInputChange}
-                loading={loading}
-                placeholder="Search by name, slug, code..."
-                debounceMs={0}
-              />
-            </div>
+          <div className="relative z-[110] w-[290px] shrink-0">
             <CustomSelect
               value={`${sortField}|${sortOrder}`}
               options={sortOptions}
               onChange={handleSortChange}
-              className="w-full sm:w-36"
+              placeholder="Sort"
+              className="w-full"
             />
           </div>
-        </TableControls>
+
+          <div className="relative z-[110] w-[138px] shrink-0">
+            <CustomSelect
+              value={String(pageSize)}
+              onChange={(value) => onPageSizeChange(Number(value))}
+              options={[
+                { value: "5", label: "5 / page" },
+                { value: "10", label: "10 / page" },
+                { value: "15", label: "15 / page" },
+                { value: "30", label: "30 / page" },
+                { value: "60", label: "60 / page" },
+              ]}
+              placeholder="10 / page"
+              className="w-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] sm:hidden">
+          <div className="relative min-w-0 flex-1">
+            <SearchInput
+              value={inputValue}
+              onChange={onInputChange}
+              loading={loading}
+              placeholder="Search categories..."
+              debounceMs={0}
+              showClearButton={false}
+              className="w-full"
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                setTempSort(`${sortField}|${sortOrder}`);
+                setSheetOpen(true);
+              }}
+              aria-label="Open sort options"
+              className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-secondary text-white shadow-sm transition hover:bg-secondary/90 active:scale-95"
+            >
+              <ArrowDownUp className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="relative z-[110] w-[104px] shrink-0">
+            <CustomSelect
+              value={String(pageSize)}
+              onChange={(value) => onPageSizeChange(Number(value))}
+              options={[
+                { value: "5", label: "5 / page" },
+                { value: "10", label: "10 / page" },
+                { value: "15", label: "15 / page" },
+                { value: "30", label: "30 / page" },
+                { value: "60", label: "60 / page" },
+              ]}
+              placeholder="10 / page"
+              className="w-full text-xs"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Mobile card view */}
@@ -357,7 +369,7 @@ export default function CategoryTable({
       </div>
 
       {/* Desktop table */}
-      <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+      <div className="hidden w-full sm:block">
         <MemoizedDataTable<Category>
           data={categoriesWithRowNumber}
           columns={columns}

@@ -32,7 +32,6 @@ import { DeleteUserModal } from "./DeleteUserModal";
 import { CompanySelector } from "../company-products/CompanySelector";
 import { useReadOnly } from "../AdminDashboard";
 import { CreateCompanyUserModal } from "./CreateCompanyUserModal";
-import { TableControls } from "../../ui/TableControls";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
@@ -461,98 +460,120 @@ export default function CompanyUsers() {
         </div>
       )}
 
-      {loading ? (
-        <ToolbarSkeleton />
-      ) : (
-        <div className="lg:hidden">
-          <div className="relative z-30 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-            <div className="flex items-center gap-2">
-              <div className="min-w-0 flex-1">
-                <SearchInput
-                  value={tableSearch}
-                  onChange={setTableSearch}
-                  placeholder="Search team members"
-                  loading={loading}
-                  showMobileFilter={true}
-                  onMobileFilterClick={() => setShowMobileFilterModal(true)}
-                  activeFilterCount={activeFilterCount}
-                />
-              </div>
-              <div className="relative z-50 w-[104px] shrink-0 sm:w-[118px]">
-                <CustomSelect
-                  value={String(pageSize)}
-                  onChange={(value) => setPageSize(Number(value))}
-                  options={pageSizeOptions}
-                  placeholder="10 / page"
-                  className="h-9 text-xs"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        {!loading && (
-          <div className="relative z-40 hidden border-b border-secondary/10 p-2.5 lg:block">
-            <TableControls
-              pageSize={pageSize}
-              onPageSizeChange={setPageSize}
-            >
-              <div className="flex w-full items-center gap-2">
+      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+        {loading ? (
+          <ToolbarSkeleton />
+        ) : (
+          <>
+            <div className="w-full lg:hidden">
+              <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
                 <div className="min-w-0 flex-1">
                   <SearchInput
                     value={tableSearch}
-                    onChange={setTableSearch}
+                    onChange={(value) => {
+                      setTableSearch(value);
+                      setCurrentPage(1);
+                    }}
                     placeholder="Search team members"
                     loading={loading}
+                    showMobileFilter={true}
+                    onMobileFilterClick={() => setShowMobileFilterModal(true)}
+                    activeFilterCount={activeFilterCount}
                     showClearButton={true}
+                    className="w-full"
                   />
                 </div>
 
-                <div className="relative z-50 w-[180px] shrink-0">
+                <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
                   <CustomSelect
-                    value={roleFilter}
-                    onChange={(value) =>
-                      setRoleFilter(
-                        value as
-                          | "all"
-                          | "admin"
-                          | "staff"
-                          | "viewer"
-                          | "delivery",
-                      )
-                    }
-                    options={roleOptions}
-                    placeholder="All roles"
-                    className="h-9 text-xs"
+                    value={String(pageSize)}
+                    onChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}
+                    options={pageSizeOptions}
+                    placeholder="10 / page"
+                    className="h-9 w-full text-xs"
                   />
                 </div>
-
-                {canManageUsers && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={openAddDispatcher}
-                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Add member
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateModal(true)}
-                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Create user
-                    </button>
-                  </>
-                )}
               </div>
-            </TableControls>
-          </div>
+            </div>
+
+            <div className="hidden w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] lg:flex">
+              <div className="min-w-0 flex-1">
+                <SearchInput
+                  value={tableSearch}
+                  onChange={(value) => {
+                    setTableSearch(value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search team members"
+                  loading={loading}
+                  showClearButton={true}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="relative z-[110] w-[180px] shrink-0">
+                <CustomSelect
+                  value={roleFilter}
+                  onChange={(value) => {
+                    setRoleFilter(
+                      value as
+                        | "all"
+                        | "admin"
+                        | "staff"
+                        | "viewer"
+                        | "delivery",
+                    );
+                    setCurrentPage(1);
+                  }}
+                  options={roleOptions}
+                  placeholder="All roles"
+                  className="h-9 w-full text-xs"
+                />
+              </div>
+
+              <div className="relative z-[110] w-[118px] shrink-0">
+                <CustomSelect
+                  value={String(pageSize)}
+                  onChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                  options={pageSizeOptions}
+                  placeholder="10 / page"
+                  className="h-9 w-full text-xs"
+                />
+              </div>
+
+              {canManageUsers && (
+                <>
+                  <button
+                    type="button"
+                    onClick={openAddDispatcher}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Add member
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Create user
+                  </button>
+                </>
+              )}
+            </div>
+          </>
         )}
+      </div>
+
+      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
 
         <div className="relative z-0">
           <CompanyUsersTable

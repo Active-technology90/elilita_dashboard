@@ -853,13 +853,21 @@ export default function BankManagement() {
         }
         className="mb-5 sm:mb-6"
       />
-      <div className="mb-5 sm:mb-6">
-        <SearchInput
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Search by bank name, account number, or account holder..."
-          loading={loading}
-        />
+      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6">
+        <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <SearchInput
+            value={searchTerm}
+            onChange={(value) => {
+              setSearchTerm(value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search by bank name, account number, or account holder..."
+            loading={loading}
+            debounceMs={0}
+            showClearButton={true}
+            className="w-full"
+          />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">

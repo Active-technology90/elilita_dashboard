@@ -600,36 +600,41 @@ const SearchFilterBar: React.FC<{
   filterStatus: "all" | "active" | "inactive";
   onFilterChange: (status: "all" | "active" | "inactive") => void;
 }> = ({ searchQuery, onSearchChange, filterStatus, onFilterChange }) => (
-  <div className="sticky -top-8 z-10 bg-gray-50/80 backdrop-blur-sm py-4 -mt-2 mb-4 rounded-2xl">
-    <div className="flex flex-col sm:flex-row gap-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search Ads by title..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:ring-secondary  focus:border-transparent transition-all"
-        />
-      </div>
-      <div className="flex gap-2">
-        {(["all", "active", "inactive"] as const).map((status) => (
-          <motion.button
-            key={status}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onFilterChange(status)}
-            className={`px-5 py-2 rounded-full capitalize text-sm font-medium transition-all ${filterStatus === status
-              ? "bg-secondary  text-white shadow-md"
-              : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+  <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+    <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/40" />
+          <input
+            type="text"
+            placeholder="Search Ads by title..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="h-10 w-full rounded-xl border border-secondary/15 bg-white pl-10 pr-4 text-sm text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+          />
+        </div>
+
+        <div className="flex shrink-0 gap-2">
+          {(["all", "active", "inactive"] as const).map((status) => (
+            <motion.button
+              key={status}
+              type="button"
+              whileTap={{ scale: 0.97 }}
+              onClick={() => onFilterChange(status)}
+              className={`h-10 rounded-xl border px-4 text-xs font-semibold capitalize transition ${
+                filterStatus === status
+                  ? "border-secondary bg-secondary text-white"
+                  : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
               }`}
-          >
-            {status === "all"
-              ? "All"
-              : status === "active"
-                ? "Active"
-                : "Inactive"}
-          </motion.button>
-        ))}
+            >
+              {status === "all"
+                ? "All"
+                : status === "active"
+                  ? "Active"
+                  : "Inactive"}
+            </motion.button>
+          ))}
+        </div>
       </div>
     </div>
   </div>

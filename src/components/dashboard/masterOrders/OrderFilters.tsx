@@ -58,29 +58,11 @@ export function OrderFilters({
   };
 
   return (
-    <div className="hidden lg:block w-full bg-white rounded-2xl border border-gray-100 shadow-sm transition-all overflow-visible relative z-20">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-5 py-2 sm:py-3 border-b border-gray-100">
-        <div className="flex items-center gap-2" />
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-              <button
-                onClick={onClear}
-                className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-medium
-                         border border-red-200 text-red-600 hover:bg-red-50 transition"
-              >
-                <X size={12} className="sm:w-[14px] sm:h-[14px]" />
-                <span className="hidden xs:inline">Clear</span>
-              </button>
-          )}
- 
-        </div>
-      </div>
-
+    <div className="relative z-[110] hidden w-full overflow-visible rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)] lg:block">
       {/* Body */}
-      <div className="p-3 sm:p-5 space-y-3 sm:space-y-5">
+      <div className="space-y-2 p-2.5">
         {/* Search + Refresh - HIDDEN ON MOBILE (visible only on desktop) */}
-        <div className="hidden lg:flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="hidden w-full items-center gap-3 lg:flex">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
             <input
@@ -106,7 +88,7 @@ export function OrderFilters({
         </div>
 
         {/* Filters Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative z-40">
+        <div className="relative z-[120] grid grid-cols-4 gap-3">
           {/* Order Status */}
           {/* <div className="relative">
             <select
@@ -243,6 +225,20 @@ export function OrderFilters({
               <option value={60}>60 / page</option>
             </select>
             <ChevronDown className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 pointer-events-none" />
+          </div>
+          <div className="flex min-w-0 items-center">
+            {hasFilters ? (
+              <button
+                type="button"
+                onClick={onClear}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-secondary/15 bg-white px-4 text-sm font-semibold text-secondary transition hover:bg-secondary/[0.05] focus:outline-none focus:ring-2 focus:ring-secondary/15 active:scale-[0.99]"
+              >
+                <X className="h-4 w-4" />
+                Clear filters
+              </button>
+            ) : (
+              <div className="h-10 w-full" />
+            )}
           </div>
         </div>
       </div>
