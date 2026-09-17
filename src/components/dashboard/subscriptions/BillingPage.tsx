@@ -10,13 +10,11 @@ import {
 import {
   AlertTriangle,
   ArrowDown,
-  ArrowRight,
   ArrowUp,
   BadgeCheck,
   CheckCircle2,
   Clock,
   CreditCard,
-  Crown,
   Package,
   RefreshCw,
   Shield,
@@ -608,7 +606,6 @@ export default function BillingPage() {
   );
 
   const currentPlanPrice = Number(activeSub?.plan?.price || 0);
-  const currentTier = resolvePlanTier(activeSub?.plan);
   const isFree = currentPlanPrice === 0;
   const isExpired = activeSub?.is_expired ?? false;
   const daysRemaining = activeSub?.days_remaining;
@@ -846,7 +843,6 @@ export default function BillingPage() {
               const tier = resolvePlanTier(plan);
               const isCurrent = action === "current";
               const isUpgrade = action === "upgrade";
-              const isDowngrade = action === "downgrade";
               const isAdvanced = tier === "advanced";
               const isPremium = tier === "premium";
 

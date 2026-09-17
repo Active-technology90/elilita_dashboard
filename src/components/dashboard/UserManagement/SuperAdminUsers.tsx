@@ -27,6 +27,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import {
+  deleteUser,
   getAllUsers,
   getAvailableCompanies,
   removeUserFromCompany,
@@ -376,7 +377,6 @@ interface UserTableProps {
   onManageMemberships: (user: User) => void;
   editingRoleInTable: string | null;
   setEditingRoleInTable: (value: string | null) => void;
-  setEditingCompanyInTable: (value: Membership | null) => void;
   handleRoleChangeFromTable: (
     membership: Membership,
     newRole: UserRole,
@@ -402,7 +402,6 @@ const UserTable: React.FC<UserTableProps> = ({
   users,
   editingRoleInTable,
   setEditingRoleInTable,
-  setEditingCompanyInTable,
   handleRoleChangeFromTable,
   handleRemoveMembershipFromTable,
   ...actionProps
@@ -478,7 +477,6 @@ const UserTable: React.FC<UserTableProps> = ({
                               }
                               onBlur={() => {
                                 setEditingRoleInTable(null);
-                                setEditingCompanyInTable(null);
                               }}
                               autoFocus
                               className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-secondary outline-none focus:ring-2 focus:ring-secondary/10"
@@ -492,7 +490,6 @@ const UserTable: React.FC<UserTableProps> = ({
                               type="button"
                               onClick={() => {
                                 setEditingRoleInTable(`role-${user.id}-${membership.company_id}`);
-                                setEditingCompanyInTable(membership);
                               }}
                               className={`rounded-full px-2 py-0.5 text-[9px] font-semibold capitalize transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
                             >
@@ -725,6 +722,7 @@ const SuperAdminUsers: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const [managingUser, setManagingUser] = useState<User | null>(null);
   const [isMembershipModalOpen, setIsMembershipModalOpen] = useState(false);
   const [availableCompanies, setAvailableCompanies] = useState<
@@ -734,8 +732,6 @@ const SuperAdminUsers: React.FC = () => {
   const [editingRoleInTable, setEditingRoleInTable] = useState<string | null>(
     null,
   );
-  const [editingCompanyInTable, setEditingCompanyInTable] =
-    useState<Membership | null>(null);
   // Remove membership modal states
   const [removeMembershipModalOpen, setRemoveMembershipModalOpen] =
     useState(false);
@@ -899,18 +895,21 @@ const SuperAdminUsers: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  // const handleConfirmDelete = async () => {
-  //   if (!deletingUser) return;
-  //   try {
-  //     await deleteUser(deletingUser.id);
-  //     showToast("success", "User deleted successfully");
-  //     setIsDeleteModalOpen(false);
-  //     setDeletingUser(null);
-  //     await refreshAllUsers();
-  //   } catch (err: any) {
-  //     showToast("error", err.message || "Failed to delete user");
-  //   }
-  // };
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeletingUser(true);
+    try {
+      await deleteUser(deletingUser.id);
+      showToast("success", "User deleted successfully");
+      setIsDeleteModalOpen(false);
+      setDeletingUser(null);
+      await refreshAllUsers();
+    } catch (err: any) {
+      showToast("error", err.message || "Failed to delete user");
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
 
   const handleManageMemberships = (user: User) => {
     setManagingUser(user);
@@ -927,7 +926,6 @@ const SuperAdminUsers: React.FC = () => {
       await refreshAllUsers();
       showToast("success", `Role updated to ${newRole}`);
       setEditingRoleInTable(null);
-      setEditingCompanyInTable(null);
     } catch (err: any) {
       showToast("error", err.message || "Failed to update role");
     }
@@ -1074,7 +1072,6 @@ const SuperAdminUsers: React.FC = () => {
               onManageMemberships={handleManageMemberships}
               editingRoleInTable={editingRoleInTable}
               setEditingRoleInTable={setEditingRoleInTable}
-              setEditingCompanyInTable={setEditingCompanyInTable}
               handleRoleChangeFromTable={handleRoleChangeFromTable}
               handleRemoveMembershipFromTable={handleRemoveMembershipFromTable}
             />
@@ -1111,6 +1108,20 @@ const SuperAdminUsers: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         user={editingUser}
         onSave={handleSaveEdit}
+      />
+
+      {/* Confirm Delete Modal for Delete User */}
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          if (isDeletingUser) return;
+          setIsDeleteModalOpen(false);
+          setDeletingUser(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete ${deletingUser?.first_name || deletingUser?.username}? This action cannot be undone.`}
+        loading={isDeletingUser}
       />
 
       {/* Confirm Delete Modal for Remove Membership */}

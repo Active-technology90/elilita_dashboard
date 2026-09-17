@@ -30,7 +30,6 @@ import { CompanySelect } from "./dropdowncompanyselector";
 import ChartsSection from "./ChartsSection";
 import OrdersTable from "./OrdersTable";
 import { SummaryCard } from "./SummaryCard";
-import { SkeletonCard } from "./LoadingStates";
 import {
   formatCurrency,
   getStatusColor,
@@ -1222,12 +1221,6 @@ export default function Overview({
     summaryData.products,
     summaryData.users,
   ]);
-
-  // Skeleton cards
-  const skeletonCount =
-    isSuperAdmin && !company?.slug
-      ? 4
-      : 3;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto space-y-6 px-2 sm:px-4 lg:px-6">

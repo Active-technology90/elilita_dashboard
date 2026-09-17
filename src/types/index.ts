@@ -917,6 +917,8 @@ export interface AnalyticsRevenuePoint {
   label: string;
   revenue: number;
   prevRevenue: number;
+  date?: string;
+  period?: string;
 }
 
 export interface AnalyticsCategoryTrendPoint {
