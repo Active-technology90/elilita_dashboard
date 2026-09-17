@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Download, RefreshCw, X, Building2, Package2 } from "lucide-react";
+import {
+  Search,
+  Download,
+  RefreshCw,
+  X,
+  Building2,
+  Package2,
+} from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { Toast } from "../ui/Toast";
 import { Pagination } from "../ui/Pagination";
@@ -102,8 +109,8 @@ export default function Payments() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast, showToast } = useToast();
-    const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
-    // Options for Page Size dropdown
+  const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
+  // Options for Page Size dropdown
   const pageSizeOptions: SelectOption[] = [
     { value: "5", label: "5 / page" },
     { value: "10", label: "10 / page" },
@@ -220,7 +227,7 @@ export default function Payments() {
 
       <PageHeader
         title="Payouts"
-          icon={Package2}
+        icon={Package2}
         description={
           isAllPayouts
             ? "Review payouts across all companies."
@@ -275,7 +282,7 @@ export default function Payments() {
           </div>
         </div>
       )}
-      <div className="sticky -top-6 z-[100] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
+      <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
         <div className="w-full lg:hidden">
           <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
             <div className="min-w-0 flex-1">
@@ -430,8 +437,18 @@ export default function Payments() {
               <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
                 <div className="flex items-center gap-1 sm:gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  <svg className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-secondary/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <svg
+                    className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-secondary/60"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                   <span>Payout Date</span>
                 </div>
@@ -454,17 +471,20 @@ export default function Payments() {
                 <td colSpan={9} className="text-center py-12 text-gray-500">
                   No payouts found
                 </td>
-               </tr>
+              </tr>
             ) : (
               paginatedPayouts.map((payout) => (
-                <tr key={payout.id} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={payout.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-secondary truncate max-w-[80px] sm:max-w-none">
                     #{payout.vendor_order}
                   </td>
                   {isAllPayouts && (
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
                       <div className="flex items-center gap-2">
-                      {payout.company_logo ? (
+                        {payout.company_logo ? (
                           <img
                             src={payout.company_logo}
                             alt={payout.company_name}
@@ -479,17 +499,17 @@ export default function Payments() {
                           {payout.company_name}
                         </span>
                       </div>
-                     </td>
+                    </td>
                   )}
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap">
                     {Number(payout.gross_amount).toLocaleString()}
-                    </td>
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
                     {Number(payout.platform_fee).toLocaleString()}
-                    </td>
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap">
                     {Number(payout.net_amount).toLocaleString()}
-                    </td>
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(payout.status)}`}
@@ -497,13 +517,18 @@ export default function Payments() {
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
                       {payout.status}
                     </span>
-                    </td>
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
-                    {payout?.vendor_order_details?.payment_method?.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'N/A'}
-                    </td>
+                    {payout?.vendor_order_details?.payment_method
+                      ?.split("_")
+                      .map(
+                        (word) => word.charAt(0).toUpperCase() + word.slice(1),
+                      )
+                      .join(" ") || "N/A"}
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
                     {new Date(payout.scheduled_at).toLocaleDateString()}
-                    </td>
+                  </td>
                   <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-right">
                     <button
                       type="button"
@@ -514,8 +539,8 @@ export default function Payments() {
                       <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Receipt</span>
                     </button>
-                    </td>
-                 </tr>
+                  </td>
+                </tr>
               ))
             )}
           </tbody>
@@ -560,17 +585,17 @@ export default function Payments() {
                   Status
                 </label>
                 <CustomSelect
-  value={statusFilter}
-  onChange={(val) => setStatusFilter(val)}
-  options={[
-    { value: "", label: "All statuses" },
-    { value: "pending", label: "Pending" },
-    { value: "processing", label: "Processing" },
-    { value: "completed", label: "Completed" },
-    { value: "failed", label: "Failed" },
-  ]}
-  placeholder="All statuses"
-/>
+                  value={statusFilter}
+                  onChange={(val) => setStatusFilter(val)}
+                  options={[
+                    { value: "", label: "All statuses" },
+                    { value: "pending", label: "Pending" },
+                    { value: "processing", label: "Processing" },
+                    { value: "completed", label: "Completed" },
+                    { value: "failed", label: "Failed" },
+                  ]}
+                  placeholder="All statuses"
+                />
               </div>
 
               {/* Action Buttons */}

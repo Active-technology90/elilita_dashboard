@@ -195,7 +195,9 @@ export default function CompanyUsers() {
         `${member.first_name || ""} ${member.last_name || ""}`
           .toLowerCase()
           .includes(query) ||
-        String(member.email || "").toLowerCase().includes(query);
+        String(member.email || "")
+          .toLowerCase()
+          .includes(query);
 
       const matchesRole =
         roleFilter === "all" ? true : member.role === roleFilter;
@@ -208,10 +210,7 @@ export default function CompanyUsers() {
 
   const paginatedUsers = useMemo(
     () =>
-      filteredUsers.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize,
-      ),
+      filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [filteredUsers, currentPage, pageSize],
   );
 
@@ -408,7 +407,8 @@ export default function CompanyUsers() {
         badge={
           !loading ? (
             <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary">
-              {filteredUsers.length} {filteredUsers.length === 1 ? "user" : "users"}
+              {filteredUsers.length}{" "}
+              {filteredUsers.length === 1 ? "user" : "users"}
             </span>
           ) : undefined
         }
@@ -433,7 +433,11 @@ export default function CompanyUsers() {
         <section className="hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
           <StatCard title="Total" value={users?.length || 0} icon={Users} />
           <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
-          <StatCard title="Dispatchers" value={roleCounts.staff} icon={Briefcase} />
+          <StatCard
+            title="Dispatchers"
+            value={roleCounts.staff}
+            icon={Briefcase}
+          />
           <StatCard title="Delivery" value={roleCounts.delivery} icon={Truck} />
           <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
         </section>
@@ -460,7 +464,7 @@ export default function CompanyUsers() {
         </div>
       )}
 
-      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
         {loading ? (
           <ToolbarSkeleton />
         ) : (
@@ -574,7 +578,6 @@ export default function CompanyUsers() {
       </div>
 
       <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-
         <div className="relative z-0">
           <CompanyUsersTable
             users={paginatedUsers}

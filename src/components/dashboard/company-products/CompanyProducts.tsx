@@ -56,13 +56,13 @@ export default function CompanyProducts() {
   // Role-based permissions. Inactive companies are always view-only, including for super admins.
   const isAdmin = companyRole === "admin" || isSuperAdmin;
   // const isStaff = companyRole === "staff";
-  const canEditBasic = companyIsActive && (isAdmin);
+  const canEditBasic = companyIsActive && isAdmin;
   // const canEditPricing = isAdmin;
   const canDelete = companyIsActive && isAdmin;
 
   // Products hook
   const [pageSize, setPageSize] = useState(10);
-    // Options for Page Size dropdown
+  // Options for Page Size dropdown
   const pageSizeOptions: SelectOption[] = [
     { value: "5", label: "5 / page" },
     { value: "10", label: "10 / page" },
@@ -107,7 +107,7 @@ export default function CompanyProducts() {
     message: string;
   } | null>(null);
   const [toastZIndex, setToastZIndex] = useState(50);
-    const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
+  const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
 
   useEffect(() => {
     if (!isCompanyViewOnly) return;
@@ -122,7 +122,10 @@ export default function CompanyProducts() {
   };
 
   // Increase toast z-index when modal is open
-  const showToastWithHigherZIndex = (type: "success" | "error", message: string) => {
+  const showToastWithHigherZIndex = (
+    type: "success" | "error",
+    message: string,
+  ) => {
     setToastZIndex(100); // Higher z-index for modal visibility
     setToast({ type, message });
     setTimeout(() => {
@@ -269,214 +272,220 @@ export default function CompanyProducts() {
     <>
       <Toast toast={toast} zIndex={toastZIndex} />
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6">
-      <DeleteConfirmModal
-        isOpen={!!deleteTarget}
-        title={deleteTarget?.title || ""}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
-      <ProductModal
-        isOpen={isModalOpen && canEditBasic}
-        editingProduct={editingProduct}
-        companySlug={companySlug}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSave}
-        onProductUpdated={refetch}
-        // Staff: can edit everything on create, but price/stock read‑only on edit
-        isStaff={companyRole === "staff"}
-        canEditBasic={canEditBasic}
-        canEditPricing={true} // let the isStaff logic handle edit restriction
-        onShowToast={showToastWithHigherZIndex}
-      />
+        <DeleteConfirmModal
+          isOpen={!!deleteTarget}
+          title={deleteTarget?.title || ""}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+        <ProductModal
+          isOpen={isModalOpen && canEditBasic}
+          editingProduct={editingProduct}
+          companySlug={companySlug}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSave}
+          onProductUpdated={refetch}
+          // Staff: can edit everything on create, but price/stock read‑only on edit
+          isStaff={companyRole === "staff"}
+          canEditBasic={canEditBasic}
+          canEditPricing={true} // let the isStaff logic handle edit restriction
+          onShowToast={showToastWithHigherZIndex}
+        />
 
-      <div className="px-3 sm:px-5 md:px-6">
-        <PageHeader
+        <div className="px-3 sm:px-5 md:px-6">
+          <PageHeader
             title="All Products"
-              icon={Package2}
-          eyebrow={isSuperAdmin && companyName ? companyName : undefined}
-          description={
-            isCompanyViewOnly
-              ? "Browse and search this company’s products. Editing is disabled while the company is inactive."
-              : "Manage your company’s products, pricing, stock, and availability."
-          }
-          badge={
-            <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-xs ${
-                companyIsActive
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red-200 bg-red-50 text-red-700"
-              }`}
-            >
-              {companyIsActive ? "Active" : "Inactive · View only"}
-            </span>
-          }
-          actions={
-            <>
-              {isSuperAdmin && (
-                <button
-                  type="button"
-                  onClick={clearCompany}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 sm:text-sm"
-                >
-                  <Repeat className="h-4 w-4" />
-                  <span>Switch company</span>
-                </button>
-              )}
-              {canEditBasic && (
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Product</span>
-                </button>
-              )}
-            </>
-          }
-          className="mb-3 sm:mb-4"
-        />
-
-        {isCompanyViewOnly && (
-          <div className="mb-3 mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
-            <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <p>
-              This company is inactive. You can view and search its products, but adding, editing, and deleting are disabled. Only a super admin can reactivate the company from Company Management.
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="sticky -top-6 z-[100] -mt-6 mb-2 w-full bg-white pt-6">
-        <div className="w-full px-3 sm:px-5 md:px-6">
-          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-            <div className="min-w-0 flex-1">
-              <SearchInput
-                value={search}
-                onChange={(value) => {
-                  setSearch(value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Search products..."
-                loading={loading}
-                debounceMs={0}
-                showClearButton={true}
-                className="w-full"
-              />
-            </div>
-
-            <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
-              <CustomSelect
-                value={String(pageSize)}
-                onChange={(value) => {
-                  setPageSize(Number(value));
-                  setCurrentPage(1);
-                }}
-                options={pageSizeOptions}
-                placeholder="10 / page"
-                className="w-full text-xs"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-3 sm:px-5 md:px-6 py-2">
-        <ProductTable
-          products={products}
-          totalItems={totalItems}
-          loading={loading}
-          onView={handleView}
-          onEdit={canEditBasic ? handleEdit : undefined}
-          onDelete={
-            canDelete
-              ? (id, title) => setDeleteTarget({ id, title })
-              : undefined
-          }
-        />
-        {totalPages > 1 && (
-          <div className="mt-6">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Filter Modal - Bottom Sheet */}
-      {showMobileFilterModal && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden"
-          onClick={() => setShowMobileFilterModal(false)}
-        >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          
-          {/* Bottom Sheet Content */}
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
-              <h3 className="text-lg font-extrabold text-secondary">Filters</h3>
-              <button
-                onClick={() => setShowMobileFilterModal(false)}
-                className="p-2 rounded-full hover:bg-gray-100 transition"
+            icon={Package2}
+            eyebrow={isSuperAdmin && companyName ? companyName : undefined}
+            description={
+              isCompanyViewOnly
+                ? "Browse and search this company’s products. Editing is disabled while the company is inactive."
+                : "Manage your company’s products, pricing, stock, and availability."
+            }
+            badge={
+              <span
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold sm:text-xs ${
+                  companyIsActive
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}
               >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
+                {companyIsActive ? "Active" : "Inactive · View only"}
+              </span>
+            }
+            actions={
+              <>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={clearCompany}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 sm:text-sm"
+                  >
+                    <Repeat className="h-4 w-4" />
+                    <span>Switch company</span>
+                  </button>
+                )}
+                {canEditBasic && (
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Product</span>
+                  </button>
+                )}
+              </>
+            }
+            className="mb-3 sm:mb-4"
+          />
 
-            {/* Content */}
-            <div className="p-4 space-y-4">
-              {/* Page Size */}
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1.5">
-                  Items per page
-                </label>
-                <CustomSelect
-                  key={pageSize}
-                  value={String(pageSize)}
-                  onChange={(val) => {
-                    console.log("🟢 Modal CustomSelect onChange called with:", val);
-                    setPageSize(Number(val));
+          {isCompanyViewOnly && (
+            <div className="mb-3 mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
+              <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>
+                This company is inactive. You can view and search its products,
+                but adding, editing, and deleting are disabled. Only a super
+                admin can reactivate the company from Company Management.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="sticky -top-6 z-[2] -mt-6 mb-2 w-full bg-white pt-6">
+          <div className="w-full px-3 sm:px-5 md:px-6">
+            <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+              <div className="min-w-0 flex-1">
+                <SearchInput
+                  value={search}
+                  onChange={(value) => {
+                    setSearch(value);
                     setCurrentPage(1);
                   }}
-                  options={pageSizeOptions}
-                  placeholder="5"
+                  placeholder="Search products..."
+                  loading={loading}
+                  debounceMs={0}
+                  showClearButton={true}
+                  className="w-full"
                 />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                {(search || pageSize !== 10) && (
-                  <button
-                    onClick={() => {
-                      setSearch("");
-                      setPageSize(10);
-                      setCurrentPage(1);
-                    }}
-                    className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
-                  >
-                    Clear all
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowMobileFilterModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
-                >
-                  Apply Filters
-                </button>
+              <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
+                <CustomSelect
+                  value={String(pageSize)}
+                  onChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}
+                  options={pageSizeOptions}
+                  placeholder="10 / page"
+                  className="w-full text-xs"
+                />
               </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        <div className="px-3 sm:px-5 md:px-6 py-2">
+          <ProductTable
+            products={products}
+            totalItems={totalItems}
+            loading={loading}
+            onView={handleView}
+            onEdit={canEditBasic ? handleEdit : undefined}
+            onDelete={
+              canDelete
+                ? (id, title) => setDeleteTarget({ id, title })
+                : undefined
+            }
+          />
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Filter Modal - Bottom Sheet */}
+        {showMobileFilterModal && (
+          <div
+            className="fixed inset-0 z-50 lg:hidden"
+            onClick={() => setShowMobileFilterModal(false)}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+            {/* Bottom Sheet Content */}
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
+                <h3 className="text-lg font-extrabold text-secondary">
+                  Filters
+                </h3>
+                <button
+                  onClick={() => setShowMobileFilterModal(false)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 space-y-4">
+                {/* Page Size */}
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-1.5">
+                    Items per page
+                  </label>
+                  <CustomSelect
+                    key={pageSize}
+                    value={String(pageSize)}
+                    onChange={(val) => {
+                      console.log(
+                        "🟢 Modal CustomSelect onChange called with:",
+                        val,
+                      );
+                      setPageSize(Number(val));
+                      setCurrentPage(1);
+                    }}
+                    options={pageSizeOptions}
+                    placeholder="5"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3 pt-2">
+                  {(search || pageSize !== 10) && (
+                    <button
+                      onClick={() => {
+                        setSearch("");
+                        setPageSize(10);
+                        setCurrentPage(1);
+                      }}
+                      className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowMobileFilterModal(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }

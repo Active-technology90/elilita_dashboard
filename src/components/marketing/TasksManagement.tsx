@@ -62,7 +62,8 @@ const mockTasks: Task[] = [
   {
     id: 3,
     title: "Send thank-you email to Zemen Bank",
-    description: "After the meeting, send a follow-up email with meeting notes.",
+    description:
+      "After the meeting, send a follow-up email with meeting notes.",
     status: "completed",
     priority: "low",
     due_date: "2025-01-14",
@@ -84,7 +85,10 @@ const mockTasks: Task[] = [
 ];
 
 // ─── Configs ─────────────────────────────────────────────
-const statusConfig: Record<Task["status"], { label: string; color: string; icon: React.ReactNode }> = {
+const statusConfig: Record<
+  Task["status"],
+  { label: string; color: string; icon: React.ReactNode }
+> = {
   pending: {
     label: "Pending",
     color: "border-secondary/15 bg-secondary/[0.07] text-secondary",
@@ -102,7 +106,10 @@ const statusConfig: Record<Task["status"], { label: string; color: string; icon:
   },
 };
 
-const priorityConfig: Record<Task["priority"], { label: string; color: string; icon: React.ReactNode }> = {
+const priorityConfig: Record<
+  Task["priority"],
+  { label: string; color: string; icon: React.ReactNode }
+> = {
   low: {
     label: "Low",
     color: "border-secondary/15 bg-white text-secondary/65",
@@ -130,9 +137,15 @@ const SkeletonTaskRow: React.FC = () => (
         <div className="h-3 w-48 bg-secondary/[0.09] rounded"></div>
       </div>
     </td>
-    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div></td>
-    <td className="py-3.5 px-5"><div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div></td>
-    <td className="py-3.5 px-5"><div className="h-4 w-20 bg-secondary/[0.09] rounded"></div></td>
+    <td className="py-3.5 px-5">
+      <div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div>
+    </td>
+    <td className="py-3.5 px-5">
+      <div className="h-6 w-16 bg-secondary/[0.09] rounded-full"></div>
+    </td>
+    <td className="py-3.5 px-5">
+      <div className="h-4 w-20 bg-secondary/[0.09] rounded"></div>
+    </td>
     <td className="py-3.5 px-5 text-right">
       <div className="flex items-center justify-end gap-1.5">
         <div className="h-8 w-8 rounded-full bg-secondary/[0.09]"></div>
@@ -143,7 +156,9 @@ const SkeletonTaskRow: React.FC = () => (
   </tr>
 );
 
-const SkeletonTaskTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) => (
+const SkeletonTaskTable: React.FC<{ rowCount?: number }> = ({
+  rowCount = 5,
+}) => (
   <div className="bg-white rounded-2xl border border-secondary/15/60 shadow-sm overflow-hidden animate-pulse">
     <div className="hidden w-full overflow-x-auto lg:block scrollbar-thin scrollbar-track-secondary/[0.04] scrollbar-thumb-secondary/20">
       <table className="w-full">
@@ -166,7 +181,10 @@ const SkeletonTaskTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) =>
     {/* Mobile skeleton cards */}
     <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:hidden">
       {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-white rounded-2xl border border-secondary/10 p-4 shadow-sm flex flex-col gap-3">
+        <div
+          key={i}
+          className="bg-white rounded-2xl border border-secondary/10 p-4 shadow-sm flex flex-col gap-3"
+        >
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <div className="h-4 w-24 bg-secondary/[0.09] rounded mb-1"></div>
@@ -247,7 +265,7 @@ export default function TasksManagement() {
       result = result.filter(
         (t) =>
           t.title.toLowerCase().includes(term) ||
-          t.description.toLowerCase().includes(term)
+          t.description.toLowerCase().includes(term),
       );
     }
     if (statusFilter !== "all") {
@@ -290,12 +308,18 @@ export default function TasksManagement() {
 
   const statusOptions = [
     { label: "All Statuses", value: "all" },
-    ...Object.entries(statusConfig).map(([k, v]) => ({ label: v.label, value: k })),
+    ...Object.entries(statusConfig).map(([k, v]) => ({
+      label: v.label,
+      value: k,
+    })),
   ];
 
   const priorityOptions = [
     { label: "All Priorities", value: "all" },
-    ...Object.entries(priorityConfig).map(([k, v]) => ({ label: v.label, value: k })),
+    ...Object.entries(priorityConfig).map(([k, v]) => ({
+      label: v.label,
+      value: k,
+    })),
   ];
 
   // ─── CRUD handlers ─────────────────────────────────────
@@ -317,7 +341,13 @@ export default function TasksManagement() {
     };
     setTasks([task, ...tasks]);
     setIsModalOpen(false);
-    setNewTask({ title: "", description: "", status: "pending", priority: "medium", due_date: "" });
+    setNewTask({
+      title: "",
+      description: "",
+      status: "pending",
+      priority: "medium",
+      due_date: "",
+    });
     showToast("success", "Task added successfully");
   };
 
@@ -339,7 +369,8 @@ export default function TasksManagement() {
       title: editFormData.title,
       description: editFormData.description || "",
       status: (editFormData.status as Task["status"]) || editingTask.status,
-      priority: (editFormData.priority as Task["priority"]) || editingTask.priority,
+      priority:
+        (editFormData.priority as Task["priority"]) || editingTask.priority,
       due_date: editFormData.due_date || editingTask.due_date,
       updated_at: new Date().toISOString(),
     };
@@ -359,7 +390,14 @@ export default function TasksManagement() {
 
   // ─── Export CSV ────────────────────────────────────────
   const handleExport = () => {
-    const headers = ["Title", "Description", "Status", "Priority", "Due Date", "Created"];
+    const headers = [
+      "Title",
+      "Description",
+      "Status",
+      "Priority",
+      "Due Date",
+      "Created",
+    ];
     const rows = filteredTasks.map((t) => [
       t.title,
       t.description,
@@ -417,7 +455,10 @@ export default function TasksManagement() {
           </div>
           <div className="flex items-center gap-2">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-8 w-8 bg-secondary/[0.09] rounded-full"></div>
+              <div
+                key={i}
+                className="h-8 w-8 bg-secondary/[0.09] rounded-full"
+              ></div>
             ))}
           </div>
         </div>
@@ -429,7 +470,10 @@ export default function TasksManagement() {
     return (
       <div className="rounded-xl border border-secondary/10 bg-white p-6 text-center">
         <p className="text-secondary">{error}</p>
-        <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-secondary text-white rounded-xl text-sm">
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-secondary text-white rounded-xl text-sm"
+        >
           Retry
         </button>
       </div>
@@ -468,7 +512,7 @@ export default function TasksManagement() {
         </div>
       </div>
 
-      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
         <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
           <div className="flex w-full items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -574,7 +618,9 @@ export default function TasksManagement() {
         <div className="rounded-xl border border-secondary/10 bg-white px-4 py-14 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
           <ClipboardList className="mx-auto mb-3 h-10 w-10 text-secondary/25" />
           <p className="text-sm font-semibold text-secondary">No tasks found</p>
-          <p className="mt-1 text-xs text-secondary/45">Try adjusting your search or filters.</p>
+          <p className="mt-1 text-xs text-secondary/45">
+            Try adjusting your search or filters.
+          </p>
         </div>
       ) : (
         <div className="w-full overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
@@ -582,44 +628,79 @@ export default function TasksManagement() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-secondary/10 bg-secondary/[0.035]">
-                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Task</th>
-                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Status</th>
-                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Priority</th>
-                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Due Date</th>
-                  <th className="text-right py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">Actions</th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    Task
+                  </th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    Status
+                  </th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    Priority
+                  </th>
+                  <th className="text-left py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    Due Date
+                  </th>
+                  <th className="text-right py-3.5 px-5 text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedTasks.map((task, index) => (
-                  <tr key={task.id} className={`group transition-all duration-150 ${index !== paginatedTasks.length - 1 ? "border-b border-secondary/[0.08]" : ""} hover:bg-secondary/[0.025]`}>
+                  <tr
+                    key={task.id}
+                    className={`group transition-all duration-150 ${index !== paginatedTasks.length - 1 ? "border-b border-secondary/[0.08]" : ""} hover:bg-secondary/[0.025]`}
+                  >
                     <td className="py-3.5 px-5">
                       <div>
-                        <p className="font-semibold text-secondary text-sm">{task.title}</p>
-                        <p className="text-xs text-secondary/50 truncate max-w-[300px]">{task.description}</p>
+                        <p className="font-semibold text-secondary text-sm">
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-secondary/50 truncate max-w-[300px]">
+                          {task.description}
+                        </p>
                       </div>
                     </td>
                     <td className="py-3.5 px-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[task.status].color}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[task.status].color}`}
+                      >
                         {statusConfig[task.status].icon}
                         {statusConfig[task.status].label}
                       </span>
                     </td>
                     <td className="py-3.5 px-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${priorityConfig[task.priority].color}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${priorityConfig[task.priority].color}`}
+                      >
                         {priorityConfig[task.priority].icon}
                         {priorityConfig[task.priority].label}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-sm text-secondary/65">{task.due_date}</td>
+                    <td className="py-3.5 px-5 text-sm text-secondary/65">
+                      {task.due_date}
+                    </td>
                     <td className="py-3.5 px-5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => handleView(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition" title="View">
+                        <button
+                          onClick={() => handleView(task)}
+                          className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition"
+                          title="View"
+                        >
                           <Eye className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
-                        <button onClick={() => handleEdit(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition" title="Edit">
+                        <button
+                          onClick={() => handleEdit(task)}
+                          className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition"
+                          title="Edit"
+                        >
                           <Edit className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
-                        <button onClick={() => handleDelete(task)} className="p-1.5 rounded-full hover:bg-secondary/[0.05] transition" title="Delete">
+                        <button
+                          onClick={() => handleDelete(task)}
+                          className="p-1.5 rounded-full hover:bg-secondary/[0.05] transition"
+                          title="Delete"
+                        >
                           <Trash2 className="h-4 w-4 text-secondary/35 hover:text-secondary" />
                         </button>
                       </div>
@@ -633,19 +714,30 @@ export default function TasksManagement() {
           {/* Mobile Cards */}
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:hidden">
             {paginatedTasks.map((task) => (
-              <div key={task.id} className="flex flex-col gap-3 rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-secondary/[0.015]">
+              <div
+                key={task.id}
+                className="flex flex-col gap-3 rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-secondary/[0.015]"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-secondary text-sm truncate">{task.title}</p>
-                    <p className="text-xs text-secondary/50 truncate">{task.description}</p>
+                    <p className="font-semibold text-secondary text-sm truncate">
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-secondary/50 truncate">
+                      {task.description}
+                    </p>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusConfig[task.status].color}`}>
+                  <span
+                    className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusConfig[task.status].color}`}
+                  >
                     {statusConfig[task.status].icon}
                     {statusConfig[task.status].label}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${priorityConfig[task.priority].color}`}>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${priorityConfig[task.priority].color}`}
+                  >
                     {priorityConfig[task.priority].icon}
                     {priorityConfig[task.priority].label}
                   </span>
@@ -655,9 +747,15 @@ export default function TasksManagement() {
                   </span>
                 </div>
                 <div className="flex items-center justify-end gap-1 border-t border-secondary/[0.08] pt-2">
-                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition"><Eye className="h-4 w-4 text-secondary/35" /></button>
-                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition"><Edit className="h-4 w-4 text-secondary/35" /></button>
-                  <button className="p-1 rounded-full hover:bg-secondary/[0.05] transition"><Trash2 className="h-4 w-4 text-secondary/35" /></button>
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition">
+                    <Eye className="h-4 w-4 text-secondary/35" />
+                  </button>
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.06] transition">
+                    <Edit className="h-4 w-4 text-secondary/35" />
+                  </button>
+                  <button className="p-1 rounded-full hover:bg-secondary/[0.05] transition">
+                    <Trash2 className="h-4 w-4 text-secondary/35" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -672,7 +770,10 @@ export default function TasksManagement() {
           totalPages={Math.ceil(filteredTasks.length / pageSize)}
           onPageChange={setCurrentPage}
           pageSize={pageSize}
-          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
           pageSizeOptions={[5, 10, 25, 50]}
           enableUrlSync={false}
         />
@@ -688,8 +789,13 @@ export default function TasksManagement() {
         categoryOptions={statusOptions}
         tempCategory={statusFilter}
         onTempCategoryChange={setStatusFilter}
-        categoryNameMap={Object.fromEntries(Object.entries(statusConfig).map(([k, v]) => [k, v.label]))}
-        onApply={() => { setFilterSheetOpen(false); setCurrentPage(1); }}
+        categoryNameMap={Object.fromEntries(
+          Object.entries(statusConfig).map(([k, v]) => [k, v.label]),
+        )}
+        onApply={() => {
+          setFilterSheetOpen(false);
+          setCurrentPage(1);
+        }}
         onClearAll={() => {
           setSort("due_date|asc");
           setStatusFilter("all");
@@ -703,7 +809,16 @@ export default function TasksManagement() {
       {/* ─── Add Task Modal ──────────────────────────────── */}
       <FormModal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setNewTask({ title: "", description: "", status: "pending", priority: "medium", due_date: "" }); }}
+        onClose={() => {
+          setIsModalOpen(false);
+          setNewTask({
+            title: "",
+            description: "",
+            status: "pending",
+            priority: "medium",
+            due_date: "",
+          });
+        }}
         title="Add New Task"
         onSubmit={handleAddTask}
         submitting={false}
@@ -717,27 +832,40 @@ export default function TasksManagement() {
             <input
               type="text"
               value={newTask.title || ""}
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              onChange={(e) =>
+                setNewTask({ ...newTask, title: e.target.value })
+              }
               className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               placeholder="e.g. Follow up with client"
               required
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Description</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+              Description
+            </label>
             <textarea
               value={newTask.description || ""}
-              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              onChange={(e) =>
+                setNewTask({ ...newTask, description: e.target.value })
+              }
               className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
               rows={2}
               placeholder="Describe the task..."
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Status</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+              Status
+            </label>
             <select
               value={newTask.status || "pending"}
-              onChange={(e) => setNewTask({ ...newTask, status: e.target.value as Task["status"] })}
+              onChange={(e) =>
+                setNewTask({
+                  ...newTask,
+                  status: e.target.value as Task["status"],
+                })
+              }
               className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             >
               <option value="pending">Pending</option>
@@ -746,10 +874,17 @@ export default function TasksManagement() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Priority</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+              Priority
+            </label>
             <select
               value={newTask.priority || "medium"}
-              onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Task["priority"] })}
+              onChange={(e) =>
+                setNewTask({
+                  ...newTask,
+                  priority: e.target.value as Task["priority"],
+                })
+              }
               className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             >
               <option value="low">Low</option>
@@ -758,11 +893,15 @@ export default function TasksManagement() {
             </select>
           </div>
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Due Date</label>
+            <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+              Due Date
+            </label>
             <input
               type="date"
               value={newTask.due_date || ""}
-              onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+              onChange={(e) =>
+                setNewTask({ ...newTask, due_date: e.target.value })
+              }
               className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
             />
           </div>
@@ -775,30 +914,49 @@ export default function TasksManagement() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-secondary">Task Details</h2>
-              <button onClick={() => setViewingTask(null)} className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition">
+              <button
+                onClick={() => setViewingTask(null)}
+                className="p-1.5 rounded-full hover:bg-secondary/[0.06] transition"
+              >
                 <X className="h-5 w-5 text-secondary/50" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Title</p>
-                <p className="text-lg font-semibold text-secondary">{viewingTask.title}</p>
+                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                  Title
+                </p>
+                <p className="text-lg font-semibold text-secondary">
+                  {viewingTask.title}
+                </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Description</p>
-                <p className="text-secondary/75">{viewingTask.description || "No description"}</p>
+                <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                  Description
+                </p>
+                <p className="text-secondary/75">
+                  {viewingTask.description || "No description"}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Status</p>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[viewingTask.status].color}`}>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                    Status
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${statusConfig[viewingTask.status].color}`}
+                  >
                     {statusConfig[viewingTask.status].icon}
                     {statusConfig[viewingTask.status].label}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Priority</p>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${priorityConfig[viewingTask.priority].color}`}>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                    Priority
+                  </p>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${priorityConfig[viewingTask.priority].color}`}
+                  >
                     {priorityConfig[viewingTask.priority].icon}
                     {priorityConfig[viewingTask.priority].label}
                   </span>
@@ -806,17 +964,28 @@ export default function TasksManagement() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Due Date</p>
-                  <p className="text-sm text-secondary/75">{viewingTask.due_date}</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                    Due Date
+                  </p>
+                  <p className="text-sm text-secondary/75">
+                    {viewingTask.due_date}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">Created</p>
-                  <p className="text-sm text-secondary/75">{new Date(viewingTask.created_at).toLocaleString()}</p>
+                  <p className="text-xs font-bold text-secondary/50 uppercase tracking-wider">
+                    Created
+                  </p>
+                  <p className="text-sm text-secondary/75">
+                    {new Date(viewingTask.created_at).toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
             <div className="mt-6 flex justify-end">
-              <button onClick={() => setViewingTask(null)} className="px-5 py-2 bg-secondary text-white rounded-xl text-sm font-bold hover:shadow-lg transition active:scale-95">
+              <button
+                onClick={() => setViewingTask(null)}
+                className="px-5 py-2 bg-secondary text-white rounded-xl text-sm font-bold hover:shadow-lg transition active:scale-95"
+              >
                 Close
               </button>
             </div>
@@ -828,7 +997,10 @@ export default function TasksManagement() {
       {editingTask && (
         <FormModal
           isOpen={!!editingTask}
-          onClose={() => { setEditingTask(null); setEditFormData({}); }}
+          onClose={() => {
+            setEditingTask(null);
+            setEditFormData({});
+          }}
           title="Edit Task"
           onSubmit={handleUpdateTask}
           submitting={false}
@@ -842,25 +1014,41 @@ export default function TasksManagement() {
               <input
                 type="text"
                 value={editFormData.title || ""}
-                onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, title: e.target.value })
+                }
                 className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                 required
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Description</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+                Description
+              </label>
               <textarea
                 value={editFormData.description || ""}
-                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    description: e.target.value,
+                  })
+                }
                 className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 resize-none"
                 rows={2}
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Status</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+                Status
+              </label>
               <select
                 value={editFormData.status || "pending"}
-                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as Task["status"] })}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    status: e.target.value as Task["status"],
+                  })
+                }
                 className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               >
                 <option value="pending">Pending</option>
@@ -869,10 +1057,17 @@ export default function TasksManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Priority</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+                Priority
+              </label>
               <select
                 value={editFormData.priority || "medium"}
-                onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value as Task["priority"] })}
+                onChange={(e) =>
+                  setEditFormData({
+                    ...editFormData,
+                    priority: e.target.value as Task["priority"],
+                  })
+                }
                 className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               >
                 <option value="low">Low</option>
@@ -881,11 +1076,15 @@ export default function TasksManagement() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">Due Date</label>
+              <label className="block text-xs font-bold text-secondary/50 uppercase tracking-wider mb-1.5">
+                Due Date
+              </label>
               <input
                 type="date"
                 value={editFormData.due_date || ""}
-                onChange={(e) => setEditFormData({ ...editFormData, due_date: e.target.value })}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, due_date: e.target.value })
+                }
                 className="w-full border-2 border-secondary/15 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
               />
             </div>

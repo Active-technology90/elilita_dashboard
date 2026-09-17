@@ -481,7 +481,7 @@ export default function SubCategoryManagement() {
         className="mb-4 sm:mb-6"
       />
 
-      <div className="sticky -top-6 z-[100] -mt-6 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
         <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:flex">
           <div className="min-w-0 flex-1">
             <SearchInput
