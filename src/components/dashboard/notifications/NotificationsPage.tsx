@@ -1,6 +1,6 @@
 // src/components/dashboard/notifications/NotificationsPage.tsx
 import { useMemo, useState } from "react";
-import { Bell, CheckCheck } from "lucide-react";
+import { ArrowRight, Bell, CheckCheck } from "lucide-react";
 import { useNotifications } from "../../../context/NotificationsContext";
 import { getEventMeta, formatRelativeTime } from "./meta";
 import PageHeader from "../../ui/PageHeader";
@@ -111,12 +111,19 @@ export default function NotificationsPage({
     }
   };
 
-  const handleNotificationClick = (notification: any) => {
-    // Mark as read if unread
+  const handleNotificationRead = (notification: any) => {
+    // Clicking the notification content only marks an unread item as read.
     if (!notification.is_read) {
       markRead([notification.id]);
     }
-    // Notify parent to open order details
+  };
+
+  const handleNotificationRoute = (notification: any) => {
+    // Only the arrow opens/routes to the notification details.
+    if (!notification.is_read) {
+      markRead([notification.id]);
+    }
+
     if (onNotificationClick) {
       onNotificationClick(notification);
     }
@@ -231,60 +238,94 @@ export default function NotificationsPage({
                 </span>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {group.items.map((n) => {
                   const { Icon, label, color, bg } = getEventMeta(n.event);
 
                   return (
-                    <button
+                    <div
                       key={n.id}
-                      type="button"
-                      onClick={() => handleNotificationClick(n)}
-                      aria-label={`Notification: ${n.title}`}
-                      className={`flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border transition w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 ${
+                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 ${
                         n.is_read
-                          ? "bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm cursor-pointer"
-                          : "bg-indigo-50/50 border-indigo-100 hover:border-secondary hover:shadow-sm cursor-pointer"
+                          ? "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                          : "border-secondary/15 bg-gradient-to-r from-secondary/[0.07] via-white to-white shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-secondary/25 hover:shadow-sm"
                       }`}
                     >
-                      <span
-                        className={`flex-shrink-0 h-10 w-10 sm:h-11 sm:w-11 rounded-full ${bg} flex items-center justify-center`}
-                      >
-                        <Icon
-                          className={`h-4 w-4 sm:h-5 sm:w-5 ${color}`}
+                      {!n.is_read && (
+                        <span
+                          className="absolute inset-y-0 left-0 w-1 bg-secondary"
                           aria-hidden="true"
                         />
-                      </span>
+                      )}
 
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleNotificationRead(n)}
+                        aria-label={
+                          n.is_read
+                            ? `Read notification: ${n.title}`
+                            : `Mark notification as read: ${n.title}`
+                        }
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 sm:gap-4"
+                      >
+                        <span
+                          className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl ${bg} ring-1 ring-black/[0.03] sm:h-12 sm:w-12`}
+                        >
+                          <Icon
+                            className={`h-5 w-5 ${color}`}
+                            aria-hidden="true"
+                          />
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-[0.08em] sm:text-[11px] ${color}`}
+                            >
+                              {label}
+                            </span>
+
+                            <span className="text-[10px] font-medium text-gray-400 sm:text-[11px]">
+                              · {formatRelativeTime(n.created_at)}
+                            </span>
+
+                            {!n.is_read && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-secondary">
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full bg-secondary"
+                                  aria-hidden="true"
+                                />
+                                New
+                              </span>
+                            )}
+                          </span>
+
                           <span
-                            className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wide ${color}`}
+                            className={`mt-1 block text-sm leading-5 sm:text-[15px] ${
+                              n.is_read
+                                ? "font-semibold text-gray-800"
+                                : "font-bold text-gray-950"
+                            }`}
                           >
-                            {label}
+                            {n.title}
                           </span>
-                          <span className="text-[10px] sm:text-[11px] text-gray-400">
-                            · {formatRelativeTime(n.created_at)}
-                          </span>
-                          {!n.is_read && (
-                            <>
-                              <span
-                                className="ml-auto h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-secondary flex-shrink-0"
-                                aria-hidden="true"
-                              />
-                              <span className="sr-only">Unread</span>
-                            </>
-                          )}
-                        </span>
 
-                        <span className="block text-sm sm:text-base font-bold text-gray-900 mt-0.5">
-                          {n.title}
+                          <span className="mt-1 block break-words whitespace-pre-line text-xs leading-5 text-gray-500 sm:text-sm">
+                            {n.body}
+                          </span>
                         </span>
-                        <span className="block text-xs sm:text-sm text-gray-600 mt-0.5 break-words whitespace-pre-line">
-                          {n.body}
-                        </span>
-                      </span>
-                    </button>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleNotificationRoute(n)}
+                        aria-label={`Open notification: ${n.title}`}
+                        title="Open details"
+                        className="ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition-all duration-200 hover:border-secondary hover:bg-secondary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+                      >
+                        <ArrowRight className="h-4 w-4 transition-transform duration-200 hover:translate-x-0.5" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>

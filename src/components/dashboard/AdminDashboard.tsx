@@ -473,6 +473,8 @@ export default function AdminDashboard() {
   const isMarketing = !!user?.is_marketing;
   const isSuperAdmin = !user?.memberships?.length && !isMarketing;
   const isViewer = !isSuperAdmin && !isMarketing && company?.role === "viewer";
+  const isDispatcher =
+    !isSuperAdmin && !isMarketing && company?.role === "staff";
 
   // For viewers: show everything like super admin but read‑only
   const showPlatformAdmin = isSuperAdmin || isViewer;
@@ -995,15 +997,17 @@ export default function AdminDashboard() {
                   onClick={() => navigate("headcompanies")}
                 />
               )}
-              <SidebarItem
-                icon={<Building2 className="h-5 w-5" />}
-                label={
-                  !user?.memberships?.length ? "Companies" : "Company Detail"
-                }
-                active={activeTab === "companies"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("companies")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<Building2 className="h-5 w-5" />}
+                  label={
+                    !user?.memberships?.length ? "Companies" : "Company Detail"
+                  }
+                  active={activeTab === "companies"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("companies")}
+                />
+              )}
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<Users className="h-5 w-5" />}
@@ -1023,22 +1027,26 @@ export default function AdminDashboard() {
                 />
               )}
               {/* {showPlatformAdmin && ( */}
-              <SidebarItem
-                icon={<Users className="h-5 w-5" />}
-                label="Ads Management"
-                active={activeTab === "add advertisment"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("add advertisment")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<Users className="h-5 w-5" />}
+                  label="Ads Management"
+                  active={activeTab === "add advertisment"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("add advertisment")}
+                />
+              )}
               {/* // )} */}
               {/* Bank Accounts - Below Ads Management */}
-              <SidebarItem
-                icon={<Banknote className="h-5 w-5" />}
-                label="Bank Accounts"
-                active={activeTab === "bankAccounts"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("bankAccounts")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<Banknote className="h-5 w-5" />}
+                  label="Bank Accounts"
+                  active={activeTab === "bankAccounts"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("bankAccounts")}
+                />
+              )}
 
               <div
                 className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""
@@ -1056,13 +1064,15 @@ export default function AdminDashboard() {
                 onToggleOrdersMenu={() => setOrdersMenuOpen(!ordersMenuOpen)}
               />
 
-              <SidebarItem
-                icon={<CreditCard className="h-5 w-5" />}
-                label="Payments"
-                active={activeTab === "payments"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("payments")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<CreditCard className="h-5 w-5" />}
+                  label="Payments"
+                  active={activeTab === "payments"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("payments")}
+                />
+              )}
 
               {showPlatformAdmin && (
                 <SidebarItem
@@ -1139,13 +1149,15 @@ export default function AdminDashboard() {
                 Platform
               </div>
               {/* {!hideUsersSidebar && ( */}
-              <SidebarItem
-                icon={<Users className="h-5 w-5" />}
-                label="All Users"
-                active={activeTab === "users"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("users")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<Users className="h-5 w-5" />}
+                  label="All Users"
+                  active={activeTab === "users"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("users")}
+                />
+              )}
               {/* )} */}
 
               <SidebarItem
@@ -1174,15 +1186,17 @@ export default function AdminDashboard() {
                 />
               )}
 
-              <SidebarItem
-                icon={<SettingsIcon className="h-5 w-5" />}
-                label="Settings"
-                active={activeTab === "settings"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("settings")}
-              />
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<SettingsIcon className="h-5 w-5" />}
+                  label="Settings"
+                  active={activeTab === "settings"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("settings")}
+                />
+              )}
 
-              {!isSuperAdmin && (
+              {!isSuperAdmin && !isDispatcher && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
                   label="Billing"

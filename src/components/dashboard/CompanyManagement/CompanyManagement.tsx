@@ -1416,7 +1416,13 @@ export default function CompanyManagement() {
 
   if (loading) {
     return (
-      <div className="max-w-full min-h-screen p-3 sm:p-4 lg:p-6">
+      <div
+        className={`max-w-full p-3 sm:p-4 lg:p-6 ${
+          isSuperAdmin || isMarketing
+            ? "min-h-screen"
+            : "lg:h-full lg:min-h-0 lg:overflow-hidden"
+        }`}
+      >
         <PageHeader
           title={isSuperAdmin || isMarketing ? "Companies" : "Company Detail"}
           description={
@@ -1440,9 +1446,21 @@ export default function CompanyManagement() {
   }
 
   return (
-    <div className="max-w-full min-h-screen">
+    <div
+      className={`max-w-full ${
+        isSuperAdmin || isMarketing
+          ? "min-h-screen"
+          : "lg:h-full lg:min-h-0 lg:overflow-hidden"
+      }`}
+    >
       <Toast toast={toast} />
-      <div className="p-2 sm:p-4 md:p-4 lg:p-6 space-y-3 sm:space-y-3 md:space-y-4">
+      <div
+        className={
+          isSuperAdmin || isMarketing
+            ? "space-y-3 p-2 sm:p-4 md:space-y-4 md:p-4 lg:p-6"
+            : "flex flex-col gap-3 p-2 sm:p-4 md:p-4 lg:h-full lg:min-h-0 lg:overflow-hidden lg:p-4"
+        }
+      >
         <PageHeader
           title={isSuperAdmin || isMarketing ? "Companies" : "Company Detail"}
           description={
@@ -1453,6 +1471,7 @@ export default function CompanyManagement() {
                 : "Manage your company details and settings."
           }
           icon={Building2}
+          className={isSuperAdmin || isMarketing ? undefined : "shrink-0"}
           actions={
             canAddCompany ? (
               <button
@@ -1527,7 +1546,7 @@ export default function CompanyManagement() {
             />
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
             <NonSuperAdminView
               companies={companies}
               userCompanyRole={currentCompanyRole}
