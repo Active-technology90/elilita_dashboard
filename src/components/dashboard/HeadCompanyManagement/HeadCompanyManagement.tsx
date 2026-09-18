@@ -1,6 +1,6 @@
 // src/components/dashboard/HeadCompanyManagement/HeadCompanyManagement.tsx
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Plus, Building2, Pencil, Trash2, ImageIcon } from "lucide-react";
+import { Plus, Building2, ImageIcon } from "lucide-react";
 import {
   getHeadCompanies,
   createHeadCompany,
@@ -16,6 +16,7 @@ import { useToast } from "../../../hooks/useToast";
 import { DragDropImageUpload } from "../../ui/DragDropImageUpload";
 import PageHeader from "../../ui/PageHeader";
 import { SearchInput } from "../../ui/SearchInput";
+import { DataTable, type Column } from "../../ui/DataTable";
 
 interface HeadCompanyFormData {
   name: string;
@@ -172,6 +173,84 @@ export default function HeadCompanyManagement() {
 
   if (error) return <ErrorView error={error} onRetry={fetchHeadCompanies} />;
 
+
+  const columns = useMemo<Column<HeadCompany>[]>(
+    () => [
+      {
+        key: "rowNumber",
+        header: "No.",
+        className: "whitespace-nowrap text-gray-500",
+        render: (_head, index) => index + 1,
+      },
+      {
+        key: "logo",
+        header: "Logo",
+        render: (head) =>
+          head.logo ? (
+            <img
+              src={head.logo}
+              alt={head.name}
+              className="h-9 w-9 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+              <ImageIcon className="h-4 w-4 text-gray-400" />
+            </div>
+          ),
+      },
+      {
+        key: "name",
+        header: "Name",
+        className: "min-w-[140px] font-medium text-gray-900",
+        render: (head) => (
+          <div className="min-w-0">
+            <span className="block truncate text-sm font-medium text-gray-900">
+              {head.name}
+            </span>
+            {head.name_am ? (
+              <span className="block truncate text-xs text-gray-400">
+                {head.name_am}
+              </span>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "slug",
+        header: "Slug",
+        className: "hidden whitespace-nowrap font-mono text-gray-500 sm:table-cell",
+      },
+      {
+        key: "branch_count",
+        header: "Branches",
+        className: "whitespace-nowrap",
+        render: (head) => (
+          <span className="inline-flex items-center gap-1 text-gray-600">
+            <Building2 className="h-4 w-4 text-secondary" />
+            {head.branch_count ?? 0}
+          </span>
+        ),
+      },
+      {
+        key: "is_active",
+        header: "Active",
+        className: "whitespace-nowrap",
+        render: (head) => (
+          <span
+            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+              head.is_active
+                ? "bg-green-100 text-green-800"
+                : "bg-red-100 text-red-800"
+            }`}
+          >
+            {head.is_active ? "Yes" : "No"}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4">
       <Toast toast={toast} />
@@ -216,139 +295,17 @@ export default function HeadCompanyManagement() {
         </div>
       </div>
 
-      {/* Table - Responsive */}
-      <div className="w-full overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-track-secondary/[0.04] scrollbar-thumb-secondary/20">
-          <table className="w-full min-w-[760px] text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-secondary/10 bg-secondary/[0.035] text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55 xs:text-xs">
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
-                  No.
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
-                  Logo
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
-                  Name
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden sm:table-cell">
-                  Slug
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold">
-                  Branches
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold hidden xs:table-cell">
-                  Active
-                </th>
-                <th className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-semibold text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400"
-                  >
-                    <div className="animate-spin rounded-full h-6 w-6 sm:h-7 sm:w-7 border-b-2 border-secondary mx-auto mb-2 sm:mb-3" />
-                    <span className="text-xs sm:text-sm">Loading...</span>
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-2 xs:px-3 sm:px-4 py-8 xs:py-10 text-center text-gray-400 text-xs sm:text-sm"
-                  >
-                    No head companies found
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((head, idx) => (
-                  <tr key={head.id} className="hover:bg-gray-50/60">
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 text-gray-500 text-[10px] xs:text-xs sm:text-sm">
-                      {idx + 1}
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3">
-                      {head.logo ? (
-                        <img
-                          src={head.logo}
-                          alt={head.name}
-                          className="h-8 w-8 xs:h-9 xs:w-9 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 xs:h-9 xs:w-9 rounded-full bg-gray-100 flex items-center justify-center">
-                          <ImageIcon
-                            size={14}
-                            className="xs:h-4 xs:w-4 text-gray-400"
-                          />
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-medium text-gray-900">
-                      <span className="text-xs xs:text-sm">{head.name}</span>
-                      {head.name_am ? (
-                        <span className="block text-[10px] xs:text-xs text-gray-400 truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
-                          {head.name_am}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 font-mono text-gray-500 text-[10px] xs:text-xs sm:text-sm hidden sm:table-cell">
-                      {head.slug}
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3">
-                      <span className="inline-flex items-center gap-0.5 xs:gap-1 text-gray-600 text-[10px] xs:text-xs sm:text-sm">
-                        <Building2
-                          size={12}
-                          className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-secondary"
-                        />
-                        {head.branch_count ?? 0}
-                      </span>
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3 hidden xs:table-cell">
-                      <span
-                        className={`px-1.5 xs:px-2 py-0.5 xs:py-1 text-[9px] xs:text-xs rounded-full ${
-                          head.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {head.is_active ? "Yes" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-2 xs:px-3 sm:px-4 py-2 xs:py-2.5 sm:py-3">
-                      <div className="flex items-center justify-end gap-1 xs:gap-1.5 sm:gap-2">
-                        <button
-                          onClick={() => openEdit(head)}
-                          className="p-1 xs:p-1.5 rounded-lg text-gray-500 hover:bg-secondary/10 hover:text-secondary transition"
-                          title="Edit"
-                        >
-                          <Pencil
-                            size={14}
-                            className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4"
-                          />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(head)}
-                          className="p-1 xs:p-1.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition"
-                          title="Delete"
-                        >
-                          <Trash2
-                            size={14}
-                            className="xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4"
-                          />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Shared responsive table */}
+      <DataTable
+        data={filtered}
+        columns={columns}
+        loading={loading}
+        loadingRows={5}
+        emptyMessage="No head companies found"
+        onEdit={openEdit}
+        onDelete={(head) => setDeleteTarget(head)}
+        stickyColumns={3}
+      />
 
       {/* Create / Edit modal */}
       <FormModal

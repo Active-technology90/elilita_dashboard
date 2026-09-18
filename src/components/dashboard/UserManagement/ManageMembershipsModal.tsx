@@ -30,7 +30,7 @@ interface ManageMembershipsModalProps {
   onRefresh?: () => void;
 }
 
-const roleOptions: UserRole[] = ["admin", "staff", "viewer", "delivery"];
+const roleOptions: UserRole[] = ["admin", "staff", "viewer", "delivery","owner"];
 
 const roleSelectOptions: SelectOption[] = roleOptions.map((role) => ({
   label: role.charAt(0).toUpperCase() + role.slice(1),

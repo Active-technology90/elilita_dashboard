@@ -243,9 +243,9 @@ export default function NonSuperAdminView({
   ];
 
   return (
-    <div className="flex flex-col xl:flex-row gap-4 lg:gap-5 items-start w-full max-w-full">
+    <div className="flex w-full max-w-full flex-col items-start gap-4 lg:h-full lg:min-h-0 lg:flex-row lg:gap-5 lg:overflow-hidden">
       {/* Left: Company Identity Sidebar */}
-      <div className="w-full xl:w-[320px] 2xl:w-[360px] flex-shrink-0 flex flex-col gap-3 xl:sticky xl:top-4">
+      <div className="flex w-full flex-shrink-0 flex-col gap-3 lg:h-full lg:w-[300px] lg:self-start lg:overflow-hidden xl:w-[320px] 2xl:w-[360px]">
         {loading ? (
           <SkeletonCard />
         ) : (
@@ -261,14 +261,14 @@ export default function NonSuperAdminView({
       </div>
 
       {/* Right: Main Workspace */}
-      <div className="flex-1 w-full min-w-0 flex flex-col gap-3">
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-3 lg:h-full lg:min-h-0 lg:overflow-hidden">
         {loading ? (
           <SkeletonWorkspace />
         ) : (
           companies.length > 0 && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:h-full lg:min-h-0 lg:overflow-hidden">
               {/* Workspace Header */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="z-20 flex-shrink-0 rounded-xl border border-gray-200 bg-white shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
@@ -342,30 +342,32 @@ export default function NonSuperAdminView({
                       </>
                     ) : (
                       <>
-                        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect
-                              x="3"
-                              y="11"
-                              width="18"
-                              height="11"
-                              rx="2"
-                              ry="2"
-                            />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                          View Only
-                        </span>
+                        {!canEdit && (
+                          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="10"
+                              height="10"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect
+                                x="3"
+                                y="11"
+                                width="18"
+                                height="11"
+                                rx="2"
+                                ry="2"
+                              />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            View Only
+                          </span>
+                        )}
                         {canEdit && (
                           <button
                             onClick={() => {
@@ -489,9 +491,12 @@ export default function NonSuperAdminView({
                 </div>
               </div>
 
-              {/* Form Container */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <CompanyForm
+              {/* Scrollable workspace content: form + footer */}
+              <div className="min-h-0 flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-gray-300">
+                <div className="flex flex-col gap-4 pb-1">
+                  {/* Form Container */}
+                  <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <CompanyForm
                   formData={formData}
                   setFormData={setFormData}
                   formErrors={formErrors}
@@ -510,12 +515,12 @@ export default function NonSuperAdminView({
                   currentStep={currentStep}
                   onSubmit={onSubmit}
                   onClose={onCloseForm}
-                />
-              </div>
+                    />
+                  </div>
 
-              {/* Navigation Footer */}
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
+                  {/* Navigation Footer - normal content, not sticky */}
+                  <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
                   <button
                     type="button"
                     onClick={handlePrevStep}
@@ -610,6 +615,8 @@ export default function NonSuperAdminView({
                       </svg>
                     </button>
                   )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

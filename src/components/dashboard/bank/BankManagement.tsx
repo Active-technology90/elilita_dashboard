@@ -3,8 +3,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plus,
   Building2,
-  Pencil,
-  Trash2,
   CheckCircle,
   XCircle,
   Loader2,
@@ -33,6 +31,7 @@ import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useAuth } from "../../../hooks/useAuth";
 import type { BankInfo } from "../../../types";
 import PageHeader from "../../ui/PageHeader";
+import { DataTable, type Column } from "../../ui/DataTable";
 
 // ------------------------------------------------------------------
 // Types
@@ -278,41 +277,6 @@ const urlToFile = async (url: string, filename: string): Promise<File> => {
   const extension = blob.type.split("/")[1] || "jpg";
   return new File([blob], `${filename}.${extension}`, { type: blob.type });
 };
-
-// ------------------------------------------------------------------
-// Skeleton Row
-// ------------------------------------------------------------------
-const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    <td className="px-4 py-4">
-      <div className="h-4 bg-gray-200 rounded w-8" />
-    </td>
-    <td className="px-4 py-4">
-      <div className="flex items-center gap-3">
-        <div className="h-11 w-11 bg-gray-200 rounded-xl" />
-        <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-32" />
-          <div className="h-3 bg-gray-100 rounded w-20" />
-        </div>
-      </div>
-    </td>
-    <td className="px-4 py-4">
-      <div className="h-4 bg-gray-200 rounded w-28" />
-    </td>
-    <td className="px-4 py-4">
-      <div className="h-4 bg-gray-200 rounded w-36" />
-    </td>
-    <td className="px-4 py-4">
-      <div className="h-7 bg-gray-200 rounded-full w-20" />
-    </td>
-    <td className="px-4 py-4">
-      <div className="flex justify-end gap-2">
-        <div className="h-9 w-9 bg-gray-200 rounded-lg" />
-        <div className="h-9 w-9 bg-gray-200 rounded-lg" />
-      </div>
-    </td>
-  </tr>
-);
 
 // ------------------------------------------------------------------
 // Status Badge
@@ -703,6 +667,70 @@ export default function BankManagement() {
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
+
+  const columns = useMemo<Column<BankInfo>[]>(() => {
+    const baseColumns: Column<BankInfo>[] = [
+      {
+        key: "rowNumber",
+        header: "No.",
+        className: "whitespace-nowrap text-gray-500",
+        render: (_bank, index) => (currentPage - 1) * pageSize + index + 1,
+      },
+      {
+        key: "bank_name",
+        header: "Bank Name",
+        className: "min-w-[170px]",
+        render: (bank) => (
+          <div className="flex min-w-0 items-center gap-3">
+            <BankLogo
+              logo={bank.logo || null}
+              name={bank.bank_name}
+              size="sm"
+            />
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-medium text-gray-900">
+                {bank.bank_name}
+              </span>
+              <span className="text-xs text-gray-400">
+                {bank.bank_id || "Bank"}
+              </span>
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    if (isSuperAdmin) {
+      baseColumns.push({
+        key: "company_name",
+        header: "Company",
+        className: "whitespace-nowrap",
+        render: (bank) => bank.company_name || "N/A",
+      });
+    }
+
+    baseColumns.push(
+      {
+        key: "account_number",
+        header: "Account Number",
+        className: "whitespace-nowrap font-mono text-gray-700",
+      },
+      {
+        key: "account_name",
+        header: "Account Holder",
+        className: "whitespace-nowrap text-gray-700",
+      },
+      {
+        key: "is_active",
+        header: "Status",
+        className: "whitespace-nowrap",
+        render: (bank) => <StatusBadge isActive={bank.is_active ?? true} />,
+      },
+    );
+
+    return baseColumns;
+  }, [currentPage, isSuperAdmin, pageSize]);
+
   const handleCreate = () => {
     setEditingBank(null);
     setShowModal(true);
@@ -883,144 +911,20 @@ export default function BankManagement() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="min-w-[720px] lg:min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50/80">
-              <tr>
-                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  No.
-                </th>
-                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Bank Name
-                </th>
-                {isSuperAdmin && (
-                  <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Company
-                  </th>
-                )}
-                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Account Number
-                </th>
-                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Account Holder
-                </th>
-                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                {canWrite && (
-                  <th className="px-4 sm:px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {loading ? (
-                Array.from({ length: pageSize }).map((_, i) => (
-                  <SkeletonRow key={i} />
-                ))
-              ) : paginatedBanks.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={isSuperAdmin ? 7 : 6}
-                    className="text-center py-16 px-6"
-                  >
-                    <div className="max-w-sm mx-auto">
-                      <div className="h-16 w-16 mx-auto rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-4">
-                        <Building2 className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-900">
-                        No bank accounts found
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1.5">
-                        {canWrite
-                          ? "Add your first bank account to get started"
-                          : "No bank accounts have been added yet"}
-                      </p>
-                      {canWrite && (
-                        <button
-                          onClick={handleCreate}
-                          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition-colors focus:outline-none focus:ring-4 focus:ring-secondary/20"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Bank Account
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                paginatedBanks.map((bank, index) => (
-                  <tr
-                    key={bank.id}
-                    className="hover:bg-gray-50/60 transition-colors"
-                  >
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                      {(currentPage - 1) * pageSize + index + 1}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <BankLogo
-                          logo={bank.logo || null}
-                          name={bank.bank_name}
-                          size="sm"
-                        />
-                        <div className="min-w-0">
-                          <span className="font-medium text-gray-900 text-sm truncate block">
-                            {bank.bank_name}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {bank.bank_id || "Bank"}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    {isSuperAdmin && (
-                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                        {bank.company_name || "N/A"}
-                      </td>
-                    )}
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className="font-mono text-sm text-gray-700 whitespace-nowrap">
-                        {bank.account_number}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                      {bank.account_name}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <StatusBadge isActive={bank.is_active ?? true} />
-                    </td>
-                    {canWrite && (
-                      <td className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleEdit(bank)}
-                            className="p-2 rounded-lg text-gray-500 hover:text-secondary hover:bg-secondary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/20"
-                            title="Edit bank account"
-                            aria-label={`Edit ${bank.bank_name}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(bank)}
-                            className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-200"
-                            title="Delete bank account"
-                            aria-label={`Delete ${bank.bank_name}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        data={paginatedBanks}
+        columns={columns}
+        loading={loading}
+        loadingRows={pageSize}
+        emptyMessage={
+          canWrite
+            ? "No bank accounts found. Add your first bank account to get started."
+            : "No bank accounts found."
+        }
+        onEdit={canWrite ? handleEdit : undefined}
+        onDelete={canWrite ? (bank) => setDeleteTarget(bank) : undefined}
+        stickyColumns={3}
+      />
 
       {!loading && totalPages > 1 && (
         <div className="mt-6 flex justify-center sm:justify-end">

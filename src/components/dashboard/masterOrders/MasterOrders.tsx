@@ -5,6 +5,7 @@ import type { MasterOrder } from "../../../types";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 import { Pagination } from "../../ui/Pagination";
+import { DataTable, type Column } from "../../ui/DataTable";
 import { OrderDetailModal } from "./OrderDetailModal";
 import { OrderFilters } from "./OrderFilters";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
@@ -64,76 +65,6 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
     </div>
   );
 };
-
-const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    {/* Order ID */}
-    <td className="px-4 py-3">
-      <div className="h-4 bg-gray-200 rounded w-16" />
-    </td>
-    {/* Customer */}
-    <td className="px-4 py-3">
-      <div className="h-4 bg-gray-200 rounded w-24" />
-    </td>
-    {/* Total */}
-    <td className="px-4 py-3">
-      <div className="h-4 bg-gray-200 rounded w-16" />
-    </td>
-    {/* Fulfillment */}
-    <td className="px-2 sm:px-4 py-2 sm:py-3">
-      <div className="h-4 bg-gray-200 rounded w-20" />
-    </td>
-    {/* Payment Status */}
-    <td className="px-4 py-3">
-      <div className="h-6 bg-gray-200 rounded-full w-24" />
-    </td>
-    {/* Companies */}
-    <td className="px-4 py-3">
-      <div className="h-4 bg-gray-200 rounded w-12" />
-    </td>
-    {/* Date & Time */}
-    <td className="px-4 py-3">
-      <div className="space-y-1">
-        <div className="h-3 bg-gray-200 rounded w-20" />
-        <div className="h-2 bg-gray-200 rounded w-16" />
-      </div>
-    </td>
-    {/* Actions */}
-    <td className="px-4 py-3 text-right">
-      <div className="h-7 w-16 bg-gray-200 rounded-lg ml-auto" />
-    </td>
-  </tr>
-);
-
-const EmptyState = () => (
-  <tr>
-    <td colSpan={10} className="text-center py-12">
-      <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-      <p className="text-gray-500 font-medium">No orders found</p>
-      <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-    </td>
-  </tr>
-);
-
-const ErrorState = ({
-  error,
-  onRetry,
-}: {
-  error: string;
-  onRetry: () => void;
-}) => (
-  <tr>
-    <td colSpan={10} className="text-center py-10">
-      <div className="text-red-600 mb-4">{error}</div>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/80 transition"
-      >
-        Retry
-      </button>
-    </td>
-  </tr>
-);
 
 // ---------- Main Component ----------
 export default function Orders() {
@@ -325,6 +256,88 @@ export default function Orders() {
     setCurrentPage(1);
   };
 
+
+  const columns = useMemo<Column<MasterOrder>[]>(
+    () => [
+      {
+        key: "id",
+        header: "Order ID",
+        className: "whitespace-nowrap font-semibold text-secondary",
+        render: (order) => `#${order.id}`,
+      },
+      {
+        key: "recipient_name",
+        header: "Customer",
+        className: "min-w-[130px]",
+        render: (order) =>
+          order.recipient_name || (
+            <span className="italic text-gray-400">Pickup</span>
+          ),
+      },
+      {
+        key: "total_amount",
+        header: "Total",
+        className: "whitespace-nowrap",
+        render: (order) => (
+          <span className="font-semibold text-gray-900">
+            {Number(order.total_amount).toLocaleString()}{" "}
+            <span className="text-xs font-normal text-gray-500">ETB</span>
+          </span>
+        ),
+      },
+      {
+        key: "fulfillment_type",
+        header: "Fulfillment",
+        className: "whitespace-nowrap",
+        render: (order) => (
+          <div className="flex items-center gap-1.5 text-gray-600">
+            {order.fulfillment_type === "delivery" ? (
+              <Truck className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+            ) : (
+              <Package className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+            )}
+            <span className="capitalize">{order.fulfillment_type}</span>
+          </div>
+        ),
+      },
+      {
+        key: "payment_status",
+        header: "Payment Status",
+        render: (order) => (
+          <PaymentStatusBadge status={order.payment_status} />
+        ),
+      },
+      {
+        key: "companies",
+        header: "Companies",
+        className: "whitespace-nowrap",
+        render: (order) => order.vendor_orders?.length ?? 0,
+      },
+      {
+        key: "created_at",
+        header: "Date & Time",
+        className: "whitespace-nowrap",
+        render: (order) => <OrderDate dateString={order.created_at} />,
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        className: "whitespace-nowrap text-right",
+        render: (order) => (
+          <button
+            type="button"
+            onClick={() => setSelectedOrder(order)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-secondary transition hover:bg-indigo-50 hover:text-indigo-700 sm:text-sm"
+          >
+            <Eye className="h-4 w-4" />
+            View
+          </button>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6">
       <Toast toast={toast} />
@@ -402,144 +415,18 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm -mx-3 sm:mx-0 px-3 sm:px-0">
-        <table className="min-w-[800px] lg:min-w-full table-fixed">
-          <thead className="sticky top-0 bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5 backdrop-blur-sm z-10 shadow-sm">
-            <tr>
-              <th className="w-[80px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Order ID
-                </span>
-              </th>
-              <th className="w-[140px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Customer
-                </span>
-              </th>
-              <th className="w-[110px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Total
-                </span>
-              </th>
-              <th className="w-[120px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Fulfillment
-                </span>
-              </th>
-              <th className="w-[130px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Payment Status
-                </span>
-              </th>
-              <th className="w-[90px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Companies
-                </span>
-              </th>
-              <th className="w-[150px] px-1.5 sm:px-4 py-2 sm:py-3 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  <svg
-                    className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-secondary/60"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span>Date & Time</span>
-                </div>
-              </th>
-              <th className="w-[90px] px-1.5 sm:px-4 py-2 sm:py-3 text-right text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Actions
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {loading ? (
-              Array.from({ length: pageSize }).map((_, i) => (
-                <SkeletonRow key={i} />
-              ))
-            ) : error ? (
-              <ErrorState
-                error={error}
-                onRetry={() => fetchOrders(currentPage, statusFilter)}
-              />
-            ) : filteredOrders.length === 0 ? (
-              <EmptyState />
-            ) : (
-              paginatedOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="hover:bg-gray-50/80 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm font-semibold text-secondary truncate">
-                    #{order.id}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 truncate">
-                    {order.recipient_name || (
-                      <span className="text-gray-400 italic">Pickup</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-900 truncate">
-                    {Number(order.total_amount).toLocaleString()}{" "}
-                    <span className="text-xs text-gray-500">ETB</span>
-                  </td>
-                  <td className="px-2 sm:px-4 py-2 sm:py-3">
-                    <div className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600">
-                      {order.fulfillment_type === "delivery" ? (
-                        <Truck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 flex-shrink-0" />
-                      ) : (
-                        <Package className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 flex-shrink-0" />
-                      )}
-                      <span className="capitalize truncate">
-                        {order.fulfillment_type}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <PaymentStatusBadge status={order.payment_status} />
-                  </td>
-                  {/* <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3"><DeliveryStatusBadge status={getOrderDeliveryStatus(order)} /></td> */}
-                  <td className="px-4 py-3 text-sm font-medium text-gray-700 truncate">
-                    {order.vendor_orders?.length ?? 0}
-                  </td>
-                  <td className="px-4 py-3">
-                    <OrderDate dateString={order.created_at} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg text-secondary hover:text-indigo-700 hover:bg-indigo-50 text-xs sm:text-sm font-medium transition-all duration-200"
-                    >
-                      <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="inline">View</span>
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Shared responsive table */}
+      <DataTable
+        data={paginatedOrders}
+        columns={columns}
+        loading={loading}
+        loadingRows={pageSize}
+        emptyMessage="No orders found"
+        errorMessage={error}
+        onRetry={() => fetchOrders(currentPage, statusFilter)}
+        stickyColumns={3}
+      />
 
-      {/* Pagination */}
       {!loading && !error && filteredOrders.length > 0 && (
         <div className="mt-4 sm:mt-6">
           <Pagination

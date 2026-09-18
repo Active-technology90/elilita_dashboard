@@ -26,6 +26,7 @@ import { Toast } from "../../ui/Toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { PageHeader } from "../../ui/PageHeader";
 import BottomSheet from "../../ui/BottomSheet";
+import { DataTable, type Column } from "../../ui/DataTable";
 
 export default function DisputesManagement() {
   const { toast, showToast } = useToast();
@@ -346,6 +347,135 @@ export default function DisputesManagement() {
     },
   ];
 
+
+  const columns: Column<OrderDispute>[] = [
+      {
+        key: "id",
+        header: "Dispute",
+        className: "whitespace-nowrap align-top",
+        render: (d) => (
+          <div>
+            <p className="font-semibold text-secondary">#{d.id}</p>
+            <p className="mt-0.5 text-[11px] text-secondary/50">
+              Order #{d.master_order}
+            </p>
+            <p className="mt-0.5 text-[10px] text-secondary/35">
+              {new Date(d.created_at).toLocaleDateString()}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "customer",
+        header: "Customer",
+        className: "max-w-[200px] align-top",
+        render: (d) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-secondary">
+              {d.customer_name || d.raised_by_name}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] text-secondary/50">
+              {d.customer_email || d.raised_by_email}
+            </p>
+            {(d.customer_phone || d.raised_by_phone) && (
+              <p className="mt-0.5 truncate text-[10px] text-secondary/40">
+                {d.customer_phone || d.raised_by_phone}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "company_name",
+        header: "Vendor",
+        className: "max-w-[180px] align-top",
+        render: (d) => (
+          <div className="min-w-0">
+            <p className="truncate font-medium text-secondary">
+              {d.company_name || "Multi-Vendor"}
+            </p>
+            <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+              {d.initiator_role === "vendor"
+                ? "Vendor initiated"
+                : d.initiator_role === "superadmin"
+                  ? `Admin · ${d.raised_by_name}`
+                  : "Customer claim"}
+            </p>
+          </div>
+        ),
+      },
+      {
+        key: "payment_method",
+        header: "Gateway",
+        className: "whitespace-nowrap align-top",
+        render: (d) => (
+          <span className="inline-flex rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold uppercase text-secondary">
+            {d.payment_method || "—"}
+          </span>
+        ),
+      },
+      {
+        key: "reason",
+        header: "Issue",
+        className: "max-w-[230px] align-top",
+        render: (d) => (
+          <div className="min-w-0">
+            <p className="font-medium text-secondary">{formatReason(d.reason)}</p>
+            {d.explanation && (
+              <p
+                className="mt-0.5 truncate text-[11px] text-secondary/50"
+                title={d.explanation}
+              >
+                {d.explanation}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "requested_resolution",
+        header: "Resolution",
+        className: "whitespace-nowrap align-top",
+        render: (d) => (
+          <span className="inline-flex items-center gap-1 rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold text-secondary">
+            {d.requested_resolution === "redelivery" ? (
+              <RotateCcw className="h-3 w-3" />
+            ) : (
+              <DollarSign className="h-3 w-3" />
+            )}
+            {d.requested_resolution === "redelivery" ? "Redelivery" : "Refund"}
+          </span>
+        ),
+      },
+      {
+        key: "refund_amount",
+        header: "Amount",
+        className: "whitespace-nowrap align-top font-semibold text-secondary",
+        render: (d) => `${d.refund_amount || d.master_order_total} ETB`,
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "whitespace-nowrap align-top",
+        render: (d) => getStatusBadge(d.status),
+      },
+      {
+        key: "actions",
+        header: "Action",
+        className: "whitespace-nowrap text-right align-top",
+        render: (d) => (
+          <button
+            type="button"
+            onClick={() => openReviewModal(d)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold text-white transition hover:bg-secondary/90 focus:outline-none focus:ring-2 focus:ring-secondary/20"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Review
+          </button>
+        ),
+      },
+    ];
+
   return (
     <div className="space-y-4">
       <Toast toast={toast} />
@@ -575,142 +705,19 @@ export default function DisputesManagement() {
           </div>
         </BottomSheet>
 
-        <div className="relative z-0 overflow-x-auto rounded-b-xl">
-          <table className="w-full min-w-[1120px] table-fixed text-left">
-            <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
-              <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
-                <th className="w-[150px] px-4 py-2.5">Dispute</th>
-                <th className="w-[190px] px-4 py-2.5">Customer</th>
-                <th className="w-[160px] px-4 py-2.5">Vendor</th>
-                <th className="w-[100px] px-4 py-2.5">Gateway</th>
-                <th className="w-[210px] px-4 py-2.5">Issue</th>
-                <th className="w-[120px] px-4 py-2.5">Resolution</th>
-                <th className="w-[110px] px-4 py-2.5">Amount</th>
-                <th className="w-[155px] px-4 py-2.5">Status</th>
-                <th className="w-[90px] px-4 py-2.5 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-secondary/[0.08]">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <tr key={index} className="animate-pulse">
-                    {Array.from({ length: 9 }).map((__, cell) => (
-                      <td key={cell} className="px-4 py-3">
-                        <div
-                          className={`h-3 rounded bg-secondary/[0.08] ${cell === 4 ? "w-32" : cell === 8 ? "ml-auto w-14" : "w-20"}`}
-                        />
-                        {cell < 4 && (
-                          <div className="mt-1.5 h-2.5 w-14 rounded bg-secondary/[0.05]" />
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : filteredDisputes.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-14 text-center">
-                    <ShieldCheck className="mx-auto h-7 w-7 text-secondary/30" />
-                    <p className="mt-2 text-sm font-semibold text-secondary">
-                      No disputes found
-                    </p>
-                    <p className="mt-0.5 text-xs text-secondary/50">
-                      {hasActiveFilters
-                        ? "Try changing your search or filters."
-                        : "New disputes will appear here."}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredDisputes.map((d) => (
-                  <tr
-                    key={d.id}
-                    className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]"
-                  >
-                    <td className="px-4 py-3 align-top">
-                      <p className="font-semibold text-secondary">#{d.id}</p>
-                      <p className="mt-0.5 text-[11px] text-secondary/50">
-                        Order #{d.master_order}
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-secondary/35">
-                        {new Date(d.created_at).toLocaleDateString()}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="truncate font-medium text-secondary">
-                        {d.customer_name || d.raised_by_name}
-                      </p>
-                      <p className="mt-0.5 truncate text-[11px] text-secondary/50">
-                        {d.customer_email || d.raised_by_email}
-                      </p>
-                      {(d.customer_phone || d.raised_by_phone) && (
-                        <p className="mt-0.5 truncate text-[10px] text-secondary/40">
-                          {d.customer_phone || d.raised_by_phone}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="truncate font-medium text-secondary">
-                        {d.company_name || "Multi-Vendor"}
-                      </p>
-                      <p className="mt-0.5 truncate text-[10px] text-secondary/45">
-                        {d.initiator_role === "vendor"
-                          ? "Vendor initiated"
-                          : d.initiator_role === "superadmin"
-                            ? `Admin · ${d.raised_by_name}`
-                            : "Customer claim"}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <span className="inline-flex rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold uppercase text-secondary">
-                        {d.payment_method || "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <p className="font-medium text-secondary">
-                        {formatReason(d.reason)}
-                      </p>
-                      {d.explanation && (
-                        <p
-                          className="mt-0.5 truncate text-[11px] text-secondary/50"
-                          title={d.explanation}
-                        >
-                          {d.explanation}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold text-secondary">
-                        {d.requested_resolution === "redelivery" ? (
-                          <RotateCcw className="h-3 w-3" />
-                        ) : (
-                          <DollarSign className="h-3 w-3" />
-                        )}
-                        {d.requested_resolution === "redelivery"
-                          ? "Redelivery"
-                          : "Refund"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 align-top font-semibold text-secondary">
-                      {d.refund_amount || d.master_order_total} ETB
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      {getStatusBadge(d.status)}
-                    </td>
-                    <td className="px-4 py-3 text-right align-top">
-                      <button
-                        type="button"
-                        onClick={() => openReviewModal(d)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold text-white transition hover:bg-secondary/90 focus:outline-none focus:ring-2 focus:ring-secondary/20"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-3 sm:p-4">
+          <DataTable
+            data={filteredDisputes}
+            columns={columns}
+            loading={loading}
+            loadingRows={6}
+            emptyMessage={
+              hasActiveFilters
+                ? "No disputes match your search or filters."
+                : "No disputes found."
+            }
+            stickyColumns={3}
+          />
         </div>
 
         {!loading && filteredDisputes.length > 0 && (
