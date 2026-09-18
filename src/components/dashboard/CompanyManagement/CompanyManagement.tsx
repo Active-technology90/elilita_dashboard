@@ -526,7 +526,19 @@ export default function CompanyManagement() {
         key: "address",
         header: "Address",
         sortable: true,
-        render: (comp) => comp.address || "-",
+        className: "w-[190px] max-w-[190px]",
+        render: (comp) => {
+          const address = comp.address?.trim() || "-";
+
+          return (
+            <span
+              className="block w-[190px] max-w-[190px] overflow-hidden text-ellipsis whitespace-nowrap"
+              title={address === "-" ? undefined : address}
+            >
+              {address}
+            </span>
+          );
+        },
       },
       {
         key: "tin_number",
