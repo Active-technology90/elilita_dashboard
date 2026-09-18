@@ -910,7 +910,7 @@ export default function AdminDashboard() {
               />
               <SidebarItem
                 icon={<CreditCard className="h-5 w-5" />}
-                label="Billing"
+                label="Subscription"
                 active={activeTab === "billing"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("billing")}
@@ -1199,7 +1199,7 @@ export default function AdminDashboard() {
               {!isSuperAdmin && !isDispatcher && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
-                  label="Billing"
+                  label="Subscription"
                   active={activeTab === "billing"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("billing")}

@@ -640,7 +640,7 @@ export default function BillingPage() {
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 px-1 pb-8 sm:px-2">
       <PageHeader
-        title="Billing & Subscription"
+        title="Subscription"
         description="Manage your plan, usage, renewal, and available plans."
         icon={CreditCard}
         loading={isLoading}
