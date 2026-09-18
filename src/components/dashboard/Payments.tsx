@@ -10,6 +10,7 @@ import {
 import { useToast } from "../../hooks/useToast";
 import { Toast } from "../ui/Toast";
 import { Pagination } from "../ui/Pagination";
+import { DataTable, type Column } from "../ui/DataTable";
 import { getAdminPayouts, getPayouts } from "../../services/api";
 import { useAuth } from "../../context/authContext";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
@@ -35,44 +36,6 @@ interface Payout {
   reference: string | null;
   vendor_order_details: VendorOrder;
 }
-
-// Skeleton row for loading state
-const SkeletonRow = ({ isAllPayouts }: { isAllPayouts: boolean }) => (
-  <tr className="animate-pulse">
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-16" />
-    </td>
-    {isAllPayouts && (
-      <td className="px-3 py-2">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-200 rounded-full" />
-          <div className="h-4 bg-gray-200 rounded w-24" />
-        </div>
-      </td>
-    )}
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-20" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-16" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-20" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-6 bg-gray-200 rounded-full w-20" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-24" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-      <div className="h-4 bg-gray-200 rounded w-24" />
-    </td>
-    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-right">
-      <div className="h-8 bg-gray-200 rounded-lg w-16 ml-auto" />
-    </td>
-  </tr>
-);
 
 export default function Payments() {
   const { user } = useAuth();
@@ -100,7 +63,7 @@ export default function Payments() {
   const isAllPayouts = isSuperAdmin && !effectiveCompanySlug;
 
   const [payouts, setPayouts] = useState<Payout[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +114,6 @@ export default function Payments() {
       setLoading(false);
     }
   };
-  console.log(totalCount);
   // Refetch when dependencies change
   useEffect(() => {
     fetchPayouts();
@@ -203,6 +165,113 @@ export default function Payments() {
   const handleDownloadReceipt = (payoutId: number) => {
     showToast("info", `Receipt for payout ${payoutId} not yet implemented`);
   };
+
+
+  const columns = useMemo<Column<Payout>[]>(() => {
+    const cols: Column<Payout>[] = [
+      {
+        key: "vendor_order",
+        header: "Order ID",
+        className: "whitespace-nowrap font-semibold text-secondary",
+        render: (payout) => `#${payout.vendor_order}`,
+      },
+    ];
+
+    if (isAllPayouts) {
+      cols.push({
+        key: "company_name",
+        header: "Company",
+        className: "min-w-[140px]",
+        render: (payout) => (
+          <div className="flex items-center gap-2">
+            {payout.company_logo ? (
+              <img
+                src={payout.company_logo}
+                alt={payout.company_name}
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                <Building2 className="h-4 w-4 text-gray-500" />
+              </div>
+            )}
+            <span className="max-w-[150px] truncate font-medium text-gray-700">
+              {payout.company_name}
+            </span>
+          </div>
+        ),
+      });
+    }
+
+    cols.push(
+      {
+        key: "gross_amount",
+        header: "Gross (ETB)",
+        className: "whitespace-nowrap",
+        render: (payout) => Number(payout.gross_amount).toLocaleString(),
+      },
+      {
+        key: "platform_fee",
+        header: "Platform Fee",
+        className: "whitespace-nowrap",
+        render: (payout) => Number(payout.platform_fee).toLocaleString(),
+      },
+      {
+        key: "net_amount",
+        header: "Net (ETB)",
+        className: "whitespace-nowrap font-semibold text-gray-900",
+        render: (payout) => Number(payout.net_amount).toLocaleString(),
+      },
+      {
+        key: "status",
+        header: "Payment Status",
+        render: (payout) => (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusColor(
+              payout.status,
+            )}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {payout.status}
+          </span>
+        ),
+      },
+      {
+        key: "payment_method",
+        header: "Payment Method",
+        render: (payout) =>
+          payout.vendor_order_details?.payment_method
+            ?.split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ") || "N/A",
+      },
+      {
+        key: "scheduled_at",
+        header: "Payout Date",
+        className: "whitespace-nowrap",
+        render: (payout) =>
+          new Date(payout.scheduled_at).toLocaleDateString(),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        className: "whitespace-nowrap text-right",
+        render: (payout) => (
+          <button
+            type="button"
+            onClick={() => handleDownloadReceipt(payout.id)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary/10 hover:text-secondary/80 sm:text-sm"
+            title="Download receipt"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Receipt</span>
+          </button>
+        ),
+      },
+    );
+
+    return cols;
+  }, [isAllPayouts]);
 
   // Error state (before table)
   if (error) {
@@ -385,167 +454,15 @@ export default function Payments() {
         </div>
       </div>
 
-      {/* Payouts Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mt-3 -mx-3 sm:mx-0 px-3 sm:px-0">
-        <table className="min-w-[600px] lg:min-w-full divide-y divide-gray-200">
-          <thead className="sticky top-0 bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5 backdrop-blur-sm z-10 shadow-sm">
-            <tr>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Order ID
-                </span>
-              </th>
-              {isAllPayouts && (
-                <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Company
-                  </span>
-                </th>
-              )}
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Gross (ETB)
-                </span>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Platform Fee
-                </span>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Net (ETB)
-                </span>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Payment Status
-                </span>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Payment Method
-                </span>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  <svg
-                    className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-secondary/60"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span>Payout Date</span>
-                </div>
-              </th>
-              <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-right text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  Actions
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {loading ? (
-              Array.from({ length: pageSize }).map((_, index) => (
-                <SkeletonRow key={index} isAllPayouts={isAllPayouts} />
-              ))
-            ) : paginatedPayouts.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="text-center py-12 text-gray-500">
-                  No payouts found
-                </td>
-              </tr>
-            ) : (
-              paginatedPayouts.map((payout) => (
-                <tr
-                  key={payout.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-secondary truncate max-w-[80px] sm:max-w-none">
-                    #{payout.vendor_order}
-                  </td>
-                  {isAllPayouts && (
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        {payout.company_logo ? (
-                          <img
-                            src={payout.company_logo}
-                            alt={payout.company_name}
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                            <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                          </div>
-                        )}
-                        <span className="text-[10px] sm:text-sm font-medium text-gray-700 truncate max-w-[100px] sm:max-w-none">
-                          {payout.company_name}
-                        </span>
-                      </div>
-                    </td>
-                  )}
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap">
-                    {Number(payout.gross_amount).toLocaleString()}
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
-                    {Number(payout.platform_fee).toLocaleString()}
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap">
-                    {Number(payout.net_amount).toLocaleString()}
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusColor(payout.status)}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      {payout.status}
-                    </span>
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-600">
-                    {payout?.vendor_order_details?.payment_method
-                      ?.split("_")
-                      .map(
-                        (word) => word.charAt(0).toUpperCase() + word.slice(1),
-                      )
-                      .join(" ") || "N/A"}
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap">
-                    {new Date(payout.scheduled_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-4 whitespace-nowrap text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadReceipt(payout.id)}
-                      className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg text-secondary hover:text-secondary/80 hover:bg-secondary/10 text-xs sm:text-sm font-medium transition-all duration-200"
-                      title="Download receipt"
-                    >
-                      <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Receipt</span>
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Shared responsive table */}
+      <DataTable
+        data={paginatedPayouts}
+        columns={columns}
+        loading={loading}
+        loadingRows={pageSize}
+        emptyMessage="No payouts found"
+        stickyColumns={3}
+      />
 
       {!loading && totalPages > 1 && (
         <Pagination

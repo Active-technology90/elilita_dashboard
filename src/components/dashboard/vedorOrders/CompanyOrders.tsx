@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
-  Package,
   Building2,
   Settings,
   X,
@@ -8,6 +7,7 @@ import {
   Package2,
 } from "lucide-react";
 import { Pagination } from "../../ui/Pagination";
+import { DataTable, type Column } from "../../ui/DataTable";
 
 import {
   getAdminVendorOrders,
@@ -144,73 +144,6 @@ const CompanyAvatar = ({
       <Building2 className="h-4 w-4 text-gray-500" />
     )}
   </div>
-);
-
-const SkeletonRow = ({ isAdminLike }: { isAdminLike: boolean }) => (
-  <tr className="animate-pulse">
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="h-4 bg-gray-200 rounded w-16" />
-    </td>
-    {isAdminLike && (
-      <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200" />
-          <div className="h-4 bg-gray-200 rounded w-24" />
-        </div>
-      </td>
-    )}
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="h-4 bg-gray-200 rounded w-20" />
-    </td>
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="h-4 bg-gray-200 rounded w-24" />
-    </td>
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="h-6 bg-gray-200 rounded-full w-20" />
-    </td>
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="h-6 bg-gray-200 rounded-full w-24" />
-    </td>
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-      <div className="space-y-1">
-        <div className="h-3 bg-gray-200 rounded w-20" />
-        <div className="h-2 bg-gray-200 rounded w-16" />
-      </div>
-    </td>
-    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 whitespace-nowrap text-right">
-      <div className="h-7 w-16 bg-gray-200 rounded-lg ml-auto" />
-    </td>
-  </tr>
-);
-
-const EmptyState = () => (
-  <tr>
-    <td colSpan={6} className="text-center py-16">
-      <Package className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-      <p className="text-gray-500 font-medium">No vendor orders found</p>
-      <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-    </td>
-  </tr>
-);
-
-const ErrorState = ({
-  error,
-  onRetry,
-}: {
-  error: string;
-  onRetry: () => void;
-}) => (
-  <tr>
-    <td colSpan={6} className="text-center py-12">
-      <div className="text-red-600 mb-4">{error}</div>
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary transition"
-      >
-        Retry
-      </button>
-    </td>
-  </tr>
 );
 
 /* ---------- Main Component ---------- */
@@ -484,6 +417,108 @@ export default function CompanyOrders() {
     }
   }, [fetchOrders, currentPage, selectedOrder]);
 
+
+  const orderColumns = useMemo<Column<VendorOrder>[]>(() => {
+    const cols: Column<VendorOrder>[] = [
+      {
+        key: "id",
+        header: "Order ID",
+        className: "whitespace-nowrap",
+        render: (order) => (
+          <div className="flex items-center gap-2 whitespace-nowrap font-semibold text-secondary">
+            <span>#{order.id}</span>
+            {isTodayDate(order.created_at) && (
+              <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 shadow-sm">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                Today
+              </span>
+            )}
+          </div>
+        ),
+      },
+    ];
+
+    if (isAdminLike) {
+      cols.push({
+        key: "company",
+        header: "Company",
+        render: (order) => (
+          <div className="flex items-center gap-2">
+            <CompanyAvatar
+              logo={order.company?.logo}
+              name={order.company?.name || "Unknown"}
+            />
+            <span className="max-w-[120px] truncate text-sm font-medium text-gray-700">
+              {order.company?.name || "Unknown"}
+            </span>
+          </div>
+        ),
+      });
+    }
+
+    cols.push(
+      {
+        key: "amount",
+        header: "Amount",
+        className: "whitespace-nowrap",
+        render: (order) => (
+          <span className="font-semibold text-gray-900">
+            {Number(order.amount).toLocaleString()}{" "}
+            <span className="text-xs font-normal text-gray-500">ETB</span>
+          </span>
+        ),
+      },
+      {
+        key: "payment_method",
+        header: "Payment Method",
+        render: (order) =>
+          order.payment_method ? order.payment_method.replace(/_/g, " ") : "—",
+      },
+      {
+        key: "status",
+        header: "Order Status",
+        render: (order) => <StatusBadge status={order.status} type="order" />,
+      },
+      {
+        key: "delivery_status",
+        header: "Delivery Status",
+        render: (order) => (
+          <StatusBadge
+            status={
+              !order.shipping_address_text
+                ? "self_pickup"
+                : order.delivery?.status || "no assigned"
+            }
+            type="delivery"
+          />
+        ),
+      },
+      {
+        key: "created_at",
+        header: "Date & Time",
+        className: "whitespace-nowrap",
+        render: (order) => <OrderDate dateString={order.created_at} />,
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        className: "whitespace-nowrap text-right",
+        render: (order) => (
+          <button
+            type="button"
+            onClick={() => setSelectedOrder(order)}
+            className="group inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary/10 sm:text-sm"
+          >
+            <Settings className="h-4 w-4 transition-transform group-hover:rotate-90" />
+            Manage
+          </button>
+        ),
+      },
+    );
+
+    return cols;
+  }, [isAdminLike]);
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6">
       <Toast toast={toast} />
@@ -580,160 +615,18 @@ export default function CompanyOrders() {
         </div>
       </div>
 
-      {error ? (
-        <ErrorState error={error} onRetry={() => fetchOrders(currentPage)} />
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mt-3 -mx-3 sm:mx-0 px-3 sm:px-0">
-          <table className="min-w-[600px] lg:min-w-full divide-y divide-gray-200">
-            <thead className="sticky top-0 bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5 backdrop-blur-sm z-10 shadow-sm">
-              <tr>
-                <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-right text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Order ID
-                  </span>
-                </th>
-                {isAdminLike && (
-                  <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                      Company
-                    </span>
-                  </th>
-                )}
-                <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Amount
-                  </span>
-                </th>
-                <th className="px-1.5 sm:px-2 lg:px-3 py-2 sm:py-2 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Payment Method
-                  </span>
-                </th>
-                <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Order Status
-                  </span>
-                </th>
-                <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Delivery Status
-                  </span>
-                </th>
-                <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-left text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    <svg
-                      className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-secondary/60"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <span>Date & Time</span>
-                  </div>
-                </th>
-                <th className="px-1.5 sm:px-4 lg:px-6 py-2 sm:py-4 text-right text-[9px] sm:text-xs font-semibold text-secondary uppercase tracking-wider whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    Actions
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <SkeletonRow key={i} isAdminLike={isAdminLike} />
-                ))
-              ) : orders.length === 0 ? (
-                <EmptyState />
-              ) : (
-                orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 text-xs sm:text-sm font-semibold text-secondary min-w-[100px] sm:min-w-0">
-                      <div className="flex items-center gap-2 whitespace-nowrap">
-                        <span>#{order.id}</span>
-                        {isTodayDate(order.created_at) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-sm flex-shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Today
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    {isAdminLike && (
-                      <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <CompanyAvatar
-                            logo={order.company?.logo}
-                            name={order.company?.name || "Unknown"}
-                          />
-                          <span className="text-[10px] sm:text-sm font-medium text-gray-700 truncate max-w-[80px] lg:max-w-[100px]">
-                            {order.company?.name || "Unknown"}
-                          </span>
-                        </div>
-                      </td>
-                    )}
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 text-xs sm:text-sm font-semibold text-gray-900 whitespace-nowrap">
-                      {Number(order.amount).toLocaleString()}{" "}
-                      <span className="text-[9px] sm:text-xs text-gray-500 whitespace-nowrap">
-                        ETB
-                      </span>
-                    </td>
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 text-[10px] sm:text-sm text-gray-700">
-                      {order.payment_method
-                        ? order.payment_method.replace(/_/g, " ")
-                        : "—"}
-                    </td>
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-                      <StatusBadge status={order.status} type="order" />
-                    </td>
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2">
-                      <StatusBadge
-                        status={
-                          !order.shipping_address_text
-                            ? "self_pickup"
-                            : order.delivery?.status || "no assigned"
-                        }
-                        type="delivery"
-                      />
-                    </td>
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 whitespace-nowrap">
-                      <OrderDate dateString={order.created_at} />
-                    </td>
-                    <td className="px-2 sm:px-2 lg:px-3 py-2 sm:py-2 whitespace-nowrap text-right">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-secondary hover:text-secondary hover:bg-secondary/10 text-[10px] sm:text-sm font-medium transition-all duration-200 group"
-                      >
-                        <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:rotate-90" />
-                        <span>Manage</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        data={orders}
+        columns={orderColumns}
+        loading={loading}
+        loadingRows={pageSize}
+        emptyMessage="No vendor orders found"
+        errorMessage={error}
+        onRetry={() => fetchOrders(currentPage)}
+        stickyColumns={3}
+      />
 
-      {!loading && totalCount > 0 && (
+      {!loading && !error && totalCount > 0 && (
         <div className="mt-4 sm:mt-6">
           <Pagination
             currentPage={currentPage}

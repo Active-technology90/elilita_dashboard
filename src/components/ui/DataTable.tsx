@@ -6,7 +6,7 @@ import { SortableHeader } from './SortableHeader';
 export interface Column<T> {
   key: keyof T | string;
   header: string;
-  render?: (item: T) => React.ReactNode;
+  render?: (item: T, index: number) => React.ReactNode;
   className?: string;
   sortable?: boolean;
   sortKey?: string;
@@ -27,6 +27,10 @@ interface DataTableProps<T> {
   sortField?: string;
   sortOrder?: 'asc' | 'desc';
   onSort?: (field: string) => void;
+  stickyColumns?: 0 | 1 | 2 | 3;
+  loadingRows?: number;
+  errorMessage?: string | null;
+  onRetry?: () => void;
 }
 
 export function DataTable<T extends { id?: number | string; slug?: string }>({
@@ -44,16 +48,26 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
   sortField,
   sortOrder,
   onSort,
+  stickyColumns = 3,
+  loadingRows = 5,
+  errorMessage = null,
+  onRetry,
 }: DataTableProps<T>) {
-  const renderCell = (item: T, column: Column<T>) => {
-    if (column.render) return column.render(item);
+  const renderCell = (item: T, column: Column<T>, index: number) => {
+    if (column.render) return column.render(item, index);
     const value = item[column.key as keyof T];
     return value?.toString() ?? '-';
   };
 
-  const startIndex = currentPage ? (currentPage - 1) * itemsPerPage + 1 : 0;
+  const resolvedTotalItems = totalItems ?? data.length;
+  const startIndex =
+    resolvedTotalItems === 0
+      ? 0
+      : currentPage
+        ? (currentPage - 1) * itemsPerPage + 1
+        : 1;
   const endIndex = currentPage
-    ? Math.min(currentPage * itemsPerPage, totalItems || data.length)
+    ? Math.min(currentPage * itemsPerPage, resolvedTotalItems)
     : data.length;
 
   const tableScrollRef = useRef<HTMLDivElement>(null);
@@ -63,11 +77,8 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
   });
 
   /*
-   * Keep the first 3 columns sticky without forcing their widths.
-   *
-   * The browser is allowed to size every column naturally/responsively.
-   * We only measure the first two rendered header widths so we know where
-   * columns 2 and 3 should stick during horizontal scrolling.
+   * Sticky columns are enabled from the md breakpoint upward.
+   * On mobile, the table scrolls naturally without frozen columns.
    */
   useLayoutEffect(() => {
     const scrollContainer = tableScrollRef.current;
@@ -81,11 +92,18 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
       );
 
     const updateStickyOffsets = () => {
-      const headerCells = getHeaderCells();
-      if (headerCells.length < 3) return;
+      const isDesktopTable = window.matchMedia('(min-width: 768px)').matches;
 
-      const firstWidth = headerCells[0].getBoundingClientRect().width;
-      const secondWidth = headerCells[1].getBoundingClientRect().width;
+      if (!isDesktopTable) {
+        setStickyOffsets({ second: 0, third: 0 });
+        return;
+      }
+
+      const headerCells = getHeaderCells();
+      if (headerCells.length === 0) return;
+
+      const firstWidth = headerCells[0]?.getBoundingClientRect().width ?? 0;
+      const secondWidth = headerCells[1]?.getBoundingClientRect().width ?? 0;
 
       const nextSecond = Math.round(firstWidth * 100) / 100;
       const nextThird = Math.round((firstWidth + secondWidth) * 100) / 100;
@@ -126,28 +144,30 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
       resizeObserver?.disconnect();
       window.removeEventListener('resize', updateStickyOffsets);
     };
-  }, [columns.length]);
+  }, [columns.length, stickyColumns]);
 
   const getStickyHeaderClass = (index: number) => {
+    if (index >= stickyColumns) return '';
+
     if (index === 0) {
       return `
-        sticky left-0 z-30
-        bg-gray-50
+        md:sticky md:left-0 md:z-30
+        md:bg-secondary/5
       `;
     }
 
     if (index === 1) {
       return `
-        sticky left-[var(--sticky-left-2)] z-30
-        bg-gray-50
+        md:sticky md:left-[var(--sticky-left-2)] md:z-30
+        md:bg-secondary/5
       `;
     }
 
     if (index === 2) {
       return `
-        sticky left-[var(--sticky-left-3)] z-30
-        bg-gray-50
-        shadow-[8px_0_12px_-10px_rgba(0,0,0,0.35)]
+        md:sticky md:left-[var(--sticky-left-3)] md:z-30
+        md:bg-secondary/5
+        md:shadow-[8px_0_12px_-10px_rgba(0,0,0,0.22)]
       `;
     }
 
@@ -155,28 +175,30 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
   };
 
   const getStickyCellClass = (index: number) => {
+    if (index >= stickyColumns) return '';
+
     if (index === 0) {
       return `
-        sticky left-0 z-20
-        bg-white
-        group-hover:bg-gray-50
+        md:sticky md:left-0 md:z-20
+        md:bg-white
+        md:group-hover:bg-gray-50
       `;
     }
 
     if (index === 1) {
       return `
-        sticky left-[var(--sticky-left-2)] z-20
-        bg-white
-        group-hover:bg-gray-50
+        md:sticky md:left-[var(--sticky-left-2)] md:z-20
+        md:bg-white
+        md:group-hover:bg-gray-50
       `;
     }
 
     if (index === 2) {
       return `
-        sticky left-[var(--sticky-left-3)] z-20
-        bg-white
-        group-hover:bg-gray-50
-        shadow-[8px_0_12px_-10px_rgba(0,0,0,0.35)]
+        md:sticky md:left-[var(--sticky-left-3)] md:z-20
+        md:bg-white
+        md:group-hover:bg-gray-50
+        md:shadow-[8px_0_12px_-10px_rgba(0,0,0,0.22)]
       `;
     }
 
@@ -184,10 +206,10 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm sm:rounded-xl">
       <div
         ref={tableScrollRef}
-        className="relative isolate overflow-x-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300"
+        className="relative isolate overflow-x-auto overscroll-x-contain scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300"
         style={
           {
             '--sticky-left-2': `${stickyOffsets.second}px`,
@@ -196,7 +218,7 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
         }
       >
         <table className="w-max min-w-full table-auto divide-y divide-gray-200">
-          <thead className="bg-gradient-to-r from-gray-50 to-gray-50/80">
+          <thead className="border-b border-secondary/10 bg-secondary/5">
             <tr>
               {columns.map((col, idx) => {
                 const stickyClass = getStickyHeaderClass(idx);
@@ -213,7 +235,7 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
                       field={col.sortKey || (col.key as string)}
                       currentSort={{ field: sortField, order: sortOrder }}
                       onSort={onSort}
-                      className={`${stickyClass} ${col.className || ''}`}
+                      className={`text-secondary ${stickyClass} ${col.className || ''}`}
                     >
                       {col.header}
                     </SortableHeader>
@@ -224,16 +246,16 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
                   <th
                     key={idx}
                     className={`
-                      px-2 py-2
+                      px-3 py-2.5
                       text-left
-                      text-[11px]
+                      text-[10px]
                       font-semibold
                       uppercase
-                      tracking-wider
-                      text-gray-600
+                      tracking-[0.08em]
+                      text-secondary
                       whitespace-nowrap
-                      sm:px-3 sm:text-xs
-                      md:px-4 md:text-sm
+                      sm:px-4 sm:py-3 sm:text-xs
+                      md:text-sm
                       ${stickyClass}
                       ${col.className || ''}
                     `}
@@ -244,7 +266,7 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
               })}
 
               {(onEdit || onDelete) && (
-                <th className="px-2 py-2 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-600 whitespace-nowrap sm:px-3 sm:text-xs md:px-4 md:text-sm">
+                <th className="px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary whitespace-nowrap sm:px-4 sm:py-3 sm:text-xs md:text-sm">
                   Actions
                 </th>
               )}
@@ -253,12 +275,30 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
 
           <tbody className="divide-y divide-gray-100 bg-white">
             {loading ? (
-              [...Array(5)].map((_, i) => (
+              [...Array(loadingRows)].map((_, i) => (
                 <SkeletonRow
                   key={i}
                   cols={columns.length + (onEdit || onDelete ? 1 : 0)}
                 />
               ))
+            ) : errorMessage ? (
+              <tr>
+                <td
+                  colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
+                  className="px-4 py-12 text-center"
+                >
+                  <p className="text-sm font-medium text-red-600">{errorMessage}</p>
+                  {onRetry && (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="mt-3 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-white transition hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50"
+                    >
+                      Retry
+                    </button>
+                  )}
+                </td>
+              </tr>
             ) : data.length === 0 ? (
               <tr>
                 <td
@@ -272,35 +312,34 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
               data.map((item, idx) => (
                 <tr
                   key={item.id ?? idx}
-                  className="group transition-colors duration-150 hover:bg-gray-50/80"
+                  className="group transition-colors duration-150 odd:bg-white even:bg-gray-50/30 hover:bg-secondary/[0.035]"
                 >
                   {columns.map((col, colIdx) => (
                     <td
                       key={colIdx}
                       className={`
                         break-words
-                        px-2 py-2
+                        px-3 py-2.5
                         align-middle
                         text-xs
                         text-gray-700
-                        sm:px-3 sm:text-sm
-                        md:px-4
+                        sm:px-4 sm:py-3 sm:text-sm
                         ${getStickyCellClass(colIdx)}
                         ${col.className || ''}
                       `}
                     >
-                      {renderCell(item, col)}
+                      {renderCell(item, col, idx)}
                     </td>
                   ))}
 
                   {(onEdit || onDelete) && (
-                    <td className="px-2 py-2 text-right whitespace-nowrap sm:px-3 md:px-4">
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap sm:px-4 sm:py-3">
                       <div className="flex items-center justify-end gap-1 sm:gap-1.5">
                         {onEdit && (
                           <button
                             type="button"
                             onClick={() => onEdit(item)}
-                            className="rounded-lg p-1.5 text-blue-600 transition-all duration-200 hover:bg-blue-50 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 active:scale-95 sm:p-1"
+                            className="rounded-lg p-1.5 text-secondary transition-all duration-200 hover:bg-secondary/10 hover:text-secondary/80 focus:outline-none focus:ring-2 focus:ring-secondary/30 active:scale-95"
                             title="Edit"
                             aria-label="Edit"
                           >
@@ -330,30 +369,35 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
       </div>
 
       {/* Pagination - fully responsive */}
-      {!loading && totalPages && totalPages > 1 && onPageChange && (
-        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/80 px-3 py-3 sm:flex-row sm:gap-4 sm:px-4 sm:py-3 md:px-6">
-          <div className="order-2 text-[11px] text-gray-500 sm:order-1 sm:text-xs md:text-sm">
+      {!loading &&
+        !errorMessage &&
+        currentPage &&
+        totalPages &&
+        totalPages > 1 &&
+        onPageChange && (
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/70 px-3 py-3 sm:flex-row sm:gap-4 sm:px-4 md:px-6">
+          <div className="order-2 text-center text-[11px] text-gray-500 sm:order-1 sm:text-left sm:text-xs md:text-sm">
             Showing{' '}
             <span className="font-medium text-gray-700">{startIndex}</span> to{' '}
             <span className="font-medium text-gray-700">{endIndex}</span> of{' '}
             <span className="font-medium text-gray-700">
-              {totalItems ?? data.length}
+              {resolvedTotalItems}
             </span>{' '}
             entries
           </div>
 
-          <div className="order-1 flex gap-1 sm:order-2 sm:gap-2">
+          <div className="order-1 flex w-full items-center justify-between gap-2 sm:order-2 sm:w-auto sm:justify-end">
             <button
               type="button"
               onClick={() => onPageChange(currentPage! - 1)}
               disabled={currentPage === 1}
-              className="rounded-lg border border-gray-300 p-1.5 transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-secondary/50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5"
+              className="rounded-lg border border-secondary/20 bg-white p-2 text-secondary transition-all duration-200 hover:bg-secondary/5 focus:outline-none focus:ring-2 focus:ring-secondary/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5"
               aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <span className="px-2 py-1 text-xs font-medium text-gray-700 sm:px-3 sm:py-1.5 sm:text-sm">
+            <span className="px-2 py-1 text-xs font-semibold text-secondary sm:px-3 sm:py-1.5 sm:text-sm">
               Page {currentPage} of {totalPages}
             </span>
 
@@ -361,7 +405,7 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
               type="button"
               onClick={() => onPageChange(currentPage! + 1)}
               disabled={currentPage === totalPages}
-              className="rounded-lg border border-gray-300 p-1.5 transition-all duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-secondary/50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5"
+              className="rounded-lg border border-secondary/20 bg-white p-2 text-secondary transition-all duration-200 hover:bg-secondary/5 focus:outline-none focus:ring-2 focus:ring-secondary/30 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-1.5"
               aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />

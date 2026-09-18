@@ -85,9 +85,7 @@ export default function CompanyProducts() {
     deleteProduct,
     refetch,
   } = useCompanyProducts({ companySlug, pageSize });
-  // Debug: log when pageSize changes
   useEffect(() => {
-    console.log("Page size changed to:", pageSize);
     setCurrentPage(1);
     setTimeout(() => {
       refetch();
