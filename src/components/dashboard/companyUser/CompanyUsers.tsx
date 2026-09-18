@@ -144,12 +144,18 @@ export default function CompanyUsers() {
 
   const canViewUsers =
     isSuperAdmin ||
+    currentUserRole === "owner" ||
     currentUserRole === "admin" ||
     currentUserRole === "staff" ||
     readOnly;
 
   const canManageUsers =
-    (isSuperAdmin || currentUserRole === "admin") && !readOnly;
+    (
+      isSuperAdmin ||
+      currentUserRole === "owner" ||
+      currentUserRole === "admin"
+    ) &&
+    !readOnly;
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
