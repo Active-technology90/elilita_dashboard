@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, X, Repeat, Lock, Package2 } from "lucide-react";
+import { Plus, X, Repeat, Lock, Package2 } from "lucide-react";
 // import type { CompanyListItem } from "../../../types";
 import { useAuth } from "../../../context/authContext";
 // import { useCompanySelection } from '../../../hooks/useCompanySelection';
