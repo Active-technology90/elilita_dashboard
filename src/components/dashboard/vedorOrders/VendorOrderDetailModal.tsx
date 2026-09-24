@@ -811,6 +811,11 @@ const DeliveryCard = ({
         last_lon: s.last_lon, 
         current_lat: s.current_lat, 
         current_lng: s.current_lng, 
+        active_orders_count: s.active_orders_count ?? 0,
+        driver_state: s.driver_state || "idle",
+        is_at_vendor: !!s.is_at_vendor,
+        is_en_route: !!s.is_en_route,
+        can_batch: !!s.can_batch,
       })); 
       setStaffList(mapped); 
  
@@ -863,7 +868,14 @@ const DeliveryCard = ({
         }); 
       } 
       await onUpdate(); 
-      showToast("success", "Delivery person assigned successfully"); 
+      const selectedDriverObj = staffList.find((s) => s.id === Number(selectedUserId));
+      if (selectedDriverObj?.is_en_route) {
+        showToast("success", "Offer sent to en-route driver (45s window to respond)");
+      } else if (selectedDriverObj?.is_at_vendor) {
+        showToast("success", "Order batched with driver currently at store!");
+      } else {
+        showToast("success", "Delivery person assigned successfully");
+      }
       setShowAssignForm(false); 
     } catch (err: any) { 
       showToast("error", "Failed to assign delivery person"); 
@@ -1528,6 +1540,21 @@ const DeliveryCard = ({
                                         {(isBestMatch || isNearest) && (
                                           <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
                                             Best match
+                                          </span>
+                                        )}
+                                        {staff.is_at_vendor && (
+                                          <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+                                            🏬 At Store ({staff.active_orders_count} orders - Batchable)
+                                          </span>
+                                        )}
+                                        {staff.is_en_route && (
+                                          <span className="rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700">
+                                            🚗 En Route ({staff.active_orders_count} in transit)
+                                          </span>
+                                        )}
+                                        {!staff.is_at_vendor && !staff.is_en_route && staff.active_orders_count === 0 && (
+                                          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+                                            🟢 Available (Idle)
                                           </span>
                                         )}
                                         {staff.location_source === "live" && (

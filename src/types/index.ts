@@ -344,6 +344,11 @@ export interface AvailableDriver {
   distance_km?: number | null;
   last_lat?: number | null;
   last_lon?: number | null;
+  active_orders_count?: number;
+  driver_state?: "idle" | "at_company" | "en_route" | "assigned" | string;
+  is_at_vendor?: boolean;
+  is_en_route?: boolean;
+  can_batch?: boolean;
 }
 
 export interface DeliveryDispatchAttempt {
@@ -354,9 +359,10 @@ export interface DeliveryDispatchAttempt {
   driver_image?: string | null;
   logistics_company?: number | null;
   logistics_company_name?: string | null;
-  status: "assigned" | "accepted" | "declined" | "reassigned" | string;
+  status: "assigned" | "accepted" | "declined" | "expired" | "reassigned" | string;
   decline_reason?: string;
   assigned_at: string;
+  expires_at?: string | null;
   responded_at?: string | null;
 }
 

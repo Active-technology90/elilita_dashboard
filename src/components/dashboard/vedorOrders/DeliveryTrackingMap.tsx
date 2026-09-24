@@ -635,7 +635,12 @@ const createDriverPopupForSelection = (
         `}
         <div style="min-width:0;">
           <div style="font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeName}</div>
-          <div style="font-size:11px;color:#6B7280;margin-top:2px;">${locationLabel} · ${getVehicleName(driver.vehicle_type)}</div>
+          <div style="font-size:11px;color:#6B7280;margin-top:2px;">
+            ${locationLabel} · ${getVehicleName(driver.vehicle_type)}
+            ${driver.is_at_vendor ? ` · <span style="color:#B45309;font-weight:700;">🏬 At Store (${driver.active_orders_count || 1} orders - Batchable)</span>` : ""}
+            ${driver.is_en_route ? ` · <span style="color:#4338CA;font-weight:700;">🚗 En Route (${driver.active_orders_count} active)</span>` : ""}
+            ${!driver.is_at_vendor && !driver.is_en_route && (driver.active_orders_count === 0 || !driver.active_orders_count) ? ` · <span style="color:#15803D;font-weight:700;">🟢 Available</span>` : ""}
+          </div>
         </div>
       </div>
 

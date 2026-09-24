@@ -64,14 +64,24 @@ function openOrFocusDashboard(url, payload) {
 }
 
 messaging.onBackgroundMessage(function (payload) {
-  var title = (payload.notification && payload.notification.title) || "Qine";
-  var body = (payload.notification && payload.notification.body) || "";
+  // If FCM already displayed a notification (payload.notification present),
+  // do not duplicate with another showNotification call.
+  if (payload.notification) {
+    return;
+  }
   var data = payload.data || {};
+  var title = data.title || "Qine";
+  var body = data.body || "";
+  var tag = (data.type && (data.vendor_order_id || data.order_id))
+    ? (data.type + "_" + (data.vendor_order_id || data.order_id))
+    : (data.type || "qine-admin");
+
   self.registration.showNotification(title, {
     body: body,
     icon: "/vite.svg",
     badge: "/vite.svg",
-    tag: data.type || "qine-admin",
+    tag: tag,
+    renotify: false,
     data: data,
   });
 });
