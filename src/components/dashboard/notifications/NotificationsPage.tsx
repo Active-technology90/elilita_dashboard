@@ -130,7 +130,7 @@ export default function NotificationsPage({
   };
 
   return (
-    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-2 py-2 sm:py-2">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Notifications"
         description={<span aria-live="polite">{headerSubtitle}</span>}

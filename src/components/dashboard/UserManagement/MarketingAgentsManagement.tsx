@@ -20,14 +20,14 @@ import AgentPersonalInfoModal from "./AgentPersonalInfoModal";
 import { getAdminMarketingAgents, updateUser } from "../../../services/api";
 import MarketingOverview from "../overview/MarketingOverview";
 import { SearchInput } from "../../ui/SearchInput";
-import { Pagination } from "../../ui/Pagination";
-import { TableControls } from "../../ui/TableControls";
 import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
 import FilterSortSheet from "../../ui/FilterSortSheet";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 import { FormModal } from "../../ui/FormModal";
+import PageHeader from "../../ui/PageHeader";
+import { DataTable, type Column } from "../../ui/DataTable";
 
 interface MarketingAgent {
   id: number;
@@ -87,7 +87,7 @@ interface MarketingAgent {
 // Skeleton Card (for loading) - matches real stat card exactly
 // ============================================================
 const SkeletonStatCard: React.FC = () => (
-  <div className="bg-gray-200/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200/40 animate-pulse">
+  <div className="bg-gray-200/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-200/40">
     <div className="flex items-center justify-between">
       <div>
         <div className="h-3 w-20 bg-gray-300/70 rounded"></div>
@@ -309,30 +309,197 @@ export default function MarketingAgentsManagement() {
     }
   };
 
+  const agentColumns: Column<MarketingAgent>[] = [
+    {
+      key: "agent",
+      header: "Agent",
+      render: (agent) => {
+        const rank = getPerformanceRank(agent);
+        return (
+          <div className="flex min-w-0 items-center gap-3">
+            {agent.profile_image ? (
+              <img
+                src={agent.profile_image}
+                alt={agent.username}
+                className="h-10 w-10 shrink-0 cursor-pointer rounded-full border border-gray-200 object-cover"
+                onClick={() => setZoomImageAgent(agent)}
+              />
+            ) : (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-700">
+                {getInitials(agent.first_name, agent.last_name, agent.username)}
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="truncate font-semibold text-gray-900">
+                  {agent.first_name && agent.last_name
+                    ? `${agent.first_name} ${agent.last_name}`
+                    : agent.username}
+                </p>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${rank.color}`}>
+                  {rank.icon}
+                  {rank.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPersonalModalAgent(agent)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-secondary"
+                  title="View profile"
+                >
+                  <User className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">@{agent.username}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "contact",
+      header: "Contact",
+      render: (agent) => (
+        <div className="space-y-1">
+          <p className="flex items-center gap-1.5 text-sm text-gray-700">
+            <Mail className="h-3.5 w-3.5 text-gray-400" />
+            {agent.email}
+          </p>
+          <p className="flex items-center gap-1.5 text-sm text-gray-600">
+            <Phone className="h-3.5 w-3.5 text-gray-400" />
+            {formatPhone(agent.phone_number)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "targets",
+      header: "Targets",
+      textMode: "nowrap",
+      render: (agent) => (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-gray-800">
+            {agent.daily_target} / day
+          </p>
+          <p className="text-xs text-gray-500">
+            {agent.weekly_target} / week
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "performance",
+      header: "Performance",
+      textMode: "nowrap",
+      render: (agent) => {
+        const progress =
+          agent.daily_target > 0
+            ? Math.min(
+                100,
+                Math.round(
+                  (agent.companies_count / (agent.daily_target * 7)) * 100,
+                ),
+              )
+            : 0;
+
+        return (
+          <div className="min-w-[130px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-gray-800">
+                {agent.companies_count} companies
+              </span>
+              <span className="text-xs text-gray-500">{progress}%</span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-secondary"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status",
+      textMode: "nowrap",
+      render: (agent) => (
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+            agent.is_active
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-gray-200 bg-gray-50 text-gray-500"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              agent.is_active ? "bg-emerald-500" : "bg-gray-400"
+            }`}
+          />
+          {agent.is_active ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      textMode: "nowrap",
+      render: (agent) => (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => openEditModal(agent)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:bg-gray-50 hover:text-secondary"
+            title="Edit agent"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAgentId(agent.id);
+              setSelectedAgentName(
+                agent.first_name && agent.last_name
+                  ? `${agent.first_name} ${agent.last_name}`
+                  : agent.username,
+              );
+            }}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-secondary px-3 text-sm font-semibold text-white transition hover:bg-secondary/90"
+          >
+            <Eye className="h-4 w-4" />
+            Audit
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   // ─── Loading skeleton renderer ──────────────────────────────
   const renderSkeleton = () => (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 font-sans bg-gray-50/50 min-h-screen animate-pulse">
-      {/* Title Header Skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="h-8 w-48 bg-gray-300/70 rounded mb-2"></div>
-          <div className="h-4 w-64 bg-gray-300/70 rounded"></div>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+      {/* Page header skeleton */}
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="h-6 w-44 rounded bg-gray-200" />
+          <div className="mt-2 h-4 w-72 max-w-full rounded bg-gray-100" />
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-20 bg-gray-300/70 rounded-md"></div>
-          <div className="h-8 w-24 bg-gray-300/70 rounded-full"></div>
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-20 rounded-xl bg-gray-100" />
+          <div className="h-10 w-24 rounded-xl bg-gray-100" />
         </div>
       </div>
 
       {/* Stats Skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <SkeletonStatCard key={i} />
         ))}
       </div>
 
       {/* Table Controls Skeleton */}
-      <div className="flex flex-col md:flex-row gap-3 w-full items-start md:items-center">
+      <div className="mb-5 flex w-full flex-col items-start gap-3 bg-white md:flex-row md:items-center">
         <div className="w-full md:flex-1 h-10 bg-gray-300/70 rounded-xl"></div>
         <div className="hidden md:flex flex-col sm:flex-row items-center gap-2">
           <div className="w-48 h-10 bg-gray-300/70 rounded-xl"></div>
@@ -341,105 +508,14 @@ export default function MarketingAgentsManagement() {
         </div>
       </div>
 
-      {/* Table Skeleton */}
-      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/50 border-b border-gray-200/60">
-                {["Agent", "Contact", "Targets", "Performance", "Status", "Actions"].map((h) => (
-                  <th key={h} className="text-left py-3.5 px-5">
-                    <div className="h-4 w-16 bg-gray-300/70 rounded"></div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(5)].map((_, i) => (
-                <tr key={i} className="border-b border-gray-100/80">
-                  <td className="py-3.5 px-5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gray-300/70"></div>
-                      <div>
-                        <div className="h-4 w-24 bg-gray-300/70 rounded mb-1"></div>
-                        <div className="h-3 w-16 bg-gray-300/70 rounded"></div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-5">
-                    <div className="space-y-1">
-                      <div className="h-3 w-32 bg-gray-300/70 rounded"></div>
-                      <div className="h-3 w-24 bg-gray-300/70 rounded"></div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-5">
-                    <div className="flex gap-2">
-                      <div className="h-5 w-12 bg-gray-300/70 rounded"></div>
-                      <div className="h-5 w-12 bg-gray-300/70 rounded"></div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-5">
-                    <div className="space-y-1">
-                      <div className="h-4 w-20 bg-gray-300/70 rounded"></div>
-                      <div className="h-2 w-24 bg-gray-300/70 rounded-full"></div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-5">
-                    <div className="h-6 w-16 bg-gray-300/70 rounded-full"></div>
-                  </td>
-                  <td className="py-3.5 px-5 text-right">
-                    <div className="h-8 w-16 bg-gray-300/70 rounded-xl ml-auto"></div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Mobile skeleton */}
-        <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <div className="h-12 w-12 rounded-xl bg-gray-300/70"></div>
-                <div className="flex-1">
-                  <div className="h-4 w-24 bg-gray-300/70 rounded mb-1"></div>
-                  <div className="h-3 w-16 bg-gray-300/70 rounded"></div>
-                </div>
-                <div className="h-5 w-12 bg-gray-300/70 rounded-full"></div>
-              </div>
-              <div className="space-y-1">
-                <div className="h-3 w-32 bg-gray-300/70 rounded"></div>
-                <div className="h-3 w-24 bg-gray-300/70 rounded"></div>
-              </div>
-              <div className="flex justify-between">
-                <div className="h-3 w-16 bg-gray-300/70 rounded"></div>
-                <div className="h-3 w-16 bg-gray-300/70 rounded"></div>
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <div className="h-6 w-6 bg-gray-300/70 rounded-full"></div>
-                <div className="h-6 w-6 bg-gray-300/70 rounded-full"></div>
-                <div className="h-6 w-6 bg-gray-300/70 rounded-full"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <DataTable
+        data={[]}
+        columns={agentColumns}
+        loading
+        loadingRows={5}
+        stickyColumns={1}
+      />
 
-      {/* Pagination Skeleton */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-          <div className="h-6 w-24 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-24 bg-gray-300/70 rounded-full"></div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-          <div className="h-8 w-8 bg-gray-300/70 rounded-full"></div>
-        </div>
-      </div>
     </div>
   );
 
@@ -448,54 +524,61 @@ export default function MarketingAgentsManagement() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 font-sans bg-gray-50/50 min-h-screen">
-      {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-secondary tracking-tight flex items-center gap-2.5">
-            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-secondary" />
-            Marketing Agents
-          </h1>
-          <p className="text-xs sm:text-sm text-secondary-light/80 mt-1">
-            Manage target quotas and audit onboardings for Elilita platform's marketing agents
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/*  Export button */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title="Marketing Agents"
+        description="Manage agent targets, status, and onboarding activity."
+        icon={Users}
+        badge={
+          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
+            {agents.length} agents
+          </span>
+        }
+        actions={
           <button
+            type="button"
             onClick={() => {
-              const headers = ["Username", "Email", "Phone", "Companies", "Daily Target", "Weekly Target", "Status"];
-              const rows = filteredAgents.map(a => [
-                a.username,
-                a.email,
-                a.phone_number || "",
-                a.companies_count,
-                a.daily_target,
-                a.weekly_target,
-                a.is_active ? "Active" : "Inactive"
+              const headers = [
+                "Username",
+                "Email",
+                "Phone",
+                "Companies",
+                "Daily Target",
+                "Weekly Target",
+                "Status",
+              ];
+              const rows = filteredAgents.map((agent) => [
+                agent.username,
+                agent.email,
+                agent.phone_number || "",
+                agent.companies_count,
+                agent.daily_target,
+                agent.weekly_target,
+                agent.is_active ? "Active" : "Inactive",
               ]);
-              const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+              const csv = [
+                headers.join(","),
+                ...rows.map((row) => row.join(",")),
+              ].join("\n");
               const blob = new Blob([csv], { type: "text/csv" });
               const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `agents_${new Date().toISOString().split("T")[0]}.csv`;
-              a.click();
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `agents_${new Date().toISOString().split("T")[0]}.csv`;
+              link.click();
               URL.revokeObjectURL(url);
             }}
-            className="px-2.5 py-1 text-xs font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 border border-gray-200 rounded-md transition"
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 sm:text-sm"
           >
             Export
           </button>
-          <div className="bg-secondary/10 text-secondary px-3 py-1.5 rounded-full text-sm font-semibold">
-            {agents.length} Agents
-          </div>
-        </div>
-      </div>
+        }
+        className="mb-6"
+      />
 
       {/* Inactive agents alert banner */}
       {agents.filter(a => !a.is_active).length > 0 && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-sm">
+        <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
           <span className="text-amber-700">
             <span className="font-semibold">{agents.filter(a => !a.is_active).length}</span> inactive agents found.
@@ -515,539 +598,104 @@ export default function MarketingAgentsManagement() {
         </div>
       )}
 
-      {/* Stats Row - Light cards (no animation) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-purple-50/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-purple-100/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-purple-400 uppercase tracking-wider">
-                Total Agents
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-purple-700 mt-2">
-                {stats.totalAgents}
-              </p>
-              <p className="text-[10px] text-purple-400 mt-1">Active marketers</p>
-            </div>
-            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-purple-100/50 rounded-2xl flex items-center justify-center">
-              <Users className="h-5 w-5 text-purple-400" />
-            </div>
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "Total Agents", value: stats.totalAgents },
+          { label: "Companies Registered", value: stats.totalCompanies },
+          { label: "Active Agents", value: stats.activeAgents },
+          { label: "Avg Daily Target", value: stats.avgDailyTarget },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm"
+          >
+            <p className="text-xs font-medium text-gray-500">{item.label}</p>
+            <p className="mt-1 text-xl font-semibold text-gray-900">
+              {item.value}
+            </p>
           </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="bg-blue-50/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-blue-100/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-blue-400 uppercase tracking-wider">
-                Companies Registered
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-blue-700 mt-2">
-                {stats.totalCompanies}
-              </p>
-              <p className="text-[10px] text-blue-400 mt-1">Total companies onboarded</p>
-            </div>
-            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100/50 rounded-2xl flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-blue-400" />
-            </div>
-          </div>
-        </div>
+      <div className="mb-5 rounded-xl border border-gray-200 bg-white p-2.5 shadow-sm">
+        <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_190px_170px_auto]">
+          <SearchInput
+            value={searchTerm}
+            onChange={(value) => {
+              setSearchTerm(value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search agents..."
+            debounceMs={300}
+            showClearButton
+            showMobileFilter
+            onMobileFilterClick={() => setFilterSheetOpen(true)}
+            activeFilterCount={tempCategory !== "all" ? 1 : 0}
+            className="w-full"
+          />
 
-        <div className="bg-emerald-50/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-100/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider">
-                Active Agents
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-emerald-700 mt-2">
-                {stats.activeAgents}
-              </p>
-              <p className="text-[10px] text-emerald-400 mt-1">
-                {stats.totalAgents > 0 ? `${Math.round((stats.activeAgents / stats.totalAgents) * 100)}% active` : '0% active'}
-              </p>
-            </div>
-            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-emerald-100/50 rounded-2xl flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-emerald-400" />
-            </div>
-          </div>
-        </div>
+          <CustomSelect
+            value={tempSort}
+            onChange={(value) => {
+              setTempSort(value);
+              setCurrentPage(1);
+            }}
+            options={sortOptions}
+            placeholder="Sort"
+            className="hidden w-full md:block"
+          />
 
-        <div className="bg-amber-50/60 rounded-2xl p-4 sm:p-5 shadow-sm border border-amber-100/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-amber-400 uppercase tracking-wider">
-                Avg Daily Target
-              </p>
-              <p className="text-2xl sm:text-3xl font-bold text-amber-700 mt-2">
-                {stats.avgDailyTarget}
-              </p>
-              <p className="text-[10px] text-amber-400 mt-1">Companies per day</p>
-            </div>
-            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-amber-100/50 rounded-2xl flex items-center justify-center">
-              <Target className="h-5 w-5 text-amber-400" />
-            </div>
-          </div>
+          <CustomSelect
+            value={tempCategory}
+            onChange={(value) => {
+              setTempCategory(value);
+              setCurrentPage(1);
+            }}
+            options={categoryOptions}
+            placeholder="Status"
+            className="hidden w-full md:block"
+          />
+
+          {(tempCategory !== "all" ||
+            tempSort !== "name|asc" ||
+            searchTerm.trim() !== "") && (
+            <button
+              type="button"
+              onClick={() => {
+                setTempCategory("all");
+                setTempSort("name|asc");
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
+              className="hidden h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50 md:inline-flex"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Table Controls - Search, Filter, Sort (desktop) */}
-      <TableControls
-        pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          setCurrentPage(1);
-        }}
-      >
-        <div className="flex flex-col md:flex-row gap-3 w-full items-start md:items-center">
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search by agent name, username, or email..."
-            debounceMs={300}
-            showClearButton={true}
-            showMobileFilter={true}
-            onMobileFilterClick={() => setFilterSheetOpen(true)}
-            activeFilterCount={tempCategory !== "all" ? 1 : 0}
-            className="w-full md:flex-1"
-          />
-          {/* Desktop-only sort & category dropdowns (hidden on mobile) */}
-          <div className="hidden md:flex flex-col sm:flex-row items-center gap-2">
-            <CustomSelect
-              value={tempSort}
-              onChange={(val) => {
-                setTempSort(val);
-                setCurrentPage(1);
-              }}
-              options={sortOptions}
-              placeholder="Sort by..."
-              className="w-full sm:w-48"
-            />
-            <CustomSelect
-              value={tempCategory}
-              onChange={(val) => {
-                setTempCategory(val);
-                setCurrentPage(1);
-              }}
-              options={categoryOptions}
-              placeholder="Category..."
-              className="w-full sm:w-40"
-            />
-            {/*  filters button (shows only when filters are active) */}
-            {(tempCategory !== "all" || tempSort !== "name|asc" || searchTerm.trim() !== "") && (
-              <button
-                onClick={() => {
-                  setTempCategory("all");
-                  setTempSort("name|asc");
-                  setSearchTerm("");
-                  setCurrentPage(1);
-                }}
-                className="flex items-center justify-center h-10 w-10 rounded-xl bg-red-200 hover:bg-red-300 transition text-red-600 shadow-sm flex-shrink-0"
-                title="Clear all filters"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </TableControls>
-
-      {/* Error State */}
-      {error ? (
-        <div className="p-6 text-center max-w-md mx-auto bg-red-50 rounded-2xl border border-red-100 text-red-600 text-sm">
-          {error}
-          <button
-            onClick={fetchAgents}
-            className="block mx-auto mt-4 px-4 py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition"
-          >
-            Retry
-          </button>
-        </div>
-      ) : filteredAgents.length === 0 ? (
-        <div className="py-16 text-center bg-white rounded-3xl shadow-sm border border-gray-100 text-gray-400 text-sm font-semibold">
-          No marketing agents found matching your query
-        </div>
-      ) : (
-        /* ============================================================ */
-        /* MODERN TABLE - Desktop & Mobile Responsive                    */
-        /* ============================================================ */
-        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-          {/* Desktop Table */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/50 border-b border-gray-200/60">
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Agent
-                  </th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Targets
-                  </th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Performance
-                  </th>
-                  <th className="text-left py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="text-right py-3.5 px-5 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedAgents.map((agent, index) => (
-                  <tr
-                    key={agent.id}
-                    className={`
-                      group transition-all duration-150
-                      ${index !== paginatedAgents.length - 1 ? 'border-b border-gray-100/80' : ''}
-                      hover:bg-gray-50/60
-                    `}
-                  >
-                    {/* Agent Info */}
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-3">
-                        {agent.profile_image ? (
-                          <div className="relative flex-shrink-0">
-                            <img
-                              src={agent.profile_image}
-                              alt={agent.username}
-                              className="h-10 w-10 rounded-full object-cover border-2 border-secondary/20 shadow-sm cursor-pointer hover:ring-2 hover:ring-secondary/40 transition-all duration-200"
-                              onClick={() => setZoomImageAgent(agent)}
-                            />
-                            <div
-                              className="absolute -bottom-1 -right-1 bg-secondary text-white rounded-full p-0.5 shadow-md cursor-pointer hover:scale-110 transition-transform"
-                              onClick={() => setZoomImageAgent(agent)}
-                            >
-                              <ZoomIn className="h-3 w-3" />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-secondary to-secondary-dark flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-secondary/10 flex-shrink-0">
-                            {getInitials(agent.first_name, agent.last_name, agent.username)}
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-0 flex-wrap">
-                            <p className="font-semibold text-gray-900 text-sm leading-tight truncate max-w-[120px]">
-                              {agent.first_name && agent.last_name
-                                ? `${agent.first_name} ${agent.last_name}`
-                                : agent.username}
-                            </p>
-                            {/* Ranking Badge */}
-                            {(() => {
-                              const rank = getPerformanceRank(agent);
-                              return (
-                                <span className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border ${rank.color}`}>
-                                  {rank.icon}
-                                  {rank.label}
-                                </span>
-                              );
-                            })()}
-                            <button
-                              onClick={() => setPersonalModalAgent(agent)}
-                              className="p-1.5 rounded-full bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 hover:ring-2 hover:ring-secondary/20 transition-all flex-shrink-0 group cursor-pointer"
-                              title="View Profile"
-                            >
-                              <User className="h-4 w-4 text-secondary group-hover:text-secondary-dark transition-colors" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-400 font-medium">@{agent.username}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Contact */}
-                    <td className="py-3.5 px-5">
-                      <div className="space-y-0.5">
-                        <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
-                          <Mail className="h-3.5 w-3.5 text-gray-400" />
-                          {agent.email}
-                        </p>
-                        <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
-                          <Phone className="h-3.5 w-3.5 text-gray-400" />
-                          {formatPhone(agent.phone_number)}
-                        </p>
-                      </div>
-                    </td>
-
-                    {/* Targets */}
-                    <td className="py-3.5 px-5">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                          <Target className="h-4 w-4 text-secondary" />
-                          <span className="text-sm font-semibold text-gray-700">
-                            {agent.daily_target}
-                          </span>
-                          <span className="text-[10px] text-gray-400">/ day</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Award className="h-4 w-4 text-emerald-500" />
-                          <span className="text-sm font-semibold text-gray-700">
-                            {agent.weekly_target}
-                          </span>
-                          <span className="text-[10px] text-gray-400">/ week</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Performance */}
-                    <td className="py-3.5 px-5">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-bold text-gray-800">
-                              {agent.companies_count}
-                            </span>
-                            <span className="text-[10px] text-gray-400">companies</span>
-                          </div>
-                          <div className="h-6 w-px bg-gray-200" />
-                          <div className="flex items-center gap-1.5">
-                            <TrendingUp className="h-4 w-4 text-emerald-500" />
-                            <span className="text-sm font-medium text-gray-600">
-                              {agent.daily_target > 0
-                                ? `${Math.round((agent.companies_count / (agent.daily_target * 7)) * 100)}%`
-                                : '—'}
-                            </span>
-                            <span className="text-[10px] text-gray-400">of weekly</span>
-                          </div>
-                        </div>
-                        {/*  Progress bar */}
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${agent.daily_target > 0
-                                ? (agent.companies_count / (agent.daily_target * 7)) >= 1
-                                  ? "bg-emerald-500"
-                                  : (agent.companies_count / (agent.daily_target * 7)) >= 0.5
-                                    ? "bg-amber-500"
-                                    : "bg-red-400"
-                                : "bg-gray-300"
-                                }`}
-                              style={{
-                                width: `${Math.min(100, agent.daily_target > 0 ? (agent.companies_count / (agent.daily_target * 7)) * 100 : 0)}%`
-                              }}
-                            />
-                          </div>
-                          <span className="text-[10px] font-semibold text-gray-500 min-w-[32px] text-right">
-                            {agent.daily_target > 0
-                              ? `${Math.min(100, Math.round((agent.companies_count / (agent.daily_target * 7)) * 100))}%`
-                              : '—'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="py-3.5 px-5">
-                      <span className={`
-                        inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold
-                        ${agent.is_active
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
-                          : 'bg-gray-100 text-gray-500 border border-gray-200/50'
-                        }
-                      `}>
-                        {agent.is_active ? (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Active
-                          </>
-                        ) : (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                            Inactive
-                          </>
-                        )}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(agent)}
-                          className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-gray-600 hover:text-secondary shadow-sm active:scale-95"
-                          title="Edit Agent"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAgentId(agent.id);
-                            setSelectedAgentName(
-                              agent.first_name && agent.last_name
-                                ? `${agent.first_name} ${agent.last_name}`
-                                : agent.username
-                            );
-                          }}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-xl hover:bg-[#5b4694] transition text-sm font-semibold shadow-sm hover:shadow-md active:scale-95"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Audit
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards - 2 Column Grid */}
-          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-            {paginatedAgents.map((agent) => (
-              <div
-                key={agent.id}
-                className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition flex flex-col gap-3"
-              >
-                {/* Header */}
-                <div className="flex items-start gap-3">
-                  {agent.profile_image ? (
-                    <div className="relative flex-shrink-0">
-                      <img
-                        src={agent.profile_image}
-                        alt={agent.username}
-                        className="h-12 w-12 rounded-full object-cover border-2 border-secondary/20 shadow-sm cursor-pointer hover:ring-2 hover:ring-secondary/40 transition-all duration-200"
-                        onClick={() => setZoomImageAgent(agent)}
-                      />
-                      <div
-                        className="absolute -bottom-1 -right-1 bg-secondary text-white rounded-full p-0.5 shadow-md cursor-pointer hover:scale-110 transition-transform"
-                        onClick={() => setZoomImageAgent(agent)}
-                      >
-                        <ZoomIn className="h-3.5 w-3.5" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-secondary to-secondary-dark flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-secondary/10 flex-shrink-0">
-                      {getInitials(agent.first_name, agent.last_name, agent.username)}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-0 flex-wrap">
-                      <p className="font-semibold text-gray-900 text-sm truncate max-w-[120px]">
-                        {agent.first_name && agent.last_name
-                          ? `${agent.first_name} ${agent.last_name}`
-                          : agent.username}
-                      </p>
-                      {/* Ranking Badge */}
-                      {(() => {
-                        const rank = getPerformanceRank(agent);
-                        return (
-                          <span className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-semibold border ${rank.color}`}>
-                            {rank.icon}
-                            {rank.label}
-                          </span>
-                        );
-                      })()}
-                      <button
-                        onClick={() => setPersonalModalAgent(agent)}
-                        className="p-1 rounded-full bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 hover:ring-2 hover:ring-secondary/20 transition-all flex-shrink-0 group cursor-pointer"
-                        title="View Profile"
-                      >
-                        <User className="h-3.5 w-3.5 text-secondary group-hover:text-secondary-dark transition-colors" />
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-400 truncate">@{agent.username}</p>
-                  </div>
-                  <span className={`
-                    shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold
-                    ${agent.is_active
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-gray-100 text-gray-500'
-                    }
-                  `}>
-                    {agent.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-
-                {/* Contact */}
-                <div className="space-y-0.5 text-xs">
-                  <p className="text-gray-600 flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-gray-400" />
-                    {agent.email}
-                  </p>
-                  <p className="text-gray-600 flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-gray-400" />
-                    {formatPhone(agent.phone_number)}
-                  </p>
-                </div>
-
-                {/* Targets & Performance */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="bg-purple-50/50 p-2 rounded-xl border border-purple-100/50">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase">Daily Goal</p>
-                    <p className="text-sm font-black text-secondary">{agent.daily_target} companies</p>
-                  </div>
-                  <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase">Weekly Goal</p>
-                    <p className="text-sm font-black text-emerald-600">{agent.weekly_target} companies</p>
-                  </div>
-                </div>
-
-                {/* Registered Companies */}
-                <div className="border-t border-gray-100 pt-2 flex items-center justify-between text-xs">
-                  <span className="text-gray-400 font-medium flex items-center gap-1">
-                    <Building2 className="h-3.5 w-3.5" /> Registered:
-                  </span>
-                  <span className="font-bold text-gray-700 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                    {agent.companies_count} companies
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => openEditModal(agent)}
-                    className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-gray-600 hover:text-secondary text-sm font-semibold flex items-center justify-center gap-2"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedAgentId(agent.id);
-                      setSelectedAgentName(
-                        agent.first_name && agent.last_name
-                          ? `${agent.first_name} ${agent.last_name}`
-                          : agent.username
-                      );
-                    }}
-                    className="w-full bg-secondary text-white py-2.5 rounded-xl flex items-center justify-center gap-2 hover:bg-[#5b4694] transition text-sm font-semibold shadow-sm"
-                  >
-                    <Eye className="h-4 w-4" />
-                    Audit
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Pagination - Using Pagination component */}
-      {filteredAgents.length > pageSize && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(filteredAgents.length / pageSize)}
-          onPageChange={setCurrentPage}
-          pageSize={pageSize}
-          onPageSizeChange={(size) => {
-            setPageSize(size);
-            setCurrentPage(1);
-          }}
-          pageSizeOptions={[5, 10, 25, 50]}
-          enableUrlSync={false}
-        />
-      )}
-
+      <DataTable
+        data={paginatedAgents}
+        columns={agentColumns}
+        errorMessage={error || null}
+        onRetry={fetchAgents}
+        emptyMessage="No marketing agents found matching your query."
+        currentPage={currentPage}
+        totalPages={Math.ceil(filteredAgents.length / pageSize)}
+        onPageChange={setCurrentPage}
+        totalItems={filteredAgents.length}
+        itemsPerPage={pageSize}
+        stickyColumns={1}
+      />
 
       {/* Audit Modal Overlay */}
       {selectedAgentId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-hidden">
-          <div className="bg-white w-full max-w-6xl h-[90dvh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in-50 zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/50 p-4">
+          <div className="flex h-[90dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-secondary/30 px-6 py-4 flex items-center justify-between z-10 border-b border-secondary/20">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-secondary">
                   Auditing Agent: {selectedAgentName}
@@ -1068,7 +716,7 @@ export default function MarketingAgentsManagement() {
             </div>
 
             {/* Scrollable Audit Report content */}
-            <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className="flex-1 overflow-y-auto bg-white">
               <MarketingOverview agentId={selectedAgentId} />
             </div>
           </div>
@@ -1085,7 +733,7 @@ export default function MarketingAgentsManagement() {
       {/* Image Zoom Modal */}
       {zoomImageAgent && zoomImageAgent.profile_image && (
         <div
-          className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/75 p-4"
           onClick={() => setZoomImageAgent(null)}
         >
           <div

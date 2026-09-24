@@ -13,7 +13,6 @@ import {
   XCircle,
   Wrench,
   Phone,
-  FileText,
   Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -24,8 +23,9 @@ import { CompanySelector } from "../company-products/CompanySelector";
 import { getManageServiceSubscriptions } from "../../../services/api";
 import { ServiceSubscriptionManageModal } from "./ServiceSubscriptionManageModal";
 import { Toast } from "../../ui/Toast";
-import { Pagination } from "../../ui/Pagination";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
+import PageHeader from "../../ui/PageHeader";
+import { DataTable, type Column } from "../../ui/DataTable";
 import type { ServiceSubscription } from "../../../types";
 
 /* ---------- custom debounce hook ---------- */
@@ -221,120 +221,23 @@ function KpiCard({
   label,
   value,
   icon: Icon,
-  iconClass,
 }: {
   label: string;
   value: number;
   icon: LucideIcon;
-  iconClass: string;
+  iconClass?: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3.5 shadow-sm">
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconClass}`}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold leading-none text-gray-900">{value}</p>
-        <p className="mt-1 truncate text-xs font-medium text-gray-500">
-          {label}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function SubscriptionTableSkeleton() {
-  return (
-    <div className="hidden overflow-x-auto md:block">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
-            <th className="pb-3 pr-4">Contract</th>
-            <th className="pb-3 pr-4">Customer</th>
-            <th className="pb-3 pr-4">Service</th>
-            <th className="pb-3 pr-4">Billing</th>
-            <th className="pb-3 pr-4">Next Billing</th>
-            <th className="pb-3 pr-4">Status</th>
-            <th className="pb-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="animate-pulse">
-          {[...Array(5)].map((_, index) => (
-            <tr key={index} className="border-b border-gray-50">
-              <td className="py-4 pr-4">
-                <div className="h-4 w-14 rounded bg-gray-200" />
-              </td>
-              <td className="py-4 pr-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200" />
-                  <div className="space-y-2">
-                    <div className="h-4 w-28 rounded bg-gray-200" />
-                    <div className="h-3 w-20 rounded bg-gray-100" />
-                  </div>
-                </div>
-              </td>
-              <td className="py-4 pr-4">
-                <div className="h-4 w-32 rounded bg-gray-200" />
-                <div className="mt-2 h-3 w-24 rounded bg-gray-100" />
-              </td>
-              <td className="py-4 pr-4">
-                <div className="h-4 w-20 rounded bg-gray-200" />
-                <div className="mt-2 h-3 w-16 rounded bg-gray-100" />
-              </td>
-              <td className="py-4 pr-4">
-                <div className="h-4 w-24 rounded bg-gray-200" />
-              </td>
-              <td className="py-4 pr-4">
-                <div className="h-5 w-16 rounded-full bg-gray-200" />
-              </td>
-              <td className="py-4 text-right">
-                <div className="ml-auto h-8 w-20 rounded-lg bg-gray-200" />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function SubscriptionCardSkeleton() {
-  return (
-    <div className="space-y-3 md:hidden">
-      {[...Array(3)].map((_, index) => (
-        <div
-          key={index}
-          className="animate-pulse rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-gray-200" />
-              <div className="space-y-2">
-                <div className="h-4 w-28 rounded bg-gray-200" />
-                <div className="h-3 w-20 rounded bg-gray-100" />
-              </div>
-            </div>
-            <div className="h-5 w-16 rounded-full bg-gray-200" />
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="h-4 w-32 rounded bg-gray-200" />
-            <div className="h-3 w-24 rounded bg-gray-100" />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <div className="h-3 w-12 rounded bg-gray-100" />
-              <div className="h-4 w-20 rounded bg-gray-200" />
-            </div>
-            <div className="space-y-2">
-              <div className="h-3 w-16 rounded bg-gray-100" />
-              <div className="h-4 w-24 rounded bg-gray-200" />
-            </div>
-          </div>
-          <div className="mt-4 h-10 w-full rounded-xl bg-gray-200" />
+    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium text-gray-500">{label}</p>
+          <p className="mt-1 text-xl font-semibold text-gray-900">{value}</p>
         </div>
-      ))}
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -402,7 +305,7 @@ export default function ServiceSubscriptions() {
   const requestIdRef = useRef(0);
 
   const fetchSubscriptions = useCallback(async () => {
-    if (!companySlug) return;
+    if (!companySlug || !isServiceCompany) return;
 
     const requestId = ++requestIdRef.current;
 
@@ -427,7 +330,7 @@ export default function ServiceSubscriptions() {
         setLoading(false);
       }
     }
-  }, [companySlug, selectedStatus]);
+  }, [companySlug, selectedStatus, isServiceCompany]);
 
   useEffect(() => {
     void fetchSubscriptions();
@@ -521,6 +424,114 @@ export default function ServiceSubscriptions() {
     ];
   }, [subscriptions]);
 
+  const subscriptionColumns: Column<ServiceSubscription>[] = [
+    {
+      key: "id",
+      header: "Contract",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <div>
+          <p className="font-semibold text-gray-900">#{subscription.id}</p>
+          {subscription.created_at && (
+            <p className="mt-0.5 text-xs text-gray-400">
+              Created {formatDate(subscription.created_at)}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      render: (subscription) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-sm font-semibold text-secondary">
+            {getInitials(subscription.customer_name)}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-gray-900">
+              {subscription.customer_name || "—"}
+            </p>
+            {subscription.customer_phone && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                <Phone className="h-3 w-3" />
+                {subscription.customer_phone}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "service",
+      header: "Service",
+      render: (subscription) => (
+        <div>
+          <p className="font-medium text-gray-800">
+            {subscription.offering?.title || "Recurring Service"}
+          </p>
+          {subscription.assigned_staff?.name && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              Staff: {subscription.assigned_staff.name}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "billing",
+      header: "Billing",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <div>
+          <p className="font-semibold text-gray-900">
+            {formatAmount(subscription.cycle_amount)} {subscription.currency}
+          </p>
+          <p className="mt-0.5 text-xs capitalize text-gray-500">
+            per {subscription.billing_cycle}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "next_billing_date",
+      header: "Next Billing",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <BillingDateCell date={subscription.next_billing_date} />
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <SubscriptionStatusBadge status={subscription.status} />
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedSubscription(subscription);
+              setManageModalOpen(true);
+            }}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/5"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Manage
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   /* ---------- company switching ---------- */
   const handleCompanySelect = useCallback(
     (slug: string, name: string) => {
@@ -567,88 +578,104 @@ export default function ServiceSubscriptions() {
 
   if (!companySlug) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-        <Repeat className="mb-4 h-12 w-12 text-gray-300" />
-        <p>Select a service company to manage recurring contracts.</p>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Recurring Contracts"
+          description="Select a service company to manage recurring service contracts."
+          icon={Repeat}
+          className="mb-6"
+        />
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
+          Select a service company to continue.
+        </div>
       </div>
     );
   }
 
   if (selectedCompany && !isServiceCompany) {
     return (
-      <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-        <Wrench className="mb-4 h-12 w-12 text-gray-300" />
-        <h3 className="text-lg font-semibold text-gray-700">
-          Not a Service Company
-        </h3>
-        <p className="mt-2 max-w-md text-sm text-gray-500">
-          {companyName} is a product vendor. Recurring contract management is
-          only available for companies with business type “service”.
-        </p>
-        {isSuperAdmin && (
-          <button
-            type="button"
-            onClick={clearCompany}
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-secondary hover:underline"
-          >
-            <Repeat className="h-4 w-4" />
-            Choose another company
-          </button>
-        )}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Recurring Contracts"
+          description="Recurring service contracts are available only for service companies."
+          icon={Repeat}
+          eyebrow={companyName || undefined}
+          badge={
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
+              Service company required
+            </span>
+          }
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900">
+                {companyName || "The selected company"} is not a service company
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Recurring contracts, billing cycles, and service subscription management
+                are disabled for this company. Select a company whose business type is
+                <span className="font-medium text-gray-800"> service</span> to continue.
+              </p>
+
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={clearCompany}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Choose a service company
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const selectedStatusNoun =
-    selectedStatus === "all"
-      ? "all"
-      : selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1);
+
 
   return (
     <>
       <Toast toast={toast} />
 
-      <div className="space-y-4 sm:space-y-5">
-        {/* Header */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:p-4 md:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-secondary/70">
-                Service Management
-              </p>
-
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-                  Recurring Contracts
-                </h1>
-
-                <span
-                  title={companyName}
-                  className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-secondary/15 bg-secondary/5 px-2.5 py-1 text-xs font-semibold text-secondary"
-                >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                  <span className="max-w-[180px] truncate sm:max-w-[260px]">
-                    {companyName}
-                  </span>
-                </span>
-              </div>
-
-              <p className="mt-1.5 max-w-2xl text-sm text-gray-500">
-                Manage ongoing subscriptions, recurring services, billing
-                cycles, and contract status.
-              </p>
-            </div>
-
-            <div className="flex w-full flex-row items-center gap-2 sm:w-auto">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Recurring Contracts"
+          description="Manage ongoing subscriptions, billing cycles, and contract status."
+          icon={Repeat}
+          eyebrow={companyName || undefined}
+          actions={
+            <div className="flex items-center gap-2">
               {isSuperAdmin && (
                 <button
                   type="button"
                   onClick={clearCompany}
-                  aria-label="Switch company"
-                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/20 sm:flex-none sm:gap-2 sm:px-3.5 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
-                  <Repeat className="h-4 w-4 shrink-0" />
-                  <span className=" truncate sm:inline">Switch Company</span>
+                  <Repeat className="h-4 w-4" />
+                  Switch company
                 </button>
               )}
 
@@ -656,23 +683,18 @@ export default function ServiceSubscriptions() {
                 type="button"
                 onClick={() => void fetchSubscriptions()}
                 disabled={loading}
-                aria-label="Refresh subscriptions"
-                title="Refresh subscriptions"
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:gap-2 sm:px-3.5 sm:text-sm"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <RefreshCw
-                  className={`h-4 w-4 shrink-0 ${
-                    loading ? "animate-spin" : ""
-                  }`}
-                />
-                <span className="sm:inline">Refresh</span>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
               </button>
             </div>
-          </div>
-        </div>
+          }
+          className="mb-6"
+        />
 
         {/* KPI cards */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {kpiCards.map((card) => (
             <KpiCard
               key={card.label}
@@ -685,9 +707,9 @@ export default function ServiceSubscriptions() {
         </div>
 
         {/* Main content card */}
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           {/* Toolbar */}
-          <div className="border-b border-gray-100 bg-gray-50/50 p-3 sm:p-4">
+          <div className="border-b border-gray-200 bg-white p-3 sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-1.5">
                 {STATUS_TABS.map((tab) => {
@@ -699,7 +721,7 @@ export default function ServiceSubscriptions() {
                       onClick={() => setSelectedStatus(tab.value)}
                       className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all focus:outline-none focus:ring-2 focus:ring-secondary/20 ${
                         isActive
-                          ? "bg-secondary text-white shadow-sm shadow-secondary/20"
+                          ? "bg-secondary text-white"
                           : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
                       }`}
                     >
@@ -779,286 +801,28 @@ export default function ServiceSubscriptions() {
             </div>
           </div>
 
-          {/* Body */}
-          <div className="p-3 sm:p-4 md:p-6">
-            {loading ? (
-              <>
-                <SubscriptionTableSkeleton />
-                <SubscriptionCardSkeleton />
-              </>
-            ) : error ? (
-              <div className="py-16 text-center">
-                <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" />
-                <h3 className="text-lg font-semibold text-gray-700">
-                  Unable to load recurring contracts
-                </h3>
-                <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
-                  {error}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void fetchSubscriptions()}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#5B4592] focus:outline-none focus:ring-2 focus:ring-secondary/30"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Retry
-                </button>
-              </div>
-            ) : filteredSubscriptions.length === 0 ? (
-              debouncedSearch.trim() ? (
-                <div className="py-16 text-center">
-                  <Search className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-700">
-                    No matching contracts
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Try a different customer, service, staff member, or contract
-                    number.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="mt-4 text-sm font-semibold text-secondary hover:underline"
-                  >
-                    Clear Search
-                  </button>
-                </div>
-              ) : selectedStatus === "all" ? (
-                <div className="py-16 text-center">
-                  <Repeat className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-700">
-                    No recurring contracts yet
-                  </h3>
-                  <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
-                    Recurring service agreements will appear here when customers
-                    subscribe to ongoing services.
-                  </p>
-                </div>
-              ) : (
-                <div className="py-16 text-center">
-                  <Repeat className="mx-auto mb-3 h-10 w-10 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-700">
-                    No {selectedStatusNoun} contracts
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Try selecting another status or view all contracts.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStatus("all")}
-                    className="mt-4 text-sm font-semibold text-secondary hover:underline"
-                  >
-                    View all contracts
-                  </button>
-                </div>
-              )
-            ) : (
-              <>
-                {/* Desktop table */}
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
-                        <th className="pb-3 pr-4">Contract</th>
-                        <th className="pb-3 pr-4">Customer</th>
-                        <th className="pb-3 pr-4">Service</th>
-                        <th className="pb-3 pr-4">Billing</th>
-                        <th className="pb-3 pr-4">Next Billing</th>
-                        <th className="pb-3 pr-4">Status</th>
-                        <th className="pb-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {paginatedSubscriptions.map((subscription) => (
-                        <tr
-                          key={subscription.id}
-                          className="transition-colors hover:bg-purple-50/20"
-                        >
-                          <td className="py-4 pr-4">
-                            <p className="font-bold text-gray-900">
-                              #{subscription.id}
-                            </p>
-                            {subscription.created_at && (
-                              <p className="mt-0.5 text-xs text-gray-400">
-                                Created {formatDate(subscription.created_at)}
-                              </p>
-                            )}
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-sm font-semibold text-secondary">
-                                {getInitials(subscription.customer_name)}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate font-semibold text-gray-900">
-                                  {subscription.customer_name || "—"}
-                                </p>
-                                {subscription.customer_phone && (
-                                  <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                                    <Phone className="h-3 w-3" />
-                                    {subscription.customer_phone}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <div className="font-semibold text-gray-800">
-                              {subscription.offering?.title ||
-                                "Recurring Service"}
-                            </div>
-                            {subscription.assigned_staff?.name && (
-                              <div className="mt-0.5 text-xs text-gray-500">
-                                Staff: {subscription.assigned_staff.name}
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <div className="font-bold text-gray-900">
-                              {formatAmount(subscription.cycle_amount)}{" "}
-                              {subscription.currency}
-                            </div>
-                            <div className="mt-0.5 text-[11px] font-medium capitalize text-gray-500">
-                              per {subscription.billing_cycle}
-                            </div>
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <BillingDateCell
-                              date={subscription.next_billing_date}
-                            />
-                          </td>
-
-                          <td className="py-4 pr-4">
-                            <SubscriptionStatusBadge
-                              status={subscription.status}
-                            />
-                          </td>
-
-                          <td className="py-4 text-right">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedSubscription(subscription);
-                                setManageModalOpen(true);
-                              }}
-                              aria-label={`Manage contract #${subscription.id}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-secondary shadow-sm transition-all hover:bg-secondary hover:text-white focus:outline-none focus:ring-2 focus:ring-secondary/30"
-                            >
-                              <SlidersHorizontal className="h-3.5 w-3.5" />
-                              Manage
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile cards */}
-                <div className="space-y-3 md:hidden">
-                  {paginatedSubscriptions.map((subscription) => (
-                    <div
-                      key={subscription.id}
-                      className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-sm font-semibold text-secondary">
-                            {getInitials(subscription.customer_name)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-gray-900">
-                              {subscription.customer_name || "—"}
-                            </p>
-                            {subscription.customer_phone && (
-                              <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                                <Phone className="h-3 w-3" />
-                                {subscription.customer_phone}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <SubscriptionStatusBadge status={subscription.status} />
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>Contract #{subscription.id}</span>
-                      </div>
-
-                      <div className="mt-3 border-t border-gray-100 pt-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                          Service
-                        </p>
-                        <p className="mt-1 font-semibold text-gray-900">
-                          {subscription.offering?.title || "Recurring Service"}
-                        </p>
-                        {subscription.assigned_staff?.name && (
-                          <p className="mt-0.5 text-xs text-gray-500">
-                            Staff: {subscription.assigned_staff.name}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-400">Billing</p>
-                          <p className="mt-1 font-bold text-gray-900">
-                            {formatAmount(subscription.cycle_amount)}{" "}
-                            {subscription.currency}
-                          </p>
-                          <p className="mt-0.5 text-xs capitalize text-gray-500">
-                            per {subscription.billing_cycle}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-400">Next billing</p>
-                          <div className="mt-1 text-sm">
-                            <BillingDateCell
-                              date={subscription.next_billing_date}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedSubscription(subscription);
-                          setManageModalOpen(true);
-                        }}
-                        aria-label={`Manage contract #${subscription.id}`}
-                        className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5B4592] focus:outline-none focus:ring-2 focus:ring-secondary/30"
-                      >
-                        <SlidersHorizontal className="h-4 w-4" />
-                        Manage Contract
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-gray-500">
-                      Showing{" "}
-                      {Math.min((currentPage - 1) * pageSize + 1, totalItems)} –{" "}
-                      {Math.min(currentPage * pageSize, totalItems)} of{" "}
-                      {totalItems} contracts
-                    </p>
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={setCurrentPage}
-                    />
-                  </div>
-                )}
-              </>
-            )}
+          <div className="p-3 sm:p-4">
+            <DataTable
+              data={paginatedSubscriptions}
+              columns={subscriptionColumns}
+              loading={loading}
+              loadingRows={5}
+              errorMessage={error}
+              onRetry={() => void fetchSubscriptions()}
+              emptyMessage={
+                debouncedSearch.trim()
+                  ? "No matching contracts."
+                  : selectedStatus === "all"
+                    ? "No recurring contracts yet."
+                    : `No ${selectedStatus} contracts.`
+              }
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              itemsPerPage={pageSize}
+              stickyColumns={2}
+            />
           </div>
         </div>
       </div>

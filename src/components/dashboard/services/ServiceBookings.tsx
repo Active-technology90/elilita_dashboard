@@ -1,14 +1,15 @@
 import { useMemo, useState, useEffect } from "react";
-import { Calendar, Repeat, Settings, X, Home, Store } from "lucide-react";
+import { AlertCircle, Calendar, Repeat, Settings, X } from "lucide-react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
 import { useServiceBookings } from "../../../hooks/useServiceBookings";
 import { CompanySelector } from "../company-products/CompanySelector";
 import { Toast } from "../../ui/Toast";
-import { Pagination } from "../../ui/Pagination";
 import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
+import PageHeader from "../../ui/PageHeader";
+import { DataTable, type Column } from "../../ui/DataTable";
 import { ServiceBookingAdvancedFilters } from "./ServiceBookingFilters";
 import { ServiceBookingManageModal } from "./ServiceBookingManageModal";
 import { extractErrorMessage } from "../../../utils/extractErrorMessage";
@@ -232,6 +233,102 @@ export default function ServiceBookings() {
     paymentMethodFilter,
   ]);
 
+  const bookingColumns: Column<ServiceBooking>[] = [
+    {
+      key: "id",
+      header: "Booking ID",
+      textMode: "nowrap",
+      render: (booking) => (
+        <span className="font-semibold text-gray-900">#{booking.id}</span>
+      ),
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      render: (booking) => (
+        <div>
+          <p className="font-medium text-gray-900">
+            {booking.customer_name || `Customer #${booking.id}`}
+          </p>
+          {booking.customer_phone && (
+            <p className="mt-0.5 text-xs text-gray-500">
+              {booking.customer_phone}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "specialist",
+      header: "Specialist",
+      render: (booking) =>
+        booking.assigned_staff ? (
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary/10 text-[10px] font-semibold text-secondary">
+              {booking.assigned_staff.name.charAt(0)}
+            </span>
+            <span className="text-sm font-medium text-gray-800">
+              {booking.assigned_staff.name}
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-400">Any specialist</span>
+        ),
+    },
+    {
+      key: "service",
+      header: "Service",
+      render: (booking) => booking.offering?.title || "—",
+    },
+    {
+      key: "price",
+      header: "Price",
+      textMode: "nowrap",
+      render: (booking) => (
+        <span className="font-medium text-gray-800">
+          {Number(booking.quoted_price).toLocaleString()} {booking.currency}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      textMode: "nowrap",
+      render: (booking) => <StatusBadge status={booking.status} />,
+    },
+    {
+      key: "schedule",
+      header: "Date / Time",
+      textMode: "nowrap",
+      render: (booking) => (
+        <div>
+          <p className="font-medium text-gray-900">{booking.scheduled_date}</p>
+          <p className="text-xs text-gray-500">
+            {String(booking.scheduled_time).slice(0, 5)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      className: "text-right",
+      textMode: "nowrap",
+      render: (booking) => (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => handleOpenBooking(booking.id)}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-secondary transition hover:bg-secondary/5"
+          >
+            <Settings className="h-4 w-4" />
+            Manage
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   /* -------------------- early returns -------------------- */
   if (showSelector) {
     return (
@@ -254,8 +351,59 @@ export default function ServiceBookings() {
 
   if (!isServiceCompany) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-        Select a service company to view bookings.
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Service Bookings"
+          description="This area is available only to companies configured as service businesses."
+          icon={Calendar}
+          badge={
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
+              Service company required
+            </span>
+          }
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900">
+                {companyName || "The selected company"} is not a service company
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Service offerings, staff schedules, availability, and bookings are
+                disabled for this company. Select a company whose business type is
+                <span className="font-medium text-gray-800"> service</span> to continue.
+              </p>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={clearCompany}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Choose a service company
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -264,65 +412,26 @@ export default function ServiceBookings() {
   return (
     <>
       <Toast toast={toast} />
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6">
-        {/* Header */}
-        <div className="mb-5 sm:mb-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Page heading */}
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-secondary">
-                  Bookings
-                </h1>
-
-                {/* Company badge */}
-                <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-secondary/15 bg-secondary/5 px-2.5 py-1 text-xs font-semibold text-secondary">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                  <span className="truncate max-w-[180px] sm:max-w-[280px]">
-                    {companyName}
-                  </span>
-                </span>
-              </div>
-
-              <p className="mt-1.5 text-sm text-gray-500">
-                Review, manage, and track incoming customer appointments.
-              </p>
-            </div>
-
-            {/* Actions */}
-            {isSuperAdmin && (
-              <div className="flex w-full justify-start sm:w-auto sm:justify-end">
-                <button
-                  type="button"
-                  onClick={clearCompany}
-                  aria-label={`Switch company from ${companyName}`}
-                  className="
-            inline-flex min-h-10 w-auto items-center justify-center gap-2
-            rounded-xl border border-gray-200 bg-white
-            px-3.5 py-2
-            text-sm font-medium text-gray-700
-            shadow-sm
-            transition-all duration-200
-            hover:border-secondary/30
-            hover:bg-secondary/5
-            hover:text-secondary
-            active:scale-[0.98]
-            focus:outline-none
-            focus:ring-2
-            focus:ring-secondary/20
-            whitespace-nowrap
-          "
-                >
-                  <Repeat className="h-4 w-4 shrink-0" />
-                  <span>Switch Company</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Header divider */}
-          <div className="mt-5 border-b border-gray-100" />
-        </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Service Bookings"
+          description="Review, manage, and track incoming customer appointments."
+          icon={Calendar}
+          eyebrow={companyName || undefined}
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
 
         {/* Mobile search bar with filter button and page size (hidden on desktop) */}
         <div className="mb-4 lg:hidden">
@@ -376,130 +485,23 @@ export default function ServiceBookings() {
           />
         </div>
 
-        {/* Table / empty states */}
-        {loading ? (
-          <div className="py-12 text-center text-gray-400">
-            Loading bookings...
-          </div>
-        ) : paginatedBookings.length === 0 ? (
-          <div className="py-16 text-center">
-            <Calendar className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">
-              {bookings.length === 0
-                ? "No bookings found."
-                : "No matching bookings."}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-              <table className="w-full text-sm">
-                <thead className="bg-gradient-to-r from-secondary/5 via-secondary/10 to-secondary/5">
-                  <tr className="text-left text-xs font-semibold text-secondary uppercase tracking-wider">
-                    <th className="px-4 py-3">Booking Id</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Specialist</th>
-                    <th className="px-4 py-3">Service</th>
-                    <th className="px-4 py-3">Price</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Date / Time</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {paginatedBookings.map((b) => (
-                    <tr
-                      key={b.id}
-                      className="hover:bg-gray-50/50 transition-colors"
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="font-medium text-gray-900">#{b.id}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-gray-900 font-medium">
-                          {b.customer_name || `Customer #${b.id}`}
-                        </p>
-                        {b.customer_phone && (
-                          <p className="text-xs text-gray-400">
-                            {b.customer_phone}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {b.assigned_staff ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-6 h-6 rounded-full bg-purple-100 text-secondary font-bold text-[10px] flex items-center justify-center">
-                              {b.assigned_staff.name.charAt(0)}
-                            </span>
-                            <span className="text-xs font-semibold text-gray-800">
-                              {b.assigned_staff.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400 font-medium">
-                            Any Specialist
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">
-                        <p className="font-medium text-gray-900">{b.offering?.title || "—"}</p>
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 border ${
-                            b.location_type === "customer_location"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          }`}
-                        >
-                          {b.location_type === "customer_location" ? (
-                            <>
-                              <Home className="h-2.5 w-2.5" /> At Home
-                            </>
-                          ) : (
-                            <>
-                              <Store className="h-2.5 w-2.5" /> In Shop
-                            </>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-700 font-medium">
-                        {Number(b.quoted_price).toLocaleString()} {b.currency}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={b.status} />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="font-medium text-gray-900">
-                          {b.scheduled_date}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {String(b.scheduled_time).slice(0, 5)}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleOpenBooking(b.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-secondary hover:text-secondary hover:bg-secondary/10 text-sm font-medium transition-all"
-                        >
-                          <Settings className="h-4 w-4" /> Manage
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="mt-6">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            )}
-          </>
-        )}
+        <DataTable
+          data={paginatedBookings}
+          columns={bookingColumns}
+          loading={loading}
+          loadingRows={5}
+          emptyMessage={
+            bookings.length === 0
+              ? "No bookings found."
+              : "No matching bookings."
+          }
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={totalItems}
+          itemsPerPage={pageSize}
+          stickyColumns={2}
+        />
 
         {/* Booking detail modal */}
         {selectedBooking && (

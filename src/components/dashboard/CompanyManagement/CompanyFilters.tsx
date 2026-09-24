@@ -24,6 +24,21 @@ interface CompanyFiltersProps {
   onClearAll: () => void;
 }
 
+const pageSizeOptions: SelectOption[] = [
+  { value: "5", label: "5 / page" },
+  { value: "10", label: "10 / page" },
+  { value: "15", label: "15 / page" },
+  { value: "30", label: "30 / page" },
+  { value: "60", label: "60 / page" },
+];
+
+const sortOptions: SelectOption[] = [
+  { value: "name|asc", label: "Name (A-Z)" },
+  { value: "name|desc", label: "Name (Z-A)" },
+  { value: "is_active|desc", label: "Active First" },
+  { value: "is_featured|desc", label: "Featured First" },
+];
+
 export default function CompanyFilters({
   pageSize,
   onPageSizeChange,
@@ -45,112 +60,80 @@ export default function CompanyFilters({
   hasActiveFilters,
   onClearAll,
 }: CompanyFiltersProps) {
-  const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
-  ];
-
-  const sortOptions: SelectOption[] = [
-    { value: "name|asc", label: "Name (A-Z)" },
-    { value: "name|desc", label: "Name (Z-A)" },
-    { value: "is_active|desc", label: "Active First" },
-    { value: "is_featured|desc", label: "Featured First" },
-  ];
-
   return (
-    <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
-      <div className="hidden w-full rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:block">
-        <div className="flex w-full items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <SearchInput
-              value={inputValue}
-              onChange={onInputChange}
-              debounceMs={0}
-              loading={loading}
-              showClearButton={true}
-              placeholder="Search by name, slug, category..."
-            />
-          </div>
+    <div className="w-full rounded-xl border border-gray-200 bg-white p-2.5 shadow-sm">
+      <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_180px_118px]">
+        <SearchInput
+          value={inputValue}
+          onChange={onInputChange}
+          debounceMs={0}
+          loading={loading}
+          showClearButton
+          placeholder="Search by name, slug, category..."
+          className="w-full"
+        />
 
-          <div className="relative z-[110] w-56 shrink-0 lg:w-64">
-            <CustomSelect
-              value={`${sortField}|${sortOrder}`}
-              onChange={onSortChange}
-              placeholder="Sort"
-              options={sortOptions}
-              className="w-full"
-            />
-          </div>
+        <CustomSelect
+          value={`${sortField}|${sortOrder}`}
+          onChange={onSortChange}
+          options={sortOptions}
+          placeholder="Sort"
+          className="w-full"
+        />
 
-          <div className="relative z-[110] w-[138px] shrink-0">
-            <CustomSelect
-              value={String(pageSize)}
-              onChange={(value) => onPageSizeChange(Number(value))}
-              placeholder="10 / page"
-              options={pageSizeOptions}
-              className="w-full"
-            />
-          </div>
-        </div>
+        <CustomSelect
+          value={String(pageSize)}
+          onChange={(value) => onPageSizeChange(Number(value))}
+          options={pageSizeOptions}
+          placeholder="10 / page"
+          className="w-full"
+        />
+      </div>
 
-        <div className="mt-2 hidden grid-cols-4 gap-3 lg:grid">
-          <div className="relative z-[110]">
-            <CustomSelect
-              value={businessTypeFilter}
-              onChange={onBusinessTypeChange}
-              placeholder="Business Type"
-              options={businessTypeOptions.map<SelectOption>((type) => ({
-                value: type,
-                label: type.toUpperCase(),
-              }))}
-              className="w-full"
-            />
-          </div>
+      <div className="mt-2.5 grid gap-2.5 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]">
+        <CustomSelect
+          value={businessTypeFilter}
+          onChange={onBusinessTypeChange}
+          options={businessTypeOptions.map((type) => ({
+            value: type,
+            label: type.toUpperCase(),
+          }))}
+          placeholder="Business Type"
+          className="w-full"
+        />
 
-          <div className="relative z-[110]">
-            <CustomSelect
-              value={categoryFilter}
-              onChange={onCategoryChange}
-              placeholder="Category"
-              options={categoryOptions.map<SelectOption>((category) => ({
-                value: category,
-                label: category,
-              }))}
-              className="w-full"
-            />
-          </div>
+        <CustomSelect
+          value={categoryFilter}
+          onChange={onCategoryChange}
+          options={categoryOptions.map((category) => ({
+            value: category,
+            label: category,
+          }))}
+          placeholder="Category"
+          className="w-full"
+        />
 
-          <div className="relative z-[110]">
-            <CustomSelect
-              value={subCategoryFilter}
-              onChange={onSubCategoryChange}
-              placeholder="Subcategory"
-              options={subCategoryOptions.map<SelectOption>((subcategory) => ({
-                value: subcategory,
-                label: subcategory,
-              }))}
-              className="w-full"
-            />
-          </div>
+        <CustomSelect
+          value={subCategoryFilter}
+          onChange={onSubCategoryChange}
+          options={subCategoryOptions.map((subcategory) => ({
+            value: subcategory,
+            label: subcategory,
+          }))}
+          placeholder="Subcategory"
+          className="w-full"
+        />
 
-          <div className="flex min-w-0 items-center">
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={onClearAll}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-secondary/15 bg-white px-4 text-sm font-semibold text-secondary transition hover:bg-secondary/[0.05] focus:outline-none focus:ring-2 focus:ring-secondary/15 active:scale-[0.99]"
-              >
-                <X className="h-4 w-4" />
-                Clear filters
-              </button>
-            ) : (
-              <div className="h-10 w-full" />
-            )}
-          </div>
-        </div>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+          >
+            <X className="h-4 w-4" />
+            Clear
+          </button>
+        )}
       </div>
     </div>
   );

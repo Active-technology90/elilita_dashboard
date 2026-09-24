@@ -13,6 +13,7 @@ import { Pagination } from "../../ui/Pagination";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { usePagination } from "../../../hooks/usePagination";
 import { useSorting } from "../../../hooks/useSorting";
+import PageHeader from "../../ui/PageHeader";
 
 // ========== LOADING SKELETON ==========
 const SkeletonRow = () => (
@@ -480,38 +481,41 @@ export default function SuperadminSubscriptions() {
   ).length;
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] space-y-5 px-3 pb-8 pt-2 sm:px-5 lg:px-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-secondary/55">
-            Admin
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-950 sm:text-3xl">
-            Subscriptions
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">Plans and company subscriptions.</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={exportPlans}
-            disabled={isLoading || plans.length === 0}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateClick}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary-dark"
-          >
-            <Plus className="h-4 w-4" />
-            New plan
-          </button>
-        </div>
-      </header>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        title="Subscriptions"
+        description="Manage subscription plans and company subscriptions."
+        icon={CreditCard}
+        badge={
+          !isLoading ? (
+            <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary sm:text-xs">
+              {activeSubscriptions} active
+            </span>
+          ) : undefined
+        }
+        actions={
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={exportPlans}
+              disabled={isLoading || plans.length === 0}
+              className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateClick}
+              className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:flex-none sm:text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Add Plan
+            </button>
+          </div>
+        }
+        className="mb-5 sm:mb-6"
+      />
 
       {pageError && (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

@@ -1002,8 +1002,8 @@ export default function AdManagement() {
   // Render
   // ------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+      <div className="w-full">
         <PageHeader
           title={isCompanyAdmin ? "My Company Ads" : "Advertisements"}
           description={
@@ -1035,7 +1035,7 @@ export default function AdManagement() {
         />
 
         {/* Stats Grid */}
-        <div className="hidden xs:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="mb-4 hidden xs:grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Ads"
             value={totalCount}

@@ -449,7 +449,7 @@ export default function SubCategoryManagement() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-2 sm:px-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
       <PageHeader
         title="Subcategories"
@@ -478,11 +478,11 @@ export default function SubCategoryManagement() {
             </button>
           ) : undefined
         }
-        className="mb-4 sm:mb-6"
+        className="mb-5 sm:mb-6"
       />
 
-      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
-        <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:flex">
+      <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
+        <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:flex">
           <div className="min-w-0 flex-1">
             <SearchInput
               value={inputValue}
@@ -539,7 +539,7 @@ export default function SubCategoryManagement() {
           </div>
         </div>
 
-        <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:hidden">
+        <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:hidden">
           <div className="relative min-w-0 flex-1">
             <SearchInput
               value={inputValue}

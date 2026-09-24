@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Pencil,
   Loader2Icon,
+  AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../../context/authContext";
@@ -26,6 +27,7 @@ import {
 import { CompanySelector } from "../company-products/CompanySelector";
 import { DeleteConfirmModal } from "../../ui/DeleteConfirmModal";
 import { Toast } from "../../ui/Toast";
+import PageHeader from "../../ui/PageHeader";
 import { extractErrorMessage } from "../../../utils/extractErrorMessage";
 import type { AvailabilitySlot } from "../../../types";
 import { validateAvailabilitySlot } from "../../../utils/availabilityValidator";
@@ -64,27 +66,23 @@ const StatCard = ({
   icon: Icon,
   label,
   value,
-  color,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
-  color: string;
+  color?: string;
 }) => (
-  <motion.div
-    whileHover={{ y: -2 }}
-    className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4 transition-shadow hover:shadow-md"
-  >
-    <div
-      className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}
-    >
-      <Icon className="h-6 w-6 text-white" />
+  <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="mt-1 text-xl font-semibold text-gray-900">{value}</p>
+      </div>
+      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
+        <Icon className="h-4 w-4" />
+      </div>
     </div>
-    <div>
-      <p className="text-sm font-medium text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-    </div>
-  </motion.div>
+  </div>
 );
 
 const SkeletonCard = () => (
@@ -647,8 +645,59 @@ export default function AvailabilityManagement() {
 
   if (!isServiceCompany) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-        Select a service company to manage availability.
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Availability Management"
+          description="This area is available only to companies configured as service businesses."
+          icon={Calendar}
+          badge={
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
+              Service company required
+            </span>
+          }
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900">
+                {company?.name || "The selected company"} is not a service company
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Service offerings, staff schedules, availability, and bookings are
+                disabled for this company. Select a company whose business type is
+                <span className="font-medium text-gray-800"> service</span> to continue.
+              </p>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={clearCompany}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Choose a service company
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -866,70 +915,29 @@ export default function AvailabilityManagement() {
         defaultDay={newSlotDay}
       />
 
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="mb-5 sm:mb-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Page heading */}
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-secondary">
-                  Availability Management
-                </h1>
-
-                {/* Company badge */}
-                {company?.name && (
-                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-secondary/15 bg-secondary/5 px-2.5 py-1 text-xs font-semibold text-secondary">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                    <span className="truncate max-w-[180px] sm:max-w-[280px]">
-                      {company.name}
-                    </span>
-                  </span>
-                )}
-              </div>
-
-              <p className="mt-1.5 text-sm text-gray-500">
-                Configure booking schedules, working hours, and availability.
-              </p>
-            </div>
-
-            {/* Actions */}
-            {isSuperAdmin && (
-              <div className="w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={clearCompany}
-                  className="
-            inline-flex min-h-10 w-full sm:w-auto
-            items-center justify-center gap-2
-            rounded-xl border border-gray-200
-            bg-white px-3.5 py-2
-            text-sm font-medium text-gray-700
-            shadow-sm
-            transition-all duration-200
-            hover:border-secondary/30
-            hover:bg-secondary/5
-            hover:text-secondary
-            active:scale-[0.98]
-            focus:outline-none
-            focus:ring-2
-            focus:ring-secondary/20
-          "
-                  aria-label={`Switch company from ${company?.name ?? "current company"}`}
-                >
-                  <Repeat className="h-4 w-4 shrink-0" />
-                  <span>Switch Company</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Header divider */}
-          <div className="mt-5 border-b border-gray-100" />
-        </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Availability Management"
+          description="Configure booking schedules, working hours, and closure dates."
+          icon={Calendar}
+          eyebrow={company?.name || undefined}
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
             icon={Calendar}
             label="Working Days"
