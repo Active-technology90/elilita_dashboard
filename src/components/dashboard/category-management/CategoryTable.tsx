@@ -183,7 +183,7 @@ export default function CategoryTable({
 
   return (
     <div className="w-full space-y-4 sm:space-y-0">
-      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
+      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6 mb-3">
         <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)] sm:flex">
           <div className="min-w-0 flex-1">
             <SearchInput

@@ -317,7 +317,7 @@ const calculateUsage = (current: number, limit: number) => {
 };
 
 const SkeletonCard = () => (
-  <div className="animate-pulse rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+  <div className="animate-pulse rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
     <div className="h-3 w-24 rounded bg-slate-200" />
     <div className="mt-3 h-7 w-32 rounded bg-slate-200" />
     <div className="mt-3 h-9 w-36 rounded bg-slate-100" />
@@ -335,7 +335,7 @@ const SkeletonCard = () => (
 );
 
 const SkeletonCurrentPlan = () => (
-  <div className="animate-pulse overflow-hidden rounded-[26px] border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
+  <div className="animate-pulse overflow-hidden rounded-2xl border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
       <div>
         <div className="h-3 w-28 rounded bg-slate-200" />
@@ -647,6 +647,7 @@ export default function BillingPage() {
         description="Manage your plan, usage, renewal, and available plans."
         icon={CreditCard}
         loading={isLoading}
+              className="mb-5 sm:mb-6"
       />
 
       {feedback && (
@@ -706,7 +707,7 @@ export default function BillingPage() {
       {isLoading ? (
         <SkeletonCurrentPlan />
       ) : (
-        <section className="rounded-[26px] border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-2xl border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">

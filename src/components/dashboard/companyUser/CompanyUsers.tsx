@@ -404,7 +404,7 @@ export default function CompanyUsers() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-3 px-3 pb-6 sm:px-4 md:px-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <PageHeader
         title={isSuperAdmin ? companyName || "Company Users" : "All Users"}
         eyebrow={isSuperAdmin ? "User Management" : undefined}
@@ -436,7 +436,7 @@ export default function CompanyUsers() {
       {loading ? (
         <StatsSkeleton />
       ) : (
-        <section className="hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
+        <section className="mb-4 hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
           <StatCard title="Total" value={users?.length || 0} icon={Users} />
           <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
           <StatCard

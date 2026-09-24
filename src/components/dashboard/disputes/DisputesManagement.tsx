@@ -477,7 +477,7 @@ export default function DisputesManagement() {
     ];
 
   return (
-    <div className="space-y-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
 
       <PageHeader
@@ -499,7 +499,7 @@ export default function DisputesManagement() {
         }
       />
 
-      <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <section className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {metricCards.map(({ label, value, note, icon: Icon }) => (
           <div
             key={label}

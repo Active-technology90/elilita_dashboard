@@ -291,7 +291,7 @@ export default function Payments() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
 
       <PageHeader
@@ -327,7 +327,7 @@ export default function Payments() {
             </>
           ) : undefined
         }
-        className="mb-4 sm:mb-6"
+        className="mb-5 sm:mb-6"
       />
 
       {/* Company Selector Overlay */}
@@ -353,7 +353,7 @@ export default function Payments() {
       )}
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6 sm:mb-6">
         <div className="w-full lg:hidden">
-          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
             <div className="min-w-0 flex-1">
               <SearchInput
                 value={searchTerm}
@@ -465,11 +465,13 @@ export default function Payments() {
       />
 
       {!loading && totalPages > 1 && (
-        <Pagination
+        <div className="mt-6 flex justify-center sm:justify-end">
+          <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={goToPage}
         />
+        </div>
       )}
 
       {/* Mobile Filter Modal - Bottom Sheet */}

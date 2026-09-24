@@ -26,6 +26,7 @@ import { DeleteConfirmModal } from "../../ui/DeleteConfirmModal";
 import { Toast } from "../../ui/Toast";
 import { Pagination } from "../../ui/Pagination";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
+import PageHeader from "../../ui/PageHeader";
 import type { ServiceOffering } from "../../../types";
 
 /* ---------- custom debounce hook ---------- */
@@ -363,23 +364,59 @@ export default function CompanyServices() {
 
   if (!isServiceCompany) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <Wrench className="h-12 w-12 text-gray-300 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-700">
-          Not a Service Company
-        </h3>
-        <p className="text-sm text-gray-500 mt-2 max-w-md">
-          {companyName} is a product vendor. Service management is only
-          available for companies with business type "service".
-        </p>
-        {isSuperAdmin && (
-          <button
-            onClick={clearCompany}
-            className="mt-4 inline-flex items-center gap-1.5 text-sm text-purple-700 font-medium hover:underline"
-          >
-            <Repeat className="h-4 w-4" /> Choose another company
-          </button>
-        )}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title="Service Management"
+          description="This area is available only to companies configured as service businesses."
+          icon={AlertCircle}
+          badge={
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
+              Service company required
+            </span>
+          }
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+                Switch company
+              </button>
+            ) : undefined
+          }
+          className="mb-6"
+        />
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white">
+              <AlertCircle className="h-5 w-5 text-amber-600" />
+            </div>
+
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900">
+                {companyName || "The selected company"} is not a service company
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-gray-600">
+                Service offerings, staff schedules, availability, and bookings are
+                disabled for this company. Select a company whose business type is
+                <span className="font-medium text-gray-800"> service</span> to continue.
+              </p>
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={clearCompany}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Choose a service company
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -409,64 +446,39 @@ export default function CompanyServices() {
         onShowToast={showToast}
       />
 
-      <div className="w-full">
-        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-3 sm:p-4 md:p-6">
-          {/* Header */}
-          <div className="mb-5 sm:mb-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              {/* Title / Company */}
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-secondary">
-                    My Services
-                  </h1>
-
-                  {/* Company badge */}
-                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-secondary/15 bg-secondary/5 px-2.5 py-1 text-xs font-semibold text-secondary">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                    <span className="truncate max-w-[180px] sm:max-w-[260px]">
-                      {companyName}
-                    </span>
-                  </span>
-                </div>
-
-                <p className="mt-1.5 text-sm text-gray-500">
-                  Manage your service offerings, pricing, availability, and
-                  booking settings.
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex w-full flex-row items-center gap-2 sm:w-auto">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+          <PageHeader
+            title="My Services"
+            description="Manage service offerings, pricing, duration, and booking options."
+            icon={Wrench}
+            eyebrow={companyName || undefined}
+            actions={
+              <>
                 {isSuperAdmin && (
                   <button
                     type="button"
                     onClick={clearCompany}
-                    aria-label="Switch company"
-                    className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/20 sm:flex-none sm:gap-2 sm:px-3.5 sm:text-sm"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                   >
-                    <Repeat className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Switch Company</span>
+                    <Repeat className="h-4 w-4" />
+                    Switch company
                   </button>
                 )}
-
                 <button
                   type="button"
                   onClick={() => {
                     setEditing(null);
                     setModalOpen(true);
                   }}
-                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-secondary px-2 py-1.5 text-xs font-semibold text-white shadow-sm shadow-secondary/20 transition-all duration-200 hover:bg-[#5B4592] hover:shadow-md hover:shadow-secondary/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:flex-none sm:gap-2 sm:px-4 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90"
                 >
-                  <Plus className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Add Service</span>
+                  <Plus className="h-4 w-4" />
+                  Add service
                 </button>
-              </div>
-            </div>
-
-            {/* Optional subtle divider */}
-            <div className="mt-5 border-b border-gray-100" />
-          </div>
+              </>
+            }
+            className="mb-6"
+          />
 
           {/* Search + Refresh & Page Size */}
           <div className="mb-4 flex w-full flex-row items-center justify-between gap-2.5">
@@ -832,7 +844,6 @@ export default function CompanyServices() {
               )}
             </>
           )}
-        </div>
       </div>
     </>
   );

@@ -48,7 +48,7 @@ export function PageHeader({
 
   return (
     <header
-      className={`relative w-full rounded-2xl bg-white px-4 py-4  sm:px-5 sm:py-5 lg:px-6 ${className}`}
+      className={`relative w-full rounded-2xl bg-white px-4 py-4  sm:px-5 sm:py-5 lg:px-1 ${className}`}
     >
       {/* subtle background decoration */}
       <div

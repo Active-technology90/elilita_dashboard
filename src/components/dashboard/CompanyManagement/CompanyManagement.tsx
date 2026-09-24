@@ -1429,9 +1429,9 @@ export default function CompanyManagement() {
   if (loading) {
     return (
       <div
-        className={`max-w-full p-3 sm:p-4 lg:p-6 ${
+        className={`bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8 ${
           isSuperAdmin || isMarketing
-            ? "min-h-screen"
+            ? ""
             : "lg:h-full lg:min-h-0 lg:overflow-hidden"
         }`}
       >
@@ -1446,7 +1446,7 @@ export default function CompanyManagement() {
           }
           icon={Building2}
           loading
-          className="mb-4 sm:mb-6"
+          className="mb-5 sm:mb-6"
         />
         {isSuperAdmin || isMarketing ? (
           <SkeletonTable rowCount={pageSize} />
@@ -1459,9 +1459,9 @@ export default function CompanyManagement() {
 
   return (
     <div
-      className={`max-w-full ${
+      className={`bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8 ${
         isSuperAdmin || isMarketing
-          ? "min-h-screen"
+          ? ""
           : "lg:h-full lg:min-h-0 lg:overflow-hidden"
       }`}
     >
@@ -1469,8 +1469,8 @@ export default function CompanyManagement() {
       <div
         className={
           isSuperAdmin || isMarketing
-            ? "space-y-3 p-2 sm:p-4 md:space-y-4 md:p-4 lg:p-6"
-            : "flex flex-col gap-3 p-2 sm:p-4 md:p-4 lg:h-full lg:min-h-0 lg:overflow-hidden lg:p-4"
+            ? ""
+            : "flex h-full min-h-0 flex-col"
         }
       >
         <PageHeader
@@ -1483,7 +1483,11 @@ export default function CompanyManagement() {
                 : "Manage your company details and settings."
           }
           icon={Building2}
-          className={isSuperAdmin || isMarketing ? undefined : "shrink-0"}
+          className={
+            isSuperAdmin || isMarketing
+              ? "mb-5 sm:mb-6"
+              : "mb-5 shrink-0 sm:mb-6"
+          }
           actions={
             canAddCompany ? (
               <button
@@ -1503,31 +1507,35 @@ export default function CompanyManagement() {
         />
 
         {(isSuperAdmin || isMarketing) && (
-          <CompanyFilters
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            inputValue={inputValue}
-            onInputChange={handleInputChange}
-            loading={loading}
-            sortField={sortField}
-            sortOrder={sortOrder}
-            onSortChange={onSortChange}
-            businessTypeFilter={businessTypeFilter}
-            onBusinessTypeChange={setBusinessTypeFilter}
-            businessTypeOptions={businessTypeOptions}
-            categoryFilter={categoryFilter}
-            onCategoryChange={setCategoryFilter}
-            categoryOptions={categoryOptions}
-            subCategoryFilter={subCategoryFilter}
-            onSubCategoryChange={setSubCategoryFilter}
-            subCategoryOptions={subCategoryOptions}
-            hasActiveFilters={hasActiveFilters}
-            onClearAll={clearAllFilters}
-          />
+          <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
+            <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+              <CompanyFilters
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+                inputValue={inputValue}
+                onInputChange={handleInputChange}
+                loading={loading}
+                sortField={sortField}
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+                businessTypeFilter={businessTypeFilter}
+                onBusinessTypeChange={setBusinessTypeFilter}
+                businessTypeOptions={businessTypeOptions}
+                categoryFilter={categoryFilter}
+                onCategoryChange={setCategoryFilter}
+                categoryOptions={categoryOptions}
+                subCategoryFilter={subCategoryFilter}
+                onSubCategoryChange={setSubCategoryFilter}
+                subCategoryOptions={subCategoryOptions}
+                hasActiveFilters={hasActiveFilters}
+                onClearAll={clearAllFilters}
+              />
+            </div>
+          </div>
         )}
 
         {isSuperAdmin || isMarketing ? (
-          <div className="">
+          <div>
             <SuperAdminView
               paginatedItems={paginatedItemsWithRowNumber}
               columns={columns}

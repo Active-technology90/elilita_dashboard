@@ -332,7 +332,7 @@ export default function CategoryManagement() {
   if (error) return <ErrorView error={error} onRetry={fetchCategories} />;
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
 
       <PageHeader
@@ -363,10 +363,11 @@ export default function CategoryManagement() {
             </button>
           ) : undefined
         }
-        className="mb-4 sm:mb-6"
+        className="mb-5 sm:mb-6"
       />
 
-      <CategoryTable
+      <div className="mt-0">
+        <CategoryTable
         loading={loading}
         readOnly={readOnly}
         categoriesWithRowNumber={paginatedItemsWithRowNumber}
@@ -390,6 +391,7 @@ export default function CategoryManagement() {
         applyMobileSort={applyMobileSort}
         resetMobileSort={resetMobileSort}
       />
+      </div>
 
       {/* Mobile sticky bottom bar (only sort, no filter button) */}
       {/* <MobileActionBar
