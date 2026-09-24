@@ -17,6 +17,7 @@ interface ProductFormData {
   price: number;
   stock: number;
   unit: string;
+  meal_periods?: string[];
   is_featured?: boolean;
   is_active?: boolean;
 }
@@ -31,6 +32,7 @@ const productSchema = z.object({
   price: z.number().positive('Price must be positive'),
   stock: z.number().int().min(0, 'Stock cannot be negative'),
   unit: z.string().min(1, 'Unit is required'),
+  meal_periods: z.array(z.string()).optional(),
   is_featured: z.boolean().optional(),
   is_active: z.boolean().optional(),
 });
@@ -48,6 +50,7 @@ interface ProductModalProps {
     price: number;
     stock: number;
     unit: string;
+    meal_periods?: string[];
     is_featured?: boolean;
     is_active?: boolean;
     average_rating?: number;
@@ -89,6 +92,7 @@ export function ProductModal({
   onShowToast,
 }: ProductModalProps) {
   const [step, setStep] = useState<'details' | 'gallery'>('details');
+  const [selectedMealPeriods, setSelectedMealPeriods] = useState<string[]>([]);
   const [images, setImages] = useState<ProductImage[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [savedProductId, setSavedProductId] = useState<number | null>(null);
@@ -146,9 +150,11 @@ export function ProductModal({
         price: editingProduct.price,
         stock: editingProduct.stock,
         unit: editingProduct.unit,
+        meal_periods: editingProduct.meal_periods || [],
         is_featured: editingProduct.is_featured || false,
         is_active: editingProduct.is_active !== undefined ? editingProduct.is_active : true,
       });
+      setSelectedMealPeriods(editingProduct.meal_periods || []);
       setSavedProductId(editingProduct.id);
       setStep('details');
     } else {
@@ -156,6 +162,7 @@ export function ProductModal({
       if (isOpen) {
         // Reset savedProductId FIRST before any checks
         setSavedProductId(null);
+        setSelectedMealPeriods([]);
 
         // If we are in details step with a savedProductId that we just cleared, reset the form
         reset({
@@ -168,6 +175,7 @@ export function ProductModal({
           price: 0,
           stock: 0,
           unit: 'pcs',
+          meal_periods: [],
           is_featured: false,
           is_active: true,
         });
@@ -234,16 +242,20 @@ export function ProductModal({
     if (!canEditBasic) return;
     try {
       let productId = savedProductId;
+      const payload = {
+        ...data,
+        meal_periods: selectedMealPeriods,
+      };
 
       // If we have a savedProductId (product was created before), update it instead of creating new
       if (savedProductId && !editingProduct) {
         // This is a product that was created but we're going back to edit details
         // We need to update the existing product - pass the savedProductId to onSave
-        await onSave(data, savedProductId);
+        await onSave(payload, savedProductId);
         productId = savedProductId;
       } else {
         // New product creation
-        const saved = await onSave(data);
+        const saved = await onSave(payload);
         productId = saved?.id || editingProduct?.id;
       }
 
@@ -530,6 +542,47 @@ export function ProductModal({
                     <option value="l">Liter (l)</option>
                     <option value="m">Meter (m)</option>
                   </select>
+                </div>
+
+                {/* Meal Periods Availability (Breakfast, Lunch, Dinner) */}
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Meal Period Availability
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Select when this item is available. (If none selected, it appears across all periods).
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "breakfast", label: "Breakfast", icon: "☕" },
+                      { id: "lunch", label: "Lunch", icon: "☀️" },
+                      { id: "dinner", label: "Dinner", icon: "🌙" },
+                    ].map((period) => {
+                      const isSelected = selectedMealPeriods.includes(period.id);
+                      return (
+                        <button
+                          key={period.id}
+                          type="button"
+                          disabled={isSubmitting || isReadOnlyBasic}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedMealPeriods(selectedMealPeriods.filter((p) => p !== period.id));
+                            } else {
+                              setSelectedMealPeriods([...selectedMealPeriods, period.id]);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                            isSelected
+                              ? "bg-secondary text-white border-secondary shadow-sm"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          } ${isReadOnlyBasic ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <span>{period.icon}</span>
+                          <span>{period.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Active / Public Status */}

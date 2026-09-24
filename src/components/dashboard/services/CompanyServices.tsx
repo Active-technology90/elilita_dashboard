@@ -15,6 +15,10 @@ import {
   XCircle,
   ImageIcon,
   AlertCircle,
+  Copy,
+  Eye,
+  Sparkles,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
@@ -88,20 +92,37 @@ function ServiceImage({
   );
 }
 
-function StatusBadge({ isActive }: { isActive: boolean }) {
+function StatusBadge({
+  isActive,
+  onToggle,
+  disabled = false,
+}: {
+  isActive: boolean;
+  onToggle?: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-        isActive ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-      }`}
+    <button
+      type="button"
+      disabled={disabled || !onToggle}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle?.();
+      }}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition ${
+        isActive
+          ? "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200/60"
+          : "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200"
+      } ${!onToggle ? "cursor-default" : "cursor-pointer hover:shadow-xs active:scale-95"}`}
+      title={onToggle ? (isActive ? "Click to deactivate" : "Click to activate") : undefined}
     >
       {isActive ? (
         <CheckCircle className="h-3 w-3" />
       ) : (
         <XCircle className="h-3 w-3" />
       )}
-      {isActive ? "Active" : "Inactive"}
-    </span>
+      <span>{isActive ? "Active" : "Inactive"}</span>
+    </button>
   );
 }
 
@@ -110,6 +131,199 @@ function BookingBadge({ mode }: { mode: string }) {
     <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-purple-50 text-purple-700">
       {BOOKING_LABELS[mode] || mode}
     </span>
+  );
+}
+
+function ServicePreviewModal({
+  offering,
+  onClose,
+  onEdit,
+}: {
+  offering: ServiceOffering | null;
+  onClose: () => void;
+  onEdit: (offering: ServiceOffering) => void;
+}) {
+  if (!offering) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Service Details Preview"
+        className="bg-white w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-xl flex flex-col overflow-hidden animate-scaleUp"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-purple-50 text-secondary">
+              <Eye className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-gray-900">
+                Service Preview
+              </h3>
+              <p className="text-xs text-gray-400">
+                Customer-facing view details & configuration
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto space-y-5">
+          <div className="flex items-start gap-4">
+            <ServiceImage
+              src={offering.primary_image}
+              alt={offering.title}
+              className="w-24 h-24 shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h4 className="text-lg font-bold text-gray-900">
+                  {offering.title}
+                </h4>
+                <StatusBadge isActive={offering.is_active} />
+                <BookingBadge mode={offering.booking_mode} />
+              </div>
+              {offering.title_am && (
+                <p className="text-sm font-medium text-gray-500 mb-1.5">
+                  {offering.title_am}
+                </p>
+              )}
+              {offering.service_category && (
+                <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                  {offering.service_category}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Pricing & Duration summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-gray-50/80 border border-gray-100 text-center">
+            <div>
+              <p className="text-[11px] uppercase font-bold text-gray-400">Price</p>
+              <p className="text-sm font-bold text-secondary mt-0.5">
+                {offering.pricing_type === "custom"
+                  ? "Quote"
+                  : `${Number(offering.price || 0).toLocaleString()} ${offering.currency}`}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase font-bold text-gray-400">Duration</p>
+              <p className="text-sm font-bold text-gray-800 mt-0.5">
+                {offering.duration_minutes ? `${offering.duration_minutes} min` : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase font-bold text-gray-400">Type</p>
+              <p className="text-sm font-bold text-gray-800 mt-0.5 capitalize">
+                {offering.service_type === "recurring"
+                  ? `Subscription (${offering.billing_cycle || "monthly"})`
+                  : "One-Off"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase font-bold text-gray-400">Payment</p>
+              <p className="text-sm font-bold text-gray-800 mt-0.5 capitalize">
+                {offering.payment_policy.replace("_", " ")}
+                {offering.payment_policy === "deposit" ? ` (${offering.deposit_percentage}%)` : ""}
+              </p>
+            </div>
+          </div>
+
+          {/* Description */}
+          {offering.description && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                Description
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                {offering.description}
+              </p>
+              {offering.description_am && (
+                <p className="text-sm text-gray-500 mt-2 whitespace-pre-line leading-relaxed italic">
+                  {offering.description_am}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Tags */}
+          {offering.tags && offering.tags.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Tags & Keywords
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {offering.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-secondary border border-secondary/15"
+                  >
+                    <Tag className="h-3 w-3 opacity-60" />
+                    <span>{t}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Intake Form Fields */}
+          {offering.intake_form_schema && offering.intake_form_schema.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Intake Form Questions ({offering.intake_form_schema.length})
+              </p>
+              <div className="space-y-1.5">
+                {offering.intake_form_schema.map((field, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs"
+                  >
+                    <span className="font-semibold text-gray-800">
+                      {i + 1}. {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </span>
+                    <span className="text-gray-400 uppercase text-[10px] font-medium px-1.5 py-0.5 rounded bg-white border">
+                      {field.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-medium text-gray-600 rounded-xl hover:bg-gray-100 transition"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onEdit(offering);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-[#5B46A0] transition shadow-xs"
+          >
+            <Edit className="h-3.5 w-3.5" />
+            <span>Edit Service</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -229,6 +443,12 @@ export default function CompanyServices() {
     getDetail,
   } = useServiceOfferings(isServiceCompany ? companySlug : null);
 
+  // ---------- filters & tabs ----------
+  const [activeTabFilter, setActiveTabFilter] = useState<
+    "all" | "one_off" | "recurring" | "active" | "inactive"
+  >("all");
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+
   // ---------- search with debounce ----------
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -236,15 +456,56 @@ export default function CompanyServices() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // ---------- counts for tab badges ----------
+  const counts = useMemo(() => {
+    let oneOff = 0;
+    let recurring = 0;
+    let active = 0;
+    let inactive = 0;
+    for (const o of offerings) {
+      if ((o.service_type || "one_off") === "one_off") oneOff++;
+      if (o.service_type === "recurring") recurring++;
+      if (o.is_active) active++;
+      else inactive++;
+    }
+    return { all: offerings.length, oneOff, recurring, active, inactive };
+  }, [offerings]);
+
   const filteredOfferings = useMemo(() => {
-    if (!debouncedSearch.trim()) return offerings;
-    const term = debouncedSearch.toLowerCase();
-    return offerings.filter(
-      (o) =>
-        o.title.toLowerCase().includes(term) ||
-        (o.service_category && o.service_category.toLowerCase().includes(term)),
-    );
-  }, [offerings, debouncedSearch]);
+    let list = offerings;
+
+    // Tab filter
+    if (activeTabFilter === "one_off") {
+      list = list.filter((o) => (o.service_type || "one_off") === "one_off");
+    } else if (activeTabFilter === "recurring") {
+      list = list.filter((o) => o.service_type === "recurring");
+    } else if (activeTabFilter === "active") {
+      list = list.filter((o) => o.is_active);
+    } else if (activeTabFilter === "inactive") {
+      list = list.filter((o) => !o.is_active);
+    }
+
+    // Tag filter
+    if (selectedTagFilter) {
+      list = list.filter((o) =>
+        o.tags?.some((t) => t.toLowerCase() === selectedTagFilter.toLowerCase())
+      );
+    }
+
+    // Search filter
+    if (debouncedSearch.trim()) {
+      const term = debouncedSearch.toLowerCase();
+      list = list.filter(
+        (o) =>
+          o.title.toLowerCase().includes(term) ||
+          (o.title_am && o.title_am.toLowerCase().includes(term)) ||
+          (o.service_category && o.service_category.toLowerCase().includes(term)) ||
+          (o.tags && o.tags.some((t) => t.toLowerCase().includes(term)))
+      );
+    }
+
+    return list;
+  }, [offerings, activeTabFilter, selectedTagFilter, debouncedSearch]);
 
   const totalItems = filteredOfferings.length;
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -254,12 +515,12 @@ export default function CompanyServices() {
     return filteredOfferings.slice(start, start + pageSize);
   }, [filteredOfferings, currentPage, pageSize]);
 
-  // reset page when search or page size changes
+  // reset page when search, tab, or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, pageSize]);
+  }, [debouncedSearch, activeTabFilter, selectedTagFilter, pageSize]);
 
-  // handle cases where current page exceeds valid range (e.g., after deletion or search)
+  // handle cases where current page exceeds valid range
   useEffect(() => {
     if (totalPages > 0 && currentPage > totalPages) {
       setCurrentPage(totalPages);
@@ -268,12 +529,17 @@ export default function CompanyServices() {
     }
   }, [totalPages, currentPage]);
 
-  // ---------- modal & toast ----------
+  // ---------- modal, preview & toast ----------
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalInitialStep, setModalInitialStep] = useState<
+    "details" | "addons" | "gallery"
+  >("details");
   const [editing, setEditing] = useState<ServiceOffering | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ServiceOffering | null>(
-    null,
+  const [previewOffering, setPreviewOffering] = useState<ServiceOffering | null>(
+    null
   );
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceOffering | null>(null);
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
@@ -309,13 +575,71 @@ export default function CompanyServices() {
     }
   };
 
-  const handleEdit = async (offering: ServiceOffering) => {
+  const handleEdit = async (
+    offering: ServiceOffering,
+    step: "details" | "addons" | "gallery" = "details"
+  ) => {
     try {
       const fullOffering = await getDetail(offering.id);
       setEditing(fullOffering);
+      setModalInitialStep(step);
       setModalOpen(true);
     } catch {
       showToast("error", "Failed to load service details");
+    }
+  };
+
+  const handleToggleActive = async (offering: ServiceOffering) => {
+    setTogglingId(offering.id);
+    const newStatus = !offering.is_active;
+    try {
+      await update(offering.id, { is_active: newStatus });
+      showToast("success", `Service ${newStatus ? "activated" : "deactivated"}`);
+      refetch();
+    } catch {
+      showToast("error", "Failed to update service status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDuplicate = async (offering: ServiceOffering) => {
+    try {
+      const full = await getDetail(offering.id);
+      const duplicatedData: Partial<ServiceOffering> = {
+        ...full,
+        id: undefined,
+        title: `${full.title} (Copy)`,
+        title_am: full.title_am ? `${full.title_am} (ኮፒ)` : undefined,
+        slug: undefined,
+        order: (full.order || 0) + 1,
+      };
+      setEditing(duplicatedData as ServiceOffering);
+      setModalInitialStep("details");
+      setModalOpen(true);
+      showToast("success", "Duplicating service. Review and click save.");
+    } catch {
+      showToast("error", "Failed to duplicate service");
+    }
+  };
+
+  const handleOpenAddons = async (offering: ServiceOffering) => {
+    try {
+      const full = await getDetail(offering.id);
+      setEditing(full);
+      setModalInitialStep("addons");
+      setModalOpen(true);
+    } catch {
+      showToast("error", "Failed to open add-ons");
+    }
+  };
+
+  const handlePreview = async (offering: ServiceOffering) => {
+    try {
+      const full = await getDetail(offering.id);
+      setPreviewOffering(full);
+    } catch {
+      setPreviewOffering(offering);
     }
   };
 
@@ -394,11 +718,21 @@ export default function CompanyServices() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
+      <ServicePreviewModal
+        offering={previewOffering}
+        onClose={() => setPreviewOffering(null)}
+        onEdit={(o) => handleEdit(o, "details")}
+      />
       <ServiceOfferingModal
-        key={editing?.id ?? "new"}
+        key={
+          editing?.id
+            ? `${editing.id}-${modalInitialStep}`
+            : `new-${modalInitialStep}`
+        }
         isOpen={modalOpen}
         offering={editing}
         companySlug={companySlug}
+        initialStep={modalInitialStep}
         onClose={() => {
           setModalOpen(false);
           setEditing(null);
@@ -431,7 +765,7 @@ export default function CompanyServices() {
                 </div>
 
                 <p className="mt-1.5 text-sm text-gray-500">
-                  Manage your service offerings, pricing, availability, and
+                  Manage your service offerings, pricing, tags, add-ons, availability, and
                   booking settings.
                 </p>
               </div>
@@ -454,9 +788,10 @@ export default function CompanyServices() {
                   type="button"
                   onClick={() => {
                     setEditing(null);
+                    setModalInitialStep("details");
                     setModalOpen(true);
                   }}
-                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-secondary px-2 py-1.5 text-xs font-semibold text-white shadow-sm shadow-secondary/20 transition-all duration-200 hover:bg-[#5B4592] hover:shadow-md hover:shadow-secondary/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:flex-none sm:gap-2 sm:px-4 sm:text-sm"
+                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-secondary/20 transition-all duration-200 hover:bg-[#5B4592] hover:shadow-md hover:shadow-secondary/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-secondary/30 sm:flex-none sm:gap-2 sm:px-4 sm:text-sm"
                 >
                   <Plus className="h-4 w-4 shrink-0" />
                   <span className="truncate">Add Service</span>
@@ -467,6 +802,132 @@ export default function CompanyServices() {
             {/* Optional subtle divider */}
             <div className="mt-5 border-b border-gray-100" />
           </div>
+
+          {/* Quick Filter Tabs */}
+          <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-gray-100 pb-3">
+            <button
+              type="button"
+              onClick={() => setActiveTabFilter("all")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                activeTabFilter === "all"
+                  ? "bg-secondary text-white shadow-xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span>All</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTabFilter === "all"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {counts.all}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTabFilter("one_off")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                activeTabFilter === "one_off"
+                  ? "bg-secondary text-white shadow-xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span>One-Off</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTabFilter === "one_off"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {counts.oneOff}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTabFilter("recurring")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                activeTabFilter === "recurring"
+                  ? "bg-secondary text-white shadow-xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span>Subscriptions</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTabFilter === "recurring"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {counts.recurring}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTabFilter("active")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                activeTabFilter === "active"
+                  ? "bg-green-600 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span>Active</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTabFilter === "active"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {counts.active}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTabFilter("inactive")}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                activeTabFilter === "inactive"
+                  ? "bg-gray-700 text-white shadow-xs"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <span>Inactive</span>
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  activeTabFilter === "inactive"
+                    ? "bg-white/20 text-white"
+                    : "bg-white text-gray-600"
+                }`}
+              >
+                {counts.inactive}
+              </span>
+            </button>
+          </div>
+
+          {/* Active Tag Filter Indicator */}
+          {selectedTagFilter && (
+            <div className="mb-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 border border-secondary/20 text-xs text-secondary w-fit animate-fadeIn">
+              <Tag className="h-3.5 w-3.5" />
+              <span>
+                Filtering by tag: <strong className="font-bold underline">{selectedTagFilter}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedTagFilter(null)}
+                className="ml-1 p-0.5 rounded-full hover:bg-secondary/15 text-secondary transition"
+                title="Clear tag filter"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Search + Refresh & Page Size */}
           <div className="mb-4 flex w-full flex-row items-center justify-between gap-2.5">
@@ -668,13 +1129,42 @@ export default function CompanyServices() {
                           />
                         </td>
                         <td className="py-3 pr-4 min-w-0">
-                          <p className="font-medium text-gray-900 truncate max-w-[200px]">
+                          <p className="font-semibold text-gray-900 truncate max-w-[200px]">
                             {o.title}
                           </p>
                           {o.service_category && (
                             <p className="text-xs text-gray-400 truncate max-w-[200px]">
                               {o.service_category}
                             </p>
+                          )}
+                          {/* Tags Pills */}
+                          {o.tags && o.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {o.tags.slice(0, 3).map((tag) => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => setSelectedTagFilter(tag)}
+                                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${
+                                    selectedTagFilter === tag
+                                      ? "bg-secondary text-white shadow-xs"
+                                      : "bg-purple-50 text-secondary hover:bg-purple-100 border border-secondary/15"
+                                  }`}
+                                  title={`Filter by tag "${tag}"`}
+                                >
+                                  <Tag className="h-2.5 w-2.5 opacity-60" />
+                                  <span className="truncate max-w-[85px]">{tag}</span>
+                                </button>
+                              ))}
+                              {o.tags.length > 3 && (
+                                <span
+                                  className="text-[10px] font-medium text-gray-400 self-center"
+                                  title={o.tags.slice(3).join(", ")}
+                                >
+                                  +{o.tags.length - 3}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
@@ -691,7 +1181,11 @@ export default function CompanyServices() {
                           <BookingBadge mode={o.booking_mode} />
                         </td>
                         <td className="py-3 pr-4">
-                          <StatusBadge isActive={o.is_active} />
+                          <StatusBadge
+                            isActive={o.is_active}
+                            onToggle={() => handleToggleActive(o)}
+                            disabled={togglingId === o.id}
+                          />
                         </td>
                         <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">
                           {o.total_bookings ?? 0}
@@ -699,8 +1193,35 @@ export default function CompanyServices() {
                         <td className="py-3">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => handleEdit(o)}
-                              className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50"
+                              onClick={() => handlePreview(o)}
+                              className="p-1.5 text-gray-500 hover:text-secondary rounded-lg hover:bg-purple-50 transition"
+                              title="Preview service"
+                              aria-label={`Preview ${o.title}`}
+                              type="button"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenAddons(o)}
+                              className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
+                              title="Manage add-ons"
+                              aria-label={`Manage add-ons for ${o.title}`}
+                              type="button"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicate(o)}
+                              className="p-1.5 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition"
+                              title="Duplicate service"
+                              aria-label={`Duplicate ${o.title}`}
+                              type="button"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(o, "details")}
+                              className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
                               title="Edit service"
                               aria-label={`Edit ${o.title}`}
                               type="button"
@@ -709,7 +1230,7 @@ export default function CompanyServices() {
                             </button>
                             <button
                               onClick={() => setDeleteTarget(o)}
-                              className="p-1.5 text-red-700 hover:text-red-600 rounded-lg hover:bg-red-50"
+                              className="p-1.5 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition"
                               title="Delete service"
                               aria-label={`Delete ${o.title}`}
                               type="button"
@@ -756,8 +1277,35 @@ export default function CompanyServices() {
                           </div>
                           <div className="flex gap-1 ml-2">
                             <button
-                              onClick={() => handleEdit(o)}
-                              className="p-1.5 rounded-lg text-secondary hover:bg-purple-50"
+                              onClick={() => handlePreview(o)}
+                              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+                              title="Preview service"
+                              aria-label={`Preview ${o.title}`}
+                              type="button"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenAddons(o)}
+                              className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
+                              title="Manage add-ons"
+                              aria-label={`Manage add-ons for ${o.title}`}
+                              type="button"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicate(o)}
+                              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+                              title="Duplicate service"
+                              aria-label={`Duplicate ${o.title}`}
+                              type="button"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(o, "details")}
+                              className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
                               title="Edit service"
                               aria-label={`Edit ${o.title}`}
                               type="button"
@@ -766,7 +1314,7 @@ export default function CompanyServices() {
                             </button>
                             <button
                               onClick={() => setDeleteTarget(o)}
-                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition"
                               title="Delete service"
                               aria-label={`Delete ${o.title}`}
                               type="button"
@@ -799,9 +1347,34 @@ export default function CompanyServices() {
                             <BookingBadge mode={o.booking_mode} />
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <StatusBadge isActive={o.is_active} />
+                            <StatusBadge
+                              isActive={o.is_active}
+                              onToggle={() => handleToggleActive(o)}
+                              disabled={togglingId === o.id}
+                            />
                           </div>
                         </div>
+
+                        {/* Tags on Mobile Card */}
+                        {o.tags && o.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2.5 pt-2 border-t border-gray-100">
+                            {o.tags.map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={() => setSelectedTagFilter(tag)}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${
+                                  selectedTagFilter === tag
+                                    ? "bg-secondary text-white"
+                                    : "bg-purple-50 text-secondary border border-secondary/15"
+                                }`}
+                              >
+                                <Tag className="h-2.5 w-2.5 opacity-60" />
+                                <span>{tag}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Bookings count */}
                         <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">

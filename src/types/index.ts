@@ -119,6 +119,7 @@ export interface Company {
   is_active: boolean;
   is_featured: boolean;
   supports_table_service: boolean;
+  show_order_queue?: boolean;
   created_at?: string;
   chapa_sub_account_id?: string;
   minimum_order_total?: string;
@@ -169,6 +170,7 @@ export interface CompanyListItem {
   is_active: boolean;
   is_featured: boolean;
   supports_table_service: boolean;
+  show_order_queue?: boolean;
   description?: string;
   contact_phone: string;
   contact_email: string;
@@ -223,6 +225,7 @@ export interface CompanyProduct {
   stock: number;
   unit?: string;
   attributes?: Record<string, any>;
+  meal_periods?: string[];
   is_active: boolean;
   is_featured: boolean;
   images: ProductImage[];
@@ -248,6 +251,7 @@ export interface CompanyProductListItem {
   currency: string;
   stock: number;
   unit?: string;
+  meal_periods?: string[];
   is_active: boolean;
   is_featured: boolean;
   primary_image?: string | null;
@@ -414,6 +418,15 @@ export interface VendorOrder {
   delivery?: Delivery;
   master_order_id?: number;
   fulfillment_type?: string;
+  onspot_order_mode?: "already_here" | "order_ahead" | string;
+  estimated_arrival_time?: string | null;
+  table_number?: string | null;
+  queue_info?: {
+    is_enabled: boolean;
+    queue_position: number;
+    orders_ahead: number;
+    total_active: number;
+  } | null;
   shipping_lon?: string;
   shipping_lat?: string;
   customer_name?: string;
@@ -425,6 +438,15 @@ export interface MasterOrder {
   user: number;
   status: string;
   fulfillment_type: string;
+  onspot_order_mode?: "already_here" | "order_ahead" | string;
+  estimated_arrival_time?: string | null;
+  table_number?: string | null;
+  queue_info?: {
+    is_enabled: boolean;
+    queue_position: number;
+    orders_ahead: number;
+    total_active: number;
+  } | null;
   payment_method: string;
   subtotal: string;
   tax_total: string;

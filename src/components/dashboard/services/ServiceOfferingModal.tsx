@@ -3,6 +3,7 @@ import {
   X,
   Loader2,
   ChevronLeft,
+  ChevronRight,
   CheckCircle,
   Wrench,
   FileText,
@@ -11,10 +12,15 @@ import {
   Settings,
   ClipboardList,
   AlertTriangle,
+  Tag,
+  Sparkles,
+  ImageIcon,
 } from "lucide-react";
 import { IntakeFormBuilder } from "./IntakeFormBuilder";
 import { ServiceOfferingImageGallery } from "./ServiceOfferingImageGallery";
+import { ServiceAddonManager } from "./ServiceAddonManager";
 import { CustomSelect } from "../../ui/CustomSelect";
+import { TagsInput } from "../../ui/TagsInput";
 import type { IntakeFormField, ServiceOffering } from "../../../types";
 
 /* -------------------------------------------------------------------------- */
@@ -44,6 +50,7 @@ interface ServiceFormState {
   payment_policy: "upfront" | "deposit" | "post_service";
   deposit_percentage: string;
   service_category: string;
+  tags: string[];
   is_active: boolean;
   is_featured: boolean;
   order: number;
@@ -65,6 +72,7 @@ const defaultForm: ServiceFormState = {
   payment_policy: "upfront",
   deposit_percentage: "0",
   service_category: "",
+  tags: [],
   is_active: true,
   is_featured: false,
   order: 0,
@@ -166,6 +174,7 @@ export function ServiceOfferingModal({
   isOpen,
   offering,
   companySlug,
+  initialStep = "details",
   onClose,
   onSave,
   onSaved,
@@ -174,6 +183,7 @@ export function ServiceOfferingModal({
   isOpen: boolean;
   offering: ServiceOffering | null;
   companySlug: string;
+  initialStep?: "details" | "addons" | "gallery";
   onClose: () => void;
   onSave: (
     data: Partial<ServiceOffering>,
@@ -183,7 +193,9 @@ export function ServiceOfferingModal({
   onShowToast?: (type: "success" | "error", message: string) => void;
 }) {
   /* ── State ────────────────────────────────────────────────────────────── */
-  const [step, setStep] = useState<"details" | "gallery">("details");
+  const [step, setStep] = useState<"details" | "addons" | "gallery">(
+    initialStep || "details"
+  );
   const [form, setForm] = useState<ServiceFormState>(defaultForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -212,6 +224,7 @@ export function ServiceOfferingModal({
           payment_policy: offering.payment_policy,
           deposit_percentage: offering.deposit_percentage || "0",
           service_category: offering.service_category || "",
+          tags: offering.tags || [],
           is_active: offering.is_active,
           is_featured: offering.is_featured,
           order: offering.order || 0,
@@ -221,10 +234,10 @@ export function ServiceOfferingModal({
     setForm(initial);
     initialValuesRef.current = initial;
     setSavedOfferingId(offering?.id ?? null);
-    setStep("details");
+    setStep(initialStep || "details");
     setError("");
     setIsDirty(false);
-  }, [isOpen, offering]);
+  }, [isOpen, offering, initialStep]);
 
   /* ── Track dirty state ──────────────────────────────────────────────────── */
   useEffect(() => {
@@ -329,13 +342,14 @@ export function ServiceOfferingModal({
         duration_minutes: Number(form.duration_minutes) || null,
         deposit_percentage: form.deposit_percentage || "0",
         order: Number(form.order) || 0,
+        tags: form.tags || [],
       };
       const existingId = savedOfferingId ?? offering?.id;
       const saved = await onSave(payload, existingId ?? undefined);
       setSavedOfferingId(saved.id);
       initialValuesRef.current = { ...form, price: saved.price ?? "" }; // update baseline
       setIsDirty(false);
-      setStep("gallery");
+      setStep("addons");
       onShowToast?.(
         "success",
         existingId ? "Service updated" : "Service created",
@@ -413,54 +427,104 @@ export function ServiceOfferingModal({
               </button>
             </div>
             {/* Stepper */}
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="mt-6 flex items-center justify-center gap-1 sm:gap-2">
+              {/* Step 1: Details */}
+              <button
+                type="button"
+                onClick={() => setStep("details")}
+                className="flex items-center gap-1.5 focus:outline-none"
+              >
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs font-semibold transition-all ${
                     step === "details"
-                      ? "bg-secondary text-white"
+                      ? "bg-secondary text-white shadow-xs"
+                      : savedOfferingId || offering
+                        ? "bg-purple-100 text-secondary"
+                        : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {savedOfferingId || offering ? <CheckCircle className="h-4 w-4" /> : 1}
+                </div>
+                <span
+                  className={`text-xs sm:text-sm font-medium ${
+                    step === "details" ? "text-secondary font-bold" : "text-gray-500"
+                  }`}
+                >
+                  Details & Tags
+                </span>
+              </button>
+
+              <div className="flex-1 max-w-[40px] sm:max-w-[70px] h-0.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full bg-secondary transition-all duration-300 ${
+                    step === "addons" || step === "gallery" ? "w-full" : "w-0"
+                  }`}
+                />
+              </div>
+
+              {/* Step 2: Add-ons */}
+              <button
+                type="button"
+                disabled={!savedOfferingId && !offering}
+                onClick={() => (savedOfferingId || offering) && setStep("addons")}
+                className={`flex items-center gap-1.5 focus:outline-none ${
+                  !savedOfferingId && !offering ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs font-semibold transition-all ${
+                    step === "addons"
+                      ? "bg-secondary text-white shadow-xs"
                       : step === "gallery"
                         ? "bg-purple-100 text-secondary"
                         : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {step === "gallery" ? <CheckCircle className="h-4 w-4" /> : 1}
+                  {step === "gallery" ? <CheckCircle className="h-4 w-4" /> : 2}
                 </div>
                 <span
-                  className={`text-sm font-medium hidden sm:inline ${
-                    step === "details" ? "text-secondary" : "text-gray-500"
+                  className={`text-xs sm:text-sm font-medium ${
+                    step === "addons" ? "text-secondary font-bold" : "text-gray-500"
                   }`}
                 >
-                  Service Details
+                  Add-ons
                 </span>
-                <span className="sm:hidden text-xs text-gray-500">Details</span>
-              </div>
-              <div className="flex-1 mx-2 h-0.5 bg-gray-200 rounded-full overflow-hidden">
+              </button>
+
+              <div className="flex-1 max-w-[40px] sm:max-w-[70px] h-0.5 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full bg-secondary transition-all duration-500 ${
+                  className={`h-full bg-secondary transition-all duration-300 ${
                     step === "gallery" ? "w-full" : "w-0"
                   }`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Step 3: Gallery */}
+              <button
+                type="button"
+                disabled={!savedOfferingId && !offering}
+                onClick={() => (savedOfferingId || offering) && setStep("gallery")}
+                className={`flex items-center gap-1.5 focus:outline-none ${
+                  !savedOfferingId && !offering ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                }`}
+              >
                 <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-all ${
+                  className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full text-xs font-semibold transition-all ${
                     step === "gallery"
-                      ? "bg-secondary text-white"
+                      ? "bg-secondary text-white shadow-xs"
                       : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  2
+                  3
                 </div>
                 <span
-                  className={`text-sm font-medium hidden sm:inline ${
-                    step === "gallery" ? "text-secondary" : "text-gray-500"
+                  className={`text-xs sm:text-sm font-medium ${
+                    step === "gallery" ? "text-secondary font-bold" : "text-gray-500"
                   }`}
                 >
                   Gallery
                 </span>
-                <span className="sm:hidden text-xs text-gray-500">Gallery</span>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -725,6 +789,44 @@ export function ServiceOfferingModal({
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          Service Category
+                        </label>
+                        <input
+                          type="text"
+                          value={form.service_category}
+                          onChange={(e) =>
+                            updateForm("service_category", e.target.value)
+                          }
+                          className="w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
+                          placeholder="e.g. Barber & Grooming, Education, Fitness..."
+                        />
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {[
+                            "Barber & Grooming",
+                            "Hair & Beauty",
+                            "Education & Tutoring",
+                            "Fitness & Wellness",
+                            "Home Services",
+                            "Automotive",
+                          ].map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => updateForm("service_category", cat)}
+                              className={`text-[11px] px-2 py-0.5 rounded-md border transition ${
+                                form.service_category === cat
+                                  ? "bg-secondary text-white border-secondary"
+                                  : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-secondary"
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                           Display Order
                         </label>
                         <input
@@ -741,8 +843,9 @@ export function ServiceOfferingModal({
                           Lower numbers appear first.
                         </p>
                       </div>
-                      <div className="flex flex-col gap-3">
-                        <label className="flex items-center gap-3">
+
+                      <div className="flex flex-col gap-3 pt-1">
+                        <label className="flex items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={form.is_active}
@@ -755,7 +858,7 @@ export function ServiceOfferingModal({
                             Active Service
                           </span>
                         </label>
-                        <label className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={form.is_featured}
@@ -770,6 +873,44 @@ export function ServiceOfferingModal({
                         </label>
                       </div>
                     </div>
+                  </Card>
+                </div>
+
+                {/* Tags & Keywords Card */}
+                <div className="mt-6">
+                  <Card
+                    icon={<Tag size={18} />}
+                    title="Service Tags & Search Keywords"
+                    className="col-span-full"
+                  >
+                    <p className="text-xs text-gray-500 mb-3">
+                      Tags help customers quickly discover your service via search and filtering (e.g. Haircut, Fade, Shaving, STEM, Gym, etc.).
+                    </p>
+                    <TagsInput
+                      tags={form.tags}
+                      onChange={(newTags) => updateForm("tags", newTags)}
+                      placeholder="Type tag and press Enter or comma (e.g. Haircut)..."
+                      suggestions={[
+                        "Haircut",
+                        "Fade",
+                        "Beard Trim",
+                        "Shave",
+                        "Kids Cut",
+                        "Tutoring",
+                        "STEM",
+                        "Math",
+                        "Physics",
+                        "Grade 12",
+                        "Gym",
+                        "Personal Training",
+                        "Cardio",
+                        "Fitness",
+                        "VIP",
+                        "Home Visit",
+                        "Exam Prep",
+                        "Consultation",
+                      ]}
+                    />
                   </Card>
                 </div>
 
@@ -789,16 +930,35 @@ export function ServiceOfferingModal({
                   </Card>
                 </div>
               </form>
+            ) : step === "addons" ? (
+              <Card
+                icon={<Sparkles size={18} />}
+                title="Service Add-ons & Extras"
+                className="h-full"
+              >
+                {savedOfferingId || offering?.id ? (
+                  <ServiceAddonManager
+                    companySlug={companySlug}
+                    offeringId={(savedOfferingId ?? offering?.id)!}
+                    offeringTitle={form.title}
+                    onShowToast={onShowToast}
+                  />
+                ) : (
+                  <div className="py-12 text-center text-gray-400">
+                    Service must be saved first to manage add-ons.
+                  </div>
+                )}
+              </Card>
             ) : (
               <Card
-                icon={<FileText size={18} />}
+                icon={<ImageIcon size={18} />}
                 title="Service Images"
                 className="h-full"
               >
-                {savedOfferingId ? (
+                {savedOfferingId || offering?.id ? (
                   <ServiceOfferingImageGallery
                     companySlug={companySlug}
-                    offeringId={savedOfferingId}
+                    offeringId={(savedOfferingId ?? offering?.id)!}
                     onShowToast={onShowToast}
                   />
                 ) : (
@@ -828,11 +988,11 @@ export function ServiceOfferingModal({
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-[#5B46A0] disabled:opacity-50 transition shadow-sm"
                 >
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {saving ? "Saving…" : "Continue to Images"}
-                  <ChevronLeft className="h-4 w-4 rotate-180" />
+                  {saving ? "Saving…" : "Continue to Add-ons"}
+                  <ChevronRight className="h-4 w-4" />
                 </button>
               </>
-            ) : (
+            ) : step === "addons" ? (
               <>
                 <button
                   type="button"
@@ -841,6 +1001,25 @@ export function ServiceOfferingModal({
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Back to Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("gallery")}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-[#5B46A0] transition shadow-sm"
+                >
+                  <span>Continue to Images</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setStep("addons")}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to Add-ons
                 </button>
                 <button
                   type="button"

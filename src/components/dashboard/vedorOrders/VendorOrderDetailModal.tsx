@@ -2668,12 +2668,22 @@ export function VendorOrderDetailModal({
                               </span>
                             )}
                             {order.fulfillment_type === "onspot" && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
-                                On Spot at Table -{" "}
-                                {order.table_number
-                                  ? `${order.table_number}`
-                                  : ""}
-                              </span>
+                              order.onspot_order_mode === "order_ahead" ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
+                                  <Clock className="h-3 w-3 text-purple-600" />
+                                  Pre-Order (Dine-In) • ETA:{" "}
+                                  {order.estimated_arrival_time
+                                    ? new Date(order.estimated_arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                    : "Upon Arrival"}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
+                                  On Spot at Table -{" "}
+                                  {order.table_number
+                                    ? `${order.table_number}`
+                                    : "Unassigned"}
+                                </span>
+                              )
                             )}
                           </div>
                           {order.shipping_phone && (

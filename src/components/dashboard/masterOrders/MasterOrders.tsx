@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Eye, Package, Package2, Truck, X } from "lucide-react";
+import { Eye, Package, Package2, Truck, X, Clock } from "lucide-react";
 import { getAdminMasterOrders } from "../../../services/api";
 import type { MasterOrder } from "../../../types";
 import { useToast } from "../../../hooks/useToast";
@@ -293,10 +293,18 @@ export default function Orders() {
           <div className="flex items-center gap-1.5 text-gray-600">
             {order.fulfillment_type === "delivery" ? (
               <Truck className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+            ) : order.fulfillment_type === "onspot" ? (
+              <Clock className="h-3.5 w-3.5 flex-shrink-0 text-purple-500" />
             ) : (
               <Package className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
             )}
-            <span className="capitalize">{order.fulfillment_type}</span>
+            <span className="capitalize">
+              {order.fulfillment_type === "onspot"
+                ? order.onspot_order_mode === "order_ahead"
+                  ? "Pre-Order"
+                  : `Dine-in${order.table_number ? ` (${order.table_number})` : ""}`
+                : order.fulfillment_type}
+            </span>
           </div>
         ),
       },

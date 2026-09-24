@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Calendar, Repeat, Settings, X } from "lucide-react";
+import { Calendar, Repeat, Settings, X, Home, Store } from "lucide-react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
@@ -442,7 +442,24 @@ export default function ServiceBookings() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-gray-700">
-                        {b.offering?.title || "—"}
+                        <p className="font-medium text-gray-900">{b.offering?.title || "—"}</p>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 border ${
+                            b.location_type === "customer_location"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          }`}
+                        >
+                          {b.location_type === "customer_location" ? (
+                            <>
+                              <Home className="h-2.5 w-2.5" /> At Home
+                            </>
+                          ) : (
+                            <>
+                              <Store className="h-2.5 w-2.5" /> In Shop
+                            </>
+                          )}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-gray-700 font-medium">
                         {Number(b.quoted_price).toLocaleString()} {b.currency}

@@ -21,6 +21,12 @@ import {
   Banknote,
   Eye,
   ZoomIn,
+  MapPin,
+  Home,
+  Store,
+  Navigation,
+  ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ServiceBooking, BookingAction } from "../../../types";
@@ -650,6 +656,28 @@ export function ServiceBookingManageModal({
   const receipt = initialBooking.receipt;
   const receiptHistory = initialBooking.receipt_history || [];
 
+  const isAtHome = initialBooking.location_type === "customer_location";
+  const addressText = isAtHome
+    ? initialBooking.service_address_text
+    : (company as any)?.address;
+  const lat = isAtHome ? initialBooking.latitude : (company as any)?.latitude;
+  const lng = isAtHome ? initialBooking.longitude : (company as any)?.longitude;
+  const hasCoordinates =
+    lat != null &&
+    lng != null &&
+    String(lat).trim() !== "" &&
+    String(lng).trim() !== "";
+
+  const mapsUrl = useMemo(() => {
+    if (hasCoordinates) {
+      return `https://www.google.com/maps?q=${lat},${lng}`;
+    }
+    if (addressText && addressText.trim()) {
+      return `https://www.google.com/maps?q=${encodeURIComponent(addressText.trim())}`;
+    }
+    return null;
+  }, [hasCoordinates, lat, lng, addressText]);
+
   const timeline = buildBookingTimeline(initialBooking);
 
   const allowedActions: BookingAction[] = useMemo(() => {
@@ -810,6 +838,23 @@ export function ServiceBookingManageModal({
                     {company?.name}
                   </span>
                 </span>
+                {/* Service Location Pill */}
+                <span
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border shadow-sm ${
+                    isAtHome
+                      ? "bg-amber-50 border-amber-200 text-amber-800"
+                      : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}
+                >
+                  {isAtHome ? (
+                    <Home className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-600 shrink-0" />
+                  ) : (
+                    <Store className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 shrink-0" />
+                  )}
+                  <span className="font-bold text-[10px] sm:text-[11px] whitespace-nowrap">
+                    {isAtHome ? "At Home" : "In Shop"}
+                  </span>
+                </span>
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -909,6 +954,135 @@ export function ServiceBookingManageModal({
                 </div>
               </Card>
             )}
+
+            {/* Service Location Card */}
+            <Card
+              title={
+                isAtHome
+                  ? "Service Location • At Customer Location (Home)"
+                  : "Service Location • In Shop / Studio"
+              }
+              icon={MapPin}
+            >
+              <div className="space-y-3">
+                {/* Mode description header */}
+                <div
+                  className={`flex items-center justify-between p-3 rounded-xl border ${
+                    isAtHome
+                      ? "bg-gradient-to-r from-amber-50/80 to-orange-50/80 border-amber-200 text-amber-950"
+                      : "bg-gradient-to-r from-emerald-50/80 to-teal-50/80 border-emerald-200 text-emerald-950"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`p-2 rounded-lg shrink-0 ${
+                        isAtHome
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {isAtHome ? (
+                        <Home className="h-4 w-4" />
+                      ) : (
+                        <Store className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-wider">
+                        {isAtHome
+                          ? "Customer Location (At Home)"
+                          : "In Shop (Provider Studio)"}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">
+                        {isAtHome
+                          ? "Specialist will travel to the customer's specified address"
+                          : "Customer will visit the company / shop premises"}
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border shrink-0 ${
+                      isAtHome
+                        ? "bg-amber-100/80 text-amber-800 border-amber-300"
+                        : "bg-emerald-100/80 text-emerald-800 border-emerald-300"
+                    }`}
+                  >
+                    {isAtHome ? "Home Dispatch" : "In-Shop Visit"}
+                  </span>
+                </div>
+
+                {/* Address info block */}
+                <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                        <MapPin className="h-3 w-3 text-secondary" />
+                        <span>
+                          {isAtHome
+                            ? "Service Delivery Address / Landmark"
+                            : "Provider / Studio Address"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 break-words leading-relaxed">
+                        {addressText ||
+                          (isAtHome
+                            ? "No specific street address provided"
+                            : "Shop address not specified")}
+                      </p>
+                    </div>
+                    {addressText && <CopyButton text={addressText} />}
+                  </div>
+
+                  {/* Lat/Long coordinates if available */}
+                  {hasCoordinates && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600 font-mono">
+                      <span className="text-[11px] font-semibold text-gray-400 font-sans">
+                        GPS Coordinates:
+                      </span>
+                      <span className="bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-700">
+                        {lat}, {lng}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Customer Arrival / Delivery Notes */}
+                {initialBooking.customer_notes && (
+                  <div className="flex items-start gap-2 bg-purple-50/50 rounded-xl p-3 border border-purple-100">
+                    <MessageSquare className="h-4 w-4 text-secondary shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">
+                        Customer Arrival Notes
+                      </p>
+                      <p className="text-xs text-gray-700 mt-0.5 italic">
+                        "{initialBooking.customer_notes}"
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google Maps Link / Direction button */}
+                {mapsUrl && (
+                  <div className="pt-1">
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-secondary/40 hover:text-secondary text-xs font-semibold shadow-sm transition group"
+                    >
+                      <Navigation className="h-3.5 w-3.5 text-secondary group-hover:scale-110 transition-transform" />
+                      <span>
+                        {isAtHome
+                          ? "Open Customer Destination in Google Maps"
+                          : "Open Shop Location in Google Maps"}
+                      </span>
+                      <ExternalLink className="h-3 w-3 text-gray-400 group-hover:text-secondary ml-1" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </Card>
+
             {/* Timeline */}
             {timeline.length > 0 && (
               <motion.div

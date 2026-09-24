@@ -207,6 +207,7 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   is_active: false,
   is_featured: false,
   supports_table_service: false,
+  show_order_queue: false,
   logo: null,
   cover_image: null,
   chapa_sub_account_id: "",
@@ -638,6 +639,7 @@ export default function CompanyManagement() {
           is_active: company.is_active,
           is_featured: company.is_featured,
           supports_table_service: company.supports_table_service,
+          show_order_queue: Boolean(company.show_order_queue),
           description: company.description || "",
           address: company.address || "",
           address_am: (company as any).address_am || "",
@@ -675,6 +677,7 @@ export default function CompanyManagement() {
           is_active: companyListItem.is_active,
           is_featured: companyListItem.is_featured,
           supports_table_service: companyListItem.supports_table_service,
+          show_order_queue: Boolean(companyListItem.show_order_queue),
           logo: null,
           cover_image: null,
           contact_phone: companyListItem.contact_phone || "",
@@ -763,6 +766,7 @@ export default function CompanyManagement() {
             is_active: first.is_active,
             is_featured: first.is_featured,
             supports_table_service: first.supports_table_service,
+            show_order_queue: Boolean(first.show_order_queue),
             logo: null,
             cover_image: null,
             contact_phone: first.contact_phone || "",
@@ -965,6 +969,11 @@ export default function CompanyManagement() {
         )
           return true;
         if (
+          Boolean(formData.show_order_queue) !==
+          Boolean(originalFormData.show_order_queue)
+        )
+          return true;
+        if (
           cleanString(formData.tin_number) !==
           cleanString(originalFormData.tin_number)
         )
@@ -1078,6 +1087,10 @@ export default function CompanyManagement() {
       formPayload.append(
         "supports_table_service",
         String(formData.supports_table_service),
+      );
+      formPayload.append(
+        "show_order_queue",
+        String(formData.show_order_queue),
       );
       formPayload.append("tin_number", formData.tin_number || "");
       formPayload.append(
@@ -1359,6 +1372,7 @@ export default function CompanyManagement() {
         is_active: company.is_active,
         is_featured: company.is_featured,
         supports_table_service: company.supports_table_service,
+        show_order_queue: Boolean(company.show_order_queue),
         logo: null,
         cover_image: null,
         contact_phone: company.contact_phone || "",

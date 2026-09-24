@@ -26,6 +26,7 @@ import type {
   UserRole,
   ServiceOffering,
   ServiceOfferingImage,
+  ServiceAddon,
   PortfolioItem,
   PortfolioImage,
   AvailabilitySlot,
@@ -1004,6 +1005,44 @@ export const deleteServiceOfferingImage = (
 ) =>
   api.delete(
     `/services/manage/${companySlug}/offerings/${offeringId}/images/${imageId}/`,
+  );
+
+export const getManageOfferingAddons = (
+  companySlug: string,
+  offeringId: number,
+) =>
+  api.get<ServiceAddon[]>(
+    `/services/manage/${companySlug}/offerings/${offeringId}/addons/`,
+  );
+
+export const createOfferingAddon = (
+  companySlug: string,
+  offeringId: number,
+  data: Partial<ServiceAddon>,
+) =>
+  api.post<ServiceAddon>(
+    `/services/manage/${companySlug}/offerings/${offeringId}/addons/`,
+    data,
+  );
+
+export const updateOfferingAddon = (
+  companySlug: string,
+  offeringId: number,
+  addonId: number,
+  data: Partial<ServiceAddon>,
+) =>
+  api.patch<ServiceAddon>(
+    `/services/manage/${companySlug}/offerings/${offeringId}/addons/${addonId}/`,
+    data,
+  );
+
+export const deleteOfferingAddon = (
+  companySlug: string,
+  offeringId: number,
+  addonId: number,
+) =>
+  api.delete(
+    `/services/manage/${companySlug}/offerings/${offeringId}/addons/${addonId}/`,
   );
 
 export const getManagePortfolio = (companySlug: string) =>

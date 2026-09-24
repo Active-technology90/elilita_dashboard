@@ -26,6 +26,7 @@ export interface CompanyFormData {
   is_active: boolean;
   is_featured: boolean;
   supports_table_service: boolean;
+  show_order_queue: boolean;
   logo: File | null;
   cover_image: File | null;
   chapa_sub_account_id: string;
@@ -385,6 +386,26 @@ export default function CompanyForm({
             <p className="text-xs text-gray-500">{formData.supports_table_service ? "Available" : "Not available"}</p>
           </div>
         </div>
+
+        {/* Live Order Queue Toggle (Shown when Table Service is active) */}
+        {formData.supports_table_service && (
+          <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${formData.show_order_queue ? "bg-secondary/10 border-secondary/30" : "bg-gray-50 border-gray-200"}`}>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={formData.show_order_queue}
+                onChange={(e) => setFormData({ ...formData, show_order_queue: e.target.checked })}
+                disabled={!isEditingActive}
+              />
+              <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${formData.show_order_queue ? "bg-secondary" : "bg-gray-300"} ${!isEditingActive ? "opacity-60" : ""}`}></div>
+            </label>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Show Order Queue</p>
+              <p className="text-xs text-gray-500">{formData.show_order_queue ? "Live kitchen queue visible to customers" : "Hidden from customers"}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1043,6 +1064,11 @@ export default function CompanyForm({
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.supports_table_service ? "bg-secondary/10 text-secondary border border-secondary/20" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
               {formData.supports_table_service ? "Table Service" : "No Table Service"}
             </span>
+            {formData.supports_table_service && (
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.show_order_queue ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
+                {formData.show_order_queue ? "Queue Visible" : "Queue Hidden"}
+              </span>
+            )}
           </div>
         </div>
       </div>
