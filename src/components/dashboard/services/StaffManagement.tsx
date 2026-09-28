@@ -13,7 +13,6 @@ import {
   CheckSquare,
   X,
   Edit,
-  Building2,
   ArrowUp,
   ArrowDown,
   AlertCircle,

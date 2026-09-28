@@ -184,6 +184,8 @@ const getDisplayStatus = (
     shipped: "In Transit",
     fulfilled: "Delivered",
     pending: "Assigned",
+    expired: "Offer Expired (Timeout)",
+    declined: "Declined",
     out_for_delivery: "In Transit",
     delivered: "Completed",
     disputed: "Disputed",
@@ -208,8 +210,12 @@ const getStatusBadge = (status: string) => {
     );
   if (s === "replacement_in_progress")
     return base + "bg-purple-50 text-purple-700 border-purple-200";
+  if (s === "expired")
+    return base + "bg-amber-50 text-amber-800 border-amber-300";
   if (s === "pending" || s === "disputed")
     return base + "bg-amber-50 text-amber-700 border-amber-200";
+  if (s === "declined")
+    return base + "bg-rose-50 text-rose-700 border-rose-200";
   if (s === "rejected" || s === "cancelled" || s === "failed" || s === "refunded")
     return base + "bg-rose-50 text-rose-700 border-rose-200";
   return base + "bg-gray-50 text-gray-600 border-gray-200";
@@ -257,6 +263,8 @@ const StatusBadge = ({
     paid: "bg-violet-100 text-violet-700 border-violet-200",
     out_for_delivery: "bg-violet-100 text-violet-700 border-violet-200",
     pending: "bg-amber-100 text-amber-700 border-amber-200",
+    expired: "bg-amber-100 text-amber-800 border-amber-300",
+    declined: "bg-rose-100 text-rose-700 border-rose-200",
     processing: "bg-sky-100 text-sky-700 border-sky-200",
     shipped: "bg-sky-100 text-sky-700 border-sky-200",
     approved: "bg-green-100 text-green-700 border-green-200",
@@ -270,9 +278,8 @@ const StatusBadge = ({
   const displayStatus = getDisplayStatus(status, customLabels);
   return (
     <span
-      className={`px-2 md:px-2.5 py-0.5 md:py-1 text-[8px] md:text-[11px] font-bold uppercase tracking-wider rounded-full border shadow-sm ${
-        styles[s] || "bg-gray-100 text-gray-600 border-gray-200"
-      }`}
+      className={`px-2 md:px-2.5 py-0.5 md:py-1 text-[8px] md:text-[11px] font-bold uppercase tracking-wider rounded-full border shadow-sm ${styles[s] || "bg-gray-100 text-gray-600 border-gray-200"
+        }`}
     >
       {displayStatus}
     </span>
@@ -302,141 +309,141 @@ const CopyButton = ({ text }: { text?: string | null }) => {
 };
 
 // ─── DELIVERY CARD WITH VIEW ON MAP ──────────────────────────────
-const DeliveryCard = ({ 
-  order, 
-  onUpdate, 
-  readOnly, 
-  onOpenLiveTracking, 
-  liveDriverLocations = {}, 
-  onViewOnMap, 
-}: any) => { 
-  const [staffList, setStaffList] = useState<any[]>([]); 
-  const [selectedUserId, setSelectedUserId] = useState<number | "">(""); 
-  const [assigning, setAssigning] = useState(false); 
-  const [showAssignForm, setShowAssignForm] = useState(false); 
-  const [filterType, setFilterType] = useState<"all" | "in_house" | "third_party">("all"); 
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all"); 
-  const [loadingStaff, setLoadingStaff] = useState(false); 
-  const [searchTerm, setSearchTerm] = useState(""); 
-  const [showDriverTypeFilter, setShowDriverTypeFilter] = useState(false); 
-  const [showVehicleTypeFilter, setShowVehicleTypeFilter] = useState(false); 
-  const [currentPage, setCurrentPage] = useState(1); 
-  const [itemsPerPage, setItemsPerPage] = useState(10); 
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance"); 
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc"); 
-  const [routeData, setRouteData] = useState<Record<number, { distanceKm: number | null; durationMinutes: number | null; loading: boolean; error?: boolean }>>({}); 
-  const [showMapPreview, setShowMapPreview] = useState(false); 
+const DeliveryCard = ({
+  order,
+  onUpdate,
+  readOnly,
+  onOpenLiveTracking,
+  liveDriverLocations = {},
+  onViewOnMap,
+}: any) => {
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | "">("");
+  const [assigning, setAssigning] = useState(false);
+  const [showAssignForm, setShowAssignForm] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "in_house" | "third_party">("all");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all");
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDriverTypeFilter, setShowDriverTypeFilter] = useState(false);
+  const [showVehicleTypeFilter, setShowVehicleTypeFilter] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [routeData, setRouteData] = useState<Record<number, { distanceKm: number | null; durationMinutes: number | null; loading: boolean; error?: boolean }>>({});
+  const [showMapPreview, setShowMapPreview] = useState(false);
 
-  console.log('showDriverTypeFilter',showDriverTypeFilter)
-  console.log('showVehicleTypeFilter',showVehicleTypeFilter)
+  console.log('showDriverTypeFilter', showDriverTypeFilter)
+  console.log('showVehicleTypeFilter', showVehicleTypeFilter)
 
-  const [usernameMap, setUsernameMap] = useState<Map<string, string>>( 
-    new Map(), 
-  ); 
-  const { showToast } = useToast(); 
-  const [showFullscreenImage, setShowFullscreenImage] = useState(false); 
-  const [ratingMap, setRatingMap] = useState< 
-    Map<string, { average_rating: string; total_reviews: number }> 
-  >(new Map()); 
-  const [driverLocations, setDriverLocations] = useState< 
-    Record< 
-      number, 
-      { latitude: number; longitude: number; is_online?: boolean; updated_at?: number } 
-    > 
-  >({}); 
-  const delivery = order.delivery; 
-  const canManage = !readOnly && order.status?.toLowerCase() === "processing"; 
-  const cod = order.payment_method === "cod"; 
-  const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up"; 
+  const [usernameMap, setUsernameMap] = useState<Map<string, string>>(
+    new Map(),
+  );
+  const { showToast } = useToast();
+  const [showFullscreenImage, setShowFullscreenImage] = useState(false);
+  const [ratingMap, setRatingMap] = useState<
+    Map<string, { average_rating: string; total_reviews: number }>
+  >(new Map());
+  const [driverLocations, setDriverLocations] = useState<
+    Record<
+      number,
+      { latitude: number; longitude: number; is_online?: boolean; updated_at?: number }
+    >
+  >({});
+  const delivery = order.delivery;
+  const canManage = !readOnly && order.status?.toLowerCase() === "processing";
+  const cod = order.payment_method === "cod";
+  const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
   // OSRM route cache ref
   const routeCacheRef = useRef<Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>>(new Map());
   const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   // Helper function to calculate distance between two coordinates 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => { 
-    const R = 6371; 
-    const dLat = ((lat2 - lat1) * Math.PI) / 180; 
-    const dLon = ((lon2 - lon1) * Math.PI) / 180; 
-    const a = 
-      Math.sin(dLat / 2) ** 2 + 
-      Math.cos((lat1 * Math.PI) / 180) * 
-        Math.cos((lat2 * Math.PI) / 180) * 
-        Math.sin(dLon / 2) ** 2; 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
-    return R * c; 
-  }; 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
 
-  const isValidCoordinate = (lat: number, lon: number): boolean => { 
-    return ( 
-      Number.isFinite(lat) && 
-      Number.isFinite(lon) && 
-      lat >= -90 && 
-      lat <= 90 && 
-      lon >= -180 && 
-      lon <= 180 
-    ); 
-  }; 
+  const isValidCoordinate = (lat: number, lon: number): boolean => {
+    return (
+      Number.isFinite(lat) &&
+      Number.isFinite(lon) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lon >= -180 &&
+      lon <= 180
+    );
+  };
 
-  const getCustomerLocation = () => { 
-    const lat = delivery?.customer_lat || order?.customer_lat || order?.delivery_address?.lat; 
-    const lon = delivery?.customer_lon || order?.customer_lon || order?.delivery_address?.lon; 
-    if (lat != null && lon != null) { 
-      const parsedLat = parseFloat(lat); 
-      const parsedLon = parseFloat(lon); 
-      if (isValidCoordinate(parsedLat, parsedLon)) { 
-        return { lat: parsedLat, lon: parsedLon }; 
-      } 
-    } 
-    return null; 
-  }; 
+  const getCustomerLocation = () => {
+    const lat = delivery?.customer_lat || order?.customer_lat || order?.delivery_address?.lat;
+    const lon = delivery?.customer_lon || order?.customer_lon || order?.delivery_address?.lon;
+    if (lat != null && lon != null) {
+      const parsedLat = parseFloat(lat);
+      const parsedLon = parseFloat(lon);
+      if (isValidCoordinate(parsedLat, parsedLon)) {
+        return { lat: parsedLat, lon: parsedLon };
+      }
+    }
+    return null;
+  };
 
-  const getVehicleIcon = (type?: string) => { 
-    switch (type?.toLowerCase()) { 
-      case "motorcycle": 
-        return "🏍️"; 
-      case "car": 
-        return "🚗"; 
-      case "bicycle": 
-        return "🚲"; 
-      case "van": 
-        return "🚐"; 
-      case "foot": 
-        return "🚶"; 
-      default: 
-        return "🛵"; 
-    } 
-  }; 
+  const getVehicleIcon = (type?: string) => {
+    switch (type?.toLowerCase()) {
+      case "motorcycle":
+        return "🏍️";
+      case "car":
+        return "🚗";
+      case "bicycle":
+        return "🚲";
+      case "van":
+        return "🚐";
+      case "foot":
+        return "🚶";
+      default:
+        return "🛵";
+    }
+  };
 
-  const getVehicleName = (type?: string) => { 
-    switch (type?.toLowerCase()) { 
-      case "motorcycle": 
-        return "Motorcycle"; 
-      case "car": 
-        return "Car"; 
-      case "bicycle": 
-        return "Bicycle"; 
-      case "van": 
-        return "Van"; 
-      case "foot": 
-        return "On Foot"; 
-      default: 
-        return "Vehicle"; 
-    } 
-  }; 
+  const getVehicleName = (type?: string) => {
+    switch (type?.toLowerCase()) {
+      case "motorcycle":
+        return "Motorcycle";
+      case "car":
+        return "Car";
+      case "bicycle":
+        return "Bicycle";
+      case "van":
+        return "Van";
+      case "foot":
+        return "On Foot";
+      default:
+        return "Vehicle";
+    }
+  };
 
-  const renderRating = (avg?: string, reviews?: number) => { 
-    if (!avg || avg === "0.00" || !reviews || reviews === 0) 
-      return "No reviews"; 
-    const rating = parseFloat(avg).toFixed(1); 
-    return `⭐ ${rating} (${reviews})`; 
-  }; 
+  const renderRating = (avg?: string, reviews?: number) => {
+    if (!avg || avg === "0.00" || !reviews || reviews === 0)
+      return "No reviews";
+    const rating = parseFloat(avg).toFixed(1);
+    return `⭐ ${rating} (${reviews})`;
+  };
 
   // OSRM route fetcher with caching and debouncing
   const fetchOSRMRoute = useCallback(async (driverId: number, fromLat: number, fromLon: number, toLat: number, toLon: number) => {
     const cacheKey = `${fromLat.toFixed(4)},${fromLon.toFixed(4)}_${toLat.toFixed(4)},${toLon.toFixed(4)}`;
     const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-    
+
     // Check cache
     const cached = routeCacheRef.current.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -446,27 +453,27 @@ const DeliveryCard = ({
       }));
       return;
     }
-    
+
     setRouteData(prev => ({
       ...prev,
       [driverId]: { distanceKm: null, durationMinutes: null, loading: true }
     }));
-    
+
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.code === "Ok" && data.routes?.length > 0) {
         const distanceKm = data.routes[0].distance / 1000;
         const durationMinutes = data.routes[0].duration / 60;
-        
+
         routeCacheRef.current.set(cacheKey, {
           distanceKm,
           durationMinutes,
           timestamp: Date.now()
         });
-        
+
         setRouteData(prev => ({
           ...prev,
           [driverId]: { distanceKm, durationMinutes, loading: false }
@@ -486,29 +493,29 @@ const DeliveryCard = ({
   }, []);
 
   // Subscribe to real-time live GPS for eligible drivers via Firebase drivers/{driverId} 
-  useEffect(() => { 
-    if (!showAssignForm || staffList.length === 0) return; 
-    const cleanups: Array<() => void> = []; 
+  useEffect(() => {
+    if (!showAssignForm || staffList.length === 0) return;
+    const cleanups: Array<() => void> = [];
 
-    staffList.forEach((driver) => { 
-      const driverRef = ref(db, `drivers/${driver.id}`); 
-      const callback = (snapshot: any) => { 
-        const data = snapshot.val(); 
-        if (data && data.latitude != null && data.longitude != null) { 
-          setDriverLocations((prev) => ({ 
-            ...prev, 
-            [driver.id]: data, 
-          })); 
-        } 
-      }; 
-      onValue(driverRef, callback); 
-      cleanups.push(() => off(driverRef, "value", callback)); 
-    }); 
+    staffList.forEach((driver) => {
+      const driverRef = ref(db, `drivers/${driver.id}`);
+      const callback = (snapshot: any) => {
+        const data = snapshot.val();
+        if (data && data.latitude != null && data.longitude != null) {
+          setDriverLocations((prev) => ({
+            ...prev,
+            [driver.id]: data,
+          }));
+        }
+      };
+      onValue(driverRef, callback);
+      cleanups.push(() => off(driverRef, "value", callback));
+    });
 
-    return () => { 
-      cleanups.forEach((cleanup) => cleanup()); 
-    }; 
-  }, [showAssignForm, staffList]); 
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [showAssignForm, staffList]);
 
   // Cleanup route request timers on unmount
   useEffect(() => {
@@ -518,216 +525,216 @@ const DeliveryCard = ({
     };
   }, []);
 
-  const getDriverLiveLocation = (driverId: number) => { 
-    const localLoc = driverLocations[driverId]; 
-    if (localLoc && localLoc.latitude != null && localLoc.longitude != null) { 
-      return { 
-        lat: Number(localLoc.latitude), 
-        lon: Number(localLoc.longitude), 
-        is_online: localLoc.is_online !== false, 
-      }; 
-    } 
+  const getDriverLiveLocation = (driverId: number) => {
+    const localLoc = driverLocations[driverId];
+    if (localLoc && localLoc.latitude != null && localLoc.longitude != null) {
+      return {
+        lat: Number(localLoc.latitude),
+        lon: Number(localLoc.longitude),
+        is_online: localLoc.is_online !== false,
+      };
+    }
 
-    if (liveDriverLocations && typeof liveDriverLocations === "object") { 
-      const entries = Object.values(liveDriverLocations); 
-      for (const entry of entries as any[]) { 
-        if (entry && typeof entry === "object") { 
-          if (entry.driver_id === driverId || entry.id === driverId) { 
-            return { 
-              lat: Number(entry.lat ?? entry.latitude), 
-              lon: Number(entry.lon ?? entry.longitude ?? entry.lng), 
-              is_online: entry.is_online !== false, 
-            }; 
-          } 
-        } 
-      } 
-      const directMatch = 
-        (liveDriverLocations as any)[driverId] || 
-        (liveDriverLocations as any)[String(driverId)]; 
-      if (directMatch) { 
-        return { 
-          lat: Number(directMatch.lat ?? directMatch.latitude), 
-          lon: Number(directMatch.lon ?? directMatch.longitude ?? directMatch.lng), 
-          is_online: directMatch.is_online !== false, 
-        }; 
-      } 
-    } 
-    return null; 
-  }; 
+    if (liveDriverLocations && typeof liveDriverLocations === "object") {
+      const entries = Object.values(liveDriverLocations);
+      for (const entry of entries as any[]) {
+        if (entry && typeof entry === "object") {
+          if (entry.driver_id === driverId || entry.id === driverId) {
+            return {
+              lat: Number(entry.lat ?? entry.latitude),
+              lon: Number(entry.lon ?? entry.longitude ?? entry.lng),
+              is_online: entry.is_online !== false,
+            };
+          }
+        }
+      }
+      const directMatch =
+        (liveDriverLocations as any)[driverId] ||
+        (liveDriverLocations as any)[String(driverId)];
+      if (directMatch) {
+        return {
+          lat: Number(directMatch.lat ?? directMatch.latitude),
+          lon: Number(directMatch.lon ?? directMatch.longitude ?? directMatch.lng),
+          is_online: directMatch.is_online !== false,
+        };
+      }
+    }
+    return null;
+  };
 
-  const getReferenceLocation = () => { 
-    const storeLat = order.company?.latitude ? parseFloat(order.company.latitude) : null; 
-    const storeLon = order.company?.longitude ? parseFloat(order.company.longitude) : null; 
-    if (storeLat != null && storeLon != null && isValidCoordinate(storeLat, storeLon)) { 
-      return { lat: storeLat, lon: storeLon, type: "store" }; 
-    } 
-    const custLoc = getCustomerLocation(); 
-    if (custLoc) { 
-      return { ...custLoc, type: "customer" }; 
-    } 
-    return null; 
-  }; 
+  const getReferenceLocation = () => {
+    const storeLat = order.company?.latitude ? parseFloat(order.company.latitude) : null;
+    const storeLon = order.company?.longitude ? parseFloat(order.company.longitude) : null;
+    if (storeLat != null && storeLon != null && isValidCoordinate(storeLat, storeLon)) {
+      return { lat: storeLat, lon: storeLon, type: "store" };
+    }
+    const custLoc = getCustomerLocation();
+    if (custLoc) {
+      return { ...custLoc, type: "customer" };
+    }
+    return null;
+  };
 
-  const staffWithDistance = useMemo(() => { 
-    const refLoc = getReferenceLocation(); 
-    return staffList.map((s) => { 
-      const liveLoc = getDriverLiveLocation(s.id); 
-      if (liveLoc && isValidCoordinate(liveLoc.lat, liveLoc.lon)) { 
-        const distance = refLoc 
-          ? calculateDistance(refLoc.lat, refLoc.lon, liveLoc.lat, liveLoc.lon) 
-          : null; 
-        return { 
-          ...s, 
-          calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null, 
-          location_source: "live", 
-          isLive: true, 
-          isOnline: liveLoc.is_online !== false, 
+  const staffWithDistance = useMemo(() => {
+    const refLoc = getReferenceLocation();
+    return staffList.map((s) => {
+      const liveLoc = getDriverLiveLocation(s.id);
+      if (liveLoc && isValidCoordinate(liveLoc.lat, liveLoc.lon)) {
+        const distance = refLoc
+          ? calculateDistance(refLoc.lat, refLoc.lon, liveLoc.lat, liveLoc.lon)
+          : null;
+        return {
+          ...s,
+          calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+          location_source: "live",
+          isLive: true,
+          isOnline: liveLoc.is_online !== false,
           live_lat: liveLoc.lat,
           live_lon: liveLoc.lon,
-        }; 
-      } 
-      if (s.current_lat != null && s.current_lng != null) { 
-        const currentLat = parseFloat(s.current_lat); 
-        const currentLng = parseFloat(s.current_lng); 
-        if (isValidCoordinate(currentLat, currentLng)) { 
-          const distance = refLoc 
-            ? calculateDistance(refLoc.lat, refLoc.lon, currentLat, currentLng) 
-            : null; 
-          return { 
-            ...s, 
-            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null, 
-            location_source: "current", 
-            isLive: false, 
-            isOnline: true, 
+        };
+      }
+      if (s.current_lat != null && s.current_lng != null) {
+        const currentLat = parseFloat(s.current_lat);
+        const currentLng = parseFloat(s.current_lng);
+        if (isValidCoordinate(currentLat, currentLng)) {
+          const distance = refLoc
+            ? calculateDistance(refLoc.lat, refLoc.lon, currentLat, currentLng)
+            : null;
+          return {
+            ...s,
+            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+            location_source: "current",
+            isLive: false,
+            isOnline: true,
             live_lat: currentLat,
             live_lon: currentLng,
-          }; 
-        } 
-      } 
-      if (s.last_lat != null && s.last_lon != null) { 
-        const lastLat = parseFloat(s.last_lat); 
-        const lastLon = parseFloat(s.last_lon); 
-        if (isValidCoordinate(lastLat, lastLon)) { 
-          const distance = refLoc 
-            ? calculateDistance(refLoc.lat, refLoc.lon, lastLat, lastLon) 
-            : null; 
-          return { 
-            ...s, 
-            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null, 
-            location_source: "last_known", 
-            isLive: false, 
-            isOnline: true, 
+          };
+        }
+      }
+      if (s.last_lat != null && s.last_lon != null) {
+        const lastLat = parseFloat(s.last_lat);
+        const lastLon = parseFloat(s.last_lon);
+        if (isValidCoordinate(lastLat, lastLon)) {
+          const distance = refLoc
+            ? calculateDistance(refLoc.lat, refLoc.lon, lastLat, lastLon)
+            : null;
+          return {
+            ...s,
+            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+            location_source: "last_known",
+            isLive: false,
+            isOnline: true,
             live_lat: lastLat,
             live_lon: lastLon,
-          }; 
-        } 
-      } 
-      if (s.distance_km != null && !isNaN(parseFloat(s.distance_km))) { 
-        return { 
-          ...s, 
-          calculated_distance: Math.round(parseFloat(s.distance_km) * 10) / 10, 
-          location_source: "api", 
-          isLive: false, 
-          isOnline: true, 
-        }; 
-      } 
-      return { 
-        ...s, 
-        calculated_distance: null, 
-        location_source: null, 
-        isLive: false, 
-        isOnline: true, 
-      }; 
-    }); 
-  }, [ 
-    staffList, 
-    driverLocations, 
-    liveDriverLocations, 
-    order.company?.latitude, 
-    order.company?.longitude, 
-    delivery?.customer_lat, 
-    delivery?.customer_lon, 
-    order?.customer_lat, 
-    order?.customer_lon, 
-    order?.delivery_address?.lat, 
-    order?.delivery_address?.lon, 
-  ]); 
+          };
+        }
+      }
+      if (s.distance_km != null && !isNaN(parseFloat(s.distance_km))) {
+        return {
+          ...s,
+          calculated_distance: Math.round(parseFloat(s.distance_km) * 10) / 10,
+          location_source: "api",
+          isLive: false,
+          isOnline: true,
+        };
+      }
+      return {
+        ...s,
+        calculated_distance: null,
+        location_source: null,
+        isLive: false,
+        isOnline: true,
+      };
+    });
+  }, [
+    staffList,
+    driverLocations,
+    liveDriverLocations,
+    order.company?.latitude,
+    order.company?.longitude,
+    delivery?.customer_lat,
+    delivery?.customer_lon,
+    order?.customer_lat,
+    order?.customer_lon,
+    order?.delivery_address?.lat,
+    order?.delivery_address?.lon,
+  ]);
 
   // Filter and sort staff
-  const filteredStaffList = useMemo(() => { 
-    let filtered = [...staffWithDistance]; 
-     
+  const filteredStaffList = useMemo(() => {
+    let filtered = [...staffWithDistance];
+
     // Filter by driver type (in-house vs 3PL) 
-    if (filterType === "in_house") { 
-      filtered = filtered.filter((s) => s.is_in_house === true); 
-    } else if (filterType === "third_party") { 
-      filtered = filtered.filter((s) => s.is_in_house === false); 
-    } 
-     
+    if (filterType === "in_house") {
+      filtered = filtered.filter((s) => s.is_in_house === true);
+    } else if (filterType === "third_party") {
+      filtered = filtered.filter((s) => s.is_in_house === false);
+    }
+
     // Filter by vehicle type 
-    if (vehicleTypeFilter !== "all") { 
-      filtered = filtered.filter((s) =>  
-        s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase() 
-      ); 
-    } 
-     
+    if (vehicleTypeFilter !== "all") {
+      filtered = filtered.filter((s) =>
+        s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase()
+      );
+    }
+
     // Filter by search term 
-    if (searchTerm.trim()) { 
-      const search = searchTerm.toLowerCase(); 
-      filtered = filtered.filter( 
-        (s) => 
-          s.name?.toLowerCase().includes(search) || 
-          s.phone?.toLowerCase().includes(search) || 
-          s.username?.toLowerCase().includes(search) || 
-          s.company_name?.toLowerCase().includes(search) 
-      ); 
-    } 
-     
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(search) ||
+          s.phone?.toLowerCase().includes(search) ||
+          s.username?.toLowerCase().includes(search) ||
+          s.company_name?.toLowerCase().includes(search)
+      );
+    }
+
     // Sort based on selected criteria 
-    return filtered.sort((a, b) => { 
-      if (sortBy === "distance") { 
+    return filtered.sort((a, b) => {
+      if (sortBy === "distance") {
         // Use OSRM road distance if available, otherwise fallback to haversine
-        const distA = routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999; 
-        const distB = routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999; 
-        return sortOrder === "asc" ? distA - distB : distB - distA; 
-      } else if (sortBy === "rating") { 
-        const ratingA = parseFloat(a.average_rating || "0"); 
-        const ratingB = parseFloat(b.average_rating || "0"); 
-        return sortOrder === "asc" ? ratingA - ratingB : ratingB - ratingA; 
-      } else { 
+        const distA = routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999;
+        const distB = routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999;
+        return sortOrder === "asc" ? distA - distB : distB - distA;
+      } else if (sortBy === "rating") {
+        const ratingA = parseFloat(a.average_rating || "0");
+        const ratingB = parseFloat(b.average_rating || "0");
+        return sortOrder === "asc" ? ratingA - ratingB : ratingB - ratingA;
+      } else {
         // sort by name 
-        const nameA = a.name?.toLowerCase() || ""; 
-        const nameB = b.name?.toLowerCase() || ""; 
-        return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA); 
-      } 
-    }); 
-  }, [staffWithDistance, filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, routeData]); 
+        const nameA = a.name?.toLowerCase() || "";
+        const nameB = b.name?.toLowerCase() || "";
+        return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      }
+    });
+  }, [staffWithDistance, filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, routeData]);
 
   // Pagination 
-  const totalPages = Math.ceil(filteredStaffList.length / itemsPerPage); 
-  const paginatedStaffList = useMemo(() => { 
-    const startIndex = (currentPage - 1) * itemsPerPage; 
-    const endIndex = startIndex + itemsPerPage; 
-    return filteredStaffList.slice(startIndex, endIndex); 
-  }, [filteredStaffList, currentPage, itemsPerPage]); 
+  const totalPages = Math.ceil(filteredStaffList.length / itemsPerPage);
+  const paginatedStaffList = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredStaffList.slice(startIndex, endIndex);
+  }, [filteredStaffList, currentPage, itemsPerPage]);
 
   // Calculate OSRM routes for visible drivers only (debounced)
   useEffect(() => {
     if (!showAssignForm || paginatedStaffList.length === 0) return;
-    
+
     const customerLoc = getCustomerLocation();
     if (!customerLoc) return;
-    
+
     paginatedStaffList.forEach((driver) => {
-      if (driver.live_lat != null && driver.live_lon != null && 
-          isValidCoordinate(driver.live_lat, driver.live_lon)) {
-        
+      if (driver.live_lat != null && driver.live_lon != null &&
+        isValidCoordinate(driver.live_lat, driver.live_lon)) {
+
         // Debounce route calculation
         const timerKey = driver.id;
         if (routeRequestTimers.current.has(timerKey)) {
           clearTimeout(routeRequestTimers.current.get(timerKey));
         }
-        
+
         routeRequestTimers.current.set(
           timerKey,
           setTimeout(() => {
@@ -740,134 +747,134 @@ const DeliveryCard = ({
   }, [paginatedStaffList, showAssignForm, fetchOSRMRoute]);
 
   // Reset to first page when filters change 
-  useEffect(() => { 
-    setCurrentPage(1); 
-  }, [filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, itemsPerPage]); 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, itemsPerPage]);
 
-  const getOrderFailureReason = () => { 
-    if (delivery?.failure_reason) return delivery.failure_reason; 
-    if (delivery?.cancellation_reason) return delivery.cancellation_reason; 
-    if (delivery?.cancelled_reason) return delivery.cancelled_reason; 
-    if (delivery?.reason) return delivery.reason; 
-    if (delivery?.status_reason) return delivery.status_reason; 
-    if (order?.vendor_order_detail?.failure_reason) 
-      return order.vendor_order_detail.failure_reason; 
-    if (order?.vendor_order_detail?.cancellation_reason) 
-      return order.vendor_order_detail.cancellation_reason; 
-    if (order?.vendor_order_detail?.cancelled_reason) 
-      return order.vendor_order_detail.cancelled_reason; 
-    if (order?.vendor_order_detail?.reason) 
-      return order.vendor_order_detail.reason; 
-    if (order?.failure_reason) return order.failure_reason; 
-    if (order?.cancellation_reason) return order.cancellation_reason; 
-    if (order?.cancelled_reason) return order.cancelled_reason; 
-    if (order?.reason) return order.reason; 
-    if (order?.status_reason) return order.status_reason; 
-    if (order?.cancel_reason) return order.cancel_reason; 
-    if (order?.delivery_notes) return order.delivery_notes; 
-    if (order?.notes) return order.notes; 
-    if (order?.admin_notes) return order.admin_notes; 
-    if (order?.cancellation_note) return order.cancellation_note; 
-    return null; 
-  }; 
+  const getOrderFailureReason = () => {
+    if (delivery?.failure_reason) return delivery.failure_reason;
+    if (delivery?.cancellation_reason) return delivery.cancellation_reason;
+    if (delivery?.cancelled_reason) return delivery.cancelled_reason;
+    if (delivery?.reason) return delivery.reason;
+    if (delivery?.status_reason) return delivery.status_reason;
+    if (order?.vendor_order_detail?.failure_reason)
+      return order.vendor_order_detail.failure_reason;
+    if (order?.vendor_order_detail?.cancellation_reason)
+      return order.vendor_order_detail.cancellation_reason;
+    if (order?.vendor_order_detail?.cancelled_reason)
+      return order.vendor_order_detail.cancelled_reason;
+    if (order?.vendor_order_detail?.reason)
+      return order.vendor_order_detail.reason;
+    if (order?.failure_reason) return order.failure_reason;
+    if (order?.cancellation_reason) return order.cancellation_reason;
+    if (order?.cancelled_reason) return order.cancelled_reason;
+    if (order?.reason) return order.reason;
+    if (order?.status_reason) return order.status_reason;
+    if (order?.cancel_reason) return order.cancel_reason;
+    if (order?.delivery_notes) return order.delivery_notes;
+    if (order?.notes) return order.notes;
+    if (order?.admin_notes) return order.admin_notes;
+    if (order?.cancellation_note) return order.cancellation_note;
+    return null;
+  };
 
-  const failureReason = getOrderFailureReason(); 
-  const isOrderFailed = 
-    order.status?.toLowerCase() === "cancelled" || 
-    order.status?.toLowerCase() === "failed" || 
-    order.status?.toLowerCase() === "rejected" || 
-    delivery?.status?.toLowerCase() === "failed" || 
-    delivery?.status?.toLowerCase() === "cancelled" || 
-    delivery?.status?.toLowerCase() === "rejected"; 
+  const failureReason = getOrderFailureReason();
+  const isOrderFailed =
+    order.status?.toLowerCase() === "cancelled" ||
+    order.status?.toLowerCase() === "failed" ||
+    order.status?.toLowerCase() === "rejected" ||
+    delivery?.status?.toLowerCase() === "failed" ||
+    delivery?.status?.toLowerCase() === "cancelled" ||
+    delivery?.status?.toLowerCase() === "rejected";
 
-  const fetchStaff = async (filter: "all" | "in_house" | "third_party", vehicleType?: string) => { 
-    if (!order.company?.slug) return; 
-    setLoadingStaff(true); 
-    try { 
-      const params: any = { 
-        vendor_order_id: order.id, 
-        driver_type: filter === "all" ? "all" : filter === "in_house" ? "in_house" : "3pl", 
-      }; 
-       
-      if (vehicleType && vehicleType !== "all") { 
-        params.vehicle_type = vehicleType; 
-      } 
-       
-      const res = await getAvailableDeliveryDrivers(order.company.slug, params); 
-      const allDrivers = res.data || []; 
- 
-      const mapped = allDrivers.map((s: any) => ({ 
-        id: s.id, 
-        name: `${s.name || s.username || ""}`.trim(), 
-        phone: s.phone, 
-        username: s.username, 
-        average_rating: s.average_rating, 
-        total_reviews: s.total_reviews, 
-        vehicle_type: s.vehicle_type, 
-        company_name: s.company_name, 
-        is_in_house: s.is_in_house, 
-        distance_km: s.distance_km, 
-        last_lat: s.last_lat, 
-        last_lon: s.last_lon, 
-        current_lat: s.current_lat, 
-        current_lng: s.current_lng, 
+  const fetchStaff = async (filter: "all" | "in_house" | "third_party", vehicleType?: string) => {
+    if (!order.company?.slug) return;
+    setLoadingStaff(true);
+    try {
+      const params: any = {
+        vendor_order_id: order.id,
+        driver_type: filter === "all" ? "all" : filter === "in_house" ? "in_house" : "3pl",
+      };
+
+      if (vehicleType && vehicleType !== "all") {
+        params.vehicle_type = vehicleType;
+      }
+
+      const res = await getAvailableDeliveryDrivers(order.company.slug, params);
+      const allDrivers = res.data || [];
+
+      const mapped = allDrivers.map((s: any) => ({
+        id: s.id,
+        name: `${s.name || s.username || ""}`.trim(),
+        phone: s.phone,
+        username: s.username,
+        average_rating: s.average_rating,
+        total_reviews: s.total_reviews,
+        vehicle_type: s.vehicle_type,
+        company_name: s.company_name,
+        is_in_house: s.is_in_house,
+        distance_km: s.distance_km,
+        last_lat: s.last_lat,
+        last_lon: s.last_lon,
+        current_lat: s.current_lat,
+        current_lng: s.current_lng,
         active_orders_count: s.active_orders_count ?? 0,
         driver_state: s.driver_state || "idle",
         is_at_vendor: !!s.is_at_vendor,
         is_en_route: !!s.is_en_route,
         can_batch: !!s.can_batch,
-      })); 
-      setStaffList(mapped); 
- 
-      const ratingMap = new Map(); 
-      mapped.forEach((staff: any) => { 
-        if (staff.phone) { 
-          ratingMap.set(staff.phone, { 
-            average_rating: staff.average_rating, 
-            total_reviews: staff.total_reviews, 
-          }); 
-        } 
-      }); 
-      setRatingMap(ratingMap); 
- 
-      const map = new Map(); 
-      mapped.forEach((staff: any) => { 
-        if (staff.phone && staff.username) { 
-          map.set(staff.phone, staff.username); 
-        } 
-      }); 
-      setUsernameMap(map); 
-    } catch (err) { 
-      console.error("Failed to fetch available delivery drivers", err); 
-      showToast("error", "Failed to load delivery drivers"); 
-    } finally { 
-      setLoadingStaff(false); 
-    } 
-  }; 
- 
-  useEffect(() => { 
-    if (showAssignForm) { 
-      fetchStaff(filterType, vehicleTypeFilter); 
-      setSearchTerm(""); 
-      setSelectedUserId(""); 
-    } 
-  }, [showAssignForm, filterType, vehicleTypeFilter, order.company?.slug]); 
- 
-  const handleAssign = async () => { 
-    setAssigning(true); 
-    try { 
-      if (delivery) { 
-        await updateDeliveryPerson( 
-          delivery.id.toString(), 
-          Number(selectedUserId), 
-        ); 
-      } else { 
-        await assignDelivery({ 
-          vendor_order: order.id, 
-          delivery_person: Number(selectedUserId), 
-        }); 
-      } 
-      await onUpdate(); 
+      }));
+      setStaffList(mapped);
+
+      const ratingMap = new Map();
+      mapped.forEach((staff: any) => {
+        if (staff.phone) {
+          ratingMap.set(staff.phone, {
+            average_rating: staff.average_rating,
+            total_reviews: staff.total_reviews,
+          });
+        }
+      });
+      setRatingMap(ratingMap);
+
+      const map = new Map();
+      mapped.forEach((staff: any) => {
+        if (staff.phone && staff.username) {
+          map.set(staff.phone, staff.username);
+        }
+      });
+      setUsernameMap(map);
+    } catch (err) {
+      console.error("Failed to fetch available delivery drivers", err);
+      showToast("error", "Failed to load delivery drivers");
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showAssignForm) {
+      fetchStaff(filterType, vehicleTypeFilter);
+      setSearchTerm("");
+      setSelectedUserId("");
+    }
+  }, [showAssignForm, filterType, vehicleTypeFilter, order.company?.slug]);
+
+  const handleAssign = async () => {
+    setAssigning(true);
+    try {
+      if (delivery) {
+        await updateDeliveryPerson(
+          delivery.id.toString(),
+          Number(selectedUserId),
+        );
+      } else {
+        await assignDelivery({
+          vendor_order: order.id,
+          delivery_person: Number(selectedUserId),
+        });
+      }
+      await onUpdate();
       const selectedDriverObj = staffList.find((s) => s.id === Number(selectedUserId));
       if (selectedDriverObj?.is_en_route) {
         showToast("success", "Offer sent to en-route driver (45s window to respond)");
@@ -876,19 +883,19 @@ const DeliveryCard = ({
       } else {
         showToast("success", "Delivery person assigned successfully");
       }
-      setShowAssignForm(false); 
-    } catch (err: any) { 
-      showToast("error", "Failed to assign delivery person"); 
-    } finally { 
-      setAssigning(false); 
-    } 
-  }; 
- 
-  const formatDistance = (distance: number | null | undefined) => { 
-    if (distance == null) return "Distance unavailable"; 
-    if (distance < 1) return `${(distance * 1000).toFixed(0)} m`; 
-    return `${distance.toFixed(1)} km`; 
-  }; 
+      setShowAssignForm(false);
+    } catch (err: any) {
+      showToast("error", "Failed to assign delivery person");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const formatDistance = (distance: number | null | undefined) => {
+    if (distance == null) return "Distance unavailable";
+    if (distance < 1) return `${(distance * 1000).toFixed(0)} m`;
+    return `${distance.toFixed(1)} km`;
+  };
 
   const formatDuration = (minutes: number | null | undefined) => {
     if (minutes == null) return "ETA unavailable";
@@ -898,12 +905,12 @@ const DeliveryCard = ({
     const mins = Math.round(minutes % 60);
     return `~${hours}h ${mins}m`;
   };
- 
-  const handleViewOnMap = () => { 
-    if (onViewOnMap && order.id) { 
-      onViewOnMap(order.id); 
-    } 
-  }; 
+
+  const handleViewOnMap = () => {
+    if (onViewOnMap && order.id) {
+      onViewOnMap(order.id);
+    }
+  };
 
   // Determine best match (nearest driver with OSRM or haversine distance)
   const bestMatchDriver = useMemo(() => {
@@ -980,7 +987,7 @@ const DeliveryCard = ({
                             <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/5 text-lg font-bold text-secondary sm:h-16 sm:w-16">
                               {getInitials(
                                 usernameMap.get(delivery.delivery_person_phone) ||
-                                  delivery.delivery_person_name,
+                                delivery.delivery_person_name,
                               )}
                             </div>
                           )}
@@ -1060,10 +1067,13 @@ const DeliveryCard = ({
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
-                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-secondary/20 bg-secondary/5 px-3.5 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/10 focus:outline-none focus:ring-2 focus:ring-secondary/15"
+                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 ${delivery?.status === "declined" || delivery?.status === "expired"
+                                  ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-400 shadow-sm"
+                                  : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10 focus:ring-secondary/15"
+                                }`}
                             >
-                              <Users className="h-3.5 w-3.5" />
-                              Change driver
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Reassign driver
                             </button>
                           )}
                         </div>
@@ -1072,21 +1082,35 @@ const DeliveryCard = ({
                   </section>
 
                   {/* Operational alerts */}
-                  {delivery?.status === "declined" && (
-                    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
-                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-amber-900">
-                          Driver declined this delivery
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-amber-700">
-                          {delivery.decline_reason
-                            ? `Reason: ${delivery.decline_reason}`
-                            : "The assigned driver declined this order. Assign another driver to continue."}
-                        </p>
+                  {/* {(delivery?.status === "declined" || delivery?.status === "expired") && (
+                    <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-amber-900">
+                            {delivery?.status === "expired" ? "Dispatch offer expired (120s timeout)" : "Driver declined delivery"}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-amber-700">
+                            {delivery.decline_reason
+                              ? `Reason: ${delivery.decline_reason}`
+                              : delivery?.status === "expired"
+                              ? "The assigned driver did not accept within 120 seconds. Reassign another driver to continue."
+                              : "The assigned driver declined the delivery. Reassign another driver to continue."}
+                          </p>
+                        </div>
                       </div>
+                      {!deliveryStatus && (canManage || cod) && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAssignForm(true)}
+                          className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Reassign driver
+                        </button>
+                      )}
                     </div>
-                  )}
+                  )} */}
 
                   {isOrderFailed && failureReason && (
                     <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5">
@@ -1109,15 +1133,15 @@ const DeliveryCard = ({
                         <div className="flex items-center gap-2">
                           <History className="h-4 w-4 text-gray-400" />
                           <p className="text-xs font-semibold text-gray-800">
-                            Dispatch history
+                            Dispatch & Reassignment History
                           </p>
                         </div>
                         <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-500">
-                          {delivery.attempts.length} attempts
+                          {delivery.attempts.length} {delivery.attempts.length === 1 ? "attempt" : "attempts"}
                         </span>
                       </div>
 
-                      <div className="max-h-44 divide-y divide-gray-100 overflow-y-auto">
+                      <div className="max-h-52 divide-y divide-gray-100 overflow-y-auto">
                         {delivery.attempts.map((att: any) => {
                           const attemptStatus = att.status?.toLowerCase();
                           const statusClass =
@@ -1125,9 +1149,11 @@ const DeliveryCard = ({
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : attemptStatus === "declined"
                                 ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : attemptStatus === "reassigned"
-                                  ? "bg-gray-50 text-gray-600 border-gray-200"
-                                  : "bg-blue-50 text-blue-700 border-blue-200";
+                                : attemptStatus === "expired"
+                                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                                  : attemptStatus === "reassigned"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200";
 
                           return (
                             <div
@@ -1139,22 +1165,31 @@ const DeliveryCard = ({
                                   <p className="truncate text-xs font-semibold text-gray-800">
                                     {att.driver_name || `Driver #${att.driver}`}
                                   </p>
-                                  {att.logistics_company_name && (
-                                    <span className="truncate text-[10px] text-gray-400">
-                                      {att.logistics_company_name}
+                                  {att.driver_phone && (
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                      ({att.driver_phone})
+                                    </span>
+                                  )}
+                                  {att.logistics_company_name ? (
+                                    <span className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
+                                      3PL • {att.logistics_company_name}
+                                    </span>
+                                  ) : (
+                                    <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+                                      In-house
                                     </span>
                                   )}
                                 </div>
                                 {att.decline_reason && (
-                                  <p className="mt-1 truncate text-[11px] text-gray-500">
-                                    {att.decline_reason}
+                                  <p className="mt-1 text-[11px] text-gray-600">
+                                    <span className="font-medium text-gray-700">Reason:</span> {att.decline_reason}
                                   </p>
                                 )}
                               </div>
 
                               <div className="flex flex-shrink-0 items-center gap-2">
-                                <span className={`rounded-md border px-2 py-1 text-[9px] font-semibold uppercase ${statusClass}`}>
-                                  {att.status}
+                                <span className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}>
+                                  {attemptStatus === "expired" ? "Expired (Timeout)" : att.status}
                                 </span>
                                 {att.assigned_at && (
                                   <span className="hidden text-[10px] text-gray-400 sm:inline">
@@ -1179,10 +1214,14 @@ const DeliveryCard = ({
                     <Truck className="h-5 w-5 text-gray-400" />
                   </div>
                   <h5 className="mt-3 text-sm font-semibold text-gray-900">
-                    No driver assigned
+                    {delivery?.attempts && delivery.attempts.length > 0
+                      ? "Order Needs Reassignment"
+                      : "No driver assigned"}
                   </h5>
                   <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-gray-500">
-                    Choose an available in-house driver or logistics partner to continue this delivery.
+                    {delivery?.attempts && delivery.attempts.length > 0
+                      ? "Previous driver attempt was declined or expired. Choose an available driver to reassign this order."
+                      : "Choose an available in-house driver or logistics partner to continue this delivery."}
                   </p>
 
                   <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
@@ -1192,8 +1231,8 @@ const DeliveryCard = ({
                         onClick={() => setShowAssignForm(true)}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light focus:outline-none focus:ring-2 focus:ring-secondary/25"
                       >
-                        <Users className="h-3.5 w-3.5" />
-                        Assign driver
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        {delivery?.attempts && delivery.attempts.length > 0 ? "Reassign driver" : "Assign driver"}
                       </button>
                     )}
 
@@ -1215,6 +1254,54 @@ const DeliveryCard = ({
                       <div>
                         <p className="text-xs font-semibold text-rose-900">Delivery issue</p>
                         <p className="mt-1 text-xs leading-5 text-rose-700">{failureReason}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dispatch history even when driver is currently unassigned */}
+                  {delivery?.attempts && delivery.attempts.length > 0 && (
+                    <div className="mt-6 text-left">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+                          <History className="h-3.5 w-3.5 text-gray-400" />
+                          <span>Previous Dispatch Attempts</span>
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {delivery.attempts.length} attempts
+                        </span>
+                      </div>
+                      <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white max-h-48 overflow-y-auto">
+                        {delivery.attempts.map((att: any) => {
+                          const attemptStatus = att.status?.toLowerCase();
+                          const statusClass =
+                            attemptStatus === "accepted"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : attemptStatus === "declined"
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : attemptStatus === "expired"
+                                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                                  : attemptStatus === "reassigned"
+                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200";
+
+                          return (
+                            <div key={att.id} className="p-3 flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-gray-800">
+                                  {att.driver_name || `Driver #${att.driver}`}
+                                </p>
+                                {att.decline_reason && (
+                                  <p className="text-[11px] text-gray-500 mt-0.5">
+                                    {att.decline_reason}
+                                  </p>
+                                )}
+                              </div>
+                              <span className={`rounded border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}>
+                                {attemptStatus === "expired" ? "Expired" : att.status}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1243,7 +1330,9 @@ const DeliveryCard = ({
                     </button>
                     <div>
                       <h5 className="text-sm font-semibold text-gray-950">
-                        Assign delivery driver
+                        {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
+                          ? "Reassign delivery driver"
+                          : "Assign delivery driver"}
                       </h5>
                       <p className="mt-0.5 text-[11px] text-gray-500">
                         Compare availability, vehicle, rating and route before assigning.
@@ -1256,22 +1345,20 @@ const DeliveryCard = ({
                   <button
                     type="button"
                     onClick={() => setShowMapPreview(false)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      !showMapPreview
+                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${!showMapPreview
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-800"
-                    }`}
+                      }`}
                   >
                     List
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowMapPreview(true)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      showMapPreview
+                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${showMapPreview
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-800"
-                    }`}
+                      }`}
                   >
                     Map
                   </button>
@@ -1337,11 +1424,10 @@ const DeliveryCard = ({
                               setShowDriverTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
-                              filterType === option.value
+                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${filterType === option.value
                                 ? "border-secondary bg-secondary text-white shadow-sm"
                                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                            }`}
+                              }`}
                           >
                             {option.label}
                           </button>
@@ -1373,11 +1459,10 @@ const DeliveryCard = ({
                               setShowVehicleTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
-                              vehicleTypeFilter === option.value
+                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${vehicleTypeFilter === option.value
                                 ? "border-secondary bg-secondary text-white shadow-sm"
                                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                            }`}
+                              }`}
                           >
                             {option.icon && <span className="mr-1">{option.icon}</span>}
                             {option.label}
@@ -1516,19 +1601,17 @@ const DeliveryCard = ({
                                 key={staff.id}
                                 type="button"
                                 onClick={() => setSelectedUserId(staff.id)}
-                                className={`group relative block w-full px-4 py-3.5 text-left transition ${
-                                  isSelected
+                                className={`group relative block w-full px-4 py-3.5 text-left transition ${isSelected
                                     ? "bg-secondary/[0.045]"
                                     : "bg-white hover:bg-gray-50/80"
-                                }`}
+                                  }`}
                               >
                                 <div className="grid gap-3 lg:grid-cols-[minmax(190px,1.8fr)_110px_120px_150px_84px] lg:items-center">
                                   <div className="flex min-w-0 items-center gap-3">
-                                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
-                                      isSelected
+                                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${isSelected
                                         ? "border-secondary/25 bg-secondary/10 text-secondary"
                                         : "border-gray-200 bg-gray-50 text-gray-600"
-                                    }`}>
+                                      }`}>
                                       {getInitials(staff.name)}
                                     </div>
 
@@ -1634,11 +1717,10 @@ const DeliveryCard = ({
                                   </div>
 
                                   <div className="flex items-center justify-start lg:justify-end">
-                                    <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${
-                                      isSelected
+                                    <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${isSelected
                                         ? "border-secondary bg-secondary text-white"
                                         : "border-gray-200 bg-white text-gray-600 group-hover:border-secondary/25 group-hover:text-secondary"
-                                    }`}>
+                                      }`}>
                                       {isSelected ? (
                                         <>
                                           <Check className="mr-1 h-3 w-3" /> Selected
@@ -1683,11 +1765,10 @@ const DeliveryCard = ({
                                   key={pageNum}
                                   type="button"
                                   onClick={() => setCurrentPage(pageNum)}
-                                  className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
-                                    currentPage === pageNum
+                                  className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${currentPage === pageNum
                                       ? "bg-secondary text-white"
                                       : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                  }`}
+                                    }`}
                                 >
                                   {pageNum}
                                 </button>
@@ -1745,7 +1826,9 @@ const DeliveryCard = ({
                           ) : (
                             <>
                               <CheckCircle className="h-3.5 w-3.5" />
-                              Assign driver
+                              {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
+                                ? "Reassign driver"
+                                : "Assign driver"}
                             </>
                           )}
                         </button>
@@ -1839,11 +1922,11 @@ const ReceiptReviewCard = ({
 
   const displayHistory = receiptHistory
     ? receiptHistory.filter((h: any) => {
-        if (h.id === receipt?.id && receipt?.status === "pending") {
-          return false;
-        }
-        return true;
-      })
+      if (h.id === receipt?.id && receipt?.status === "pending") {
+        return false;
+      }
+      return true;
+    })
     : [];
 
   const handleConfirmCOD = async () => {
@@ -1858,8 +1941,8 @@ const ReceiptReviewCard = ({
       showToast(
         "error",
         err.response?.data?.detail ||
-          err.message ||
-          "Failed to confirm COD payment",
+        err.message ||
+        "Failed to confirm COD payment",
       );
     } finally {
       setCodConfirming(false);
@@ -1952,11 +2035,10 @@ const ReceiptReviewCard = ({
                   <button
                     onClick={() => setShowCODConfirm(true)}
                     disabled={!canCollect}
-                    className={`w-full py-3 rounded-2xl text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${
-                      canCollect
+                    className={`w-full py-3 rounded-2xl text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${canCollect
                         ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                         : "bg-gray-300 cursor-not-allowed shadow-none"
-                    }`}
+                      }`}
                   >
                     {codConfirming ? (
                       <>
@@ -2162,13 +2244,12 @@ const ReceiptReviewCard = ({
                           {h.bank_name || "Unknown Bank"}
                         </span>
                         <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${
-                            h.status === "approved"
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${h.status === "approved"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                               : h.status === "rejected"
                                 ? "bg-rose-50 text-rose-700 border-rose-100"
                                 : "bg-gray-100 text-gray-600 border-gray-200"
-                          }`}
+                            }`}
                         >
                           {h.status}
                         </span>
@@ -2816,12 +2897,12 @@ export function VendorOrderDetailModal({
                                 const roundNum = Number(roundKey);
                                 const roundTime = roundItems[0]?.created_at
                                   ? new Date(
-                                      roundItems[0].created_at,
-                                    ).toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      hour12: true,
-                                    })
+                                    roundItems[0].created_at,
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })
                                   : "";
 
                                 return (
@@ -2919,18 +3000,16 @@ export function VendorOrderDetailModal({
                           className="relative flex items-start gap-4"
                         >
                           <div
-                            className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${
-                              event.status === "completed"
+                            className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${event.status === "completed"
                                 ? "bg-emerald-500 border-emerald-500"
                                 : "bg-amber-500 border-amber-500 animate-pulse"
-                            }`}
+                              }`}
                           >
                             <div
-                              className={`absolute inset-0 rounded-full ${
-                                event.status === "completed"
+                              className={`absolute inset-0 rounded-full ${event.status === "completed"
                                   ? "bg-emerald-400/30 animate-pulse"
                                   : "bg-amber-400/30 animate-pulse"
-                              }`}
+                                }`}
                               style={{
                                 width: "200%",
                                 height: "200%",
@@ -3120,12 +3199,12 @@ export function VendorOrderDetailModal({
                   {(order.status === "confirmed" ||
                     (order.payment_method === "cod" &&
                       order.status === "pending")) && (
-                    <PreparationCard
-                      order={order}
-                      onUpdate={onUpdate}
-                      readOnly={readOnly}
-                    />
-                  )}
+                      <PreparationCard
+                        order={order}
+                        onUpdate={onUpdate}
+                        readOnly={readOnly}
+                      />
+                    )}
 
                   {/* Delivery person Assignment Card */}
                   {order.fulfillment_type === "delivery" &&
@@ -3156,5 +3235,5 @@ export function VendorOrderDetailModal({
         />
       )}
     </>
-  ); 
+  );
 }

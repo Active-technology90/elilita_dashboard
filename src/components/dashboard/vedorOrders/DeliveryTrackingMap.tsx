@@ -125,6 +125,11 @@ interface AvailableDriver {
   pickup_to_customer_eta?: number | null;
   recommendation_rank?: number | null;
   is_nearest?: boolean;
+  active_orders_count?: number;
+  driver_state?: "idle" | "at_company" | "en_route" | "assigned" | string;
+  is_at_vendor?: boolean;
+  is_en_route?: boolean;
+  can_batch?: boolean;
 }
 
 interface RouteSummary {

@@ -13,7 +13,6 @@ import {
   TrendingDown,
   CheckCircle,
   User,
-  ZoomIn,
   AlertTriangle,
 } from "lucide-react";
 import AgentPersonalInfoModal from "./AgentPersonalInfoModal";
@@ -119,7 +118,7 @@ export default function MarketingAgentsManagement() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const pageSize = 10;
 
   // Filter/Sort Sheet state
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
