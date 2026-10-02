@@ -120,6 +120,7 @@ export interface Company {
   is_featured: boolean;
   supports_table_service: boolean;
   show_order_queue?: boolean;
+  meal_periods?: MealPeriodCategory[];
   created_at?: string;
   chapa_sub_account_id?: string;
   minimum_order_total?: string;
@@ -137,6 +138,14 @@ export interface Company {
   registered_by?: number;
   registered_by_username?: string;
 }
+
+export interface MealPeriodCategory {
+  id: string;
+  name: string;
+  name_am?: string;
+  icon?: string;
+}
+
 // ─── types/validation.ts ───────────────────────────────
 export interface ValidationResult {
   isValid: boolean;
@@ -171,6 +180,7 @@ export interface CompanyListItem {
   is_featured: boolean;
   supports_table_service: boolean;
   show_order_queue?: boolean;
+  meal_periods?: MealPeriodCategory[];
   description?: string;
   contact_phone: string;
   contact_email: string;

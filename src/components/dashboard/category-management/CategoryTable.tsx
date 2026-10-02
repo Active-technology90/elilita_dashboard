@@ -9,7 +9,7 @@ import {
   Trash2,
   Tag,
   Layers,
-  ArrowDownUp,
+  FunnelIcon,
 } from "lucide-react";
 import { DataTable, type Column } from "../../ui/DataTable";
 import { Pagination } from "../../ui/Pagination";
@@ -242,9 +242,9 @@ export default function CategoryTable({
                 setSheetOpen(true);
               }}
               aria-label="Open sort options"
-              className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-secondary text-white shadow-sm transition hover:bg-secondary/90 active:scale-95"
+              className="absolute right-1 md:right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center md:rounded-lg md:bg-secondary  md:text-white md:shadow-sm md:transition hover:bg-secondary/90 active:scale-95"
             >
-              <ArrowDownUp className="h-3.5 w-3.5" />
+              <FunnelIcon className="h-3.5 w-3.5 text-secondary md:text-white" />
             </button>
           </div>
 

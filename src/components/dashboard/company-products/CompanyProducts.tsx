@@ -280,6 +280,7 @@ export default function CompanyProducts() {
           isOpen={isModalOpen && canEditBasic}
           editingProduct={editingProduct}
           companySlug={companySlug}
+          companyMealPeriods={selectedCompany?.meal_periods}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
           onProductUpdated={refetch}

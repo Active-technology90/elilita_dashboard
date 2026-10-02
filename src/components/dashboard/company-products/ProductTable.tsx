@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Package, Edit, Trash2, Star, Eye } from "lucide-react";
 import { DataTable, type Column } from "../../ui/DataTable";
+import MealCategoryIcon from "../../ui/MealCategoryIcon";
 
 export interface Product {
   id: number;
@@ -19,6 +20,7 @@ export interface Product {
   category?: string;
   brand?: string;
   barcode?: string;
+  meal_periods?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -147,11 +149,26 @@ export function ProductTable({
     {
       key: "title",
       header: "Title",
-      className: "max-w-[180px] font-medium text-gray-900",
+      className: "max-w-[200px] font-medium text-gray-900",
       render: (product) => (
-        <span className="block max-w-[180px] truncate" title={product.title}>
-          {product.title}
-        </span>
+        <div className="max-w-[200px]">
+          <span className="block truncate font-medium text-gray-900" title={product.title}>
+            {product.title}
+          </span>
+          {Array.isArray(product.meal_periods) && product.meal_periods.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {product.meal_periods.map((mp) => (
+                <span
+                  key={mp}
+                  className="inline-flex items-center gap-1 rounded bg-secondary/10 px-1.5 py-0.5 text-[9px] font-medium text-secondary capitalize"
+                >
+                  <MealCategoryIcon icon={mp} className="w-2.5 h-2.5 shrink-0" />
+                  <span>{mp.replace(/-/g, " ")}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       ),
     },
     {

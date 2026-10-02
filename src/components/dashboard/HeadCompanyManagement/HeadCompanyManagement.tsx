@@ -259,14 +259,25 @@ export default function HeadCompanyManagement() {
         title="Head Companies"
         description="Manage parent companies and the organizations grouped under them."
         icon={Building2}
-        badge={
-          !loading ? (
-            <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary sm:text-xs">
-              {filtered.length}
-            </span>
-          ) : undefined
-        }
+        // badge={
+        //   !loading ? (
+        //     <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary sm:text-xs">
+        //       {filtered.length}
+        //     </span>
+        //   ) : undefined
+        // }
         actions={
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Create Head Company</span>
+            <span className="sm:hidden">Create</span>
+          </button>
+        }
+        actionMobile={
           <button
             type="button"
             onClick={openCreate}

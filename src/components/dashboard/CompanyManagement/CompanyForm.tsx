@@ -1,10 +1,10 @@
-// src/components/admin/CompanyManagement/CompanyForm.tsx
 import React, { useState } from "react";
-import type { Category, SubCategory, HeadCompany } from "../../../types";
+import type { Category, SubCategory, HeadCompany, MealPeriodCategory } from "../../../types";
 import LocationPickerModal from "./LocationPickerModal";
 // import { CustomSelect } from "../../ui/CustomSelect";
-import { MapPin, Building2, FileText, Camera, XCircle, Check, Phone, Mail, MapPinned, Palette, FileCheck2, Image as ImageIcon, Eye } from "lucide-react";
+import { MapPin, Building2, FileText, Camera, XCircle, Check, Phone, Mail, MapPinned, Palette, FileCheck2, Image as ImageIcon, Eye, Plus, Trash2, RotateCcw, UtensilsCrossed } from "lucide-react";
 import { CustomSelect } from "../../ui/CustomSelect";
+import MealCategoryIcon, { MEAL_ICON_OPTIONS } from "../../ui/MealCategoryIcon";
 
 export interface CompanyFormData {
   name: string;
@@ -27,6 +27,7 @@ export interface CompanyFormData {
   is_featured: boolean;
   supports_table_service: boolean;
   show_order_queue: boolean;
+  meal_periods?: MealPeriodCategory[];
   logo: File | null;
   cover_image: File | null;
   chapa_sub_account_id: string;
@@ -91,6 +92,63 @@ export default function CompanyForm({
   );
 
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatNameAm, setNewCatNameAm] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("utensils");
+
+  const defaultCategories: MealPeriodCategory[] = [
+    { id: "breakfast", name: "Breakfast", name_am: "ቁርስ", icon: "coffee" },
+    { id: "lunch", name: "Lunch", name_am: "ምሳ", icon: "sun" },
+    { id: "dinner", name: "Dinner", name_am: "እራት", icon: "moon" },
+  ];
+
+  const activeCategories: MealPeriodCategory[] =
+    formData.meal_periods && formData.meal_periods.length > 0
+      ? formData.meal_periods
+      : defaultCategories;
+
+  const calculatedSlug = newCatName
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}_-]/gu, "");
+
+  const handleAddCategory = () => {
+    if (!newCatName.trim()) return;
+    const slug = calculatedSlug;
+    if (!slug) return;
+    if (activeCategories.some((c) => c.id === slug)) return;
+
+    setFormData({
+      ...formData,
+      meal_periods: [
+        ...activeCategories,
+        {
+          id: slug,
+          name: newCatName.trim(),
+          name_am: newCatNameAm.trim() || undefined,
+          icon: newCatIcon || "utensils",
+        },
+      ],
+    });
+    setNewCatName("");
+    setNewCatNameAm("");
+    setNewCatIcon("utensils");
+  };
+
+  const handleRemoveCategory = (idToRemove: string) => {
+    setFormData({
+      ...formData,
+      meal_periods: activeCategories.filter((c) => c.id !== idToRemove),
+    });
+  };
+
+  const handleResetCategories = () => {
+    setFormData({
+      ...formData,
+      meal_periods: defaultCategories,
+    });
+  };
 
   const inputClassName = (error?: string) => `
     w-full border rounded-xl p-2.5 text-sm 
@@ -376,7 +434,17 @@ export default function CompanyForm({
               type="checkbox"
               className="sr-only peer"
               checked={formData.supports_table_service}
-              onChange={(e) => setFormData({ ...formData, supports_table_service: e.target.checked })}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setFormData({
+                  ...formData,
+                  supports_table_service: checked,
+                  meal_periods:
+                    checked && (!formData.meal_periods || formData.meal_periods.length === 0)
+                      ? defaultCategories
+                      : formData.meal_periods,
+                });
+              }}
               disabled={!isEditingActive}
             />
             <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${formData.supports_table_service ? "bg-secondary" : "bg-gray-300"} ${!isEditingActive ? "opacity-60" : ""}`}></div>
@@ -407,6 +475,182 @@ export default function CompanyForm({
           </div>
         )}
       </div>
+
+      {/* Table Service & Dining Configuration (Full width card below toggles) */}
+      {formData.supports_table_service && (
+        <div className="rounded-2xl border border-secondary/20 bg-gradient-to-b from-secondary/[0.02] to-white p-5 space-y-5 shadow-xs">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
+                <UtensilsCrossed className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-gray-900">
+                    Meal Periods & Menu Schedule
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary/10 text-secondary">
+                    {activeCategories.length} {activeCategories.length === 1 ? "Period" : "Periods"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Define dining shifts and categories (e.g. Breakfast, Lunch, Dinner, Late Night) so customers can filter products on the mobile menu.
+                </p>
+              </div>
+            </div>
+
+            {isEditingActive && (
+              <button
+                type="button"
+                onClick={handleResetCategories}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:text-secondary hover:border-secondary/30 transition-all shadow-xs self-start sm:self-auto"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset to Defaults
+              </button>
+            )}
+          </div>
+
+          {/* Configured Categories List */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2.5">
+              Configured Meal Categories
+            </label>
+
+            {activeCategories.length === 0 ? (
+              <div className="text-center py-6 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <p className="text-xs text-gray-500 font-medium">No meal categories configured yet.</p>
+                <button
+                  type="button"
+                  onClick={handleResetCategories}
+                  className="mt-2 inline-flex items-center gap-1 text-xs text-secondary font-semibold hover:underline"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Load default categories (Breakfast, Lunch, Dinner)
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {activeCategories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="group flex items-center justify-between p-3 rounded-xl border border-gray-200/80 bg-white hover:border-secondary/30 hover:shadow-xs transition-all"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary shrink-0 border border-secondary/20">
+                        <MealCategoryIcon icon={cat.icon} className="w-4 h-4 text-secondary" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-900 truncate">
+                          {cat.name}
+                          {cat.name_am && (
+                            <span className="text-gray-400 font-normal ml-1">
+                              ({cat.name_am})
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] font-mono text-gray-400 truncate">
+                          Catalog ID: {cat.id}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isEditingActive && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCategory(cat.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-70 group-hover:opacity-100"
+                        title={`Remove ${cat.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add New Category Panel */}
+          {isEditingActive && (
+            <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-secondary" />
+                  Add Custom Meal Category
+                </span>
+                {calculatedSlug && (
+                  <span className="text-[10px] font-mono text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
+                    Catalog ID: <span className="text-secondary font-semibold">{calculatedSlug}</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                {/* Icon selector */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                    Icon
+                  </label>
+                  <select
+                    value={newCatIcon}
+                    onChange={(e) => setNewCatIcon(e.target.value)}
+                    className="w-full h-10 px-2.5 text-xs border border-gray-200 rounded-xl bg-white outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all font-medium text-gray-700"
+                  >
+                    {MEAL_ICON_OPTIONS.map((opt) => (
+                      <option key={opt.token} value={opt.token}>
+                        {opt.emoji} {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* English Name */}
+                <div className="sm:col-span-4">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                    Name (English) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Brunch, Late Night"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    className="w-full h-10 px-3 text-xs border border-gray-200 rounded-xl bg-white outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-gray-900 font-medium"
+                  />
+                </div>
+
+                {/* Amharic Name */}
+                <div className="sm:col-span-3">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                    Name (Amharic - Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ብራንች, የፆም"
+                    value={newCatNameAm}
+                    onChange={(e) => setNewCatNameAm(e.target.value)}
+                    className="w-full h-10 px-3 text-xs border border-gray-200 rounded-xl bg-white outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/10 transition-all text-gray-900"
+                  />
+                </div>
+
+                {/* Add Button */}
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={!newCatName.trim()}
+                    className="w-full h-10 inline-flex items-center justify-center gap-1.5 px-4 rounded-xl bg-secondary text-white text-xs font-bold hover:bg-secondary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -1068,6 +1312,21 @@ export default function CompanyForm({
               <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.show_order_queue ? "bg-purple-50 text-purple-700 border border-purple-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
                 {formData.show_order_queue ? "Queue Visible" : "Queue Hidden"}
               </span>
+            )}
+            {formData.supports_table_service && activeCategories.length > 0 && (
+              <div className="w-full mt-2 pt-2.5 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500">Meal Periods:</span>
+                {activeCategories.map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200"
+                  >
+                    <span>{c.icon || "🍽️"}</span>
+                    <span>{c.name}</span>
+                    {c.name_am && <span className="text-gray-400">({c.name_am})</span>}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>

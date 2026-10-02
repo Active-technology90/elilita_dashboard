@@ -39,17 +39,27 @@ import type {
   IntakeFormField,
 } from "../types";
 
-// const API_URL = import.meta.env.VITE_API_URL || "";
-// const API_URL = "http://localhost:8000/api/v1/";
-const API_URL = "https://backend.elilitapp.com/api/v1/";
-
-
+const rawApiUrl =
+  import.meta.env.VITE_API_URL || "https://backend.elilitapp.com/api/v1/";
+const API_URL = rawApiUrl.endsWith("/") ? rawApiUrl : `${rawApiUrl}/`;
 
 const api = axios.create({
   baseURL: API_URL,
   timeout: 15000,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json", 
+  },
 });
+
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    localStorage.setItem("access", token);
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  } else {
+    localStorage.removeItem("access");
+    delete api.defaults.headers.common["Authorization"];
+  }
+};
 
 
 // Flag to prevent multiple simultaneous token refresh calls 
@@ -148,6 +158,9 @@ api.interceptors.response.use(
 // ========== AUTHENTICATION ==========
 export const login = async (username: string, password: string) =>
   api.post("/auth/jwt/create/", { username, password });
+
+export const exchangeSSOTicket = async (ticket: string) =>
+  api.post<{ access: string; refresh: string }>("/users/auth/sso/exchange/", { ticket });
 
 export const getAllUsers = async (
   page: number = 1,

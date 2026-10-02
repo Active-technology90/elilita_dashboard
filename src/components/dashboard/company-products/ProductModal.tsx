@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronLeft, CheckCircle, Star, MessageSquare } from 'lucide-react';
+import { X, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronLeft, CheckCircle, Star, MessageSquare, Check } from 'lucide-react';
 import { ImageGallery } from './ImageGallery';
-import { getCompanyProductDetail, getMySubscription } from '../../../services/api';
-import type { ProductImage } from '../../../types';
+import { getCompanyProductDetail, getMySubscription, getCompanyDetail } from '../../../services/api';
+import { useCurrentCompany } from '../../../context/CurrentCompanyContext';
+import type { ProductImage, MealPeriodCategory } from '../../../types';
+import MealCategoryIcon from '../../ui/MealCategoryIcon';
 
 interface ProductFormData {
   sku: string;
@@ -58,6 +60,7 @@ interface ProductModalProps {
     total_reviews?: number
   } | null;
   companySlug: string;
+  companyMealPeriods?: MealPeriodCategory[];
   onClose: () => void;
   onSave: (data: ProductFormData, existingProductId?: number) => Promise<any>;
   onProductUpdated?: () => void;
@@ -83,6 +86,7 @@ export function ProductModal({
   isOpen,
   editingProduct,
   companySlug,
+  companyMealPeriods: initialCompanyMealPeriods,
   onClose,
   onSave,
   onProductUpdated,
@@ -93,16 +97,92 @@ export function ProductModal({
 }: ProductModalProps) {
   const [step, setStep] = useState<'details' | 'gallery'>('details');
   const [selectedMealPeriods, setSelectedMealPeriods] = useState<string[]>([]);
+  const [companyMealPeriods, setCompanyMealPeriods] = useState<MealPeriodCategory[]>(
+    initialCompanyMealPeriods || []
+  );
   const [images, setImages] = useState<ProductImage[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [savedProductId, setSavedProductId] = useState<number | null>(null);
   const [activeSub, setActiveSub] = useState<any>(null);
+  const { company: currentCompany } = useCurrentCompany();
+
+  useEffect(() => {
+    if (initialCompanyMealPeriods && initialCompanyMealPeriods.length > 0) {
+      setCompanyMealPeriods(initialCompanyMealPeriods);
+    }
+  }, [initialCompanyMealPeriods]);
 
   useEffect(() => {
     if (isOpen && companySlug) {
       getMySubscription(companySlug).then(res => setActiveSub(res.data)).catch(console.error);
+      getCompanyDetail(companySlug)
+        .then((res) => {
+          if (Array.isArray(res.data?.meal_periods)) {
+            setCompanyMealPeriods(res.data.meal_periods);
+          }
+        })
+        .catch(console.error);
     }
   }, [isOpen, companySlug]);
+
+  const availableMealPeriods = useMemo(() => {
+    const list: { id: string; label: string; icon: string }[] = [];
+    const seen = new Set<string>();
+
+    // 1. Configured meal categories from company
+    if (Array.isArray(companyMealPeriods) && companyMealPeriods.length > 0) {
+      for (const c of companyMealPeriods) {
+        if (c.id && !seen.has(c.id)) {
+          seen.add(c.id);
+          list.push({
+            id: c.id,
+            label: c.name + (c.name_am ? ` (${c.name_am})` : ""),
+            icon: c.icon || "🍽️",
+          });
+        }
+      }
+    } else if (Array.isArray((currentCompany as any)?.meal_periods) && (currentCompany as any).meal_periods.length > 0) {
+      for (const c of (currentCompany as any).meal_periods) {
+        if (c.id && !seen.has(c.id)) {
+          seen.add(c.id);
+          list.push({
+            id: c.id,
+            label: c.name + (c.name_am ? ` (${c.name_am})` : ""),
+            icon: c.icon || "🍽️",
+          });
+        }
+      }
+    } else {
+      // Standard defaults if company has not customized yet
+      const defaults = [
+        { id: "breakfast", label: "Breakfast (ቁርስ)", icon: "coffee" },
+        { id: "lunch", label: "Lunch (ምሳ)", icon: "sun" },
+        { id: "dinner", label: "Dinner (እራት)", icon: "moon" },
+      ];
+      for (const d of defaults) {
+        if (!seen.has(d.id)) {
+          seen.add(d.id);
+          list.push(d);
+        }
+      }
+    }
+
+    // 2. Current product's existing meal periods (preserve any legacy assignments)
+    if (Array.isArray(editingProduct?.meal_periods)) {
+      for (const mp of editingProduct.meal_periods) {
+        if (mp && !seen.has(mp)) {
+          seen.add(mp);
+          list.push({
+            id: mp,
+            label: mp.replace(/-/g, " "),
+            icon: "utensils",
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [companyMealPeriods, currentCompany, editingProduct]);
 
   const maxFeatured = activeSub?.allowed_max_featured_products || 0;
   const currentFeatured = activeSub?.current_featured_products || 0;
@@ -139,6 +219,31 @@ export function ProductModal({
   // Reset form and step 
   useEffect(() => {
     if (editingProduct) {
+      let initialMeals: string[] = [];
+      const rawMeals =
+        editingProduct.meal_periods ??
+        (editingProduct as any).attributes?.meal_periods ??
+        (editingProduct as any).menu_category;
+
+      if (Array.isArray(rawMeals)) {
+        initialMeals = rawMeals
+          .filter(Boolean)
+          .map((m: any) => String(m).trim().toLowerCase());
+      } else if (typeof rawMeals === "string" && rawMeals.trim()) {
+        try {
+          const parsed = JSON.parse(rawMeals);
+          if (Array.isArray(parsed)) {
+            initialMeals = parsed
+              .filter(Boolean)
+              .map((m: any) => String(m).trim().toLowerCase());
+          } else {
+            initialMeals = [rawMeals.trim().toLowerCase()];
+          }
+        } catch {
+          initialMeals = [rawMeals.trim().toLowerCase()];
+        }
+      }
+
       // Edit mode: populate form with product data
       reset({
         sku: editingProduct.sku,
@@ -150,11 +255,11 @@ export function ProductModal({
         price: editingProduct.price,
         stock: editingProduct.stock,
         unit: editingProduct.unit,
-        meal_periods: editingProduct.meal_periods || [],
+        meal_periods: initialMeals,
         is_featured: editingProduct.is_featured || false,
         is_active: editingProduct.is_active !== undefined ? editingProduct.is_active : true,
       });
-      setSelectedMealPeriods(editingProduct.meal_periods || []);
+      setSelectedMealPeriods(initialMeals);
       setSavedProductId(editingProduct.id);
       setStep('details');
     } else {
@@ -544,21 +649,35 @@ export function ProductModal({
                   </select>
                 </div>
 
-                {/* Meal Periods Availability (Breakfast, Lunch, Dinner) */}
-                <div className="pt-2 border-t border-gray-100">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Meal Period Availability
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    Select when this item is available. (If none selected, it appears across all periods).
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: "breakfast", label: "Breakfast", icon: "☕" },
-                      { id: "lunch", label: "Lunch", icon: "☀️" },
-                      { id: "dinner", label: "Dinner", icon: "🌙" },
-                    ].map((period) => {
-                      const isSelected = selectedMealPeriods.includes(period.id);
+                {/* Meal Periods Availability */}
+                <div className="pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800">
+                        Meal Availability
+                      </label>
+                      <p className="text-xs text-gray-500">
+                        Select which dining periods this item is available for. If none are selected, it is served all day across all meal filters.
+                      </p>
+                    </div>
+                    {selectedMealPeriods.length > 0 && !isReadOnlyBasic && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMealPeriods([])}
+                        className="text-xs text-secondary hover:underline font-semibold shrink-0 ml-3"
+                      >
+                        Reset to All Day
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Selectable Meal Category Pills */}
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {availableMealPeriods.map((period) => {
+                      const normId = period.id.toLowerCase().trim();
+                      const isSelected = selectedMealPeriods
+                        .map((s) => s.toLowerCase().trim())
+                        .includes(normId);
                       return (
                         <button
                           key={period.id}
@@ -566,22 +685,51 @@ export function ProductModal({
                           disabled={isSubmitting || isReadOnlyBasic}
                           onClick={() => {
                             if (isSelected) {
-                              setSelectedMealPeriods(selectedMealPeriods.filter((p) => p !== period.id));
+                              setSelectedMealPeriods(
+                                selectedMealPeriods.filter(
+                                  (p) => p.toLowerCase().trim() !== normId,
+                                ),
+                              );
                             } else {
-                              setSelectedMealPeriods([...selectedMealPeriods, period.id]);
+                              setSelectedMealPeriods([
+                                ...selectedMealPeriods,
+                                normId,
+                              ]);
                             }
                           }}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
                             isSelected
-                              ? "bg-secondary text-white border-secondary shadow-sm"
-                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                          } ${isReadOnlyBasic ? "opacity-60 cursor-not-allowed" : ""}`}
+                              ? "bg-secondary text-white border-secondary shadow-xs scale-[1.02]"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-white"
+                          } ${isReadOnlyBasic ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                         >
-                          <span>{period.icon}</span>
+                          <MealCategoryIcon
+                            icon={period.icon}
+                            className={`w-4 h-4 shrink-0 ${isSelected ? "text-white" : "text-gray-500"}`}
+                          />
                           <span>{period.label}</span>
+                          {isSelected ? (
+                            <Check className="w-3.5 h-3.5 ml-0.5 text-white" />
+                          ) : (
+                            <span className="w-3.5 h-3.5 ml-0.5 rounded-full border border-gray-300" />
+                          )}
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Status Indicator */}
+                  <div className="mt-2.5">
+                    {selectedMealPeriods.length === 0 ? (
+                      <p className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Available All Day (Visible across all meal categories)
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-500">
+                        Available in <span className="font-semibold text-secondary">{selectedMealPeriods.length}</span> meal {selectedMealPeriods.length === 1 ? "period" : "periods"}.
+                      </p>
+                    )}
                   </div>
                 </div>
 

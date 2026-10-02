@@ -20,6 +20,7 @@ import {
   Shield,
   Sparkles,
   Store,
+  Users,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -42,6 +43,7 @@ interface SubscriptionPlan {
   can_ad_home_page: boolean;
   max_featured_products: number;
   max_products: number;
+  max_staff_members?: number;
 }
 
 interface ActiveSubscription {
@@ -54,8 +56,10 @@ interface ActiveSubscription {
   days_remaining: number | null;
   allowed_max_featured_products: number;
   allowed_max_products: number;
+  allowed_max_staff_members?: number;
   current_featured_products?: number;
   current_products?: number;
+  current_staff_members?: number;
 }
 
 type PlanAction =
@@ -615,9 +619,11 @@ export default function BillingPage() {
 
   const currentProducts = activeSub?.current_products || 0;
   const currentFeaturedProducts = activeSub?.current_featured_products || 0;
+  const currentStaff = activeSub?.current_staff_members || 0;
   const allowedProducts = activeSub?.allowed_max_products ?? 0;
   const allowedFeaturedProducts =
     activeSub?.allowed_max_featured_products ?? 0;
+  const allowedStaff = activeSub?.allowed_max_staff_members ?? 5;
 
   const status = isExpired
     ? "Expired"
@@ -788,6 +794,12 @@ export default function BillingPage() {
                 current={currentFeaturedProducts}
                 limit={allowedFeaturedProducts}
               />
+              <UsageCard
+                icon={<Users className="h-4 w-4" />}
+                label="Staff members"
+                current={currentStaff}
+                limit={allowedStaff}
+              />
             </div>
           </div>
         </section>
@@ -864,6 +876,13 @@ export default function BillingPage() {
                             ? `Can feature up to ${formatLimit(plan.max_featured_products)} products`
                             : "Can feature up to 0 products",
                         enabled: plan.max_featured_products > 0,
+                      },
+                      {
+                        label:
+                          (plan.max_staff_members ?? 5) === -1
+                            ? "Unlimited staff members"
+                            : `Up to ${formatLimit(plan.max_staff_members ?? 5)} staff members`,
+                        enabled: true,
                       },
                       { label: "Ads on Company Detail Page", enabled: plan.can_ad_company_detail },
                       { label: "Ads on Companies List Page", enabled: plan.can_ad_companies_list },

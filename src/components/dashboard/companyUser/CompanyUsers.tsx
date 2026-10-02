@@ -5,6 +5,7 @@ import { useCompaniesList } from "../../../hooks/useCompaniesList";
 import { useCompanyUsers } from "../../../hooks/useCompanyUsers";
 import { useAddCompanyUser } from "../../../hooks/useAddCompanyUser";
 import {
+  getMySubscription,
   onboardCompanyStaff,
   removeUserFromCompany,
   searchUsers,
@@ -13,6 +14,7 @@ import {
 import { useDebounce } from "../../../hooks/useDebounce";
 import type { User, UserRole } from "../../../types";
 import {
+  AlertCircle,
   Briefcase,
   Building2,
   Eye,
@@ -131,6 +133,20 @@ export default function CompanyUsers() {
   const { users, loading, error, refetch } = useCompanyUsers(companySlug);
   const { addUser } = useAddCompanyUser();
   const debouncedQuery = useDebounce(searchTerm, 500);
+
+  const [activeSub, setActiveSub] = useState<any>(null);
+
+  useEffect(() => {
+    if (companySlug) {
+      getMySubscription(companySlug)
+        .then((res) => setActiveSub(res.data))
+        .catch(console.error);
+    }
+  }, [companySlug]);
+
+  const maxStaff = activeSub?.allowed_max_staff_members ?? (isSuperAdmin ? -1 : 5);
+  const currentStaffCount = (users || []).length;
+  const isLimitReached = !isSuperAdmin && maxStaff !== -1 && currentStaffCount >= maxStaff;
 
   const currentUserRole = useMemo(() => {
     if (!currentUser || !companySlug) return null;
@@ -449,12 +465,26 @@ export default function CompanyUsers() {
         </section>
       )}
 
+      {isLimitReached && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+          <div className="flex-1">
+            <span className="font-bold">Staff Limit Reached ({currentStaffCount}/{maxStaff}): </span>
+            Your current subscription tier has reached its maximum staff members limit. Please upgrade your subscription plan to add or onboard more team members.
+          </div>
+        </div>
+      )}
+
       {canManageUsers && (
         <div className="grid grid-cols-2 gap-2 lg:hidden">
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+            disabled={isLimitReached}
+            title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
+            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
+              isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-white" : ""
+            }`}
           >
             <UserPlus className="h-3.5 w-3.5" />
             Create user
@@ -462,7 +492,11 @@ export default function CompanyUsers() {
           <button
             type="button"
             onClick={openAddDispatcher}
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
+            disabled={isLimitReached}
+            title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
+            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
+              isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-secondary" : ""
+            }`}
           >
             <UserPlus className="h-3.5 w-3.5" />
             Add member
@@ -562,7 +596,11 @@ export default function CompanyUsers() {
                   <button
                     type="button"
                     onClick={openAddDispatcher}
-                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90"
+                    disabled={isLimitReached}
+                    title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
+                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
+                      isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-secondary" : ""
+                    }`}
                   >
                     <UserPlus className="h-3.5 w-3.5" />
                     Add member
@@ -571,7 +609,11 @@ export default function CompanyUsers() {
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(true)}
-                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+                    disabled={isLimitReached}
+                    title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
+                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
+                      isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-white" : ""
+                    }`}
                   >
                     <UserPlus className="h-3.5 w-3.5" />
                     Create user

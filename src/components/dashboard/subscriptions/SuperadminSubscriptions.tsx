@@ -300,6 +300,7 @@ export default function SuperadminSubscriptions() {
     can_ad_home_page: false,
     max_featured_products: 0,
     max_products: 0,
+    max_staff_members: 5,
     is_active: true,
   });
 
@@ -396,6 +397,7 @@ export default function SuperadminSubscriptions() {
       can_ad_home_page: plan.can_ad_home_page,
       max_featured_products: plan.max_featured_products,
       max_products: getProductLimitForPlan(plan) ?? 0,
+      max_staff_members: plan.max_staff_members ?? 5,
       is_active: plan.is_active,
     });
     setIsModalOpen(true);
@@ -413,6 +415,7 @@ export default function SuperadminSubscriptions() {
       can_ad_home_page: false,
       max_featured_products: 0,
       max_products: 0,
+      max_staff_members: 5,
       is_active: true,
     });
     setIsModalOpen(true);
@@ -636,6 +639,7 @@ export default function SuperadminSubscriptions() {
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Products</th>
                 <th className="px-4 py-3">Featured</th>
+                <th className="px-4 py-3">Staff</th>
                 <th className="px-4 py-3">Ads</th>
                 <th className="px-4 py-3">Subscribers</th>
                 <th className="px-4 py-3">Status</th>
@@ -676,6 +680,9 @@ export default function SuperadminSubscriptions() {
                       </td>
                       <td className="px-4 py-3.5">
                         {plan.max_featured_products === -1 ? "Unlimited" : plan.max_featured_products}
+                      </td>
+                      <td className="px-4 py-3.5 font-medium">
+                        {(plan.max_staff_members ?? 5) === -1 ? "Unlimited" : (plan.max_staff_members ?? 5)}
                       </td>
                       <td className="px-4 py-3.5">{adsCount}/3</td>
                       <td className="px-4 py-3.5">{subscribers}</td>
@@ -927,7 +934,7 @@ export default function SuperadminSubscriptions() {
                   </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-gray-700">Product limit</label>
                     <input
@@ -957,6 +964,17 @@ export default function SuperadminSubscriptions() {
                       className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
                     />
                     <p className="mt-1 text-[11px] text-gray-400">0 = none · -1 = unlimited</p>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Staff limit</label>
+                    <input
+                      type="number"
+                      required
+                      value={formData.max_staff_members}
+                      onChange={(e) => setFormData({ ...formData, max_staff_members: parseInt(e.target.value, 10) || 0 })}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    />
+                    <p className="mt-1 text-[11px] text-gray-400">-1 = unlimited</p>
                   </div>
                 </div>
 

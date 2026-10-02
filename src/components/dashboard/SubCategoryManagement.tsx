@@ -478,6 +478,22 @@ export default function SubCategoryManagement() {
             </button>
           ) : undefined
         }
+        actionMobile={
+          !readOnly ? (
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setModalOpen(true);
+              }}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+              aria-label="Add Subcategory"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add</span>
+            </button>
+          ) : undefined
+        }
         className="mb-5 sm:mb-6"
       />
 
@@ -555,9 +571,9 @@ export default function SubCategoryManagement() {
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-label="Open filters"
-              className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-secondary text-white shadow-sm transition hover:bg-secondary/90 active:scale-95"
+              className="absolute right-1 md:right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center md:rounded-lg md:bg-secondary md:text-white md:shadow-sm md:transition md:hover:bg-secondary/90 md:active:scale-95"
             >
-              <Filter size={14} strokeWidth={2.5} />
+              <Filter size={14} strokeWidth={2.5} className="text-secondary md:text-white"/>
             </button>
           </div>
 

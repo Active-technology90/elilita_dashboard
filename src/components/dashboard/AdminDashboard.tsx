@@ -53,6 +53,7 @@ import AdManagement from "./AdManagement";
 import SettingsPage from "./settings/Settings";
 import NotificationsPage from "./notifications/NotificationsPage";
 import NotificationBell from "./notifications/NotificationBell";
+import toast from "react-hot-toast";
 import {
   clearPushParamsFromUrl,
   readPushParamsFromUrl,
@@ -180,16 +181,14 @@ function OrdersMenu({
           [&_svg]:h-4
           [&_svg]:w-4
 
-          ${
-            collapsed
-              ? "justify-center px-2"
-              : "gap-2.5 px-3"
+          ${collapsed
+            ? "justify-center px-2"
+            : "gap-2.5 px-3"
           }
 
-          ${
-            activeTab === "companyOrders"
-              ? "bg-white text-secondary shadow-sm"
-              : "text-white/75 hover:bg-white/10 hover:text-white"
+          ${activeTab === "companyOrders"
+            ? "bg-white text-secondary shadow-sm"
+            : "text-white/75 hover:bg-white/10 hover:text-white"
           }
         `}
       >
@@ -224,10 +223,9 @@ function OrdersMenu({
             [&_svg]:h-4
             [&_svg]:w-4
 
-            ${
-              isActive
-                ? "bg-white text-secondary shadow-sm"
-                : "text-white/75 hover:bg-white/10 hover:text-white"
+            ${isActive
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
             }
           `}
         >
@@ -273,10 +271,9 @@ function OrdersMenu({
                   [&_svg]:h-3.5
                   [&_svg]:w-3.5
 
-                  ${
-                    activeTab === "masterOrders"
-                      ? "bg-white/15 font-semibold text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  ${activeTab === "masterOrders"
+                    ? "bg-white/15 font-semibold text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
                   }
                 `}
               >
@@ -303,10 +300,9 @@ function OrdersMenu({
                 [&_svg]:h-3.5
                 [&_svg]:w-3.5
 
-                ${
-                  activeTab === "companyOrders"
-                    ? "bg-white/15 font-semibold text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                ${activeTab === "companyOrders"
+                  ? "bg-white/15 font-semibold text-white"
+                  : "text-white/60 hover:bg-white/10 hover:text-white"
                 }
               `}
             >
@@ -340,10 +336,9 @@ function OrdersMenu({
           [&_svg]:h-4
           [&_svg]:w-4
 
-          ${
-            isActive
-              ? "bg-white text-secondary shadow-sm"
-              : "text-white/75 hover:bg-white/10 hover:text-white"
+          ${isActive
+            ? "bg-white text-secondary shadow-sm"
+            : "text-white/75 hover:bg-white/10 hover:text-white"
           }
         `}
       >
@@ -389,10 +384,9 @@ function OrdersMenu({
                 [&_svg]:h-3.5
                 [&_svg]:w-3.5
 
-                ${
-                  activeTab === "masterOrders"
-                    ? "bg-secondary/[0.08] font-semibold text-secondary"
-                    : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+                ${activeTab === "masterOrders"
+                  ? "bg-secondary/[0.08] font-semibold text-secondary"
+                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
                 }
               `}
             >
@@ -421,10 +415,9 @@ function OrdersMenu({
               [&_svg]:h-3.5
               [&_svg]:w-3.5
 
-              ${
-                activeTab === "companyOrders"
-                  ? "bg-secondary/[0.08] font-semibold text-secondary"
-                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+              ${activeTab === "companyOrders"
+                ? "bg-secondary/[0.08] font-semibold text-secondary"
+                : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
               }
             `}
           >
@@ -513,10 +506,29 @@ export default function AdminDashboard() {
     }
   };
 
-  const applyPushNavigation = (payload: PushNavigationPayload) => {
+  const applyPushNavigation = async (payload: PushNavigationPayload) => {
     const tab = resolvePushTab(payload, isSuperAdmin);
     navigate(tab);
     clearPushParamsFromUrl();
+
+    if (payload.vendor_order_id) {
+      const orderId = Number(payload.vendor_order_id);
+      if (!isNaN(orderId)) {
+        const toastId = toast.loading(`Opening order #${orderId}...`);
+        try {
+          const order = await fetchOrderById(orderId);
+          if (order) {
+            toast.dismiss(toastId);
+            setNotificationOrder(order);
+            setNotificationReceipt(order.receipt || null);
+          } else {
+            toast.error(`Order #${orderId} not found`, { id: toastId });
+          }
+        } catch {
+          toast.error(`Failed to load order #${orderId}`, { id: toastId });
+        }
+      }
+    }
   };
 
   // Cold start: user clicked OS notification while browser was closed.
@@ -622,24 +634,54 @@ export default function AdminDashboard() {
     scrollableElement.addEventListener("scroll", handleScroll);
     return () => scrollableElement.removeEventListener("scroll", handleScroll);
   }, []);
-  const fetchOrderById = async (orderId: number) => {
+  const fetchOrderById = async (orderId: number, companySlug?: string) => {
     const token = localStorage.getItem("access");
     if (!token) return null;
 
     try {
       const query = {
         page: 1,
-        page_size: 1,
+        page_size: 10,
         ordering: "-created_at",
         search: String(orderId),
       };
 
+      const targetSlug = companySlug || company?.slug;
+
       if (isSuperAdmin || isViewer) {
-        const res = await getAdminVendorOrders(query);
-        return res.data.results[0] || null;
-      } else if (company?.slug) {
-        const res = await getCompanyVendorOrders(company.slug, query);
-        return res.data.results[0] || null;
+        try {
+          const res = await getAdminVendorOrders(query);
+          const match =
+            res.data.results?.find((o: any) => o.id === Number(orderId)) ||
+            res.data.results?.[0];
+          if (match) return match;
+        } catch (e) {
+          console.warn("Failed fetching from admin vendor orders:", e);
+        }
+      }
+
+      if (targetSlug) {
+        try {
+          const res = await getCompanyVendorOrders(targetSlug, query);
+          const match =
+            res.data.results?.find((o: any) => o.id === Number(orderId)) ||
+            res.data.results?.[0];
+          if (match) return match;
+        } catch (e) {
+          console.warn("Failed fetching from company vendor orders:", e);
+        }
+      }
+
+      if (companiesList.length > 0) {
+        for (const comp of companiesList) {
+          try {
+            const res = await getCompanyVendorOrders(comp.slug, query);
+            const match = res.data.results?.find((o: any) => o.id === Number(orderId));
+            if (match) return match;
+          } catch {
+            // continue
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to fetch order by ID", error);
@@ -648,15 +690,55 @@ export default function AdminDashboard() {
   };
 
   const handleNotificationClick = async (notification: any) => {
-    const vendorOrderId = notification.data?.vendor_order_id;
-    if (!vendorOrderId) return;
+    const data = (notification?.data || {}) as Record<string, unknown>;
+    const rawId =
+      data.vendor_order_id ??
+      data.order_id ??
+      (data.type === "vendor_order" ? data.id : null);
 
-    const order = await fetchOrderById(vendorOrderId);
-    if (order) {
-      setNotificationOrder(order);
-      setNotificationReceipt(order.receipt || null);
+    let vendorOrderId: number | null =
+      rawId != null && !isNaN(Number(rawId)) ? Number(rawId) : null;
+
+    if (!vendorOrderId) {
+      const text = `${notification?.title || ""} ${notification?.body || ""}`;
+      const match = text.match(/#(\d+)/);
+      if (match && match[1]) {
+        vendorOrderId = Number(match[1]);
+      }
+    }
+
+    const companySlug =
+      typeof data.company_slug === "string"
+        ? data.company_slug
+        : typeof data.company === "string"
+          ? data.company
+          : undefined;
+
+    if (!vendorOrderId) {
+      navigate("notifications");
+      return;
+    }
+
+    // 1. Redirect to orders tab
+    navigate(isSuperAdmin ? "masterOrders" : "companyOrders");
+
+    // 2. Fetch order and open VendorOrderDetailModal
+    const toastId = toast.loading(`Opening order #${vendorOrderId}...`);
+    try {
+      const order = await fetchOrderById(vendorOrderId, companySlug);
+      if (order) {
+        toast.dismiss(toastId);
+        setNotificationOrder(order);
+        setNotificationReceipt(order.receipt || null);
+      } else {
+        toast.error(`Order #${vendorOrderId} not found`, { id: toastId });
+      }
+    } catch (err) {
+      console.error("Error opening notification order:", err);
+      toast.error(`Failed to load order #${vendorOrderId}`, { id: toastId });
     }
   };
+
   const handleNotificationOrderUpdate = async () => {
     if (!notificationOrder) return;
     const freshOrder = await fetchOrderById(notificationOrder.id);
@@ -789,10 +871,9 @@ export default function AdminDashboard() {
 
           ${sidebarCollapsed ? "w-14" : "w-[232px]"}
 
-          ${
-            isSidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full lg:translate-x-0"
+          ${isSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
           }
         `}
       >
@@ -807,10 +888,9 @@ export default function AdminDashboard() {
             border-white/15
             px-2.5
 
-            ${
-              sidebarCollapsed
-                ? "justify-center"
-                : "gap-2.5"
+            ${sidebarCollapsed
+              ? "justify-center"
+              : "gap-2.5"
             }
           `}
         >
@@ -1055,6 +1135,14 @@ export default function AdminDashboard() {
                 Management
               </div>
 
+              <SidebarItem
+                icon={<Package className="h-5 w-5" />}
+                label="All Products"
+                active={activeTab === "products"}
+                collapsed={sidebarCollapsed}
+                onClick={() => navigate("products")}
+              />
+
               <OrdersMenu
                 collapsed={sidebarCollapsed}
                 activeTab={activeTab}
@@ -1084,13 +1172,7 @@ export default function AdminDashboard() {
                 />
               )}
 
-              <SidebarItem
-                icon={<Package className="h-5 w-5" />}
-                label="All Products"
-                active={activeTab === "products"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("products")}
-              />
+
               {showServiceMenu && (
                 <>
                   <div
@@ -1168,13 +1250,13 @@ export default function AdminDashboard() {
                 onClick={() => navigate("notifications")}
               />
 
-              <SidebarItem
+              {/* <SidebarItem
                 icon={<User className="h-5 w-5" />}
                 label="Profile"
                 active={activeTab === "profile"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("profile")}
-              />
+              /> */}
 
               {isSuperAdmin && (
                 <SidebarItem
@@ -1234,10 +1316,9 @@ export default function AdminDashboard() {
             border-white/15
             pt-2
 
-            ${
-              sidebarCollapsed
-                ? "justify-center"
-                : "justify-end"
+            ${sidebarCollapsed
+              ? "justify-center"
+              : "justify-end"
             }
           `}
         >
@@ -1276,10 +1357,9 @@ export default function AdminDashboard() {
             sm:px-3
             lg:px-4
 
-            ${
-              isScrolled
-                ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-                : ""
+            ${isScrolled
+              ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              : ""
             }
           `}
         >
@@ -1300,14 +1380,14 @@ export default function AdminDashboard() {
                 rounded-md
                 border
                 border-secondary/10
-                bg-white
+                bg-secondary
                 text-secondary
                 transition-colors
                 hover:bg-secondary/[0.04]
                 lg:hidden
               "
             >
-              <Menu className="h-4 w-4" />
+              <Menu className="h-4 w-4 text-white" />
             </button>
 
             {isSuperAdmin && (
@@ -1478,6 +1558,7 @@ export default function AdminDashboard() {
               onViewAll={() =>
                 navigate("notifications")
               }
+              onNotificationClick={handleNotificationClick}
             />
 
             <RefreshButton
@@ -1504,10 +1585,9 @@ export default function AdminDashboard() {
                   transition-colors
                   duration-150
 
-                  ${
-                    profileDropdownOpen
-                      ? "border-secondary/20 bg-secondary/[0.04]"
-                      : "border-transparent hover:border-secondary/10 hover:bg-secondary/[0.025]"
+                  ${profileDropdownOpen
+                    ? "border-secondary/20 bg-secondary/[0.04]"
+                    : "border-transparent hover:border-secondary/10 hover:bg-secondary/[0.025]"
                   }
                 `}
               >
@@ -1857,16 +1937,14 @@ function SidebarItem({
         [&_svg]:h-4
         [&_svg]:w-4
 
-        ${
-          collapsed
-            ? "justify-center px-2"
-            : "gap-2.5 px-3"
+        ${collapsed
+          ? "justify-center px-2"
+          : "gap-2.5 px-3"
         }
 
-        ${
-          active
-            ? "bg-white text-secondary shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white"
+        ${active
+          ? "bg-white text-secondary shadow-sm"
+          : "text-white/75 hover:bg-white/10 hover:text-white"
         }
       `}
     >

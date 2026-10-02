@@ -175,17 +175,15 @@ export default function NotificationsPage({
               type="button"
               onClick={() => setFilter(f)}
               aria-pressed={active}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 ${
-                active
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 ${active
                   ? "bg-white text-secondary shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
-              }`}
+                }`}
             >
               {f}
               <span
-                className={`text-[10px] sm:text-xs font-bold ${
-                  active ? "text-secondary" : "text-gray-400"
-                }`}
+                className={`text-[10px] sm:text-xs font-bold ${active ? "text-secondary" : "text-gray-400"
+                  }`}
               >
                 {count}
               </span>
@@ -245,11 +243,10 @@ export default function NotificationsPage({
                   return (
                     <div
                       key={n.id}
-                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 ${
-                        n.is_read
+                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 ${n.is_read
                           ? "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
                           : "border-secondary/15 bg-gradient-to-r from-secondary/[0.07] via-white to-white shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-secondary/25 hover:shadow-sm"
-                      }`}
+                        }`}
                     >
                       {!n.is_read && (
                         <span
@@ -301,11 +298,10 @@ export default function NotificationsPage({
                           </span>
 
                           <span
-                            className={`mt-1 block text-sm leading-5 sm:text-[15px] ${
-                              n.is_read
+                            className={`mt-1 block text-sm leading-5 sm:text-[15px] ${n.is_read
                                 ? "font-semibold text-gray-800"
                                 : "font-bold text-gray-950"
-                            }`}
+                              }`}
                           >
                             {n.title}
                           </span>

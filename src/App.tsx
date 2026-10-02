@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import SignIn from "./pages/SignIn";
+import SSOCallback from "./pages/SSOCallback";
 import AdminDashboard from "./components/dashboard/AdminDashboard";
 import BankManagement from "./components/dashboard/bank/BankManagement";
 import { CurrentCompanyProvider } from "./context/CurrentCompanyContext";
@@ -11,6 +12,7 @@ export default function App() {
   const { user } = useAuth();
   return (
     <Routes>
+      <Route path="/sso" element={<SSOCallback />} />
       <Route path="/signin" element={<SignIn />} />
       <Route
         path="/dashboard"

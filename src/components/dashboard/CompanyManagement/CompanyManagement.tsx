@@ -208,6 +208,7 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   is_featured: false,
   supports_table_service: false,
   show_order_queue: false,
+  meal_periods: [],
   logo: null,
   cover_image: null,
   chapa_sub_account_id: "",
@@ -640,6 +641,7 @@ export default function CompanyManagement() {
           is_featured: company.is_featured,
           supports_table_service: company.supports_table_service,
           show_order_queue: Boolean(company.show_order_queue),
+          meal_periods: (company as any).meal_periods || [],
           description: company.description || "",
           address: company.address || "",
           address_am: (company as any).address_am || "",
@@ -678,6 +680,7 @@ export default function CompanyManagement() {
           is_featured: companyListItem.is_featured,
           supports_table_service: companyListItem.supports_table_service,
           show_order_queue: Boolean(companyListItem.show_order_queue),
+          meal_periods: (companyListItem as any).meal_periods || [],
           logo: null,
           cover_image: null,
           contact_phone: companyListItem.contact_phone || "",
@@ -735,6 +738,17 @@ export default function CompanyManagement() {
                 theme_dark: detail.theme_dark || "#6750A4",
                 theme_light: detail.theme_light || "#8B6BB5",
                 delivery_fee_per_km: detail.delivery_fee_per_km || "",
+                supports_table_service:
+                  detail.supports_table_service !== undefined
+                    ? detail.supports_table_service
+                    : company.supports_table_service,
+                show_order_queue:
+                  detail.show_order_queue !== undefined
+                    ? Boolean(detail.show_order_queue)
+                    : Boolean(company.show_order_queue),
+                meal_periods: Array.isArray(detail.meal_periods)
+                  ? detail.meal_periods
+                  : (company as any).meal_periods || [],
               };
             } catch (err) {
               return company;
@@ -767,6 +781,7 @@ export default function CompanyManagement() {
             is_featured: first.is_featured,
             supports_table_service: first.supports_table_service,
             show_order_queue: Boolean(first.show_order_queue),
+            meal_periods: (first as any).meal_periods || [],
             logo: null,
             cover_image: null,
             contact_phone: first.contact_phone || "",
@@ -1092,6 +1107,17 @@ export default function CompanyManagement() {
         "show_order_queue",
         String(formData.show_order_queue),
       );
+      if (formData.supports_table_service || (formData.meal_periods && formData.meal_periods.length > 0)) {
+        const payloadMeals =
+          formData.meal_periods && formData.meal_periods.length > 0
+            ? formData.meal_periods
+            : [
+                { id: "breakfast", name: "Breakfast", name_am: "ቁርስ", icon: "coffee" },
+                { id: "lunch", name: "Lunch", name_am: "ምሳ", icon: "sun" },
+                { id: "dinner", name: "Dinner", name_am: "እራት", icon: "moon" },
+              ];
+        formPayload.append("meal_periods", JSON.stringify(payloadMeals));
+      }
       formPayload.append("tin_number", formData.tin_number || "");
       formPayload.append(
         "vat_registration_number",
@@ -1373,6 +1399,7 @@ export default function CompanyManagement() {
         is_featured: company.is_featured,
         supports_table_service: company.supports_table_service,
         show_order_queue: Boolean(company.show_order_queue),
+        meal_periods: (company as any).meal_periods || [],
         logo: null,
         cover_image: null,
         contact_phone: company.contact_phone || "",
@@ -1460,7 +1487,7 @@ export default function CompanyManagement() {
           }
           icon={Building2}
           loading
-          className="mb-5 sm:mb-6"
+          className="mb-0 sm:mb-6"
         />
         {isSuperAdmin || isMarketing ? (
           <SkeletonTable rowCount={pageSize} />
@@ -1499,10 +1526,26 @@ export default function CompanyManagement() {
           icon={Building2}
           className={
             isSuperAdmin || isMarketing
-              ? "mb-5 sm:mb-6"
-              : "mb-5 shrink-0 sm:mb-6"
+              ? "mb-0 sm:mb-5"
+              : "mb-0 shrink-0 sm:mb-5"
           }
           actions={
+            canAddCompany ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setModalOpen(true);
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Company</span>
+                <span className="sm:hidden">Add</span>
+              </button>
+            ) : undefined
+          }
+          actionMobile={
             canAddCompany ? (
               <button
                 type="button"
@@ -1521,8 +1564,8 @@ export default function CompanyManagement() {
         />
 
         {(isSuperAdmin || isMarketing) && (
-          <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
-            <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="sticky -top-6 z-[2] -mt-4 w-full bg-white">
+            <div className="w-full rounded-xl border border-secondary/10 bg-white p-1 md:p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
               <CompanyFilters
                 pageSize={pageSize}
                 onPageSizeChange={setPageSize}

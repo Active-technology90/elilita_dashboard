@@ -1,7 +1,7 @@
 // src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import api, { setAuthToken } from "../services/api";
 import type { User } from "../types";
 
 interface AuthContextType {
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (access: string, refresh: string, userData: User | null) => {
     try {
-      localStorage.setItem("access", access);
+      setAuthToken(access);
       localStorage.setItem("refresh", refresh);
 
       setUser(userData);
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
-      localStorage.removeItem("access");
+      setAuthToken(null);
       localStorage.removeItem("refresh");
 
       setUser(null);

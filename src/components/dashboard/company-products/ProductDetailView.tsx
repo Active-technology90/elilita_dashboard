@@ -8,8 +8,10 @@ import {
   Package,
   Star,
   Tag,
+  UtensilsCrossed,
 } from "lucide-react";
 import type { Product } from "./ProductTable";
+import MealCategoryIcon from "../../ui/MealCategoryIcon";
 
 interface ProductDetailViewProps {
   product: Product;
@@ -200,6 +202,26 @@ export function ProductDetailView({
                     <p className="font-medium text-gray-800">{currency}</p>
                   </div>
                 </div>
+
+                {Array.isArray(product.meal_periods) && product.meal_periods.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-xl bg-gray-50 p-3 sm:col-span-2">
+                    <UtensilsCrossed className="mt-0.5 h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-400">Meal Availability</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {product.meal_periods.map((mp) => (
+                          <span
+                            key={mp}
+                            className="inline-flex items-center gap-1 rounded-md bg-secondary/10 px-2 py-0.5 text-xs font-semibold capitalize text-secondary"
+                          >
+                            <MealCategoryIcon icon={mp} className="w-3.5 h-3.5 shrink-0" />
+                            <span>{mp.replace(/-/g, " ")}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {!product.description && !product.category && !product.brand && !product.barcode && (

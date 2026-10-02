@@ -9,6 +9,7 @@ export interface PageHeaderProps {
   icon?: LucideIcon;
   badge?: ReactNode;
   actions?: ReactNode;
+  actionMobile?: ReactNode;
   loading?: boolean;
   className?: string;
 }
@@ -20,6 +21,7 @@ export function PageHeader({
   icon: Icon,
   badge,
   actions,
+  actionMobile,
   loading = false,
   className = "",
 }: PageHeaderProps) {
@@ -58,51 +60,106 @@ export function PageHeader({
 
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Left content */}
-        <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-          {/* Accent */}
-          <div className="h-10 w-1 shrink-0 rounded-full bg-gradient-to-b from-secondary to-secondary/25 sm:h-12" />
+        <div className="hidden md:block ">
+          <div className="flex flex-row min-w-0 flex-1 items-start gap-3 sm:gap-4">
 
-          {/* Icon */}
-          {Icon && (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.07] sm:h-11 sm:w-11">
-              <Icon
-                className="h-5 w-5 text-secondary sm:h-[22px] sm:w-[22px]"
-                strokeWidth={1.9}
-                aria-hidden="true"
-              />
-            </div>
-          )}
+            {/* Accent */}
+            <div className="h-10 w-1 shrink-0 rounded-full bg-gradient-to-b from-secondary to-secondary/25 sm:h-12" />
 
-          {/* Text */}
-          <div className="min-w-0 flex-1">
-            {eyebrow && (
-              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/50 sm:text-[11px]">
-                {eyebrow}
-              </p>
-            )}
-
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <h1 className="min-w-0 text-lg font-extrabold leading-tight tracking-tight text-secondary xs:text-xl sm:text-2xl lg:text-[28px]">
-                {title}
-              </h1>
-
-              {badge && <div className="shrink-0">{badge}</div>}
-            </div>
-
-            {description && (
-              <div className="mt-1 max-w-2xl text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
-                {description}
+            {/* Icon */}
+            {Icon && (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.07] sm:h-11 sm:w-11">
+                <Icon
+                  className="h-5 w-5 text-secondary sm:h-[22px] sm:w-[22px]"
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
               </div>
             )}
+
+            {/* Text */}
+            <div className="min-w-0 flex-1">
+              {eyebrow && (
+                <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/50 sm:text-[11px]">
+                  {eyebrow}
+                </p>
+              )}
+
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="min-w-0 text-lg font-extrabold leading-tight tracking-tight text-secondary xs:text-xl sm:text-2xl lg:text-[28px]">
+                  {title}
+                </h1>
+
+                {badge && <div className="shrink-0">{badge}</div>}
+              </div>
+
+              {description && (
+                <div className="hidden md:block mt-1 max-w-2xl text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
+                  {description}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Actions */}
         {actions && (
-          <div className="flex w-full flex-wrap items-center gap-2 pl-4 sm:w-auto sm:shrink-0 sm:justify-end sm:pl-0">
+          <div className="hidden md:block flex w-full flex-wrap items-center gap-2 pl-4 sm:w-auto sm:shrink-0 sm:justify-end sm:pl-0">
             {actions}
           </div>
         )}
+
+        {/* mobileView */}
+        <div className=" md:hidden flex min-w-0  justify-between items-center gap-3 sm:gap-4">
+          <div className="flex flex-row items-center gap-2">
+
+            {/* Accent */}
+            <div className="h-10 w-1 shrink-0 rounded-full bg-gradient-to-b from-secondary to-secondary/25 sm:h-12" />
+
+            {/* Icon */}
+            {Icon && (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.07] sm:h-11 sm:w-11">
+                <Icon
+                  className="h-5 w-5 text-secondary sm:h-[22px] sm:w-[22px]"
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
+              </div>
+            )}
+
+            {/* Text */}
+            <div className="min-w-0 flex-1">
+              {eyebrow && (
+                <p className="mb-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/50 sm:text-[11px]">
+                  {eyebrow}
+                </p>
+              )}
+
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="min-w-0 text-lg font-extrabold leading-tight tracking-tight text-secondary xs:text-xl sm:text-2xl lg:text-[28px]">
+                  {title}
+                </h1>
+
+                {badge && <div className="shrink-0">{badge}</div>}
+              </div>
+
+              {description && (
+                <div className="hidden md:block mt-1 max-w-2xl text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
+                  {description}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          {actions && (
+            <div className=" md:hidden flex items-center gap-2 pl-4 sm:w-auto sm:shrink-0 sm:justify-end sm:pl-0">
+              {actionMobile}
+            </div>
+          )}
+        </div>
+
+
       </div>
     </header>
   );
