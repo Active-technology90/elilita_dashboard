@@ -42,70 +42,6 @@ interface SuperAdminViewProps {
     pageSize: number;
   onPageSizeChange: (size: number) => void;
 }
-// ─── Company Hover Preview ──────────────────────────────
-// const CompanyHoverPreview: React.FC<{ company: any }> = ({ company }) => {
-//   return (
-//     <div className="absolute left-full top-0 ml-2 z-50 w-72 p-4 bg-white rounded-2xl shadow-2xl border border-gray-100/50 backdrop-blur-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 translate-x-2 group-hover:translate-x-0 pointer-events-none">
-//       <div className="flex items-start gap-3">
-//         {company.logo ? (
-//           <img
-//             src={company.logo}
-//             alt={company.name}
-//             className="h-12 w-12 rounded-xl object-cover border border-gray-200"
-//           />
-//         ) : (
-//           <div className="h-12 w-12 rounded-xl bg-gray-100 flex items-center justify-center">
-//             <Building2 className="h-6 w-6 text-gray-400" />
-//           </div>
-//         )}
-//         <div className="flex-1 min-w-0">
-//           <h4 className="font-semibold text-gray-900 text-sm truncate">
-//             {company.name}
-//           </h4>
-//           <p className="text-xs text-gray-500 truncate">@{company.slug}</p>
-//           <div className="flex flex-wrap items-center gap-1 mt-0.5">
-//             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-//               company.is_active
-//                 ? 'bg-emerald-100 text-emerald-700'
-//                 : 'bg-gray-100 text-gray-500'
-//             }`}>
-//               {company.is_active ? (
-//                 <CheckCircle className="h-2.5 w-2.5" />
-//               ) : (
-//                 <XCircle className="h-2.5 w-2.5" />
-//               )}
-//               {company.is_active ? 'Active' : 'Inactive'}
-//             </span>
-//             {company.is_featured && (
-//               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
-//                 ⭐ Featured
-//               </span>
-//             )}
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="mt-3 space-y-1.5 text-xs text-gray-600 border-t border-gray-100 pt-3">
-//         <div className="flex items-center gap-2">
-//           <Mail className="h-3.5 w-3.5 text-gray-400" />
-//           <span className="truncate">{company.email || company.contact_email || '—'}</span>
-//         </div>
-//         <div className="flex items-center gap-2">
-//           <Phone className="h-3.5 w-3.5 text-gray-400" />
-//           <span>{company.phone || company.contact_phone || '—'}</span>
-//         </div>
-//         <div className="flex items-center gap-2">
-//           <MapPin className="h-3.5 w-3.5 text-gray-400" />
-//           <span className="truncate">{company.address || '—'}</span>
-//         </div>
-//         <div className="flex items-center gap-2">
-//           <Building2 className="h-3.5 w-3.5 text-gray-400" />
-//           <span className="truncate">{company.category_name} · {company.sub_category_name}</span>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
 
 export default function SuperAdminView({
   paginatedItems,
@@ -149,15 +85,6 @@ export default function SuperAdminView({
     subCategoryFilter !== "all",
     inputValue.trim() !== "",
   ].filter(Boolean).length;
-
-  // const sortLabel = (() => {
-  //   const val = `${sortField}|${sortOrder}`;
-  //   if (val === "name|asc") return "Name A-Z";
-  //   if (val === "name|desc") return "Name Z-A";
-  //   if (val === "is_active|desc") return "Active First";
-  //   if (val === "is_featured|desc") return "Featured First";
-  //   return "Sort";
-  // })();
 
   // Sync temp state when sheet opens
   useEffect(() => {
@@ -207,59 +134,29 @@ export default function SuperAdminView({
     </span>
   );
 
-  const renderFeaturedBadge = (isFeatured: boolean) => (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold leading-none shadow-sm ${
-        isFeatured
-          ? "bg-gradient-to-r from-blue-50 to-indigo-100 text-blue-700 border border-blue-200"
-          : "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-600 border border-gray-200"
-      }`}
-    >
-      {isFeatured ? (
-        <>
-          <svg
-            className="w-3 h-3 mr-1 text-blue-500"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-          Featured
-        </>
-      ) : (
-        "Not Featured"
-      )}
-    </span>
-  );
-
-return (
+  return (
   <div className="space-y-4 sm:space-y-5">
-{!loading && paginatedItems.length > 0 && (
-  <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-    <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200/50 shadow-sm">
-      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Companies</p>
-      <p className="text-2xl font-black text-gray-900 mt-1">{paginatedItems.length}</p>
-    </div>
-    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 border border-emerald-200/50 shadow-sm">
-      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Active</p>
-      <p className="text-2xl font-black text-gray-900 mt-1">
-        {paginatedItems.filter(c => c.is_active).length}
-      </p>
-    </div>
-    <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl p-4 border border-amber-200/50 shadow-sm">
-      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Featured</p>
-      <p className="text-2xl font-black text-gray-900 mt-1">
-        {paginatedItems.filter(c => c.is_featured).length}
-      </p>
-    </div>
-    <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 border border-purple-200/50 shadow-sm">
-      <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Categories</p>
-      <p className="text-2xl font-black text-gray-900 mt-1">
-        {new Set(paginatedItems.map(c => c.category_name)).size}
-      </p>
-    </div>
-  </div>
-)}
+    {/* Stat cards — Featured card removed */}
+    {!loading && paginatedItems.length > 0 && (
+      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200/50 shadow-sm">
+          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Companies</p>
+          <p className="text-2xl font-black text-gray-900 mt-1">{paginatedItems.length}</p>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 border border-emerald-200/50 shadow-sm">
+          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Active</p>
+          <p className="text-2xl font-black text-gray-900 mt-1">
+            {paginatedItems.filter(c => c.is_active).length}
+          </p>
+        </div>
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 border border-purple-200/50 shadow-sm">
+          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Categories</p>
+          <p className="text-2xl font-black text-gray-900 mt-1">
+            {new Set(paginatedItems.map(c => c.category_name)).size}
+          </p>
+        </div>
+      </div>
+    )}
 
       {/* ============ DESKTOP / TABLET ============ */}
       <div className="hidden md:block">
@@ -394,58 +291,52 @@ return (
                       )}
                     </div>
                   </div>
+
+                  {/* Info grid — typography normalized */}
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
-                      <span className="text-base font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                         Category
-                      </span>
-                      <p className="text-sm font-semibold text-gray-800 truncate mt-0.5">
-                        {company.category_name}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
+                        {company.category_name || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
-                      <span className="text-base font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                         Subcategory
-                      </span>
-                      <p className="text-[8px] font-semibold text-gray-800 truncate mt-0.5">
-                        {company.sub_category_name}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
+                        {company.sub_category_name || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
-                      <span className="text-base font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                         Business Type
-                      </span>
-                      <p className="text-[8px] font-semibold text-gray-800 uppercase truncate mt-0.5">
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-gray-800 uppercase truncate">
                         {company.business_type || "—"}
                       </p>
                     </div>
-                    <div className="bg-gray-50/80 rounded-xl p-1.5 border border-gray-100">
-                      <span className="text-base font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                         Row Number
-                      </span>
-                      <p className="text-[8px] font-semibold text-gray-800 truncate mt-0.5">
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
                         #{company.rowNumber ?? "—"}
                       </p>
                     </div>
                   </div>
-                  <div className=" flex flex-wrap gap-4 py-2   ">
+
+                  {/* Status — Featured badge removed */}
+                  <div className="flex flex-wrap gap-4 py-2">
                     {renderStatusBadge(company.is_active)}
-                    {renderFeaturedBadge(company.is_featured)}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {/* ========== MOBILE STICKY BOTTOM BAR ========== */}
-        {/* <MobileActionBar
-          activeFilterCount={activeFilterCount}
-          sortLabel={sortLabel}
-          onOpenFilters={() => setSheetOpen(true)}
-          onOpenSort={() => setSheetOpen(true)}
-          showFilterButton={true}
-        /> */}
 
         {/* ========== FILTER & SORT BOTTOM SHEET ========== */}
         <BottomSheet
@@ -486,7 +377,7 @@ return (
                   <button
                     key={opt.value}
                     onClick={() => setTempSort(opt.value)}
-                    className={`py-2.5 px-3 rounded-xl text-xs md:text-sm, font-medium transition-all active:scale-95 ${
+                    className={`py-2.5 px-3 rounded-xl text-xs font-medium transition-all active:scale-95 ${
                       tempSort === opt.value
                         ? "bg-secondary text-white shadow-md"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"

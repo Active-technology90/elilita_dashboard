@@ -24,7 +24,7 @@ export interface CompanyFormData {
   longitude: string;
   delivery_fee_per_km: string;
   is_active: boolean;
-  is_featured: boolean;
+  // is_featured: boolean;
   supports_table_service: boolean;
   show_order_queue: boolean;
   meal_periods?: MealPeriodCategory[];
@@ -411,7 +411,7 @@ export default function CompanyForm({
           </div>
         </div>
 
-        <div className={`flex items-center gap-3 p-3 rounded-xl border ${formData.is_featured ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+        {/* <div className={`flex items-center gap-3 p-3 rounded-xl border ${formData.is_featured ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
@@ -426,7 +426,7 @@ export default function CompanyForm({
             <p className="text-sm font-medium text-gray-900">Is Featured</p>
             <p className="text-xs text-gray-500">{formData.is_featured ? "Highlighted on homepage" : "Standard listing"}</p>
           </div>
-        </div>
+        </div> */}
 
         <div className={`flex items-center gap-3 p-3 rounded-xl border ${formData.supports_table_service ? "bg-secondary/10 border-secondary/30" : "bg-gray-50 border-gray-200"}`}>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -1302,9 +1302,9 @@ export default function CompanyForm({
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
               {formData.is_active ? "Active" : "Inactive"}
             </span>
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.is_featured ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
+            {/* <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.is_featured ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
               {formData.is_featured ? "Featured" : "Not Featured"}
-            </span>
+            </span> */}
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${formData.supports_table_service ? "bg-secondary/10 text-secondary border border-secondary/20" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
               {formData.supports_table_service ? "Table Service" : "No Table Service"}
             </span>
