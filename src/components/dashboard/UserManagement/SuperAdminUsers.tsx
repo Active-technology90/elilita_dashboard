@@ -140,10 +140,10 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
   <div className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/55">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
           {title}
         </p>
-        <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+        <p className="mt-0.5 text-xl font-bold tracking-tight text-gray-900">
           {value}
         </p>
       </div>
@@ -155,7 +155,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
 );
 
 // ============================================================
-// Filters Component// ============================================================
 // Filters Component (refactored to use BottomSheet)
 // ============================================================
 interface FiltersProps {
@@ -190,20 +189,20 @@ const UserFilters: React.FC<FiltersProps> = ({
         <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
           <div className="flex items-center gap-2">
             <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search users, email, phone or company"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+                className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-gray-900 outline-none placeholder:text-gray-400 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
                   aria-label="Clear search"
-                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                  className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -248,7 +247,7 @@ const UserFilters: React.FC<FiltersProps> = ({
         title="Filter users"
       >
         <div className="space-y-3">
-          <p className="text-xs text-secondary/55">
+          <p className="text-xs text-gray-500">
             Choose a role to narrow the user list.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -263,7 +262,7 @@ const UserFilters: React.FC<FiltersProps> = ({
                 className={`flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-xs font-semibold transition ${
                   roleFilter === opt.value
                     ? "border-secondary bg-secondary text-white"
-                    : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
+                    : "border-secondary/10 bg-white text-gray-700 hover:bg-secondary/[0.04]"
                 }`}
               >
                 <span
@@ -284,7 +283,6 @@ const UserFilters: React.FC<FiltersProps> = ({
 };
 
 // ============================================================
-// Actions Dropdown Component// ============================================================
 // Actions Dropdown Component
 // ============================================================
 
@@ -374,7 +372,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={`Actions for ${user.username}`}
         aria-expanded={open}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-secondary/10 bg-white text-secondary/60 transition hover:border-secondary/20 hover:bg-secondary/[0.05] hover:text-secondary focus:outline-none focus:ring-2 focus:ring-secondary/15"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-secondary/10 bg-white text-gray-500 transition hover:border-secondary/20 hover:bg-secondary/[0.05] hover:text-secondary focus:outline-none focus:ring-2 focus:ring-secondary/15"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
@@ -396,13 +394,13 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
                     item.action();
                     setOpen(false);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-secondary transition hover:bg-secondary/[0.05]"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 transition hover:bg-secondary/[0.05] hover:text-secondary"
                 >
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/[0.06] text-secondary">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  <ChevronRight className="h-3.5 w-3.5 text-secondary/30" />
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
                 </button>
               );
             })}
@@ -414,7 +412,6 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
 };
 
 // ============================================================
-// Desktop Table Component// ============================================================
 // Desktop Table Component
 // ============================================================
 interface UserTableProps {
@@ -458,7 +455,7 @@ const UserTable: React.FC<UserTableProps> = ({
     <div className="overflow-visible rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
       <table className="w-full min-w-[1040px] table-fixed text-left">
         <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
-          <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+          <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">
             <th className="w-[220px] px-4 py-2.5">User</th>
             <th className="w-[210px] px-4 py-2.5">Email</th>
             <th className="w-[150px] px-4 py-2.5">Phone</th>
@@ -472,7 +469,7 @@ const UserTable: React.FC<UserTableProps> = ({
           {users.map((user) => (
             <tr
               key={user.id}
-              className="text-xs text-secondary/70 transition hover:bg-secondary/[0.025]"
+              className="text-xs text-gray-700 transition hover:bg-secondary/[0.025]"
             >
               <td className="px-4 py-3 align-top">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -493,7 +490,7 @@ const UserTable: React.FC<UserTableProps> = ({
                   </div>
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <p className="truncate text-xs font-semibold text-secondary">
+                      <p className="truncate text-xs font-semibold text-gray-900">
                         {user.first_name || user.username}
                         {user.last_name && ` ${user.last_name}`}
                       </p>
@@ -503,7 +500,7 @@ const UserTable: React.FC<UserTableProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+                    <p className="mt-0.5 truncate text-[10px] text-gray-500">
                       @{user.username}
                     </p>
                   </div>
@@ -511,16 +508,16 @@ const UserTable: React.FC<UserTableProps> = ({
               </td>
               <td className="px-4 py-3 align-top">
                 <p
-                  className="truncate font-medium text-secondary/75"
+                  className="truncate font-medium text-gray-700"
                   title={user.email}
                 >
                   {user.email}
                 </p>
               </td>
-              <td className="px-4 py-3 align-top font-medium text-secondary/70">
+              <td className="px-4 py-3 align-top font-medium text-gray-600">
                 {formatPhone(user.phone_number)}
               </td>
-              <td className="px-4 py-3 align-top text-secondary/60">
+              <td className="px-4 py-3 align-top text-gray-500">
                 {formatDate(user)}
               </td>
               <td className="px-4 py-3 align-top">
@@ -534,7 +531,7 @@ const UserTable: React.FC<UserTableProps> = ({
                         >
                           <div className="flex min-w-0 items-center gap-1.5">
                             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                            <span className="truncate text-[10px] font-medium text-secondary/70">
+                            <span className="truncate text-[10px] font-medium text-gray-700">
                               {membership.company_name}
                             </span>
                           </div>
@@ -554,7 +551,7 @@ const UserTable: React.FC<UserTableProps> = ({
                                   setEditingRoleInTable(null);
                                 }}
                                 autoFocus
-                                className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-secondary outline-none focus:ring-2 focus:ring-secondary/10"
+                                className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-secondary/10"
                               >
                                 {["admin", "staff", "viewer", "delivery"].map(
                                   (role) => (
@@ -588,7 +585,7 @@ const UserTable: React.FC<UserTableProps> = ({
                                 )
                               }
                               aria-label={`Remove ${membership.company_name}`}
-                              className="flex h-6 w-6 items-center justify-center rounded-md text-secondary/35 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -598,7 +595,7 @@ const UserTable: React.FC<UserTableProps> = ({
                     )}
                   </div>
                 ) : (
-                  <span className="text-[10px] text-secondary/40">
+                  <span className="text-[10px] text-gray-400">
                     No companies
                   </span>
                 )}
@@ -608,11 +605,11 @@ const UserTable: React.FC<UserTableProps> = ({
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
                     user.is_active
                       ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
-                      : "border-secondary/[0.08] bg-white text-secondary/45"
+                      : "border-gray-200 bg-white text-gray-400"
                   }`}
                 >
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-secondary/30"}`}
+                    className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-gray-300"}`}
                   />
                   {user.is_active ? "Active" : "Inactive"}
                 </span>
@@ -653,7 +650,7 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
             </div>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-1.5">
-                <p className="truncate text-xs font-semibold text-secondary">
+                <p className="truncate text-xs font-semibold text-gray-900">
                   {user.first_name || user.username}
                   {user.last_name && ` ${user.last_name}`}
                 </p>
@@ -663,7 +660,7 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
                   </span>
                 )}
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-secondary/45">
+              <p className="mt-0.5 truncate text-[10px] text-gray-500">
                 {user.email}
               </p>
             </div>
@@ -673,21 +670,21 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
 
         <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
           <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
-            <p className="font-medium text-secondary/40">Phone</p>
-            <p className="mt-0.5 truncate font-semibold text-secondary/70">
+            <p className="font-medium text-gray-500">Phone</p>
+            <p className="mt-0.5 truncate font-semibold text-gray-700">
               {formatPhone(user.phone_number)}
             </p>
           </div>
           <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
-            <p className="font-medium text-secondary/40">Joined</p>
-            <p className="mt-0.5 truncate font-semibold text-secondary/70">
+            <p className="font-medium text-gray-500">Joined</p>
+            <p className="mt-0.5 truncate font-semibold text-gray-700">
               {formatDate(user)}
             </p>
           </div>
         </div>
 
         <div className="mt-3 flex-1">
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-secondary/40">
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-gray-500">
             Companies
           </p>
           {user.memberships.length > 0 ? (
@@ -697,7 +694,7 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
                   key={`${membership.company_id}-${index}`}
                   className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] px-2 py-1.5"
                 >
-                  <span className="truncate text-[10px] font-medium text-secondary/70">
+                  <span className="truncate text-[10px] font-medium text-gray-700">
                     {membership.company_name}
                   </span>
                   <span
@@ -709,7 +706,7 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-secondary/40">
+            <p className="text-[10px] text-gray-400">
               No companies assigned
             </p>
           )}
@@ -717,7 +714,7 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
 
         <div className="mt-3 border-t border-secondary/[0.08] pt-2.5">
           <span
-            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${user.is_active ? "text-secondary" : "text-secondary/45"}`}
+            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${user.is_active ? "text-secondary" : "text-gray-400"}`}
           >
             {user.is_active ? (
               <CheckCircle className="h-3.5 w-3.5" />
@@ -741,10 +738,10 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onReset }) => (
     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
       <Users className="h-5 w-5" />
     </div>
-    <h3 className="mt-3 text-sm font-semibold text-secondary">
+    <h3 className="mt-3 text-sm font-semibold text-gray-900">
       No users found
     </h3>
-    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-secondary/50">
+    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
       Try a different search or role filter.
     </p>
     <button
@@ -849,7 +846,6 @@ const LoadingSkeleton: React.FC = () => (
 );
 
 // ============================================================
-// Main Component: SuperAdminUsers// ============================================================
 // Main Component: SuperAdminUsers
 // ============================================================
 const SuperAdminUsers: React.FC = () => {
@@ -1041,19 +1037,6 @@ const SuperAdminUsers: React.FC = () => {
     setIsMembershipModalOpen(true);
   };
 
-  // const handleConfirmDelete = async () => {
-  //   if (!deletingUser) return;
-  //   try {
-  //     await deleteUser(deletingUser.id);
-  //     showToast("success", "User deleted successfully");
-  //     setIsDeleteModalOpen(false);
-  //     setDeletingUser(null);
-  //     await refreshAllUsers();
-  //   } catch (err: any) {
-  //     showToast("error", err.message || "Failed to delete user");
-  //   }
-  // };
-
   const handleManageMemberships = (user: User) => {
     setManagingUser(user);
     setIsMembershipModalOpen(true);
@@ -1138,10 +1121,10 @@ const SuperAdminUsers: React.FC = () => {
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
           <Users className="h-5 w-5" />
         </div>
-        <p className="mt-3 text-sm font-semibold text-secondary">
+        <p className="mt-3 text-sm font-semibold text-gray-900">
           Could not load users
         </p>
-        <p className="mt-1 max-w-sm text-xs text-secondary/50">{error}</p>
+        <p className="mt-1 max-w-sm text-xs text-gray-500">{error}</p>
         <button
           type="button"
           onClick={handleRefresh}
