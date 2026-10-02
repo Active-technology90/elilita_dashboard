@@ -1161,7 +1161,7 @@ const SuperAdminUsers: React.FC = () => {
           className="mb-5 sm:mb-6"
         />
 
-        <section className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
+        <section className="mb-6 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
           <StatCard
             title="Admins"
             value={stats.totalAdmins}
