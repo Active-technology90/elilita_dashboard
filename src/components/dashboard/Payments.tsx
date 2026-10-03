@@ -246,20 +246,25 @@ export default function Payments() {
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, payout?: Payout) => {
+    const isDirectSplit =
+      payout?.gateway === "arifpay" ||
+      Boolean((payout as any)?.metadata?.split_settled) ||
+      payout?.vendor_order_details?.payment_method === "arifpay";
+
     switch (status) {
       case "completed":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-            Completed
+            {isDirectSplit ? "Direct Settled" : "Completed"}
           </span>
         );
       case "pending":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-            Pending Escrow
+            {isDirectSplit ? "Pending Payout" : "Pending Escrow"}
           </span>
         );
       case "processing":
@@ -365,7 +370,7 @@ export default function Payments() {
       {
         key: "status",
         header: "Status",
-        render: (payout) => getStatusBadge(payout.status),
+        render: (payout) => getStatusBadge(payout.status, payout),
       },
       {
         key: "payment_method",
@@ -684,6 +689,7 @@ export default function Payments() {
                       { value: "", label: "All methods" },
                       { value: "telebirr", label: "Telebirr" },
                       { value: "chapa", label: "Chapa" },
+                      { value: "arifpay", label: "ArifPay (Direct)" },
                       { value: "bank_transfer", label: "Bank Deposit" },
                       { value: "cash_on_delivery", label: "Cash on Delivery" },
                     ]}
@@ -823,6 +829,7 @@ export default function Payments() {
                       { value: "", label: "All methods" },
                       { value: "telebirr", label: "Telebirr" },
                       { value: "chapa", label: "Chapa" },
+                      { value: "arifpay", label: "ArifPay (Direct)" },
                       { value: "bank_transfer", label: "Bank Deposit" },
                       { value: "cash_on_delivery", label: "Cash on Delivery" },
                     ]}

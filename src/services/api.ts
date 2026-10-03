@@ -90,7 +90,14 @@ api.interceptors.request.use(async (config) => {
 
   // Let the browser set the correct multipart boundary for FormData
   if (config.data instanceof FormData) {
-    delete config.headers["Content-Type"];
+    if (config.headers) {
+      if (typeof (config.headers as any).delete === "function") {
+        (config.headers as any).delete("Content-Type");
+        (config.headers as any).delete("content-type");
+      }
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+    }
   }
 
   return config;
@@ -610,23 +617,17 @@ export const createCompanyBankAccount = async (
   companySlug: string,
   data: FormData | Record<string, unknown>
 ) => {
-  console.log("Creating company bank account with FormData", data);
-  if (data instanceof FormData) {
-    console.log("Creating company bank account with FormData", data);
-    return api.post(`/payments/company/${companySlug}/bank-accounts/`, data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  }
   return api.post(`/payments/company/${companySlug}/bank-accounts/`, data);
 };
 
-
 // Updated – accepts FormData as well as plain objects
-export const updateCompanyBankAccount = async (companySlug: string, id: number, data: FormData | Record<string, unknown>) => {
+export const updateCompanyBankAccount = async (
+  companySlug: string,
+  id: number,
+  data: FormData | Record<string, unknown>
+) => {
   if (data instanceof FormData) {
-    return api.put(`/payments/company/${companySlug}/bank-accounts/${id}/`, data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return api.put(`/payments/company/${companySlug}/bank-accounts/${id}/`, data);
   }
   return api.patch(`/payments/company/${companySlug}/bank-accounts/${id}/`, data);
 };
@@ -639,21 +640,19 @@ export const deleteAdminBankAccount = async (id: number) =>
   api.delete(`/payments/admin/bank-accounts/${id}/`);
 
 // Updated – accepts FormData as well as plain objects
-export const createAdminBankAccount = async (data: FormData | Record<string, unknown>) => {
-  if (data instanceof FormData) {
-    return api.post("/payments/admin/bank-accounts/", data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-  }
+export const createAdminBankAccount = async (
+  data: FormData | Record<string, unknown>
+) => {
   return api.post("/payments/admin/bank-accounts/", data);
 };
 
 // Updated – accepts FormData as well as plain objects
-export const updateAdminBankAccount = async (id: number, data: FormData | Record<string, unknown>) => {
+export const updateAdminBankAccount = async (
+  id: number,
+  data: FormData | Record<string, unknown>
+) => {
   if (data instanceof FormData) {
-    return api.put(`/payments/admin/bank-accounts/${id}/`, data, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return api.put(`/payments/admin/bank-accounts/${id}/`, data);
   }
   return api.patch(`/payments/admin/bank-accounts/${id}/`, data);
 };

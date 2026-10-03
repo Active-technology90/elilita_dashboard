@@ -38,6 +38,11 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
   const isFailed = payout.status === "failed";
   const vo = payout.vendor_order_details;
 
+  const isDirectSettled =
+    payout.gateway === "arifpay" ||
+    Boolean((payout as any)?.metadata?.split_settled) ||
+    vo?.payment_method === "arifpay";
+
   const scheduledDate = payout.scheduled_at
     ? new Date(payout.scheduled_at).toLocaleDateString("en-US", {
         year: "numeric",
@@ -97,9 +102,13 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                       <Clock className="h-3 w-3" />
                     )}
                     {isCompleted
-                      ? "Paid & Settled"
+                      ? isDirectSettled
+                        ? "Direct Settled"
+                        : "Paid & Settled"
                       : isFailed
                       ? "Failed"
+                      : isDirectSettled
+                      ? "Pending Payout"
                       : "Pending Escrow"}
                   </span>
                 </div>
@@ -162,7 +171,9 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                     Disbursed By
                   </span>
                   <span className="font-bold text-gray-900 text-xs sm:text-sm">
-                    Elilita Marketplace Escrow
+                    {isDirectSettled
+                      ? "ArifPay Direct Split Settlement"
+                      : "Elilita Marketplace Escrow"}
                   </span>
                 </div>
               </div>

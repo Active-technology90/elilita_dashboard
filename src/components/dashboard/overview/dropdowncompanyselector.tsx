@@ -5,6 +5,7 @@ export function CompanySelect({
   scopeOptions,
   company,
   handleCompanyChange,
+  className,
 }: any) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -37,8 +38,9 @@ export function CompanySelect({
   }, [open]);
 
   /* Filtered list */
-  const filtered = scopeOptions.filter((opt: any) =>
-    opt.label.toLowerCase().includes(search.toLowerCase())
+  const filtered = (scopeOptions || []).filter((opt: any) =>
+    (opt.label || "").toLowerCase().includes(search.toLowerCase()) ||
+    (opt.subLabel || "").toLowerCase().includes(search.toLowerCase())
   );
 
   /* Reset active index when filter changes */
@@ -91,7 +93,7 @@ export function CompanySelect({
   const selectedLogo = company?.logo;
 
   return (
-    <div ref={ref} className="relative w-full sm:w-[360px]">
+    <div ref={ref} className={`relative ${className || "w-full sm:w-[360px]"}`}>
       {/* Trigger */}
       <button
         type="button"
@@ -162,7 +164,7 @@ export function CompanySelect({
               </div>
             ) : (
               filtered.map((opt: any, index: number) => {
-                const isSelected = opt.value === company?.slug;
+                const isSelected = opt.value === (company?.value ?? company?.slug);
                 const isActive = index === activeIndex;
 
                 return (

@@ -13,6 +13,8 @@ export interface PayoutData {
   scheduled_at: string;
   paid_at: string | null;
   reference: string | null;
+  gateway?: string;
+  metadata?: any;
   vendor_order_details?: VendorOrder;
 }
 

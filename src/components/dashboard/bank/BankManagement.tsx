@@ -21,6 +21,7 @@ import {
   createAdminBankAccount,
   updateAdminBankAccount,
   deleteAdminBankAccount,
+  getCompanies,
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
@@ -32,6 +33,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import type { BankInfo } from "../../../types";
 import PageHeader from "../../ui/PageHeader";
 import { DataTable, type Column } from "../../ui/DataTable";
+import { CompanySelect } from "../overview/dropdowncompanyselector";
 
 // ------------------------------------------------------------------
 // Types
@@ -149,7 +151,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   {
     id: "berhan-bank",
     bank_name: "Berhan Bank",
-    logo: "/berhane bank.png",
+    logo: "/brrhane bank.png",
   },
   {
     id: "bunna-bank",
@@ -159,7 +161,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   {
     id: "zemen-bank",
     bank_name: "Zemen Bank",
-    logo: "/Zemen_Bank_official_logo.png",
+    logo: "/Zemen_Bank_official_Logo.png",
   },
   {
     id: "enat-bank",
@@ -179,7 +181,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   {
     id: "shabelle-bank",
     bank_name: "Shabelle Bank",
-    logo: "/shebelie.png",
+    logo: "/shebelle.png",
   },
   {
     id: "zamzam-bank",
@@ -199,7 +201,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   {
     id: "hijra-bank",
     bank_name: "Hijra Bank",
-    logo: "/hijra.png",
+    logo: "/hijira.png",
   },
   {
     id: "tsehay-bank",
@@ -214,7 +216,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   {
     id: "amhara-bank",
     bank_name: "Amhara Bank",
-    logo: "/amhara.png",
+    logo: "/amahara.png",
   },
   {
     id: "rammis-bank",
@@ -271,11 +273,19 @@ const BankLogo = ({
 // ------------------------------------------------------------------
 // Helper function to convert URL to File
 // ------------------------------------------------------------------
-const urlToFile = async (url: string, filename: string): Promise<File> => {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  const extension = blob.type.split("/")[1] || "jpg";
-  return new File([blob], `${filename}.${extension}`, { type: blob.type });
+const urlToFile = async (url: string, filename: string): Promise<File | null> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    if (!blob || blob.type.includes("text/html") || blob.size === 0) return null;
+    let extension = blob.type.split("/")[1] || "jpg";
+    if (extension === "jpeg" || extension.includes("jfif")) extension = "jpg";
+    return new File([blob], `${filename}.${extension}`, { type: blob.type || "image/jpeg" });
+  } catch (error) {
+    console.warn("Could not fetch logo file from url:", url, error);
+    return null;
+  }
 };
 
 // ------------------------------------------------------------------
@@ -605,7 +615,60 @@ export default function BankManagement() {
   const companyName = company?.name || "Your Company";
   const canWrite = isSuperAdmin || company?.role === "owner";
 
-  // Fetch bank accounts - depends only on stable values
+  // For Super Admin: list of all companies (unpaginated) to filter banks and assign bank accounts
+  const [allCompanies, setAllCompanies] = useState<any[]>([]);
+  const [selectedFilterCompanySlug, setSelectedFilterCompanySlug] = useState<string>("");
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      const fetchAllCompanies = async () => {
+        try {
+          let page = 1;
+          let hasNext = true;
+          const collected: any[] = [];
+          while (hasNext) {
+            const res = await getCompanies({ page, page_size: 100 });
+            const data = res?.data;
+            if (!data) break;
+            const results = data.results || (Array.isArray(data) ? data : []);
+            collected.push(...results);
+            hasNext = !!data.next;
+            page++;
+            if (!data.results) break;
+          }
+          setAllCompanies(collected);
+        } catch (err) {
+          console.error("Failed to load all companies for bank management:", err);
+        }
+      };
+      fetchAllCompanies();
+    }
+  }, [isSuperAdmin]);
+
+  const filterScopeOptions = useMemo(() => {
+    return [
+      {
+        value: "",
+        label: "All Companies",
+        logo: null,
+      },
+      ...allCompanies.map((c: any) => ({
+        value: c.slug,
+        label: c.name,
+        logo: c.logo || null,
+        subLabel: c.slug,
+      })),
+    ];
+  }, [allCompanies]);
+
+  const selectedFilterCompany = useMemo(() => {
+    return (
+      filterScopeOptions.find((opt) => opt.value === selectedFilterCompanySlug) ||
+      filterScopeOptions[0]
+    );
+  }, [filterScopeOptions, selectedFilterCompanySlug]);
+
+  // Fetch bank accounts - depends on stable values and selected filter
   const fetchBanks = useCallback(async () => {
     if (!isSuperAdmin && !companySlug) {
       setBanks([]);
@@ -617,7 +680,9 @@ export default function BankManagement() {
       setLoading(true);
       let response;
       if (isSuperAdmin) {
-        response = await getAdminBankAccounts();
+        response = await getAdminBankAccounts(
+          selectedFilterCompanySlug ? { company: selectedFilterCompanySlug } : undefined
+        );
       } else {
         response = await getCompanyBankAccounts(companySlug!);
       }
@@ -626,8 +691,8 @@ export default function BankManagement() {
         results.map((bank: any) => ({
           ...bank,
           is_active: bank.is_active ?? true,
-          company_name: bank.company_name || "Unknown Company",
-          company_slug: bank.company_slug || "unknown",
+          company_name: bank.company_name || (bank.company ? "Company Account" : "Platform Account"),
+          company_slug: bank.company_slug || "",
         })),
       );
     } catch (error) {
@@ -637,9 +702,8 @@ export default function BankManagement() {
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, companySlug, showToast]);
+  }, [isSuperAdmin, companySlug, selectedFilterCompanySlug, showToast]);
 
-  // Company-admin bank choices are frontend-owned; no bank catalog API call is needed.
   useEffect(() => {
     fetchBanks();
   }, [fetchBanks]);
@@ -759,13 +823,8 @@ export default function BankManagement() {
             const fileName =
               data.bank_name?.toLowerCase().replace(/\s+/g, "-") || "bank-logo";
 
-            if (
-              data.logo.startsWith("/") ||
-              data.logo.startsWith("http://") ||
-              data.logo.startsWith("https://")
-            ) {
-              logoFileToSend = await urlToFile(data.logo, fileName);
-            }
+              const fetched = await urlToFile(data.logo, fileName);
+              logoFileToSend = fetched || undefined;
           } catch (error) {
             console.error("Failed to prepare bank logo:", error);
           }
@@ -806,33 +865,25 @@ export default function BankManagement() {
         return;
       }
 
-      // Super Admin logic (existing behavior)
-      let payload: Record<string, unknown> | FormData = data as Record<
-        string,
-        unknown
-      >;
-
-      // Only use FormData when there's an actual file to upload
+      // Super Admin logic
+      const fd = new FormData();
+      fd.append("bank_name", data.bank_name || "");
+      fd.append("account_number", data.account_number || "");
+      fd.append("account_name", data.account_name || "");
+      fd.append("is_active", String(data.is_active ?? true));
+      fd.append("order", String(data.order ?? 0));
+      if (data.company_slug && data.company_slug.trim()) {
+        fd.append("company_slug", data.company_slug.trim());
+      }
       if (logoFile) {
-        const fd = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            fd.append(key, value.toString());
-          }
-        });
         fd.append("logo", logoFile);
-        payload = fd;
       }
 
       if (editingBank) {
-        if (isSuperAdmin) {
-          await updateAdminBankAccount(editingBank.id, payload);
-        }
+        await updateAdminBankAccount(editingBank.id, fd);
         showToast("success", "Bank account updated successfully");
       } else {
-        if (isSuperAdmin) {
-          await createAdminBankAccount(payload);
-        }
+        await createAdminBankAccount(fd);
         showToast("success", "Bank account created successfully");
       }
 
@@ -840,12 +891,23 @@ export default function BankManagement() {
       setEditingBank(null);
       fetchBanks();
     } catch (error: any) {
-      const msg =
+      let msg =
         error?.response?.data?.detail ||
-        error?.response?.data?.non_field_errors?.[0] ||
-        (editingBank
+        error?.response?.data?.non_field_errors?.[0];
+      if (!msg && error?.response?.data && typeof error.response.data === "object") {
+        const firstKey = Object.keys(error.response.data)[0];
+        const val = error.response.data[firstKey];
+        if (Array.isArray(val) && val.length > 0) {
+          msg = `${firstKey}: ${val[0]}`;
+        } else if (typeof val === "string") {
+          msg = `${firstKey}: ${val}`;
+        }
+      }
+      if (!msg) {
+        msg = editingBank
           ? "Failed to update bank account"
-          : "Failed to create bank account");
+          : "Failed to create bank account";
+      }
       showToast("error", msg);
     }
   };
@@ -895,19 +957,34 @@ export default function BankManagement() {
         className="mb-5 sm:mb-6"
       />
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
-        <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-          <SearchInput
-            value={searchTerm}
-            onChange={(value) => {
-              setSearchTerm(value);
-              setCurrentPage(1);
-            }}
-            placeholder="Search by bank name, account number, or account holder..."
-            loading={loading}
-            debounceMs={0}
-            showClearButton={true}
-            className="w-full"
-          />
+        <div className="w-full flex flex-col sm:flex-row gap-3 items-center rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+          <div className="flex-1 w-full">
+            <SearchInput
+              value={searchTerm}
+              onChange={(value) => {
+                setSearchTerm(value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search by bank name, account number, or account holder..."
+              loading={loading}
+              debounceMs={0}
+              showClearButton={true}
+              className="w-full"
+            />
+          </div>
+          {isSuperAdmin && (
+            <div className="w-full sm:w-[300px] shrink-0">
+              <CompanySelect
+                scopeOptions={filterScopeOptions}
+                company={selectedFilterCompany}
+                handleCompanyChange={(slug: string) => {
+                  setSelectedFilterCompanySlug(slug);
+                  setCurrentPage(1);
+                }}
+                className="w-full"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -941,6 +1018,7 @@ export default function BankManagement() {
           bank={editingBank}
           isSuperAdmin={isSuperAdmin}
           companySlug={companySlug}
+          companiesList={allCompanies}
           availableBanks={availableBanks}
           loadingAvailableBanks={loadingAvailableBanks}
           onClose={() => {
@@ -969,6 +1047,7 @@ function BankAccountForm({
   bank,
   isSuperAdmin,
   companySlug: _,
+  companiesList: initialCompanies = [],
   availableBanks,
   loadingAvailableBanks,
   onClose,
@@ -977,6 +1056,7 @@ function BankAccountForm({
   bank: BankInfo | null;
   isSuperAdmin: boolean;
   companySlug?: string;
+  companiesList?: any[];
   availableBanks: AvailableBank[];
   loadingAvailableBanks: boolean;
   onClose: () => void;
@@ -992,9 +1072,60 @@ function BankAccountForm({
     company_slug: "",
   });
   const [saving, setSaving] = useState(false);
+  const [companiesList, setCompaniesList] = useState<any[]>(initialCompanies);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
+
+  useEffect(() => {
+    if (initialCompanies.length > 0) {
+      setCompaniesList(initialCompanies);
+      return;
+    }
+    if (isSuperAdmin) {
+      const fetchAllCompanies = async () => {
+        try {
+          let page = 1;
+          let hasNext = true;
+          const collected: any[] = [];
+          while (hasNext) {
+            const res = await getCompanies({ page, page_size: 100 });
+            const data = res?.data;
+            if (!data) break;
+            const results = data.results || (Array.isArray(data) ? data : []);
+            collected.push(...results);
+            hasNext = !!data.next;
+            page++;
+            if (!data.results) break;
+          }
+          setCompaniesList(collected);
+        } catch (err) {
+          console.error("Failed to load all companies for bank account modal:", err);
+        }
+      };
+      fetchAllCompanies();
+    }
+  }, [initialCompanies, isSuperAdmin]);
+
+  const modalCompanyScopeOptions = useMemo(() => {
+    return companiesList
+      .filter((comp: any) => comp && comp.slug)
+      .map((comp: any) => ({
+        value: comp.slug,
+        label: comp.name || comp.slug,
+        logo: comp.logo || null,
+        subLabel: comp.slug,
+      }));
+  }, [companiesList]);
+
+  const selectedModalCompany = useMemo(() => {
+    return (
+      modalCompanyScopeOptions.find((opt) => opt.value === formData.company_slug) ||
+      (modalCompanyScopeOptions.length > 0
+        ? { value: "", label: "Select a company...", logo: null }
+        : { value: "", label: "Loading companies...", logo: null })
+    );
+  }, [modalCompanyScopeOptions, formData.company_slug]);
 
   // Initialize form data when bank changes
   useEffect(() => {
@@ -1054,6 +1185,10 @@ function BankAccountForm({
       errors.account_name = "Account holder name is required";
     }
 
+    if (isSuperAdmin && !bank && !formData.company_slug?.trim()) {
+      errors.company_slug = "Please select a company";
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -1087,31 +1222,21 @@ function BankAccountForm({
         dataToSend.bank_id = selectedCatalogBank.id;
       }
 
+      let selectedLogoFile: File | null = null;
+      if (selectedCatalogBank?.logo) {
+        selectedLogoFile = await urlToFile(
+          selectedCatalogBank.logo,
+          selectedCatalogBank.id || "bank-logo",
+        );
+      }
+
       if (isSuperAdmin) {
         if (!bank) {
-          dataToSend.company_slug = formData.company_slug || undefined;
+          dataToSend.company_slug = formData.company_slug?.trim() || undefined;
         }
-
-        let selectedLogoFile: File | undefined;
-        if (selectedCatalogBank?.logo) {
-          try {
-            selectedLogoFile = await urlToFile(
-              selectedCatalogBank.logo,
-              selectedCatalogBank.id || "bank-logo",
-            );
-          } catch (error) {
-            console.error("Failed to prepare selected bank logo:", error);
-          }
-        }
-
-        await onSave(dataToSend, selectedLogoFile);
+        await onSave(dataToSend, selectedLogoFile || undefined);
       } else {
-        if (selectedCatalogBank?.logo) {
-          dataToSend.logo = selectedCatalogBank.logo;
-        }
-
-        // Parent loads the public asset and sends it as the existing logo file field
-        await onSave(dataToSend, undefined);
+        await onSave(dataToSend, selectedLogoFile || undefined);
       }
     } finally {
       setSaving(false);
@@ -1187,23 +1312,29 @@ function BankAccountForm({
 
             {isSuperAdmin && !bank && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Company Slug
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
+                  Company <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.company_slug}
-                  onChange={(e) =>
+                <CompanySelect
+                  scopeOptions={modalCompanyScopeOptions}
+                  company={selectedModalCompany}
+                  handleCompanyChange={(slug: string) => {
                     setFormData((prev) => ({
                       ...prev,
-                      company_slug: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-secondary focus:ring-4 focus:ring-secondary/20 focus:outline-none transition text-sm placeholder-gray-400"
-                  placeholder="e.g. abc-trading"
+                      company_slug: slug,
+                    }));
+                    setValidationErrors((prev) => ({ ...prev, company_slug: "" }));
+                  }}
+                  className="w-full"
                 />
+                {validationErrors.company_slug && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                    {validationErrors.company_slug}
+                  </p>
+                )}
                 <p className="text-xs text-gray-400 mt-1.5">
-                  Leave empty for an unassigned bank account.
+                  Search and select the vendor company this bank account belongs to.
                 </p>
               </div>
             )}
