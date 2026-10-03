@@ -107,9 +107,6 @@ const SkeletonRow: React.FC = () => (
     <td className="py-3.5 px-5">
       <div className="h-6 w-16 bg-gray-300/70 rounded-full"></div>
     </td>
-    <td className="py-3.5 px-5">
-      <div className="h-6 w-16 bg-gray-300/70 rounded-full"></div>
-    </td>
     <td className="py-3.5 px-5 text-right">
       <div className="flex items-center justify-end gap-1.5">
         <div className="h-8 w-12 bg-gray-300/70 rounded-xl"></div>
@@ -137,7 +134,6 @@ const SkeletonTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) => (
               "TIN",
               "Tax Type",
               "Active",
-              "Featured",
               "Actions",
             ].map((_h, i) => (
               <th key={i} className="text-left py-3.5 px-5">
@@ -205,7 +201,6 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   longitude: "",
   delivery_fee_per_km: "0.00",
   is_active: false,
-  is_featured: false,
   supports_table_service: false,
   show_order_queue: false,
   meal_periods: [],
@@ -577,21 +572,6 @@ export default function CompanyManagement() {
           </span>
         ),
       },
-      {
-        key: "is_featured",
-        header: "Featured",
-        sortable: true,
-        render: (comp) => (
-          <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${comp.is_featured
-                ? "bg-amber-100 text-amber-700 border-amber-200"
-                : "bg-red-100 text-red-700 border-red-200"
-              }`}
-          >
-            {comp.is_featured ? "Yes" : "No"}
-          </span>
-        ),
-      },
     ],
     [],
   );
@@ -638,7 +618,6 @@ export default function CompanyManagement() {
           longitude: company.longitude || "",
           delivery_fee_per_km: company.delivery_fee_per_km || "0.00",
           is_active: company.is_active,
-          is_featured: company.is_featured,
           supports_table_service: company.supports_table_service,
           show_order_queue: Boolean(company.show_order_queue),
           meal_periods: (company as any).meal_periods || [],
@@ -677,7 +656,6 @@ export default function CompanyManagement() {
           longitude: companyListItem.longitude || "",
           delivery_fee_per_km: companyListItem.delivery_fee_per_km || "0.00",
           is_active: companyListItem.is_active,
-          is_featured: companyListItem.is_featured,
           supports_table_service: companyListItem.supports_table_service,
           show_order_queue: Boolean(companyListItem.show_order_queue),
           meal_periods: (companyListItem as any).meal_periods || [],
@@ -778,7 +756,6 @@ export default function CompanyManagement() {
             longitude: first.longitude || "",
             delivery_fee_per_km: first.delivery_fee_per_km || "0.00",
             is_active: first.is_active,
-            is_featured: first.is_featured,
             supports_table_service: first.supports_table_service,
             show_order_queue: Boolean(first.show_order_queue),
             meal_periods: (first as any).meal_periods || [],
@@ -974,11 +951,6 @@ export default function CompanyManagement() {
           return true;
         if (isSuperAdmin && verificationDraft !== originalVerification) return true;
         if (
-          Boolean(formData.is_featured) !==
-          Boolean(originalFormData.is_featured)
-        )
-          return true;
-        if (
           Boolean(formData.supports_table_service) !==
           Boolean(originalFormData.supports_table_service)
         )
@@ -1098,7 +1070,6 @@ export default function CompanyManagement() {
           String(verificationDraft ? formData.is_active : false),
         );
       }
-      formPayload.append("is_featured", String(formData.is_featured));
       formPayload.append(
         "supports_table_service",
         String(formData.supports_table_service),
@@ -1396,7 +1367,6 @@ export default function CompanyManagement() {
         longitude: company.longitude || "",
         delivery_fee_per_km: company.delivery_fee_per_km || "0.00",
         is_active: company.is_active,
-        is_featured: company.is_featured,
         supports_table_service: company.supports_table_service,
         show_order_queue: Boolean(company.show_order_queue),
         meal_periods: (company as any).meal_periods || [],

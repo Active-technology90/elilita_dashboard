@@ -30,6 +30,11 @@ import {
   CalendarDays,
   Clock,
   Repeat,
+  UserCog,
+  Megaphone,
+  ShieldCheck,
+  UsersRound,
+  UserCheck,
   // Images,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
@@ -988,13 +993,14 @@ export default function AdminDashboard() {
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("companies")}
               />
-              <SidebarItem
+              {/* Subscription hidden for marketers as requested */}
+              {/* <SidebarItem
                 icon={<CreditCard className="h-5 w-5" />}
                 label="Subscription"
                 active={activeTab === "billing"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("billing")}
-              />
+              /> */}
               <SidebarItem
                 icon={<Users className="h-5 w-5" />}
                 label="Leads"
@@ -1090,7 +1096,7 @@ export default function AdminDashboard() {
               )}
               {isSuperAdmin && (
                 <SidebarItem
-                  icon={<Users className="h-5 w-5" />}
+                  icon={<ShieldCheck className="h-5 w-5" />}
                   label="User Management"
                   active={activeTab === "superUsers"}
                   collapsed={sidebarCollapsed}
@@ -1099,7 +1105,7 @@ export default function AdminDashboard() {
               )}
               {isSuperAdmin && (
                 <SidebarItem
-                  icon={<Users className="h-5 w-5" />}
+                  icon={<Megaphone className="h-5 w-5" />}
                   label="Marketing Agents"
                   active={activeTab === "marketingAgents"}
                   collapsed={sidebarCollapsed}
@@ -1109,7 +1115,7 @@ export default function AdminDashboard() {
               {/* {showPlatformAdmin && ( */}
               {!isDispatcher && (
                 <SidebarItem
-                  icon={<Users className="h-5 w-5" />}
+                  icon={<Target className="h-5 w-5" />}
                   label="Ads Management"
                   active={activeTab === "add advertisment"}
                   collapsed={sidebarCollapsed}
@@ -1216,8 +1222,8 @@ export default function AdminDashboard() {
                     onClick={() => navigate("availability")}
                   />
                   <SidebarItem
-                    icon={<Users className="h-5 w-5" />}
-                    label="Dispatchers & Specialists"
+                    icon={<UserCog className="h-5 w-5" />}
+                    label="Staffs & Specialists"
                     active={activeTab === "serviceStaff"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceStaff")}
@@ -1233,7 +1239,7 @@ export default function AdminDashboard() {
               {/* {!hideUsersSidebar && ( */}
               {!isDispatcher && (
                 <SidebarItem
-                  icon={<Users className="h-5 w-5" />}
+                  icon={<UsersRound className="h-5 w-5" />}
                   label="All Users"
                   active={activeTab === "users"}
                   collapsed={sidebarCollapsed}

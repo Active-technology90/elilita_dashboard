@@ -77,6 +77,9 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
     second: 0,
     third: 0,
   });
+  const [showLeftShadow, setShowLeftShadow] = useState(false);
+  const [showRightShadow, setShowRightShadow] = useState(false);
+  const [stickyEdgeVisible, setStickyEdgeVisible] = useState(false);
 
   const effectiveStickyColumns = Math.min(stickyColumns, columns.length);
 
@@ -222,6 +225,41 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
     };
   }, [columns.length, effectiveStickyColumns]);
 
+  useLayoutEffect(() => {
+    const scrollContainer = tableScrollRef.current;
+    if (!scrollContainer) return;
+
+    const updateShadows = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+      const maxScroll = scrollWidth - clientWidth;
+
+      setShowLeftShadow(scrollLeft > 0);
+      setShowRightShadow(maxScroll > 0 && scrollLeft < maxScroll - 1);
+      // Sticky edge shadow shows whenever there is any horizontal scroll possible
+      setStickyEdgeVisible(maxScroll > 0);
+    };
+
+    updateShadows();
+
+    scrollContainer.addEventListener('scroll', updateShadows, {
+      passive: true,
+    });
+
+    let resizeObserver: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateShadows);
+      resizeObserver.observe(scrollContainer);
+    }
+
+    window.addEventListener('resize', updateShadows, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', updateShadows);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateShadows);
+    };
+  }, [data.length, columns.length, loading, errorMessage]);
+
   const getStickyHeaderClass = (index: number) => {
     if (index >= effectiveStickyColumns) return '';
 
@@ -242,7 +280,6 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
     return `
       md:sticky md:left-[var(--sticky-left-3)] md:z-30
       bg-gray-50
-      md:shadow-[8px_0_12px_-10px_rgba(15,23,42,0.28)]
     `;
   };
 
@@ -272,7 +309,6 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
       md:sticky md:left-[var(--sticky-left-3)] md:z-20
       ${backgroundClass}
       group-hover:bg-gray-100
-      md:shadow-[8px_0_12px_-10px_rgba(15,23,42,0.28)]
     `;
   };
 
@@ -286,193 +322,238 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
 
   return (
     <div className="w-full max-w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm sm:rounded-xl">
-      <div
-        ref={tableScrollRef}
-        role="region"
-        aria-label="Scrollable data table"
-        tabIndex={0}
-        className="relative isolate max-w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary/40"
-        style={
-          {
-            '--sticky-left-2': `${stickyOffsets.second}px`,
-            '--sticky-left-3': `${stickyOffsets.third}px`,
-          } as React.CSSProperties
-        }
-      >
-        <table className="w-max min-w-full table-auto border-collapse text-left">
-          <thead className="border-b border-secondary/10 bg-gray-50">
-            <tr>
-              {columns.map((column, index) => {
-                const stickyClass = getStickyHeaderClass(index);
-                const headerTextClass = getHeaderTextClass(index);
-                const key = getColumnKey(column);
+      <div className="relative">
+        {/* Left scroll shadow (only when scrolled right) */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-y-0 left-0 z-40 w-6 bg-gradient-to-r from-black/10 to-transparent transition-opacity duration-200 ${
+            showLeftShadow ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
 
-                if (
-                  column.sortable &&
-                  onSort &&
-                  sortField !== undefined &&
-                  sortOrder !== undefined
-                ) {
+        {/* Right scroll shadow (only when more content exists to the right) */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-y-0 right-0 z-40 w-6 bg-gradient-to-l from-black/10 to-transparent transition-opacity duration-200 ${
+            showRightShadow ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+
+        <div
+          ref={tableScrollRef}
+          role="region"
+          aria-label="Scrollable data table"
+          tabIndex={0}
+          className="relative isolate max-w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary/40"
+          style={
+            {
+              '--sticky-left-2': `${stickyOffsets.second}px`,
+              '--sticky-left-3': `${stickyOffsets.third}px`,
+              '--sticky-edge-left': `${stickyOffsets.third}px`,
+            } as React.CSSProperties
+          }
+        >
+          {/* Sticky column edge shadow — small vertical shadow on the right edge of the last sticky column */}
+          {effectiveStickyColumns > 0 && (
+            <div
+              aria-hidden="true"
+              className={`pointer-events-none absolute inset-y-0 z-30 hidden w-3 bg-gradient-to-r from-black/[0.06] to-transparent transition-opacity duration-200 md:block ${
+                stickyEdgeVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+              style={{
+                left: `calc(var(--sticky-edge-left, 0px) - 0px)`,
+                transform: 'translateX(-100%)',
+              }}
+            />
+          )}
+
+          <table className="w-max min-w-full table-auto border-collapse text-left">
+            <thead className="border-b border-secondary/10 bg-gray-50">
+              <tr>
+                {columns.map((column, index) => {
+                  const stickyClass = getStickyHeaderClass(index);
+                  const headerTextClass = getHeaderTextClass(index);
+                  const key = getColumnKey(column);
+                  const isLastSticky =
+                    index === effectiveStickyColumns - 1 &&
+                    effectiveStickyColumns > 0;
+
+                  if (
+                    column.sortable &&
+                    onSort &&
+                    sortField !== undefined &&
+                    sortOrder !== undefined
+                  ) {
+                    return (
+                      <SortableHeader
+                        key={key}
+                        field={column.sortKey || (column.key as string)}
+                        currentSort={{ field: sortField, order: sortOrder }}
+                        onSort={onSort}
+                        className={`
+                          px-3 py-2.5
+                          text-[10px] font-semibold uppercase tracking-[0.08em]
+                          text-secondary
+                          sm:px-4 sm:py-3 sm:text-xs
+                          ${headerTextClass}
+                          ${stickyClass}
+                          ${isLastSticky ? 'md:shadow-[6px_0_10px_-6px_rgba(15,23,42,0.22)]' : ''}
+                          ${column.className || ''}
+                        `}
+                      >
+                        {column.header}
+                      </SortableHeader>
+                    );
+                  }
+
                   return (
-                    <SortableHeader
+                    <th
                       key={key}
-                      field={column.sortKey || (column.key as string)}
-                      currentSort={{ field: sortField, order: sortOrder }}
-                      onSort={onSort}
+                      scope="col"
                       className={`
                         px-3 py-2.5
-                        text-[10px] font-semibold uppercase tracking-[0.08em]
+                        text-left
+                        text-[10px]
+                        font-semibold
+                        uppercase
+                        tracking-[0.08em]
                         text-secondary
                         sm:px-4 sm:py-3 sm:text-xs
                         ${headerTextClass}
                         ${stickyClass}
+                        ${isLastSticky ? 'md:shadow-[6px_0_10px_-6px_rgba(15,23,42,0.22)]' : ''}
                         ${column.className || ''}
                       `}
                     >
                       {column.header}
-                    </SortableHeader>
+                    </th>
                   );
-                }
+                })}
 
-                return (
+                {(onEdit || onDelete) && (
                   <th
-                    key={key}
                     scope="col"
-                    className={`
-                      px-3 py-2.5
-                      text-left
-                      text-[10px]
-                      font-semibold
-                      uppercase
-                      tracking-[0.08em]
-                      text-secondary
-                      sm:px-4 sm:py-3 sm:text-xs
-                      ${headerTextClass}
-                      ${stickyClass}
-                      ${column.className || ''}
-                    `}
+                    className="w-[1%] whitespace-nowrap px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary sm:px-4 sm:py-3 sm:text-xs"
                   >
-                    {column.header}
+                    Actions
                   </th>
-                );
-              })}
+                )}
+              </tr>
+            </thead>
 
-              {(onEdit || onDelete) && (
-                <th
-                  scope="col"
-                  className="w-[1%] whitespace-nowrap px-3 py-2.5 text-right text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary sm:px-4 sm:py-3 sm:text-xs"
-                >
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-100 bg-white">
-            {loading ? (
-              [...Array(loadingRows)].map((_, index) => (
-                <SkeletonRow
-                  key={`skeleton-${index}`}
-                  cols={columns.length + (onEdit || onDelete ? 1 : 0)}
-                />
-              ))
-            ) : errorMessage ? (
-              <tr>
-                <td
-                  colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
-                  className="px-4 py-8 text-center sm:py-10"
-                >
-                  <p
-                    role="alert"
-                    className="text-sm font-medium text-red-600"
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {loading ? (
+                [...Array(loadingRows)].map((_, index) => (
+                  <SkeletonRow
+                    key={`skeleton-${index}`}
+                    cols={columns.length + (onEdit || onDelete ? 1 : 0)}
+                  />
+                ))
+              ) : errorMessage ? (
+                <tr>
+                  <td
+                    colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
+                    className="px-4 py-8 text-center sm:py-10"
                   >
-                    {errorMessage}
-                  </p>
-
-                  {onRetry && (
-                    <button
-                      type="button"
-                      onClick={onRetry}
-                      className="mt-3 min-h-10 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
+                    <p
+                      role="alert"
+                      className="text-sm font-medium text-red-600"
                     >
-                      Retry
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ) : data.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
-                  className="px-4 py-8 text-center text-sm text-gray-500 sm:px-6 sm:py-10"
-                >
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              data.map((item, rowIndex) => (
-                <tr
-                  key={item.id ?? item.slug ?? rowIndex}
-                  className="group odd:bg-white even:bg-gray-50 transition-colors duration-100 hover:bg-gray-100"
-                >
-                  {columns.map((column, columnIndex) => (
-                    <td
-                      key={getColumnKey(column)}
-                      className={`
-                        px-3 py-2.5
-                        align-middle
-                        text-xs
-                        leading-5
-                        text-gray-700
-                        sm:px-4 sm:py-3 sm:text-sm
-                        ${getStickyCellClass(columnIndex, rowIndex)}
-                        ${column.className || ''}
-                      `}
-                    >
-                      {renderCell(item, column, rowIndex)}
-                    </td>
-                  ))}
+                      {errorMessage}
+                    </p>
 
-                  {(onEdit || onDelete) && (
-                    <td className="w-[1%] whitespace-nowrap px-2 py-1.5 text-right sm:px-3 sm:py-2">
-                      <div className="flex items-center justify-end gap-1">
-                        {onEdit && (
-                          <button
-                            type="button"
-                            onClick={() => onEdit(item)}
-                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-1"
-                            title="Edit"
-                            aria-label="Edit"
-                          >
-                            <Edit
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        )}
-
-                        {onDelete && (
-                          <button
-                            type="button"
-                            onClick={() => onDelete(item)}
-                            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-1"
-                            title="Delete"
-                            aria-label="Delete"
-                          >
-                            <Trash2
-                              className="h-4 w-4"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+                    {onRetry && (
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="mt-3 min-h-10 rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
+                      >
+                        Retry
+                      </button>
+                    )}
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : data.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columns.length + (onEdit || onDelete ? 1 : 0)}
+                    className="px-4 py-8 text-center text-sm text-gray-500 sm:px-6 sm:py-10"
+                  >
+                    {emptyMessage}
+                  </td>
+                </tr>
+              ) : (
+                data.map((item, rowIndex) => (
+                  <tr
+                    key={item.id ?? item.slug ?? rowIndex}
+                    className="group odd:bg-white even:bg-gray-50 transition-colors duration-100 hover:bg-gray-100"
+                  >
+                    {columns.map((column, columnIndex) => {
+                      const isLastSticky =
+                        columnIndex === effectiveStickyColumns - 1 &&
+                        effectiveStickyColumns > 0;
+
+                      return (
+                        <td
+                          key={getColumnKey(column)}
+                          className={`
+                            px-3 py-2.5
+                            align-middle
+                            text-xs
+                            leading-5
+                            text-gray-700
+                            sm:px-4 sm:py-3 sm:text-sm
+                            ${getStickyCellClass(columnIndex, rowIndex)}
+                            ${isLastSticky ? 'md:shadow-[6px_0_10px_-6px_rgba(15,23,42,0.22)]' : ''}
+                            ${column.className || ''}
+                          `}
+                        >
+                          {renderCell(item, column, rowIndex)}
+                        </td>
+                      );
+                    })}
+
+                    {(onEdit || onDelete) && (
+                      <td className="w-[1%] whitespace-nowrap px-2 py-1.5 text-right sm:px-3 sm:py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {onEdit && (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(item)}
+                              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-1"
+                              title="Edit"
+                              aria-label="Edit"
+                            >
+                              <Edit
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </button>
+                          )}
+
+                          {onDelete && (
+                            <button
+                              type="button"
+                              onClick={() => onDelete(item)}
+                              className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-1"
+                              title="Delete"
+                              aria-label="Delete"
+                            >
+                              <Trash2
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {!loading &&
