@@ -892,6 +892,18 @@ export default function BankManagement() {
             </button>
           ) : undefined
         }
+        actionMobile={
+          canWrite ? (
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              <Plus className="h-4 w-4" />
+              Add 
+            </button>
+          ) : undefined
+        }
         className="mb-5 sm:mb-6"
       />
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">

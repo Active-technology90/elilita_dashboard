@@ -788,7 +788,7 @@ export default function AdManagement() {
   // and are not a super admin. This ensures company‑scoped API endpoints are used.
   const isCompanyAdmin = !isSuperAdmin && Boolean(company?.slug);
 
-  const canManageAds = isSuperAdmin || companyRole === "admin";
+  const canManageAds = isSuperAdmin ||companyRole === "owner"; // super admin or company admin/manager can manage ads
   const isReadOnly = baseReadOnly || !canManageAds; // combined read‑only state
 
   // ------------------------------------------------------------

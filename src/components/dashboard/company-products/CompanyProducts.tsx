@@ -54,7 +54,7 @@ export default function CompanyProducts() {
   }, [user, companySlug, isSuperAdmin]);
 
   // Role-based permissions. Inactive companies are always view-only, including for super admins.
-  const isAdmin = companyRole === "admin" || isSuperAdmin;
+  const isAdmin = companyRole === "admin" ||companyRole ==="owner"|| isSuperAdmin;
   // const isStaff = companyRole === "staff";
   const canEditBasic = companyIsActive && isAdmin;
   // const canEditPricing = isAdmin;
