@@ -931,24 +931,81 @@ export default function CompanyForm({
         <div>
           <label className={labelClassName}>Cover Image</label>
           <div className={`bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed p-4 flex flex-col items-center justify-center min-h-[180px] ${isEditingActive ? "border-gray-200 hover:border-secondary hover:bg-gray-50/80 cursor-pointer" : "border-gray-200"}`}>
-            <input
-              type="file"
-              id="cover-upload"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              disabled={!isEditingActive}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  if (file.size > 10 * 1024 * 1024) {
-                    alert("File must be smaller than 10MB");
-                    return;
-                  }
-                  setFormData((prev) => ({ ...prev, cover_image: file }));
-                  if (onCoverFileChange) onCoverFileChange(file);
-                }
-              }}
-            />
+         <input
+  type="file"
+  id="cover-upload"
+  accept="image/jpeg,image/png,image/webp,image/gif"
+  className="hidden"
+  disabled={!isEditingActive}
+  onChange={(e) => {
+    const file =
+      e.target.files?.[0];
+
+    console.group(
+      "🔥 COVER INPUT CHANGE",
+    );
+
+    console.log(
+      "selected file:",
+      file,
+    );
+
+    if (!file) {
+      console.warn(
+        "No cover selected",
+      );
+
+      console.groupEnd();
+      return;
+    }
+
+    console.log({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified:
+        file.lastModified,
+    });
+
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
+      console.error(
+        "Cover exceeds 10MB",
+      );
+
+      alert(
+        "File must be smaller than 10MB",
+      );
+
+      e.target.value = "";
+
+      console.groupEnd();
+      return;
+    }
+
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        cover_image: file,
+      };
+
+      console.log(
+        "✅ cover saved to formData",
+        updated.cover_image,
+      );
+
+      return updated;
+    });
+
+    onCoverFileChange?.(
+      file,
+    );
+
+    console.groupEnd();
+  }}
+/>
             {coverPreview ? (
               <div className="relative w-full flex flex-col items-center">
                 <div className="w-full max-h-32 overflow-hidden rounded-xl shadow-lg">

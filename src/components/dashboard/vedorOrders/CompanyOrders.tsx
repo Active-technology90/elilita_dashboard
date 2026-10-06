@@ -540,6 +540,16 @@ export default function CompanyOrders() {
             </span>
           ) : undefined
         }
+        actionMobile ={
+          <button
+            type="button"
+            onClick={() => setShowTrackingMap(true)}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+          >
+            <Navigation className="h-4 w-4" />
+            <span>Tracking</span>
+          </button>
+        }
         actions={
           <button
             type="button"

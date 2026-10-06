@@ -361,21 +361,20 @@ export const getFeaturedCompanies = async () =>
     params: { featured: "true" },
   });
 
-export const createCompany = async (data: FormData | Record<string, any>) => {
-  const isFormData = data instanceof FormData;
-  return api.post<Company>("/companies/", data, {
-    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
-  });
+export const createCompany = async (
+  data: FormData | Record<string, any>,
+) => {
+  return api.post<Company>("/companies/", data);
 };
 
 export const updateCompany = async (
   slug: string,
-  data: FormData | Partial<Company>
+  data: FormData | Record<string, any>,
 ) => {
-  const isFormData = data instanceof FormData;
-  return api.patch<Company>(`/companies/${slug}/`, data, {
-    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
-  });
+  return api.patch<Company>(
+    `/companies/${slug}/`,
+    data,
+  );
 };
 
 export const updateCompanyMinimumOrderTotal = async (

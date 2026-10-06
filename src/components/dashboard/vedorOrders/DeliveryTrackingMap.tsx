@@ -28,6 +28,43 @@ import { ref, onValue, off } from "firebase/database";
 import type { VendorOrder } from "../../../types";
 import { useToast } from "../../../hooks/useToast";
 
+/* ──────────────────────────────────────────────────────────────────
+   DEBUG HELPERS — set DEBUG = false to silence all map logs
+   ────────────────────────────────────────────────────────────────── */
+const DEBUG = false; // default off in production; enable with ?debugDeliveryRoute=1 or localStorage.deliveryRouteDebug=1
+
+const routeDebugEnabled = () => {
+  if (typeof window === "undefined") return DEBUG;
+  return (
+    DEBUG ||
+    new URLSearchParams(window.location.search).get("debugDeliveryRoute") === "1" ||
+    window.localStorage.getItem("debugDeliveryRoute") === "1"
+  );
+};
+
+const mapDbg = {
+  group(label: string) {
+    if (!routeDebugEnabled()) return;
+    console.group(`%c[DeliveryTrackingMap] ${label}`, "color:#6750A4;font-weight:bold");
+  },
+  end() {
+    if (!routeDebugEnabled()) return;
+    console.groupEnd();
+  },
+  log(label: string, value: unknown) {
+    if (!routeDebugEnabled()) return;
+    console.log(`  ${label}:`, value);
+  },
+  warn(label: string, value: unknown) {
+    if (!routeDebugEnabled()) return;
+    console.warn(`  ${label}:`, value);
+  },
+  error(label: string, value: unknown) {
+    if (!routeDebugEnabled()) return;
+    console.error(`  ${label}:`, value);
+  },
+};
+
 // ── Types ──────────────────────────────────────────────────────────
 interface Coordinates {
   lat: number;
@@ -144,6 +181,7 @@ interface DeliveryTrackingMapProps {
   selectedOrderId?: number;
   onDriverSelect?: (driverId: number) => Promise<void>;
   onAssignmentComplete?: () => void;
+  initialOrder?: any;
 }
 
 type RouteCacheKey = string;
@@ -232,7 +270,6 @@ const DRIVER_COLORS = [
 
 const getDriverColor = (index: number) => DRIVER_COLORS[index % DRIVER_COLORS.length];
 
-// Smooth Leaflet marker movement so Firebase location updates do not visually jump.
 const markerAnimationFrames = new WeakMap<object, number>();
 const animateMarkerTo = (
   marker: Leaflet.Marker,
@@ -249,7 +286,6 @@ const animateMarkerTo = (
   const startedAt = performance.now();
   const tick = (now: number) => {
     const progress = Math.min(1, (now - startedAt) / duration);
-    // Ease out keeps frequent GPS updates feeling responsive instead of mechanical.
     const eased = 1 - Math.pow(1 - progress, 3);
     marker.setLatLng([
       start.lat + (lat - start.lat) * eased,
@@ -291,7 +327,6 @@ const formatMapAddress = (value: any): string => {
   return Array.from(new Set(parts)).join(", ");
 };
 
-// ── Canonical Order Destination Helper ─────────────────────
 const getOrderDestination = (order: any): OrderDestination => {
   if (!order) {
     return { address: "Address not available", lat: null, lon: null, source: "unknown" };
@@ -301,30 +336,38 @@ const getOrderDestination = (order: any): OrderDestination => {
   let lon: number | null = null;
   let source: OrderDestination["source"] = "unknown";
 
-  if (isValidCoordinate(order.shipping_lat, order.shipping_lon)) {
+  // IMPORTANT: keep this priority aligned with VendorOrderDetailModal.getCustomerLocation().
+  // Vendor-delivery destination coordinates are authoritative. Shipping/master fields are
+  // compatibility fallbacks for older payload shapes.
+  if (isValidCoordinate(order.delivery?.customer_lat, order.delivery?.customer_lon)) {
+    lat = Number(order.delivery.customer_lat);
+    lon = Number(order.delivery.customer_lon);
+    source = "delivery";
+  }
+  else if (isValidCoordinate(order.shipping_lat, order.shipping_lon)) {
     lat = Number(order.shipping_lat);
     lon = Number(order.shipping_lon);
     source = "shipping";
   }
-  else if (order.vendor_orders?.[0] && isValidCoordinate(order.vendor_orders[0].shipping_lat, order.vendor_orders[0].shipping_lon)) {
-    lat = Number(order.vendor_orders[0].shipping_lat);
-    lon = Number(order.vendor_orders[0].shipping_lon);
-    source = "nested";
+  else if (isValidCoordinate(order.customer_lat, order.customer_lon)) {
+    lat = Number(order.customer_lat);
+    lon = Number(order.customer_lon);
+    source = "coordinates";
   }
-  else if (isValidCoordinate(order.delivery?.customer_lat, order.delivery?.customer_lon)) {
-    lat = Number(order.delivery.customer_lat);
-    lon = Number(order.delivery.customer_lon);
-    source = "delivery";
+  else if (order.delivery_address && isValidCoordinate(order.delivery_address.lat, order.delivery_address.lon)) {
+    lat = Number(order.delivery_address.lat);
+    lon = Number(order.delivery_address.lon);
+    source = "coordinates";
   }
   else if (order.vendor_orders?.[0]?.delivery && isValidCoordinate(order.vendor_orders[0].delivery.customer_lat, order.vendor_orders[0].delivery.customer_lon)) {
     lat = Number(order.vendor_orders[0].delivery.customer_lat);
     lon = Number(order.vendor_orders[0].delivery.customer_lon);
     source = "nested";
   }
-  else if (isValidCoordinate(order.customer_lat, order.customer_lon)) {
-    lat = Number(order.customer_lat);
-    lon = Number(order.customer_lon);
-    source = "coordinates";
+  else if (order.vendor_orders?.[0] && isValidCoordinate(order.vendor_orders[0].shipping_lat, order.vendor_orders[0].shipping_lon)) {
+    lat = Number(order.vendor_orders[0].shipping_lat);
+    lon = Number(order.vendor_orders[0].shipping_lon);
+    source = "nested";
   }
 
   let address = "";
@@ -362,7 +405,6 @@ const getOrderDestination = (order: any): OrderDestination => {
   return { address, lat, lon, source };
 };
 
-// ── Assignment Eligibility Helper ─────────────────────────────────
 const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } => {
   if (!order) return { canAssign: false, reason: "Order not found" };
 
@@ -392,13 +434,12 @@ const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } =>
   return { canAssign: true };
 };
 
-// ── Normalize Order Data ──────────────────────────────────
 const normalizeOrder = (order: any): DispatchOrder => {
   const destination = getOrderDestination(order);
   const assignmentCheck = canAssignDriver(order);
   
   const vendorOrder = order.vendor_orders?.[0];
-  const company = vendorOrder?.company || order.company;
+  const company = order.company || vendorOrder?.company;
   
   const pickupLat = company?.latitude != null ? Number(company.latitude) : null;
   const pickupLon = company?.longitude != null ? Number(company.longitude) : null;
@@ -432,8 +473,6 @@ const normalizeOrder = (order: any): DispatchOrder => {
   };
 };
 
-// ── UI atoms ───────────────────────────────────────────────────────
-// ── Popup generators ───────────────────────────────────────────
 const createCompanyPopup = (order: DispatchOrder): string => {
   return `
     <div style="font-family:Inter,system-ui,sans-serif;min-width:240px;max-width:300px;">
@@ -692,7 +731,6 @@ const createDriverPopupForSelection = (
   `;
 };
 
-// ── Marker icon helpers ────────────────────────────────────────────
 const makeCompanyIcon = (): Leaflet.DivIcon => {
   const L = (window as any).L;
   return L.divIcon({
@@ -789,6 +827,7 @@ export default function DeliveryTrackingMap({
   selectedOrderId,
   onDriverSelect,
   onAssignmentComplete,
+  initialOrder,
 }: DeliveryTrackingMapProps) {
   const { user } = useAuth();
   const { company } = useCurrentCompany();
@@ -807,10 +846,9 @@ export default function DeliveryTrackingMap({
     return null;
   }, [shouldFetchAll, companySlug, user]);
 
-  // UI state
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
-  const [activeOrderId, setActiveOrderId] = useState<number | null>(selectedOrderId || null);
+  const [activeOrderId, setActiveOrderId] = useState<number | null>(selectedOrderId || initialOrder?.id || null);
   const [followDriver, setFollowDriver] = useState<boolean>(false);
   const [driverFilter, setDriverFilter] = useState<"all" | "in_house" | "third_party">("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -826,7 +864,6 @@ export default function DeliveryTrackingMap({
   const [isDriverToolsExpanded, setIsDriverToolsExpanded] = useState(false);
   const [mapStyle, setMapStyle] = useState<"street" | "satellite">("street");
 
-  // Data state
   const [firebaseData, setFirebaseData] = useState<Record<number, FirebaseDriverData>>({});
   const [driverLocations, setDriverLocations] = useState<Record<number, {
     latitude: number; longitude: number; heading?: number; is_online?: boolean; updated_at?: number;
@@ -840,7 +877,6 @@ export default function DeliveryTrackingMap({
   const [routeDataByDriver, setRouteDataByDriver] = useState<Record<number, RouteSummary | null>>({});
   const [pickupCustomerRoute, setPickupCustomerRoute] = useState<RouteSummary | null>(null);
 
-  // Refs
   const mapRef = useRef<Leaflet.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const driverMarkers = useRef<Map<string, Leaflet.Marker>>(new Map());
@@ -854,13 +890,11 @@ export default function DeliveryTrackingMap({
   const initialFitDone = useRef(false);
   const tileLayerRef = useRef<Leaflet.TileLayer | null>(null);
   
-  // OSRM routing refs
   const routeCache = useRef<Map<RouteCacheKey, RouteCacheEntry>>(new Map());
   const pendingRequests = useRef<Map<RouteCacheKey, Promise<RouteSummary | null>>>(new Map());
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const driverRoutePositionKeys = useRef<Map<number, string>>(new Map());
 
-  // React Query
   const queryKey = useMemo(
     () => ["delivery-tracking-orders", shouldFetchAll ? "all" : effectiveSlug],
     [shouldFetchAll, effectiveSlug]
@@ -893,8 +927,6 @@ export default function DeliveryTrackingMap({
     },
     staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
-    // Firebase is the primary real-time channel; polling is a resilient fallback for
-    // newly assigned/completed deliveries and backend-only status changes.
     refetchInterval: mode === "tracking" ? 30 * 1000 : 60 * 1000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -911,9 +943,8 @@ export default function DeliveryTrackingMap({
     ? ((queryError as any)?.response?.data?.detail ?? queryError.message ?? "Failed to load")
     : null;
 
-  // Merge API + Firebase data
   const combinedOrders: DeliveryWithLocation[] = useMemo(() => {
-    return allOrders.map((order) => {
+    const list = allOrders.map((order) => {
       const fb = firebaseData[order.id];
       const destination = getOrderDestination(order);
       const vendorOrder = order.vendor_orders?.[0];
@@ -941,24 +972,65 @@ export default function DeliveryTrackingMap({
         },
       } as DeliveryWithLocation;
     });
-  }, [allOrders, firebaseData]);
 
-  // Normalize selected order
-  const normalizedOrder = useMemo(() => {
-    if (!selectedOrderId) return null;
-    const order = combinedOrders.find(o => o.id === selectedOrderId) || allOrders.find(o => o.id === selectedOrderId);
-    if (order) {
-      return normalizeOrder(order);
+    if (
+      initialOrder &&
+      !list.some((o) => o.id === initialOrder.id)
+    ) {
+      const destination = getOrderDestination(initialOrder);
+      const vendorOrder = initialOrder.vendor_orders?.[0];
+      const deliveryData = vendorOrder?.delivery || initialOrder.delivery;
+      list.push({
+        ...initialOrder,
+        delivery: {
+          ...deliveryData,
+          current_lat: deliveryData?.current_lat ?? undefined,
+          current_lng: deliveryData?.current_lng ?? undefined,
+          delivery_person_name: deliveryData?.delivery_person_name ?? "Unassigned",
+          delivery_person_phone: deliveryData?.delivery_person_phone ?? "",
+          status: deliveryData?.status ?? initialOrder.delivery_status ?? vendorOrder?.delivery_status ?? "pending",
+          logistics_company_name: deliveryData?.logistics_company_name,
+          is_in_house: !deliveryData?.logistics_company_name ||
+                       deliveryData?.logistics_company_name === "" ||
+                       deliveryData?.logistics_company_name === vendorOrder?.company?.name,
+          customer_address: destination.address,
+          customer_lat: destination.lat ?? deliveryData?.customer_lat ?? initialOrder.shipping_lat,
+          customer_lon: destination.lon ?? deliveryData?.customer_lon ?? initialOrder.shipping_lon,
+          delivery_person_image: deliveryData?.delivery_person_image,
+        },
+      } as DeliveryWithLocation);
     }
+
+    return list;
+  }, [allOrders, firebaseData, initialOrder]);
+
+  const normalizedOrder = useMemo(() => {
+    const targetId = selectedOrderId ?? initialOrder?.id;
+    if (!targetId) return null;
+
+    const fromList =
+      combinedOrders.find(o => o.id === targetId) ||
+      allOrders.find(o => o.id === targetId);
+
+    if (fromList) return normalizeOrder(fromList);
+
+    if (initialOrder && initialOrder.id === targetId) {
+      return normalizeOrder(initialOrder);
+    }
+
     return null;
-  }, [combinedOrders, allOrders, selectedOrderId]);
+  }, [combinedOrders, allOrders, selectedOrderId, initialOrder]);
 
   const selectedOrder = useMemo(() => {
-    if (!selectedOrderId) return null;
-    return combinedOrders.find(o => o.id === selectedOrderId);
-  }, [combinedOrders, selectedOrderId]);
+    const targetId = selectedOrderId ?? initialOrder?.id;
+    if (!targetId) return null;
+    return (
+      combinedOrders.find(o => o.id === targetId) ||
+      allOrders.find(o => o.id === targetId) ||
+      (initialOrder?.id === targetId ? initialOrder : null)
+    );
+  }, [combinedOrders, selectedOrderId, allOrders, initialOrder]);
 
-  // Live deliveries filter
   const liveDeliveries = useMemo(() => {
     let filtered = combinedOrders.filter(order => {
       const dest = getOrderDestination(order);
@@ -980,26 +1052,73 @@ export default function DeliveryTrackingMap({
     return filtered;
   }, [combinedOrders, driverFilter, mode, selectedOrderId]);
 
-  // Fetch available drivers for selection mode
+  /* ── Debug: log what the map sees for the selected order ── */
+  useEffect(() => {
+    if (mode !== "driver_selection" || !normalizedOrder) return;
+
+    mapDbg.group(`driver_selection order #${normalizedOrder.id}`);
+    mapDbg.log("normalizedOrder.pickupLat", normalizedOrder.pickupLat);
+    mapDbg.log("normalizedOrder.pickupLon", normalizedOrder.pickupLon);
+    mapDbg.log("normalizedOrder.customerLat", normalizedOrder.customerLat);
+    mapDbg.log("normalizedOrder.customerLon", normalizedOrder.customerLon);
+    mapDbg.log("normalizedOrder.canAssign", normalizedOrder.canAssign);
+    mapDbg.log("normalizedOrder.companyAddress", normalizedOrder.companyAddress);
+    mapDbg.log("selectedOrder?.company", selectedOrder?.company);
+    mapDbg.log("initialOrder?.company", initialOrder?.company);
+    mapDbg.log(
+      "selectedOrder?.vendor_orders?.[0]?.company",
+      selectedOrder?.vendor_orders?.[0]?.company,
+    );
+    mapDbg.log(
+      "initialOrder?.vendor_orders?.[0]?.company",
+      initialOrder?.vendor_orders?.[0]?.company,
+    );
+    mapDbg.end();
+  }, [
+    mode,
+    normalizedOrder?.id,
+    normalizedOrder?.pickupLat,
+    normalizedOrder?.pickupLon,
+    normalizedOrder?.customerLat,
+    normalizedOrder?.customerLon,
+    normalizedOrder?.canAssign,
+    normalizedOrder?.companyAddress,
+    selectedOrder?.company,
+    initialOrder?.company,
+    selectedOrder?.vendor_orders,
+    initialOrder?.vendor_orders,
+  ]);
+
   useEffect(() => {
     if (mode === "driver_selection" && normalizedOrder && normalizedOrder.canAssign) {
       const fetchDrivers = async () => {
         setLoadingDrivers(true);
         try {
-          const companySlug = selectedOrder?.vendor_orders?.[0]?.company?.slug || 
-                             selectedOrder?.company?.slug;
-          if (!companySlug) {
+          const companySlugResolved = 
+            selectedOrder?.vendor_orders?.[0]?.company?.slug || 
+            selectedOrder?.company?.slug ||
+            initialOrder?.company?.slug ||
+            initialOrder?.vendor_orders?.[0]?.company?.slug;
+          
+          mapDbg.group("fetching available drivers");
+          mapDbg.log("companySlugResolved", companySlugResolved);
+          mapDbg.log("selectedOrderId", selectedOrderId);
+          mapDbg.log("initialOrder?.id", initialOrder?.id);
+          mapDbg.end();
+
+          if (!companySlugResolved) {
             showToast("error", "Company information not found");
             setLoadingDrivers(false);
             return;
           }
           
-          const res = await getAvailableDeliveryDrivers(companySlug, {
-            vendor_order_id: selectedOrderId,
+          const res = await getAvailableDeliveryDrivers(companySlugResolved, {
+            vendor_order_id: selectedOrderId ?? initialOrder?.id,
           });
+          mapDbg.log("available drivers response", res.data);
           setAvailableDrivers(res.data || []);
         } catch (err) {
-          console.error("Failed to fetch available drivers", err);
+          mapDbg.error("Failed to fetch available drivers", err);
           showToast("error", "Failed to load available drivers");
         } finally {
           setLoadingDrivers(false);
@@ -1007,9 +1126,18 @@ export default function DeliveryTrackingMap({
       };
       fetchDrivers();
     }
-  }, [mode, normalizedOrder?.id, selectedOrderId, selectedOrder?.company?.slug, selectedOrder?.vendor_orders, showToast]);
+  }, [
+    mode,
+    normalizedOrder?.id,
+    selectedOrderId,
+    selectedOrder?.company?.slug,
+    selectedOrder?.vendor_orders,
+    initialOrder?.id,
+    initialOrder?.company?.slug,
+    initialOrder?.vendor_orders,
+    showToast,
+  ]);
 
-  // Firebase subscriptions for drivers
   useEffect(() => {
     if (mode !== "driver_selection" || !availableDrivers.length) return;
     const cleanups: Array<() => void> = [];
@@ -1035,7 +1163,6 @@ export default function DeliveryTrackingMap({
     };
   }, [mode, availableDrivers]);
 
-  // Get driver live location
   const getDriverLiveLocation = useCallback((driverId: number): Coordinates | null => {
     const directLoc = driverLocations[driverId];
     if (directLoc && isValidCoordinate(directLoc.latitude, directLoc.longitude)) {
@@ -1044,7 +1171,6 @@ export default function DeliveryTrackingMap({
     return null;
   }, [driverLocations]);
 
-  // OSRM route fetcher
   const fetchOSRMRoute = useCallback(async (
     from: Coordinates,
     to: Coordinates
@@ -1083,7 +1209,10 @@ export default function DeliveryTrackingMap({
         });
         return { coordinates: coords, distanceKm, durationMinutes };
       })
-      .catch(() => null)
+      .catch((error) => {
+        mapDbg.warn("OSRM request failed; caller will use haversine fallback", { from, to, error });
+        return null;
+      })
       .finally(() => {
         pendingRequests.current.delete(cacheKey);
       });
@@ -1092,8 +1221,6 @@ export default function DeliveryTrackingMap({
     return requestPromise;
   }, []);
 
-  // Enhanced drivers with dispatch-route calculations.
-  // The assignment route is always Driver -> Company/Pickup -> Customer.
   const enhancedDrivers = useMemo(() => {
     if (!normalizedOrder) return [];
 
@@ -1110,6 +1237,9 @@ export default function DeliveryTrackingMap({
       pickup && customer
         ? haversine(pickup.lat, pickup.lon, customer.lat, customer.lon)
         : null;
+
+    const hasPickup =
+      pickup != null && isValidCoordinate(pickup.lat, pickup.lon);
 
     const mapped = availableDrivers.map((d: any) => {
       let driverLoc: Coordinates | null = null;
@@ -1138,23 +1268,34 @@ export default function DeliveryTrackingMap({
           ? haversine(driverLoc.lat, driverLoc.lon, customer.lat, customer.lon)
           : null;
 
-      const driverToPickupRoute = routeDataByDriver[d.id] || null;
-      const pickupToCustomerDistance =
-        pickupCustomerRoute?.distanceKm ?? fallbackPickupToCustomer;
-      const pickupToCustomerEta = pickupCustomerRoute?.durationMinutes ?? null;
+      // routeDataByDriver is the road route from driver to the first required stop:
+      // pickup when present, otherwise directly to the customer.
+      const driverToFirstStopRoute = routeDataByDriver[d.id] || null;
+      const pickupToCustomerDistance = hasPickup
+        ? (pickupCustomerRoute?.distanceKm ?? fallbackPickupToCustomer)
+        : null;
+      const pickupToCustomerEta = hasPickup
+        ? (pickupCustomerRoute?.durationMinutes ?? null)
+        : null;
 
-      const roadDistanceToPickup =
-        driverToPickupRoute?.distanceKm ?? distanceToPickup;
-      const roadEtaToPickup = driverToPickupRoute?.durationMinutes ?? null;
+      const roadDistanceToPickup = hasPickup
+        ? (driverToFirstStopRoute?.distanceKm ?? distanceToPickup)
+        : null;
+      const roadEtaToPickup = hasPickup
+        ? (driverToFirstStopRoute?.durationMinutes ?? null)
+        : null;
 
-      const totalDistance =
-        roadDistanceToPickup != null && pickupToCustomerDistance != null
+      const totalDistance = hasPickup
+        ? roadDistanceToPickup != null && pickupToCustomerDistance != null
           ? roadDistanceToPickup + pickupToCustomerDistance
-          : null;
-      const totalEta =
-        roadEtaToPickup != null && pickupToCustomerEta != null
+          : null
+        : (driverToFirstStopRoute?.distanceKm ?? distanceToCustomer);
+
+      const totalEta = hasPickup
+        ? roadEtaToPickup != null && pickupToCustomerEta != null
           ? roadEtaToPickup + pickupToCustomerEta
-          : null;
+          : null
+        : (driverToFirstStopRoute?.durationMinutes ?? null);
 
       return {
         ...d,
@@ -1177,8 +1318,6 @@ export default function DeliveryTrackingMap({
       } as AvailableDriver;
     });
 
-    // Only drivers with a realtime GPS feed are assignable/recommendable.
-    // Drivers with last-known/API coordinates remain visible for dispatcher context.
     const rankable = mapped
       .filter((d) => d.isLive === true && d.current_lat != null && d.current_lng != null)
       .sort((a, b) => {
@@ -1202,8 +1341,8 @@ export default function DeliveryTrackingMap({
       switch (sortOption) {
         case "nearest_pickup":
           return (
-            (a.road_distance_to_pickup ?? a.distance_to_pickup ?? 999999) -
-            (b.road_distance_to_pickup ?? b.distance_to_pickup ?? 999999)
+            (a.road_distance_to_pickup ?? a.distance_to_pickup ?? a.total_route_distance ?? 999999) -
+            (b.road_distance_to_pickup ?? b.distance_to_pickup ?? b.total_route_distance ?? 999999)
           );
         case "highest_rated":
           return (Number(b.average_rating) || 0) - (Number(a.average_rating) || 0);
@@ -1231,7 +1370,6 @@ export default function DeliveryTrackingMap({
     pickupCustomerRoute,
   ]);
 
-  // Shared second leg: Company/Pickup -> Customer. It is the same for every driver.
   useEffect(() => {
     if (mode !== "driver_selection" || !normalizedOrder) {
       setPickupCustomerRoute(null);
@@ -1239,8 +1377,6 @@ export default function DeliveryTrackingMap({
     }
 
     if (
-      normalizedOrder.pickupLat == null ||
-      normalizedOrder.pickupLon == null ||
       normalizedOrder.customerLat == null ||
       normalizedOrder.customerLon == null
     ) {
@@ -1249,6 +1385,19 @@ export default function DeliveryTrackingMap({
     }
 
     let cancelled = false;
+
+    if (
+      normalizedOrder.pickupLat == null ||
+      normalizedOrder.pickupLon == null
+    ) {
+      setPickupCustomerRoute({
+        coordinates: [],
+        distanceKm: 0,
+        durationMinutes: 0,
+      });
+      return;
+    }
+
     const pickup: Coordinates = {
       lat: normalizedOrder.pickupLat,
       lon: normalizedOrder.pickupLon,
@@ -1258,8 +1407,16 @@ export default function DeliveryTrackingMap({
       lon: normalizedOrder.customerLon,
     };
 
+    mapDbg.group("fetching pickup→customer route");
+    mapDbg.log("pickup", pickup);
+    mapDbg.log("customer", customer);
+    mapDbg.end();
+
     fetchOSRMRoute(pickup, customer).then((route) => {
-      if (!cancelled) setPickupCustomerRoute(route);
+      if (!cancelled) {
+        mapDbg.log("pickup→customer route result", route);
+        setPickupCustomerRoute(route);
+      }
     });
 
     return () => {
@@ -1275,15 +1432,29 @@ export default function DeliveryTrackingMap({
     fetchOSRMRoute,
   ]);
 
-  // First leg for every candidate: live Driver -> Company/Pickup.
   useEffect(() => {
     if (mode !== "driver_selection" || !normalizedOrder || !enhancedDrivers.length) return;
-    if (normalizedOrder.pickupLat == null || normalizedOrder.pickupLon == null) return;
 
-    const pickup: Coordinates = {
-      lat: normalizedOrder.pickupLat,
-      lon: normalizedOrder.pickupLon,
-    };
+    const target: Coordinates | null =
+      normalizedOrder.pickupLat != null && normalizedOrder.pickupLon != null
+        ? { lat: normalizedOrder.pickupLat, lon: normalizedOrder.pickupLon }
+        : normalizedOrder.customerLat != null && normalizedOrder.customerLon != null
+          ? { lat: normalizedOrder.customerLat, lon: normalizedOrder.customerLon }
+          : null;
+
+    if (!target) {
+      mapDbg.warn("no pickup/customer coords — skipping driver road routes", {
+        pickupLat: normalizedOrder.pickupLat,
+        pickupLon: normalizedOrder.pickupLon,
+        customerLat: normalizedOrder.customerLat,
+        customerLon: normalizedOrder.customerLon,
+      });
+      return;
+    }
+
+    const targetType = normalizedOrder.pickupLat != null && normalizedOrder.pickupLon != null
+      ? "pickup"
+      : "customer";
 
     enhancedDrivers.forEach((driver: AvailableDriver) => {
       if (
@@ -1298,26 +1469,31 @@ export default function DeliveryTrackingMap({
         lat: driver.current_lat,
         lon: driver.current_lng,
       };
-      const debounceKey = `driver_pickup_route_${driver.id}`;
-      const positionKey = `${from.lat.toFixed(4)},${from.lon.toFixed(4)}_${pickup.lat.toFixed(4)},${pickup.lon.toFixed(4)}`;
+      const debounceKey = `driver_first_stop_route_${driver.id}`;
+      const positionKey = `${from.lat.toFixed(5)},${from.lon.toFixed(5)}_${target.lat.toFixed(5)},${target.lon.toFixed(5)}`;
 
-      // Do not continuously request the same road route just because route state
-      // itself caused a render. A new request is needed only after meaningful GPS movement.
       if (driverRoutePositionKeys.current.get(driver.id) === positionKey) return;
       driverRoutePositionKeys.current.set(driver.id, positionKey);
 
-      // If a newer GPS point arrives while a route request is waiting, replace
-      // the pending timer so OSRM receives the newest known driver position.
       const existingTimer = debounceTimers.current.get(debounceKey);
       if (existingTimer) clearTimeout(existingTimer);
 
       debounceTimers.current.set(
         debounceKey,
         setTimeout(async () => {
-          const routeSummary = await fetchOSRMRoute(from, pickup);
+          const routeSummary = await fetchOSRMRoute(from, target);
           if (!routeSummary) {
             driverRoutePositionKeys.current.delete(driver.id);
           }
+          mapDbg.log("driver first-stop route", {
+            driverId: driver.id,
+            driver: from,
+            targetType,
+            target,
+            roadDistanceKm: routeSummary?.distanceKm ?? null,
+            roadEtaMinutes: routeSummary?.durationMinutes ?? null,
+            fallbackHaversineKm: haversine(from.lat, from.lon, target.lat, target.lon),
+          });
           setRouteDataByDriver((prev) => ({
             ...prev,
             [driver.id]: routeSummary,
@@ -1331,11 +1507,35 @@ export default function DeliveryTrackingMap({
     normalizedOrder?.id,
     normalizedOrder?.pickupLat,
     normalizedOrder?.pickupLon,
+    normalizedOrder?.customerLat,
+    normalizedOrder?.customerLon,
     enhancedDrivers,
     fetchOSRMRoute,
   ]);
 
-  // Filter available drivers
+  useEffect(() => {
+    if (mode !== "driver_selection" || !normalizedOrder || !routeDebugEnabled()) return;
+    const snapshot = enhancedDrivers.map((driver) => ({
+      driverId: driver.id,
+      name: driver.name,
+      locationSource: driver.location_source,
+      driverLat: driver.current_lat,
+      driverLon: driver.current_lng,
+      pickupLat: normalizedOrder.pickupLat,
+      pickupLon: normalizedOrder.pickupLon,
+      customerLat: normalizedOrder.customerLat,
+      customerLon: normalizedOrder.customerLon,
+      pickupRoadKm: driver.road_distance_to_pickup,
+      pickupHaversineKm: driver.distance_to_pickup,
+      pickupToCustomerKm: driver.pickup_to_customer_distance,
+      totalTripKm: driver.total_route_distance,
+      totalEtaMinutes: driver.total_eta_minutes,
+      osrmFirstStopKm: routeDataByDriver[driver.id]?.distanceKm ?? null,
+      osrmFirstStopEta: routeDataByDriver[driver.id]?.durationMinutes ?? null,
+    }));
+    console.table(snapshot);
+  }, [mode, normalizedOrder, enhancedDrivers, routeDataByDriver]);
+
   const filteredAvailableDrivers = useMemo(() => {
     let filtered = [...enhancedDrivers];
     
@@ -1359,7 +1559,6 @@ export default function DeliveryTrackingMap({
     return filtered;
   }, [enhancedDrivers, driverFilter, searchTerm]);
 
-  // Groupings for tracking mode
   const customerGroups = useMemo(() => {
     const map = new Map<string, DeliveryWithLocation[]>();
     liveDeliveries.forEach(order => {
@@ -1390,7 +1589,6 @@ export default function DeliveryTrackingMap({
     return colorMap;
   }, [driverGroups]);
 
-  // Stats
   const stats = useMemo(() => {
     const today = new Date().toDateString();
     const deliveriesToday = liveDeliveries.filter(
@@ -1405,7 +1603,6 @@ export default function DeliveryTrackingMap({
     };
   }, [liveDeliveries, driverGroups]);
 
-  // Load Leaflet
   useEffect(() => {
     if ((window as any).L && (window as any).L.markerClusterGroup) {
       setLeafletLoaded(true);
@@ -1455,9 +1652,6 @@ export default function DeliveryTrackingMap({
     document.head.appendChild(script);
   }, []);
 
-  // Realtime delivery subscriptions. Subscribe from API tracking ids rather than the
-  // already-filtered live list so a Firebase status/location change can bring an order
-  // into or out of the live view immediately.
   const realtimeTrackingTargets = useMemo(() => {
     const targets = new Map<string, number[]>();
     const finalStatuses = new Set([
@@ -1525,7 +1719,6 @@ export default function DeliveryTrackingMap({
           setRealtimeUpdatedAt(new Date());
         },
         () => {
-          // API polling remains active as a fallback if Firebase is temporarily unavailable.
           setActiveRealtimeSubscriptions(subscribedIds.current.size);
         },
       );
@@ -1535,7 +1728,6 @@ export default function DeliveryTrackingMap({
     setActiveRealtimeSubscriptions(subscribedIds.current.size);
   }, [realtimeTrackingTargets]);
 
-  // Firebase cleanup
   useEffect(() => {
     return () => {
       subscribedIds.current.forEach(id => off(ref(db, `deliveries/${id}`)));
@@ -1543,7 +1735,6 @@ export default function DeliveryTrackingMap({
     };
   }, []);
 
-  // Map initialization
   useEffect(() => {
     if (!leafletLoaded) return;
     const L = (window as any).L;
@@ -1565,7 +1756,6 @@ export default function DeliveryTrackingMap({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
     
-    // Add default street layer
     tileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { 
       attribution: "© OpenStreetMap contributors", 
       maxZoom: 19,
@@ -1587,17 +1777,14 @@ export default function DeliveryTrackingMap({
     }; 
   }, [leafletLoaded]);
 
-  // Handle map style changes
   useEffect(() => {
     if (!mapRef.current || !tileLayerRef.current || !leafletLoaded) return;
     const L = (window as any).L;
     
-    // Remove current tile layer
     if (tileLayerRef.current) {
       mapRef.current.removeLayer(tileLayerRef.current);
     }
     
-    // Add new tile layer based on selected style
     if (mapStyle === "satellite") {
       tileLayerRef.current = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: "© Esri, Maxar, Earthstar Geographics, and the GIS User Community",
@@ -1611,14 +1798,12 @@ export default function DeliveryTrackingMap({
     }
   }, [mapStyle, leafletLoaded]);
 
-  // Reset fit flag when new deliveries appear after being empty 
   useEffect(() => { 
     if (liveDeliveries.length > 0) { 
       initialFitDone.current = false; 
     } 
   }, [liveDeliveries.length]); 
  
-  // Update markers and routes
   useEffect(() => { 
     const L = (window as any).L; 
     if (!mapRef.current || !clusterGroup.current || !L) return; 
@@ -1627,8 +1812,6 @@ export default function DeliveryTrackingMap({
     const currentCustomerKeys = new Set<string>(); 
     const currentDriverKeys = new Set<string>(); 
  
-    // Customer markers are a tracking-layer toggle. Driver selection uses the
-    // dedicated destination marker instead of duplicating the recipient point.
     if (mode === "tracking" && showCustomerMarker) {
       customerGroups.forEach((orders, key) => { 
         const [latStr, lngStr] = key.split(","); 
@@ -1636,7 +1819,7 @@ export default function DeliveryTrackingMap({
         const lng = parseFloat(lngStr); 
         
         if (!isValidCoordinate(lat, lng)) {
-          console.warn(`Invalid customer coordinates: ${lat}, ${lng}`);
+          mapDbg.warn(`Invalid customer coordinates: ${lat}, ${lng}`, orders[0]?.id);
           return;
         }
         
@@ -1660,7 +1843,6 @@ export default function DeliveryTrackingMap({
       });
     }
 
-    // Remove stale customer markers 
     customerMarkers.current.forEach((marker, key) => { 
       if (!currentCustomerKeys.has(key)) { 
         cluster.removeLayer(marker); 
@@ -1668,7 +1850,6 @@ export default function DeliveryTrackingMap({
       } 
     }); 
  
-    // Driver selection mode 
     if (mode === "driver_selection" && normalizedOrder) { 
       const pickup = normalizedOrder.pickupLat != null && normalizedOrder.pickupLon != null 
         ? { lat: normalizedOrder.pickupLat, lon: normalizedOrder.pickupLon } 
@@ -1677,8 +1858,6 @@ export default function DeliveryTrackingMap({
         ? { lat: normalizedOrder.customerLat, lon: normalizedOrder.customerLon } 
         : null; 
  
-      // Keep selection markers alive between Firebase updates so locations can move
-      // smoothly instead of being removed/recreated on every GPS tick.
       driverMarkers.current.forEach((marker, key) => {
         if (!key.startsWith("selection_")) {
           cluster.removeLayer(marker);
@@ -1692,7 +1871,6 @@ export default function DeliveryTrackingMap({
         }
       });
 
-      // Add company marker (pickup location)
       if (pickup && showCompanyMarker) {
         if (!companyMarkerRef.current) {
           companyMarkerRef.current = L.marker([pickup.lat, pickup.lon], { icon: makeCompanyIcon() })
@@ -1708,7 +1886,6 @@ export default function DeliveryTrackingMap({
         companyMarkerRef.current = null;
       }
 
-      // Add delivery/customer marker with full address.
       if (customer && showDeliveryMarker) {
         if (!deliveryMarkerRef.current) {
           deliveryMarkerRef.current = L.marker([customer.lat, customer.lon], {
@@ -1761,13 +1938,11 @@ export default function DeliveryTrackingMap({
             marker = existingMarker;
           }
 
-          // Non-live drivers stay visible on the map but cannot start assignment.
           marker.off("click");
           if (driver.isLive === true && normalizedOrder.canAssign) {
             marker.on("click", () => handleDriverMarkerClick(driver.id));
           }
 
-          // Route leg 1: Driver -> Company/Pickup.
           const lineKey = `selection_route_${driver.id}`;
           visibleSelectionRouteKeys.add(lineKey);
           const line = routeLines.current.get(lineKey);
@@ -1823,7 +1998,6 @@ export default function DeliveryTrackingMap({
         }
       });
 
-      // Route leg 2: Company/Pickup -> Customer.
       const pickupCustomerLineKey = "selection_route_pickup_customer";
       if (pickup && customer) {
         visibleSelectionRouteKeys.add(pickupCustomerLineKey);
@@ -1870,7 +2044,6 @@ export default function DeliveryTrackingMap({
         }
       });
 
-      // Fit bounds if needed 
       if (!initialFitDone.current && (pickup || customer)) { 
         setTimeout(() => { 
           const bounds = L.latLngBounds([]); 
@@ -1884,8 +2057,6 @@ export default function DeliveryTrackingMap({
         }, 500); 
       } 
     } else { 
-      // Tracking mode. Remove selection-only layers when switching modes, while
-      // preserving live tracking markers between Firebase position updates.
       driverMarkers.current.forEach((marker, key) => {
         if (key.startsWith("selection_")) {
           cluster.removeLayer(marker);
@@ -1928,7 +2099,6 @@ export default function DeliveryTrackingMap({
             ); 
           } 
  
-          // Route lines (debounced OSRM) 
           orders.forEach((order) => { 
             const dest = getOrderDestination(order);
             if (dest.lat == null || dest.lon == null) return;
@@ -1938,9 +2108,7 @@ export default function DeliveryTrackingMap({
             const orderId = order.id; 
  
             const debounceKey = `route_${orderId}`; 
-            // Do not keep resetting the timer on every GPS tick. This guarantees
-            // route geometry refreshes during continuous movement.
-            if (debounceTimers.current.has(debounceKey)) return;
+            if (debounceTimers.current.has(debounceKey)) return; 
  
             debounceTimers.current.set( 
               debounceKey, 
@@ -2003,7 +2171,6 @@ export default function DeliveryTrackingMap({
         } 
       }); 
  
-      // Remove stale driver markers & lines 
       driverMarkers.current.forEach((marker, driverName) => { 
         if (!currentDriverKeys.has(driverName)) { 
           cluster.removeLayer(marker); 
@@ -2022,7 +2189,6 @@ export default function DeliveryTrackingMap({
       }); 
     } 
  
-    // Fit bounds on first load 
     if (!initialFitDone.current) { 
       setTimeout(() => { 
         const bounds = L.latLngBounds([]); 
@@ -2042,7 +2208,6 @@ export default function DeliveryTrackingMap({
       }, 500); 
     } 
  
-    // Auto-follow 
     if (followDriver && activeOrderId) { 
       const order = liveDeliveries.find(o => o.id === activeOrderId); 
       if (order?.delivery.current_lat && order.delivery.current_lng) { 
@@ -2059,7 +2224,6 @@ export default function DeliveryTrackingMap({
     fetchOSRMRoute, routeDataByDriver, pickupCustomerRoute, showCompanyMarker, showDeliveryMarker, showCustomerMarker, 
   ]); 
  
-  // Fly to active order on click 
   useEffect(() => { 
     if (!activeOrderId || !mapRef.current) return; 
     const order = liveDeliveries.find(o => o.id === activeOrderId); 
@@ -2076,14 +2240,12 @@ export default function DeliveryTrackingMap({
     } 
   }, [activeOrderId, liveDeliveries]); 
  
-  // Resize map on sidebar toggle 
   useEffect(() => { 
     if (mapRef.current) { 
       setTimeout(() => mapRef.current?.invalidateSize(), 350); 
     } 
   }, [isSidebarOpen]); 
  
-  // Fit all markers 
   const fitAllMarkers = useCallback(() => { 
     if (!mapRef.current) return; 
     const L = (window as any).L; 
@@ -2102,7 +2264,6 @@ export default function DeliveryTrackingMap({
     setFollowDriver(prev => !prev); 
   }, []); 
  
-  // Handle driver selection 
   const handleDriverMarkerClick = (driverId: number) => { 
     const driver = enhancedDrivers.find(d => d.id === driverId); 
     if (!driver?.isLive) {
@@ -2121,7 +2282,6 @@ export default function DeliveryTrackingMap({
     } 
   }; 
  
-  // Confirm assignment 
   const handleConfirmAssignment = async () => { 
     if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return; 
      
@@ -2168,7 +2328,6 @@ export default function DeliveryTrackingMap({
     setShowConfirmPanel(false); 
   }; 
  
-  // Keyboard handler 
   useEffect(() => { 
     const handler = (e: KeyboardEvent) => { 
       if (e.key === "Escape") { 
@@ -2185,7 +2344,6 @@ export default function DeliveryTrackingMap({
     return () => window.removeEventListener("keydown", handler); 
   }, [isSidebarOpen, toggleSidebar, onClose, showConfirmPanel]); 
  
-  // Cleanup 
   useEffect(() => { 
     return () => { 
       debounceTimers.current.forEach(timer => clearTimeout(timer)); 
@@ -2206,7 +2364,6 @@ export default function DeliveryTrackingMap({
     }; 
   }, []); 
  
-  // Render driver selection sidebar
   const renderDriverSelectionSidebar = () => {
     if (!normalizedOrder) return null;
 
@@ -2228,7 +2385,6 @@ export default function DeliveryTrackingMap({
 
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-[#6750A4] text-white">
-        {/* Compact dispatch header */}
         <div className="shrink-0 border-b border-white/10 px-3 py-3 lg:px-3.5">
           <div className="flex items-center gap-2.5">
             <div className="min-w-0 flex-1">
@@ -2267,7 +2423,6 @@ export default function DeliveryTrackingMap({
             </div>
           </div>
 
-          {/* Route accordion - intentionally dense to preserve vertical space */}
           <div className="mt-2 overflow-hidden rounded-xl border border-white/15 bg-black/10">
             <button
               type="button"
@@ -2365,7 +2520,6 @@ export default function DeliveryTrackingMap({
           )}
         </div>
 
-        {/* Compact driver controls */}
         <div className="shrink-0 border-b border-white/10 px-3 py-2.5">
           <button
             type="button"
@@ -2436,7 +2590,6 @@ export default function DeliveryTrackingMap({
           )}
         </div>
 
-        {/* Driver list - remains purple to make the sidebar one visual surface */}
         <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto bg-[#6750A4] px-2.5 py-2.5 [scrollbar-color:rgba(255,255,255,.28)_transparent] [scrollbar-width:thin]">
           {loadingDrivers && (
             <div className="flex items-center justify-center rounded-xl border border-white/15 bg-white/10 py-8">
@@ -2538,16 +2691,15 @@ export default function DeliveryTrackingMap({
                       </span>
                     </div>
 
-                    {/* Dense route metrics: one line instead of three cards */}
-                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]">
+                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]" title="Trip = driver → pickup → customer">
+                      <span className="shrink-0 font-semibold text-white/55">Trip</span>
+                      <strong className="truncate text-white">{compactDistance(driver.total_route_distance)}</strong>
+                      <span className="text-white/25">•</span>
                       <span className="shrink-0 text-white/40">Pickup</span>
                       <strong className="truncate text-white/90">{compactDistance(pickupDistance)}</strong>
                       <span className="text-white/25">•</span>
-                      <span className="shrink-0 text-white/40">ETA</span>
+                      <span className="shrink-0 text-white/40">Pickup ETA</span>
                       <strong className="truncate text-white/90">{compactDuration(driver.road_eta_to_pickup)}</strong>
-                      <span className="text-white/25">•</span>
-                      <span className="shrink-0 text-white/40">Trip</span>
-                      <strong className="truncate text-white/90">{compactDistance(driver.total_route_distance)}</strong>
                     </div>
 
                     <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
@@ -2616,7 +2768,6 @@ export default function DeliveryTrackingMap({
     </div>
   );
 
-  // Render tracking sidebar
   const renderTrackingSidebar = () => {
     return (
       <div className="flex min-h-0 flex-1 flex-col bg-[#6750A4]">
@@ -2802,7 +2953,22 @@ export default function DeliveryTrackingMap({
     );
   };
 
-  // Render
+  const renderOrderUnavailable = () => (
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-[#6750A4] px-6 text-center text-white">
+      <AlertTriangle className="mb-3 h-8 w-8 text-amber-300" />
+      <p className="text-sm font-bold">Order data unavailable</p>
+      <p className="mt-1 max-w-xs text-xs text-white/60">
+        Unable to load destination or pickup location for this order. Close and reopen the map.
+      </p>
+      <button
+        onClick={onClose}
+        className="mt-4 rounded-lg bg-white/15 px-4 py-2 text-xs font-bold text-white hover:bg-white/25"
+      >
+        Close map
+      </button>
+    </div>
+  );
+
   const latestSyncAt = realtimeUpdatedAt || lastUpdated;
   const realtimeHealthy =
     (mode === "driver_selection" && availableDrivers.length > 0) ||
@@ -2811,7 +2977,6 @@ export default function DeliveryTrackingMap({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-gray-100">
-      {/* Production dispatch header */}
       <header className="z-30 flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-2.5 shadow-sm sm:px-5 lg:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -2875,7 +3040,6 @@ export default function DeliveryTrackingMap({
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {/* Mobile sidebar backdrop */}
         <div
           className={`fixed inset-0 z-30 bg-gray-950/35 backdrop-blur-[1px] transition-opacity lg:hidden ${
             isSidebarOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
@@ -2883,16 +3047,16 @@ export default function DeliveryTrackingMap({
           onClick={toggleSidebar}
         />
 
-        {/* Mobile sidebar */}
         <aside
           className={`fixed bottom-0 left-0 top-0 z-40 flex w-[86%] max-w-[350px] transform flex-col overflow-hidden border-r border-[#6750A4] bg-[#6750A4] shadow-2xl transition-transform duration-300 lg:hidden ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          {mode === "driver_selection" ? renderDriverSelectionSidebar() : renderTrackingSidebar()}
+          {mode === "driver_selection"
+            ? (normalizedOrder ? renderDriverSelectionSidebar() : renderOrderUnavailable())
+            : renderTrackingSidebar()}
         </aside>
 
-        {/* Desktop sidebar */}
         <aside
           className={`hidden shrink-0 flex-col overflow-hidden border-r border-[#6750A4] bg-[#6750A4] transition-[width] duration-300 lg:flex ${
             isSidebarOpen
@@ -2904,16 +3068,14 @@ export default function DeliveryTrackingMap({
         >
           {isSidebarOpen
             ? mode === "driver_selection"
-              ? renderDriverSelectionSidebar()
+              ? (normalizedOrder ? renderDriverSelectionSidebar() : renderOrderUnavailable())
               : renderTrackingSidebar()
             : renderCollapsedSidebarRail()}
         </aside>
 
-        {/* Map workspace */}
         <main className="relative min-h-[420px] min-w-0 flex-1 bg-gray-100">
           <div ref={containerRef} className="absolute inset-0 z-0 h-full w-full" />
 
-          {/* Map context / legend */}
           {!loading && !error && (
             <div className="pointer-events-none absolute left-3 top-3 z-20 hidden sm:block lg:left-4 lg:top-4">
               <div className="rounded-2xl border border-white/70 bg-white/95 px-3.5 py-3 shadow-lg shadow-gray-900/10 backdrop-blur-md">
@@ -2966,7 +3128,6 @@ export default function DeliveryTrackingMap({
             </div>
           )}
 
-          {/* Production map control rail */}
           <div className="absolute right-3 top-3 z-20 flex flex-col gap-2 lg:right-4 lg:top-4">
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white/95 p-1.5 shadow-lg shadow-gray-900/10 backdrop-blur-md">
               <button
@@ -3053,7 +3214,6 @@ export default function DeliveryTrackingMap({
             </div>
           </div>
 
-          {/* Live sync chip */}
           <div className="absolute bottom-3 left-3 z-20 sm:bottom-4 sm:left-4">
             <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-2 shadow-lg shadow-gray-900/10 backdrop-blur-md">
               <span className={`h-2 w-2 rounded-full ${realtimeHealthy ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
@@ -3066,7 +3226,6 @@ export default function DeliveryTrackingMap({
             </div>
           </div>
 
-          {/* Loading state */}
           {loading && !lastUpdated && !driverGroups.size && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
               <div className="rounded-2xl border border-gray-200 bg-white px-6 py-5 text-center shadow-xl">
@@ -3081,7 +3240,6 @@ export default function DeliveryTrackingMap({
             </div>
           )}
 
-          {/* Error state */}
           {error && !loading && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/90 p-4 backdrop-blur-sm">
               <div className="w-full max-w-sm rounded-2xl border border-red-100 bg-white p-6 text-center shadow-xl">
@@ -3124,13 +3282,16 @@ export default function DeliveryTrackingMap({
             </div>
           )}
 
-          {/* Assignment confirmation */}
           {showConfirmPanel && pendingDriverId && normalizedOrder && (
             <div className="absolute bottom-16 left-1/2 z-30 w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 sm:bottom-5">
               {(() => {
                 const driver = enhancedDrivers.find(d => d.id === pendingDriverId);
                 if (!driver) return null;
                 const isNearest = driver.is_nearest === true;
+
+                const hasPickupCoords =
+                  normalizedOrder.pickupLat != null &&
+                  normalizedOrder.pickupLon != null;
 
                 return (
                   <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/15">
@@ -3165,10 +3326,20 @@ export default function DeliveryTrackingMap({
                           <p className="text-[9px] uppercase tracking-wide text-gray-400">Route</p>
                           <p className="mt-0.5 text-[11px] font-semibold text-gray-700">
                             {driver.road_distance_to_customer != null
-                              ? `${formatDistance(driver.road_distance_to_customer)} · ${formatDuration(driver.road_eta_to_customer)}`
-                              : driver.distance_to_customer != null
-                                ? formatDistance(driver.distance_to_customer)
-                                : "Calculating..."}
+                              ? `${formatDistance(driver.road_distance_to_customer)}${
+                                  driver.road_eta_to_customer != null
+                                    ? ` · ${formatDuration(driver.road_eta_to_customer)}`
+                                    : ""
+                                }`
+                              : driver.road_distance_to_pickup != null
+                                ? `Pickup ${formatDistance(driver.road_distance_to_pickup)}${
+                                    driver.road_eta_to_pickup != null
+                                      ? ` · ${formatDuration(driver.road_eta_to_pickup)}`
+                                      : ""
+                                  } · customer leg unavailable`
+                                : driver.distance_to_customer != null
+                                  ? `${formatDistance(driver.distance_to_customer)}${!hasPickupCoords ? " (direct)" : ""}`
+                                  : "Route unavailable"}
                           </p>
                         </div>
                       </div>
@@ -3196,7 +3367,6 @@ export default function DeliveryTrackingMap({
             </div>
           )}
 
-          {/* Compact live stats */}
           {mode === "tracking" && !loading && !error && driverGroups.size > 0 && (
             <div className="absolute bottom-3 right-16 z-20 hidden gap-2 md:flex sm:bottom-4 lg:right-20">
               <div className="rounded-xl border border-gray-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-md">
@@ -3212,7 +3382,6 @@ export default function DeliveryTrackingMap({
         </main>
       </div>
 
-      {/* Mobile sidebar toggle */}
       <button
         onClick={toggleSidebar}
         className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-white shadow-xl shadow-secondary/25 lg:hidden"
