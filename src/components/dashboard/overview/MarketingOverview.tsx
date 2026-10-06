@@ -45,7 +45,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { getMarketingPerformance, getAdminMarketingAgentPerformance } from "../../../services/api";
+import api, { getMarketingPerformance, getAdminMarketingAgentPerformance } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 
@@ -357,19 +357,16 @@ const ColorfulProgressRing: React.FC<ColorfulProgressRingProps> = ({
 // ============================================================
 // Main Component
 // ============================================================
-export default function MarketingOverview({ agentId }: { agentId?: number }) {
+export default function MarketingOverview({ agentId, initialAgent }: { agentId?: number; initialAgent?: any }) {
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [_refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<PerformanceData | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast, showToast } = useToast();
 
   const [companyData, setCompanyData] = useState<any>(null);
-  const [companyLoading, setCompanyLoading] = useState(false);
-
-  console.log("refresh", refreshing)
-  console.log("companyloading", companyLoading);
+  const [_companyLoading, setCompanyLoading] = useState(false);
 
   const fetchPerformance = async (showRefresh = false) => {
     try {
@@ -377,20 +374,58 @@ export default function MarketingOverview({ agentId }: { agentId?: number }) {
       else setLoading(true);
       setError("");
 
-      let res;
       if (agentId) {
-        res = await getAdminMarketingAgentPerformance(agentId);
+        try {
+          const res = await getAdminMarketingAgentPerformance(agentId);
+          setData(res.data);
+        } catch (apiErr: any) {
+          if (apiErr?.response?.status === 404 && initialAgent) {
+            console.warn(
+              "Agent performance endpoint returned 404; displaying overview from agent profile",
+              initialAgent
+            );
+            const dailyTarget = Number(initialAgent.daily_target) || 0;
+            const weeklyTarget = Number(initialAgent.weekly_target) || 0;
+            const companiesCount = Number(initialAgent.companies_count) || 0;
+            setData({
+              agent: {
+                id: initialAgent.id,
+                username: initialAgent.username || `Agent #${agentId}`,
+                email: initialAgent.email || "",
+                first_name: initialAgent.first_name || "",
+                last_name: initialAgent.last_name || "",
+                is_marketing: true,
+                daily_target: dailyTarget,
+                weekly_target: weeklyTarget,
+              },
+              target_progress: {
+                registered_today: 0,
+                daily_target: dailyTarget,
+                daily_progress_percentage: 0,
+                registered_this_week: 0,
+                weekly_target: weeklyTarget,
+                weekly_progress_percentage: 0,
+              },
+              total_companies_registered: companiesCount,
+              active_subscriptions_count: 0,
+              registrations_by_plan: {},
+              daily_performance: [],
+            });
+            return;
+          }
+          throw apiErr;
+        }
       } else {
-        res = await getMarketingPerformance();
+        const res = await getMarketingPerformance();
+        setData(res.data);
       }
 
-      setData(res.data);
       if (showRefresh) {
         showToast("success", "Dashboard refreshed successfully ✨");
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.error || "Failed to load performance metrics");
+      setError(err.response?.data?.error || err.response?.data?.detail || "Failed to load performance metrics");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -400,9 +435,8 @@ export default function MarketingOverview({ agentId }: { agentId?: number }) {
   const fetchCompanies = async () => {
     try {
       setCompanyLoading(true);
-      const response = await fetch('/api/v1/companies/?ordering=name&limit=20');
-      const result = await response.json();
-      setCompanyData(result);
+      const res = await api.get('/companies/?ordering=name&page_size=20');
+      setCompanyData(res.data);
     } catch (error) {
       console.error('Failed to fetch companies:', error);
     } finally {
@@ -413,7 +447,7 @@ export default function MarketingOverview({ agentId }: { agentId?: number }) {
   useEffect(() => {
     fetchPerformance();
     fetchCompanies();
-  }, [agentId]);
+  }, [agentId, initialAgent]);
 
   const chartData = useMemo(() => {
     if (!data?.daily_performance) return [];

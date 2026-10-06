@@ -16,8 +16,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import AgentPersonalInfoModal from "./AgentPersonalInfoModal";
+import AgentAuditModal from "./AgentAuditModal";
 import { getAdminMarketingAgents, updateUser } from "../../../services/api";
-import MarketingOverview from "../overview/MarketingOverview";
 import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
@@ -691,35 +691,15 @@ export default function MarketingAgentsManagement() {
 
       {/* Audit Modal Overlay */}
       {selectedAgentId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/50 p-4">
-          <div className="flex h-[90dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
-            {/* Modal Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-secondary">
-                  Auditing Agent: {selectedAgentName}
-                </h2>
-                <p className="text-secondary/60 text-xs mt-0.5">
-                  Detailed registration activity and metrics for agent #{selectedAgentId}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedAgentId(null);
-                  setSelectedAgentName("");
-                }}
-                className="p-1.5 rounded-full bg-secondary/10 hover:bg-secondary/20 text-secondary transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Scrollable Audit Report content */}
-            <div className="flex-1 overflow-y-auto bg-white">
-              <MarketingOverview agentId={selectedAgentId} />
-            </div>
-          </div>
-        </div>
+        <AgentAuditModal
+          agentId={selectedAgentId}
+          agentName={selectedAgentName}
+          initialAgent={agents.find((a) => a.id === selectedAgentId)}
+          onClose={() => {
+            setSelectedAgentId(null);
+            setSelectedAgentName("");
+          }}
+        />
       )}
       {/* Personal Info Modal - MOVED OUTSIDE the Audit modal */}
       {personalModalAgent && (

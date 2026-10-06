@@ -1158,6 +1158,16 @@ const SuperAdminUsers: React.FC = () => {
               Create user
             </button>
           }
+          actionMobile={
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+            >
+              <UserPlus className="h-4 w-4" />
+              Create
+            </button>
+          }
           className="mb-5 sm:mb-6"
         />
 

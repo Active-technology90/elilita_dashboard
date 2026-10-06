@@ -689,6 +689,30 @@ export default function ServiceSubscriptions() {
               </button>
             </div>
           }
+          actionMobile={
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={clearCompany}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+                >
+                  <Repeat className="h-4 w-4" />
+                  
+                </button>
+              )}
+
+              {/* <button
+                type="button"
+                onClick={() => void fetchSubscriptions()}
+                disabled={loading}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </button> */}
+            </div>
+          }
           className="mb-6"
         />
 

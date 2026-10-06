@@ -1032,6 +1032,18 @@ export default function AdManagement() {
               </Button>
             ) : undefined
           }
+          actionMobile={
+            !isReadOnly ? (
+              <Button
+                onClick={openCreateModal}
+                size="md"
+                className="w-full shadow-sm sm:w-auto"
+              >
+                <Plus className="h-3 w-3 shrink-0" />
+                <span>New</span>
+              </Button>
+            ) : undefined
+          }
         />
 
         {/* Stats Grid */}

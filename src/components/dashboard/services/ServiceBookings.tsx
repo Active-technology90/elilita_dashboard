@@ -430,6 +430,17 @@ export default function ServiceBookings() {
               </button>
             ) : undefined
           }
+          actionMobile={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+              >
+                <Repeat className="h-4 w-4" />
+              </button>
+            ) : undefined
+          }
           className="mb-6"
         />
 

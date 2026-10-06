@@ -59,7 +59,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
     vo?.payment_method
       ?.split("_")
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" ") || "Electronic Transfer";
+      .join(" ") ||
+    (payout.gateway
+      ? payout.gateway.charAt(0).toUpperCase() + payout.gateway.slice(1)
+      : "Electronic Transfer");
 
   const items = vo?.items || [];
   const companyLogoUrl = getFullMediaUrl(payout.company_logo);

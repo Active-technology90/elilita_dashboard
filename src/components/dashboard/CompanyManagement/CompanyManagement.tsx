@@ -618,6 +618,7 @@ export default function CompanyManagement() {
           longitude: company.longitude || "",
           delivery_fee_per_km: company.delivery_fee_per_km || "0.00",
           is_active: company.is_active,
+          is_featured: (company as any).is_featured || false,
           supports_table_service: company.supports_table_service,
           show_order_queue: Boolean(company.show_order_queue),
           meal_periods: (company as any).meal_periods || [],
@@ -1535,7 +1536,7 @@ export default function CompanyManagement() {
 
         {(isSuperAdmin || isMarketing) && (
           <div className="sticky -top-6 z-[2] -mt-4 w-full bg-white">
-            <div className="w-full rounded-xl border border-secondary/10 bg-white p-1 md:p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+            <div className="w-full rounded-xl mt-1 bg-white mb-2 md:p-2.5 ">
               <CompanyFilters
                 pageSize={pageSize}
                 onPageSizeChange={setPageSize}

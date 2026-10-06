@@ -446,6 +446,18 @@ export default function CompanyUsers() {
             </button>
           ) : undefined
         }
+        actionMobile={
+          isSuperAdmin ? (
+            <button
+              type="button"
+              onClick={clearCompany}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
+            >
+              <Repeat className="h-3.5 w-3.5" />
+              {/* Switch */}
+            </button>
+          ) : undefined
+        }
         loading={loading}
       />
 
@@ -476,7 +488,7 @@ export default function CompanyUsers() {
       )}
 
       {canManageUsers && (
-        <div className="grid grid-cols-2 gap-2 lg:hidden">
+        <div className="mb-6 grid grid-cols-2 gap-2 lg:hidden">
           <button
             type="button"
             onClick={() => setShowCreateModal(true)}

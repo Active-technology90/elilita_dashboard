@@ -336,6 +336,30 @@ export default function CompanyProducts() {
                 )}
               </>
             }
+            actionMobile={
+              <>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={clearCompany}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 sm:text-sm"
+                  >
+                    <Repeat className="h-4 w-4" />
+                    {/* <span>Switch</span> */}
+                  </button>
+                )}
+                {canEditBasic && (
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add</span>
+                  </button>
+                )}
+              </>
+            }
             className="mb-3 sm:mb-4"
           />
 

@@ -178,7 +178,7 @@ export default function Payments() {
 
       // Payment method filter
       if (methodFilter) {
-        const pm = (payout.vendor_order_details?.payment_method || "").toLowerCase();
+        const pm = (payout.vendor_order_details?.payment_method || payout.gateway || "").toLowerCase();
         if (!pm.includes(methodFilter.toLowerCase())) return false;
       }
 
@@ -376,7 +376,7 @@ export default function Payments() {
         key: "payment_method",
         header: "Payment Method",
         render: (payout) => {
-          const pm = payout.vendor_order_details?.payment_method;
+          const pm = payout.vendor_order_details?.payment_method || payout.gateway;
           if (!pm) return "N/A";
           return pm
             .split("_")

@@ -34,11 +34,12 @@ import {
   Megaphone,
   ShieldCheck,
   UsersRound,
-  UserCheck,
+  HelpCircle,
   // Images,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
+import { HelpVideoModal } from "./help/HelpVideoModal";
 
 import Overview, { type DashboardTab } from "./overview/Overview";
 import CompanyUsers from "./companyUser/CompanyUsers";
@@ -454,6 +455,7 @@ export default function AdminDashboard() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [notificationOrder, setNotificationOrder] = useState<any>(null);
   const [notificationReceipt, setNotificationReceipt] = useState<any>(null);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   //  const mainContentRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
 
@@ -1560,6 +1562,30 @@ export default function AdminDashboard() {
 
           {/* Right actions */}
           <div className="flex shrink-0 items-center gap-1">
+            {/* Help & Video Guides */}
+            <button
+              type="button"
+              onClick={() => setHelpModalOpen(true)}
+              title="Help & Video Guides"
+              className="
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
+                rounded-lg
+                border
+                border-secondary/10
+                bg-secondary/[0.035]
+                text-secondary
+                transition-colors
+                hover:border-secondary/20
+                hover:bg-secondary/[0.08]
+              "
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+
             <NotificationBell
               onViewAll={() =>
                 navigate("notifications")
@@ -1906,6 +1932,14 @@ export default function AdminDashboard() {
           }}
         />
       )}
+
+      {/* Role-Based Video Help Modal */}
+      <HelpVideoModal
+        isOpen={helpModalOpen}
+        onClose={() => setHelpModalOpen(false)}
+        userRole={company?.role}
+        isSuperAdmin={isSuperAdmin}
+      />
     </div>
   );
 }
