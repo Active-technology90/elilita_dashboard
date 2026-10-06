@@ -409,13 +409,12 @@ const BankSelector = ({
         disabled={loading}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`relative w-full rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-all duration-200 ${
-          error
+        className={`relative w-full rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-all duration-200 ${error
             ? "border-red-300 bg-red-50/60 ring-4 ring-red-50"
             : isOpen
               ? "border-secondary bg-white ring-4 ring-secondary/10"
               : "border-gray-200 bg-white hover:border-secondary/50 hover:shadow-md"
-        } disabled:cursor-not-allowed disabled:opacity-60`}
+          } disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {loading ? (
           <span className="flex min-h-12 items-center gap-3 text-gray-400">
@@ -466,9 +465,8 @@ const BankSelector = ({
 
         <span className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-gray-50 p-1.5">
           <ChevronDown
-            className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+              }`}
           />
         </span>
       </button>
@@ -555,11 +553,10 @@ const BankSelector = ({
                       }}
                       role="option"
                       aria-selected={!!isSelected}
-                      className={`group flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                        isSelected
+                      className={`group flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition-all ${isSelected
                           ? "border-secondary/40 bg-secondary/5 shadow-sm"
                           : "border-transparent hover:border-gray-200 hover:bg-gray-50"
-                      }`}
+                        }`}
                     >
                       <BankLogo
                         logo={bank.logo}
@@ -823,8 +820,8 @@ export default function BankManagement() {
             const fileName =
               data.bank_name?.toLowerCase().replace(/\s+/g, "-") || "bank-logo";
 
-              const fetched = await urlToFile(data.logo, fileName);
-              logoFileToSend = fetched || undefined;
+            const fetched = await urlToFile(data.logo, fileName);
+            logoFileToSend = fetched || undefined;
           } catch (error) {
             console.error("Failed to prepare bank logo:", error);
           }
@@ -962,6 +959,7 @@ export default function BankManagement() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
+
               Add
             </button>
           ) : undefined
@@ -1182,7 +1180,7 @@ function BankAccountForm({
         availableBank.id === formData.bank_id ||
         (!!formData.bank_name &&
           getBankIdentityKey(availableBank.bank_name) ===
-            getBankIdentityKey(formData.bank_name)),
+          getBankIdentityKey(formData.bank_name)),
     );
 
     if (!selectedCatalogBank) {
@@ -1226,7 +1224,7 @@ function BankAccountForm({
         (availableBank) =>
           availableBank.id === formData.bank_id ||
           getBankIdentityKey(availableBank.bank_name) ===
-            getBankIdentityKey(formData.bank_name),
+          getBankIdentityKey(formData.bank_name),
       );
 
       if (selectedCatalogBank) {
@@ -1374,11 +1372,10 @@ function BankAccountForm({
                         account_number: "",
                       }));
                     }}
-                    className={`w-full px-4 py-3 rounded-xl border ${
-                      validationErrors.account_number
+                    className={`w-full px-4 py-3 rounded-xl border ${validationErrors.account_number
                         ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                         : "border-gray-200 focus:border-secondary focus:ring-secondary/20"
-                    } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
+                      } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
                     placeholder="e.g. 100013456789"
                   />
                   {validationErrors.account_number && (
@@ -1405,11 +1402,10 @@ function BankAccountForm({
                         account_name: "",
                       }));
                     }}
-                    className={`w-full px-4 py-3 rounded-xl border ${
-                      validationErrors.account_name
+                    className={`w-full px-4 py-3 rounded-xl border ${validationErrors.account_name
                         ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                         : "border-gray-200 focus:border-secondary focus:ring-secondary/20"
-                    } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
+                      } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
                     placeholder="e.g. ABC Trading PLC"
                   />
                   {validationErrors.account_name && (

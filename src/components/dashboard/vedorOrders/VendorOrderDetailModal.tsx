@@ -331,11 +331,20 @@ const DeliveryCard = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [routeData, setRouteData] = useState<Record<number, { distanceKm: number | null; durationMinutes: number | null; loading: boolean; error?: boolean }>>({});
+  const [routeData, setRouteData] = useState<Record<number, {
+    distanceKm: number | null;
+    durationMinutes: number | null;
+    legOneDistanceKm?: number;
+    legOneDurationMinutes?: number;
+    legTwoDistanceKm?: number;
+    legTwoDurationMinutes?: number;
+    loading: boolean;
+    error?: boolean;
+    source?: "osrm" | "cache" | "haversine";
+    mode?: "full_trip" | "pickup_only" | "direct_customer";
+  }>>({});
   const [showMapPreview, setShowMapPreview] = useState(false);
 
-  console.log('showDriverTypeFilter', showDriverTypeFilter)
-  console.log('showVehicleTypeFilter', showVehicleTypeFilter)
 
   const [usernameMap, setUsernameMap] = useState<Map<string, string>>(
     new Map(),
@@ -385,16 +394,75 @@ const DeliveryCard = ({
     );
   };
 
+  const routeDebugEnabled = () => {
+    if (typeof window === "undefined") return false;
+    const queryEnabled = new URLSearchParams(window.location.search).get("debugDeliveryRoute") === "1";
+    const storageEnabled = window.localStorage.getItem("debugDeliveryRoute") === "1";
+    return queryEnabled || storageEnabled;
+  };
+
+  const routeDebug = (label: string, payload: unknown) => {
+    if (!routeDebugEnabled()) return;
+    console.log(`[DeliveryRoute:list] ${label}`, payload);
+  };
+
+  const parseCoordinatePair = (lat: unknown, lon: unknown) => {
+    if (lat == null || lon == null) return null;
+    const parsedLat = Number(lat);
+    const parsedLon = Number(lon);
+    return isValidCoordinate(parsedLat, parsedLon)
+      ? { lat: parsedLat, lon: parsedLon }
+      : null;
+  };
+
+  // IMPORTANT: keep this priority aligned with DeliveryTrackingMap.getOrderDestination().
+  // The delivery destination recorded on the vendor order is authoritative; shipping/master
+  // coordinates are fallbacks for older payload shapes.
   const getCustomerLocation = () => {
-    const lat = delivery?.customer_lat || order?.customer_lat || order?.delivery_address?.lat;
-    const lon = delivery?.customer_lon || order?.customer_lon || order?.delivery_address?.lon;
-    if (lat != null && lon != null) {
-      const parsedLat = parseFloat(lat);
-      const parsedLon = parseFloat(lon);
-      if (isValidCoordinate(parsedLat, parsedLon)) {
-        return { lat: parsedLat, lon: parsedLon };
-      }
+    const candidates = [
+      { source: "delivery", value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon) },
+      { source: "shipping", value: parseCoordinatePair(order?.shipping_lat, order?.shipping_lon) },
+      { source: "customer", value: parseCoordinatePair(order?.customer_lat, order?.customer_lon) },
+      { source: "delivery_address", value: parseCoordinatePair(order?.delivery_address?.lat, order?.delivery_address?.lon) },
+      {
+        source: "nested_delivery",
+        value: parseCoordinatePair(
+          order?.vendor_orders?.[0]?.delivery?.customer_lat,
+          order?.vendor_orders?.[0]?.delivery?.customer_lon,
+        ),
+      },
+      {
+        source: "nested_shipping",
+        value: parseCoordinatePair(
+          order?.vendor_orders?.[0]?.shipping_lat,
+          order?.vendor_orders?.[0]?.shipping_lon,
+        ),
+      },
+    ];
+
+    const match = candidates.find((candidate) => candidate.value != null);
+    if (match) {
+      routeDebug("customer coordinate source", { source: match.source, ...match.value });
+      return match.value;
     }
+    routeDebug("customer coordinate unavailable", { orderId: order?.id });
+    return null;
+  };
+
+  const getPickupLocation = () => {
+    const directCompany = order?.company;
+    const nestedCompany = order?.vendor_orders?.[0]?.company;
+    const direct = parseCoordinatePair(directCompany?.latitude, directCompany?.longitude);
+    if (direct) {
+      routeDebug("pickup coordinate source", { source: "order.company", ...direct });
+      return direct;
+    }
+    const nested = parseCoordinatePair(nestedCompany?.latitude, nestedCompany?.longitude);
+    if (nested) {
+      routeDebug("pickup coordinate source", { source: "vendor_orders[0].company", ...nested });
+      return nested;
+    }
+    routeDebug("pickup coordinate unavailable", { orderId: order?.id });
     return null;
   };
 
@@ -439,55 +507,178 @@ const DeliveryCard = ({
     return `⭐ ${rating} (${reviews})`;
   };
 
-  // OSRM route fetcher with caching and debouncing
-  const fetchOSRMRoute = useCallback(async (driverId: number, fromLat: number, fromLon: number, toLat: number, toLon: number) => {
-    const cacheKey = `${fromLat.toFixed(4)},${fromLon.toFixed(4)}_${toLat.toFixed(4)},${toLon.toFixed(4)}`;
-    const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  // ── Canonical route calculation ───────────────────────────────────────────
+  // The number shown as "Trip" is ALWAYS:
+  //   Driver → Pickup + Pickup → Customer
+  // If pickup coordinates do not exist, it is Driver → Customer.
+  // OSRM is preferred. Haversine is only a resilient fallback and is labelled in debug output.
+  const fetchDriverRoute = useCallback(async (
+    driverId: number,
+    fromLat: number,
+    fromLon: number,
+    pickupLat: number | null,
+    pickupLon: number | null,
+    customerLat: number | null,
+    customerLon: number | null,
+  ) => {
+    const CACHE_TTL = 5 * 60 * 1000;
 
-    // Check cache
-    const cached = routeCacheRef.current.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setRouteData(prev => ({
-        ...prev,
-        [driverId]: { distanceKm: cached.distanceKm, durationMinutes: cached.durationMinutes, loading: false }
-      }));
-      return;
-    }
+    const fetchLeg = async (
+      from: { lat: number; lon: number },
+      to: { lat: number; lon: number },
+    ) => {
+      const key = `${from.lat.toFixed(5)},${from.lon.toFixed(5)}_${to.lat.toFixed(5)},${to.lon.toFixed(5)}`;
+      const cached = routeCacheRef.current.get(key);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return { ...cached, source: "cache" as const };
+      }
 
-    setRouteData(prev => ({
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.code !== "Ok" || !data.routes?.length) {
+          throw new Error(`OSRM route failed: ${data.code || "unknown"}`);
+        }
+        const result = {
+          distanceKm: data.routes[0].distance / 1000,
+          durationMinutes: data.routes[0].duration / 60,
+          timestamp: Date.now(),
+        };
+        routeCacheRef.current.set(key, result);
+        return { ...result, source: "osrm" as const };
+      } catch (error) {
+        const fallbackDistance = calculateDistance(from.lat, from.lon, to.lat, to.lon);
+        routeDebug("OSRM leg fallback", { driverId, from, to, fallbackDistance, error });
+        return {
+          distanceKm: fallbackDistance,
+          durationMinutes: null,
+          timestamp: Date.now(),
+          source: "haversine" as const,
+        };
+      }
+    };
+
+    setRouteData((prev) => ({
       ...prev,
-      [driverId]: { distanceKm: null, durationMinutes: null, loading: true }
+      [driverId]: { distanceKm: null, durationMinutes: null, loading: true },
     }));
 
+    const driver = { lat: fromLat, lon: fromLon };
+    const customer =
+      customerLat != null && customerLon != null
+        ? { lat: customerLat, lon: customerLon }
+        : null;
+    const pickup =
+      pickupLat != null && pickupLon != null
+        ? { lat: pickupLat, lon: pickupLon }
+        : null;
+
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.code === "Ok" && data.routes?.length > 0) {
-        const distanceKm = data.routes[0].distance / 1000;
-        const durationMinutes = data.routes[0].duration / 60;
-
-        routeCacheRef.current.set(cacheKey, {
-          distanceKm,
-          durationMinutes,
-          timestamp: Date.now()
+      if (pickup && !customer) {
+        const legOne = await fetchLeg(driver, pickup);
+        const result = {
+          distanceKm: legOne.distanceKm,
+          durationMinutes: legOne.durationMinutes,
+          legOneDistanceKm: legOne.distanceKm,
+          legOneDurationMinutes: legOne.durationMinutes ?? undefined,
+          loading: false,
+          source: legOne.source,
+          mode: "pickup_only" as const,
+        };
+        setRouteData((prev) => ({ ...prev, [driverId]: result }));
+        routeDebug("driver route resolved", {
+          driverId,
+          routeMode: "driver→pickup (customer unavailable)",
+          driver,
+          pickup,
+          customer: null,
+          pickupKm: result.legOneDistanceKm,
+          pickupMinutes: result.legOneDurationMinutes ?? null,
+          source: result.source,
         });
-
-        setRouteData(prev => ({
-          ...prev,
-          [driverId]: { distanceKm, durationMinutes, loading: false }
-        }));
-      } else {
-        setRouteData(prev => ({
-          ...prev,
-          [driverId]: { distanceKm: null, durationMinutes: null, loading: false, error: true }
-        }));
+        return;
       }
-    } catch (err) {
-      setRouteData(prev => ({
+
+      if (!pickup && customer) {
+        const direct = await fetchLeg(driver, customer);
+        const result = {
+          distanceKm: direct.distanceKm,
+          durationMinutes: direct.durationMinutes,
+          legOneDistanceKm: direct.distanceKm,
+          legOneDurationMinutes: direct.durationMinutes ?? undefined,
+          loading: false,
+          source: direct.source,
+          mode: "direct_customer" as const,
+        };
+        setRouteData((prev) => ({ ...prev, [driverId]: result }));
+        routeDebug("driver route resolved", {
+          driverId,
+          routeMode: "driver→customer",
+          driver,
+          customer,
+          totalKm: result.distanceKm,
+          totalMinutes: result.durationMinutes,
+          source: result.source,
+        });
+        return;
+      }
+
+      if (!pickup || !customer) {
+        throw new Error("No routable pickup or customer coordinates");
+      }
+
+      const [legOne, legTwo] = await Promise.all([
+        fetchLeg(driver, pickup),
+        fetchLeg(pickup, customer),
+      ]);
+
+      const durationMinutes =
+        legOne.durationMinutes != null && legTwo.durationMinutes != null
+          ? legOne.durationMinutes + legTwo.durationMinutes
+          : null;
+      const source =
+        legOne.source === "haversine" || legTwo.source === "haversine"
+          ? "haversine"
+          : legOne.source === "cache" && legTwo.source === "cache"
+            ? "cache"
+            : "osrm";
+      const result = {
+        distanceKm: legOne.distanceKm + legTwo.distanceKm,
+        durationMinutes,
+        legOneDistanceKm: legOne.distanceKm,
+        legOneDurationMinutes: legOne.durationMinutes ?? undefined,
+        legTwoDistanceKm: legTwo.distanceKm,
+        legTwoDurationMinutes: legTwo.durationMinutes ?? undefined,
+        loading: false,
+        source: source as "osrm" | "cache" | "haversine",
+        mode: "full_trip" as const,
+      };
+
+      setRouteData((prev) => ({ ...prev, [driverId]: result }));
+      routeDebug("driver route resolved", {
+        driverId,
+        routeMode: "driver→pickup→customer",
+        driver,
+        pickup,
+        customer,
+        legOneKm: result.legOneDistanceKm,
+        legTwoKm: result.legTwoDistanceKm,
+        totalKm: result.distanceKm,
+        totalMinutes: result.durationMinutes,
+        source: result.source,
+      });
+    } catch (error) {
+      console.error("[DeliveryRoute:list] route calculation failed", { driverId, error });
+      setRouteData((prev) => ({
         ...prev,
-        [driverId]: { distanceKm: null, durationMinutes: null, loading: false, error: true }
+        [driverId]: {
+          distanceKm: null,
+          durationMinutes: null,
+          loading: false,
+          error: true,
+        },
       }));
     }
   }, []);
@@ -693,7 +884,7 @@ const DeliveryCard = ({
     // Sort based on selected criteria 
     return filtered.sort((a, b) => {
       if (sortBy === "distance") {
-        // Use OSRM road distance if available, otherwise fallback to haversine
+        // Use two-leg OSRM road distance if available, otherwise fallback to haversine
         const distA = routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999;
         const distB = routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999;
         return sortOrder === "asc" ? distA - distB : distB - distA;
@@ -718,12 +909,20 @@ const DeliveryCard = ({
     return filteredStaffList.slice(startIndex, endIndex);
   }, [filteredStaffList, currentPage, itemsPerPage]);
 
-  // Calculate OSRM routes for visible drivers only (debounced)
+  // Calculate two-leg OSRM routes for visible drivers only (debounced)
   useEffect(() => {
     if (!showAssignForm || paginatedStaffList.length === 0) return;
 
     const customerLoc = getCustomerLocation();
-    if (!customerLoc) return;
+    const pickupLoc = getPickupLocation();
+
+    if (!customerLoc && !pickupLoc) {
+      routeDebug("route calculation skipped", {
+        orderId: order?.id,
+        reason: "no pickup or customer coordinates",
+      });
+      return;
+    }
 
     paginatedStaffList.forEach((driver) => {
       if (driver.live_lat != null && driver.live_lon != null &&
@@ -738,13 +937,35 @@ const DeliveryCard = ({
         routeRequestTimers.current.set(
           timerKey,
           setTimeout(() => {
-            fetchOSRMRoute(driver.id, driver.live_lat, driver.live_lon, customerLoc.lat, customerLoc.lon);
+            fetchDriverRoute(
+              driver.id,
+              driver.live_lat,
+              driver.live_lon,
+              pickupLoc?.lat ?? null,
+              pickupLoc?.lon ?? null,
+              customerLoc?.lat ?? null,
+              customerLoc?.lon ?? null,
+            );
             routeRequestTimers.current.delete(timerKey);
           }, 300)
         );
       }
     });
-  }, [paginatedStaffList, showAssignForm, fetchOSRMRoute]);
+  }, [
+    paginatedStaffList,
+    showAssignForm,
+    fetchDriverRoute,
+    order.company?.latitude,
+    order.company?.longitude,
+    delivery?.customer_lat,
+    delivery?.customer_lon,
+    order?.shipping_lat,
+    order?.shipping_lon,
+    order?.customer_lat,
+    order?.customer_lon,
+    order?.delivery_address?.lat,
+    order?.delivery_address?.lon,
+  ]);
 
   // Reset to first page when filters change 
   useEffect(() => {
@@ -912,7 +1133,7 @@ const DeliveryCard = ({
     }
   };
 
-  // Determine best match (nearest driver with OSRM or haversine distance)
+  // Determine best match (nearest driver with two-leg OSRM or haversine distance)
   const bestMatchDriver = useMemo(() => {
     if (filteredStaffList.length === 0 || sortBy !== "distance" || sortOrder !== "asc") return null;
     const firstDriver = filteredStaffList[0];
@@ -1686,17 +1907,39 @@ const DeliveryCard = ({
 
                                   <div className="flex items-center gap-2 lg:block">
                                     <span className="text-[10px] font-medium text-gray-400 lg:hidden">
-                                      Route
+                                      Trip
                                     </span>
                                     {isRouteLoading ? (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400">
                                         <Loader2 className="h-3 w-3 animate-spin" />
                                         Calculating
                                       </span>
+                                    ) : routeInfo?.mode === "pickup_only" && routeInfo.legOneDistanceKm != null ? (
+                                      <div>
+                                        <p className="text-[10px] font-semibold text-gray-500">
+                                          Trip <span className="text-gray-400">—</span>
+                                        </p>
+                                        <p className="mt-0.5 text-xs font-semibold text-gray-800">
+                                          Pickup {formatDistance(routeInfo.legOneDistanceKm)}
+                                        </p>
+                                        {routeInfo.legOneDurationMinutes != null && (
+                                          <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-500">
+                                            <Clock className="h-3 w-3" />
+                                            {formatDuration(routeInfo.legOneDurationMinutes)}
+                                          </p>
+                                        )}
+                                        <p className="mt-0.5 text-[9px] text-amber-600">
+                                          Customer route unavailable
+                                        </p>
+                                      </div>
                                     ) : roadDistance != null ? (
                                       <div>
-                                        <p className="text-xs font-semibold text-gray-800">
+                                        <p className="text-xs font-semibold text-gray-800" title={routeInfo?.mode === "direct_customer" ? "Driver → customer" : "Total trip: driver → pickup → customer"}>
                                           {formatDistance(roadDistance)}
+                                        </p>
+                                        <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-400">
+                                          {routeInfo?.mode === "direct_customer" ? "Direct to customer" : "Total trip"}
+                                          {routeInfo?.source === "haversine" ? " · estimate" : ""}
                                         </p>
                                         {roadDuration != null && (
                                           <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-500">
@@ -1704,17 +1947,26 @@ const DeliveryCard = ({
                                             {formatDuration(roadDuration)}
                                           </p>
                                         )}
+                                        {routeInfo?.legOneDistanceKm != null && routeInfo?.legTwoDistanceKm != null && (
+                                          <p className="mt-1 text-[9px] leading-tight text-gray-400">
+                                            {formatDistance(routeInfo.legOneDistanceKm)} to store
+                                            <span className="mx-1">•</span>
+                                            {formatDistance(routeInfo.legTwoDistanceKm)} to customer
+                                          </p>
+                                        )}
                                       </div>
                                     ) : hasLocation ? (
-                                      <p className="text-xs font-semibold text-gray-700">
-                                        {formatDistance(staff.calculated_distance)}
-                                      </p>
+                                      <div>
+                                        <p className="text-xs font-semibold text-gray-700">
+                                          {formatDistance(staff.calculated_distance)}
+                                        </p>
+                                        <p className="mt-0.5 text-[9px] text-gray-400">Straight-line fallback</p>
+                                      </div>
                                     ) : (
                                       <span className="text-[10px] text-gray-400">
                                         Unavailable
                                       </span>
-                                    )}
-                                  </div>
+                                    )}                                  </div>
 
                                   <div className="flex items-center justify-start lg:justify-end">
                                     <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${isSelected
@@ -2639,7 +2891,7 @@ export function VendorOrderDetailModal({
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="relative bg-gradient-to-br from-white via-white to-gray-50/50 w-full max-w-[95%] sm:max-w-7xl max-h-[90vh] sm:max-h-[92vh] rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-white/20 backdrop-blur-sm"
+            className="relative bg-gradient-to-br from-white via-white to-gray-50/50 w-full max-w-[95%] sm:max-w-8xl max-h-[90vh] sm:max-h-[92vh] rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-white/20 backdrop-blur-sm"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top Header */}
@@ -3232,6 +3484,7 @@ export function VendorOrderDetailModal({
           selectedOrderId={selectedOrderId}
           onDriverSelect={handleDriverSelect}
           onAssignmentComplete={handleAssignmentComplete}
+          initialOrder={order}
         />
       )}
     </>

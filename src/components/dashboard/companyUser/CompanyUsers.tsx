@@ -1,3 +1,4 @@
+// src/components/dashboard/CompanyManagement/CompanyUsers.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
@@ -38,16 +39,97 @@ import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
 
+/* ──────────────────────────────────────────────────────────────────
+   Role helpers
+   ────────────────────────────────────────────────────────────────── */
+
+type CompanyRole =
+  | "owner"
+  | "admin"
+  | "staff"
+  | "viewer"
+  | "delivery"
+  | "superAdmin";
+
+const normalizeRole = (raw: unknown): CompanyRole | null => {
+  if (raw == null || typeof raw !== "string") return null;
+
+  const r = raw.toLowerCase().trim();
+
+  if (r === "owner" || r === "company_owner" || r === "companyowner") {
+    return "owner";
+  }
+  if (r === "admin" || r === "administrator") return "admin";
+  if (r === "staff" || r === "dispatcher" || r === "employee") return "staff";
+  if (r === "delivery" || r === "driver" || r === "courier") return "delivery";
+  if (r === "viewer" || r === "read_only" || r === "readonly") return "viewer";
+  if (r === "superadmin" || r === "super_admin" || r === "super-admin") {
+    return "superAdmin";
+  }
+
+  return null;
+};
+
+const extractMembershipRole = (membership: any): string | null => {
+  if (!membership) return null;
+
+  const raw =
+    membership.role ??
+    membership.user_role ??
+    membership.userRole ??
+    membership.company_role ??
+    membership.companyRole ??
+    membership.membership_role;
+
+  return raw == null ? null : String(raw);
+};
+
+const membershipMatchesCompany = (
+  membership: any,
+  companySlug: string | null,
+  companyId: string | number | null,
+): boolean => {
+  if (!membership) return false;
+
+  if (companySlug) {
+    if (
+      membership.company_slug === companySlug ||
+      membership.companySlug === companySlug ||
+      membership.slug === companySlug ||
+      membership.company?.slug === companySlug ||
+      membership.company?.company_slug === companySlug
+    ) {
+      return true;
+    }
+  }
+
+  if (companyId != null) {
+    if (
+      String(membership.company_id) === String(companyId) ||
+      String(membership.companyId) === String(companyId) ||
+      String(membership.company?.id) === String(companyId)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   Skeletons
+   ────────────────────────────────────────────────────────────────── */
+
 const SkeletonBar = ({ className = "" }: { className?: string }) => (
   <div className={`animate-pulse rounded bg-secondary/[0.08] ${className}`} />
 );
 
 const StatsSkeleton = () => (
-  <div className="hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
+  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
     {Array.from({ length: 5 }).map((_, index) => (
       <div
         key={index}
-        className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3"
+        className="rounded-xl border border-secondary/10 bg-white px-3 py-3 sm:px-4 sm:py-3.5"
       >
         <div className="flex items-center justify-between gap-3">
           <div className="space-y-2">
@@ -62,11 +144,11 @@ const StatsSkeleton = () => (
 );
 
 const ToolbarSkeleton = () => (
-  <div className="rounded-xl border border-secondary/10 bg-white p-2.5">
-    <div className="flex items-center gap-2">
-      <SkeletonBar className="h-9 flex-1" />
-      <SkeletonBar className="hidden h-9 w-44 lg:block" />
-      <SkeletonBar className="h-9 w-24" />
+  <div className="rounded-xl border border-secondary/10 bg-white p-2.5 sm:p-3">
+    <div className="flex items-center gap-2.5">
+      <SkeletonBar className="h-10 flex-1" />
+      <SkeletonBar className="hidden h-10 w-44 lg:block" />
+      <SkeletonBar className="h-10 w-24" />
     </div>
   </div>
 );
@@ -80,22 +162,26 @@ const StatCard = ({
   value: number;
   icon: React.FC<{ className?: string }>;
 }) => (
-  <div className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-    <div className="flex items-center justify-between gap-3">
+  <div className="rounded-xl border border-secondary/10 bg-white px-3 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/20 sm:px-4 sm:py-3.5">
+    <div className="flex items-center justify-between gap-2 sm:gap-3">
       <div className="min-w-0">
-        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+        <p className="truncate text-[9px] font-semibold uppercase tracking-[0.07em] text-secondary/50 sm:text-[10px]">
           {title}
         </p>
-        <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+        <p className="mt-0.5 text-lg font-bold tracking-tight text-secondary sm:mt-1 sm:text-xl">
           {value}
         </p>
       </div>
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
-        <Icon className="h-4 w-4" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary sm:h-9 sm:w-9">
+        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
       </div>
     </div>
   </div>
 );
+
+/* ──────────────────────────────────────────────────────────────────
+   Main component
+   ────────────────────────────────────────────────────────────────── */
 
 export default function CompanyUsers() {
   const { user: currentUser } = useAuth();
@@ -128,8 +214,22 @@ export default function CompanyUsers() {
 
   const companySlug = company?.slug ?? null;
   const companyName = company?.name ?? "";
-  const isSuperAdmin = !currentUser?.memberships?.length;
+  const companyId = (company as any)?.id ?? null;
+
+  const isSuperAdmin = useMemo(() => {
+    if (!currentUser) return false;
+
+    const u = currentUser as any;
+
+    if (u.is_superuser === true) return true;
+    if (u.isSuperAdmin === true) return true;
+
+    const memberships = u.memberships ?? [];
+    return Array.isArray(memberships) && memberships.length === 0;
+  }, [currentUser]);
+
   const showSelector = isSuperAdmin && !companySlug;
+
   const { users, loading, error, refetch } = useCompanyUsers(companySlug);
   const { addUser } = useAddCompanyUser();
   const debouncedQuery = useDebounce(searchTerm, 500);
@@ -144,34 +244,83 @@ export default function CompanyUsers() {
     }
   }, [companySlug]);
 
-  const maxStaff = activeSub?.allowed_max_staff_members ?? (isSuperAdmin ? -1 : 5);
+  const maxStaff =
+    activeSub?.allowed_max_staff_members ?? (isSuperAdmin ? -1 : 5);
   const currentStaffCount = (users || []).length;
-  const isLimitReached = !isSuperAdmin && maxStaff !== -1 && currentStaffCount >= maxStaff;
+  const isLimitReached =
+    !isSuperAdmin && maxStaff !== -1 && currentStaffCount >= maxStaff;
 
-  const currentUserRole = useMemo(() => {
+  /* ──────────────────────────────────────────────────────────────
+     Role resolution
+     ────────────────────────────────────────────────────────────── */
+
+  const currentUserRole = useMemo<CompanyRole | null>(() => {
     if (!currentUser || !companySlug) return null;
+
     if (isSuperAdmin) return "superAdmin";
-    return (
-      currentUser.memberships?.find(
-        (membership: any) => membership.company_slug === companySlug,
-      )?.role || null
-    );
-  }, [currentUser, companySlug, isSuperAdmin]);
+
+    const u = currentUser as any;
+    const memberships: any[] = Array.isArray(u.memberships)
+      ? u.memberships
+      : [];
+
+    let membership: any = null;
+
+    for (const m of memberships) {
+      if (membershipMatchesCompany(m, companySlug, companyId)) {
+        membership = m;
+        break;
+      }
+    }
+
+    if (membership) {
+      const rawRole = extractMembershipRole(membership);
+      const normalized = normalizeRole(rawRole);
+      if (normalized) return normalized;
+    }
+
+    const flatRole =
+      u.company_role ??
+      u.companyRole ??
+      u.active_company_role ??
+      u.activeCompanyRole ??
+      u.current_role ??
+      u.currentRole;
+
+    const normalizedFlat = normalizeRole(flatRole);
+    if (normalizedFlat) return normalizedFlat;
+
+    if (memberships.length === 1) {
+      const onlyRaw = extractMembershipRole(memberships[0]);
+      const normalizedOnly = normalizeRole(onlyRaw);
+      if (normalizedOnly) return normalizedOnly;
+    }
+
+    return normalizeRole(u.role);
+  }, [currentUser, companySlug, companyId, isSuperAdmin]);
+
+  /* ──────────────────────────────────────────────────────────────
+     Derived permissions
+     ────────────────────────────────────────────────────────────── */
 
   const canViewUsers =
     isSuperAdmin ||
     currentUserRole === "owner" ||
     currentUserRole === "admin" ||
     currentUserRole === "staff" ||
+    currentUserRole === "delivery" ||
+    currentUserRole === "viewer" ||
     readOnly;
 
   const canManageUsers =
-    (
-      isSuperAdmin ||
+    (isSuperAdmin ||
       currentUserRole === "owner" ||
-      currentUserRole === "admin"
-    ) &&
+      currentUserRole === "admin") &&
     !readOnly;
+
+  /* ──────────────────────────────────────────────────────────────
+     Filters, pagination, counts
+     ────────────────────────────────────────────────────────────── */
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -269,7 +418,12 @@ export default function CompanyUsers() {
     void fetchSearchResults();
   }, [debouncedQuery]);
 
+  /* ──────────────────────────────────────────────────────────────
+     Handlers
+     ────────────────────────────────────────────────────────────── */
+
   const openAddDispatcher = () => {
+    if (!canManageUsers) return;
     setSelectedRole("staff");
     setSelectedUser(null);
     setSearchTerm("");
@@ -277,7 +431,7 @@ export default function CompanyUsers() {
   };
 
   const handleAddUser = async () => {
-    if (!companySlug || !selectedUser) return;
+    if (!canManageUsers || !companySlug || !selectedUser) return;
 
     setAdding(true);
 
@@ -296,7 +450,7 @@ export default function CompanyUsers() {
   };
 
   const handleCreateUser = async (data: any) => {
-    if (!companySlug) return;
+    if (!canManageUsers || !companySlug) return;
 
     setCreatingUser(true);
 
@@ -319,7 +473,7 @@ export default function CompanyUsers() {
     username: string;
     role: string;
   }) => {
-    if (!companySlug) return;
+    if (!canManageUsers || !companySlug) return;
 
     setUpdating(true);
 
@@ -348,7 +502,7 @@ export default function CompanyUsers() {
   };
 
   const handleDeleteUser = async () => {
-    if (!companySlug || !deletingUser) return;
+    if (!canManageUsers || !companySlug || !deletingUser) return;
 
     setDeleting(true);
 
@@ -363,17 +517,21 @@ export default function CompanyUsers() {
     }
   };
 
+  /* ──────────────────────────────────────────────────────────────
+     Early returns
+     ────────────────────────────────────────────────────────────── */
+
   if (!canViewUsers) {
     return (
       <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6">
-        <div className="rounded-xl border border-secondary/10 bg-white px-4 py-10 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
-            <Shield className="h-4 w-4" />
+        <div className="rounded-2xl border border-secondary/10 bg-white px-6 py-12 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
+            <Shield className="h-5 w-5" />
           </div>
-          <h3 className="mt-3 text-sm font-semibold text-secondary">
+          <h3 className="mt-4 text-sm font-semibold text-secondary">
             Access restricted
           </h3>
-          <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-secondary/50">
+          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-secondary/50">
             You do not have permission to manage this company&apos;s users.
           </p>
         </div>
@@ -391,10 +549,12 @@ export default function CompanyUsers() {
         isLoading={isLoadingCompanies}
         disableProductSearch={true}
         onSelect={(slug, name) => {
-          const membership = currentUser?.memberships?.find(
-            (item: any) => item.company_slug === slug,
+          const membership = currentUser?.memberships?.find((item: any) =>
+            membershipMatchesCompany(item, slug, null),
           );
-          const role = membership?.role ?? (isSuperAdmin ? "admin" : "staff");
+          const role =
+            normalizeRole(extractMembershipRole(membership)) ??
+            (isSuperAdmin ? "superAdmin" : "staff");
           switchCompany({ slug, name, role });
         }}
         onBack={clearCompany}
@@ -409,9 +569,9 @@ export default function CompanyUsers() {
   if (!companySlug) {
     return (
       <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-4 md:px-6">
-        <div className="rounded-xl border border-secondary/10 bg-white px-4 py-10 text-center">
-          <Building2 className="mx-auto h-7 w-7 text-secondary/30" />
-          <p className="mt-2 text-xs font-medium text-secondary/55">
+        <div className="rounded-2xl border border-secondary/10 bg-white px-6 py-12 text-center">
+          <Building2 className="mx-auto h-8 w-8 text-secondary/30" />
+          <p className="mt-3 text-xs font-medium text-secondary/55">
             Select a company to manage its users.
           </p>
         </div>
@@ -419,110 +579,170 @@ export default function CompanyUsers() {
     );
   }
 
+  /* ──────────────────────────────────────────────────────────────
+     Render
+     ────────────────────────────────────────────────────────────── */
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
-      <PageHeader
-        title={isSuperAdmin ? companyName || "Company Users" : "All Users"}
-        eyebrow={isSuperAdmin ? "User Management" : undefined}
-        description="Manage dispatchers, delivery personnel and company access."
-        icon={Users}
-        badge={
-          !loading ? (
-            <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary">
-              {filteredUsers.length}{" "}
-              {filteredUsers.length === 1 ? "user" : "users"}
-            </span>
-          ) : undefined
-        }
-        actions={
-          isSuperAdmin ? (
-            <button
-              type="button"
-              onClick={clearCompany}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
-            >
-              <Repeat className="h-3.5 w-3.5" />
-              Switch company
-            </button>
-          ) : undefined
-        }
-        actionMobile={
-          isSuperAdmin ? (
-            <button
-              type="button"
-              onClick={clearCompany}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
-            >
-              <Repeat className="h-3.5 w-3.5" />
-              {/* Switch */}
-            </button>
-          ) : undefined
-        }
-        loading={loading}
-      />
+    <div className="rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <PageHeader
+          title={isSuperAdmin ? companyName || "Company Users" : "All Users"}
+          eyebrow={isSuperAdmin ? "User Management" : undefined}
+          description="Manage dispatchers, delivery personnel and company access."
+          icon={Users}
+          badge={
+            !loading ? (
+              <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary">
+                {filteredUsers.length}{" "}
+                {filteredUsers.length === 1 ? "user" : "users"}
+              </span>
+            ) : undefined
+          }
+          actions={
+            isSuperAdmin ? (
+              <button
+                type="button"
+                onClick={clearCompany}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
+              >
+                <Repeat className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Switch company</span>
+                <span className="sm:hidden">Switch</span>
+              </button>
+            ) : undefined
+          }
+          loading={loading}
+        />
 
-      {loading ? (
-        <StatsSkeleton />
-      ) : (
-        <section className="mb-4 hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
-          <StatCard title="Total" value={users?.length || 0} icon={Users} />
-          <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
-          <StatCard
-            title="Dispatchers"
-            value={roleCounts.staff}
-            icon={Briefcase}
-          />
-          <StatCard title="Delivery" value={roleCounts.delivery} icon={Truck} />
-          <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
-        </section>
-      )}
+        {/* Stats — always visible on mobile too */}
+        <div className="mt-5 sm:mt-6">
+          {loading ? (
+            <StatsSkeleton />
+          ) : (
+            <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
+              <StatCard title="Total" value={users?.length || 0} icon={Users} />
+              <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
+              <StatCard
+                title="Dispatchers"
+                value={roleCounts.staff}
+                icon={Briefcase}
+              />
+              <StatCard
+                title="Delivery"
+                value={roleCounts.delivery}
+                icon={Truck}
+              />
+              <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
+            </section>
+          )}
+        </div>
 
-      {isLimitReached && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-          <div className="flex-1">
-            <span className="font-bold">Staff Limit Reached ({currentStaffCount}/{maxStaff}): </span>
-            Your current subscription tier has reached its maximum staff members limit. Please upgrade your subscription plan to add or onboard more team members.
+        {/* Staff limit warning */}
+        {isLimitReached && (
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-xs text-amber-800 sm:mt-5">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="flex-1 leading-5">
+              <span className="font-bold">
+                Staff Limit Reached ({currentStaffCount}/{maxStaff}):{" "}
+              </span>
+              Your current subscription tier has reached its maximum staff
+              members limit. Please upgrade your subscription plan to add or
+              onboard more team members.
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {canManageUsers && (
-        <div className="mb-6 grid grid-cols-2 gap-2 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            disabled={isLimitReached}
-            title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
-              isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-white" : ""
-            }`}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            Create user
-          </button>
-          <button
-            type="button"
-            onClick={openAddDispatcher}
-            disabled={isLimitReached}
-            title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
-              isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-secondary" : ""
-            }`}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            Add member
-          </button>
-        </div>
-      )}
+        {/* Desktop action buttons — inline with toolbar */}
+        {/* Mobile action buttons — full-width prominent buttons below */}
+        {canManageUsers && (
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:hidden">
+            <button
+              type="button"
+              onClick={openAddDispatcher}
+              disabled={isLimitReached}
+              title={
+                isLimitReached
+                  ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                  : undefined
+              }
+              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 active:scale-[0.98] ${
+                isLimitReached
+                  ? "cursor-not-allowed opacity-50 hover:bg-secondary"
+                  : ""
+              }`}
+            >
+              <UserPlus className="h-4 w-4" />
+              Add member
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              disabled={isLimitReached}
+              title={
+                isLimitReached
+                  ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                  : undefined
+              }
+              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-secondary/20 bg-white px-4 text-sm font-semibold text-secondary shadow-sm transition hover:bg-secondary/[0.04] active:scale-[0.98] ${
+                isLimitReached
+                  ? "cursor-not-allowed opacity-50 hover:bg-white"
+                  : ""
+              }`}
+            >
+              <UserPlus className="h-4 w-4" />
+              Create user
+            </button>
+          </div>
+        )}
+      </div>
 
-      <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
-        {loading ? (
-          <ToolbarSkeleton />
-        ) : (
-          <>
-            <div className="w-full lg:hidden">
-              <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+      {/* Sticky toolbar */}
+      <div className="sticky top-0 z-20 bg-white/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
+        <div className="pt-5 sm:pt-6">
+          {loading ? (
+            <ToolbarSkeleton />
+          ) : (
+            <>
+              {/* Mobile toolbar */}
+              <div className="w-full lg:hidden">
+                <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+                  <div className="min-w-0 flex-1">
+                    <SearchInput
+                      value={tableSearch}
+                      onChange={(value) => {
+                        setTableSearch(value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder="Search team members"
+                      loading={loading}
+                      showMobileFilter={true}
+                      onMobileFilterClick={() =>
+                        setShowMobileFilterModal(true)
+                      }
+                      activeFilterCount={activeFilterCount}
+                      showClearButton={true}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="relative z-[110] w-[104px] shrink-0">
+                    <CustomSelect
+                      value={String(pageSize)}
+                      onChange={(value) => {
+                        setPageSize(Number(value));
+                        setCurrentPage(1);
+                      }}
+                      options={pageSizeOptions}
+                      placeholder="10 / page"
+                      className="h-10 w-full text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop toolbar */}
+              <div className="hidden w-full items-center gap-2.5 rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.035)] lg:flex">
                 <div className="min-w-0 flex-1">
                   <SearchInput
                     value={tableSearch}
@@ -532,15 +752,32 @@ export default function CompanyUsers() {
                     }}
                     placeholder="Search team members"
                     loading={loading}
-                    showMobileFilter={true}
-                    onMobileFilterClick={() => setShowMobileFilterModal(true)}
-                    activeFilterCount={activeFilterCount}
                     showClearButton={true}
                     className="w-full"
                   />
                 </div>
 
-                <div className="relative z-[110] w-[104px] shrink-0 sm:w-[118px]">
+                <div className="relative z-[110] w-[180px] shrink-0">
+                  <CustomSelect
+                    value={roleFilter}
+                    onChange={(value) => {
+                      setRoleFilter(
+                        value as
+                          | "all"
+                          | "admin"
+                          | "staff"
+                          | "viewer"
+                          | "delivery",
+                      );
+                      setCurrentPage(1);
+                    }}
+                    options={roleOptions}
+                    placeholder="All roles"
+                    className="h-10 w-full text-xs"
+                  />
+                </div>
+
+                <div className="relative z-[110] w-[120px] shrink-0">
                   <CustomSelect
                     value={String(pageSize)}
                     onChange={(value) => {
@@ -549,147 +786,119 @@ export default function CompanyUsers() {
                     }}
                     options={pageSizeOptions}
                     placeholder="10 / page"
-                    className="h-9 w-full text-xs"
+                    className="h-10 w-full text-xs"
                   />
                 </div>
+
+                {canManageUsers && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={openAddDispatcher}
+                      disabled={isLimitReached}
+                      title={
+                        isLimitReached
+                          ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                          : undefined
+                      }
+                      className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3.5 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
+                        isLimitReached
+                          ? "cursor-not-allowed opacity-50 hover:bg-secondary"
+                          : ""
+                      }`}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Add member
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateModal(true)}
+                      disabled={isLimitReached}
+                      title={
+                        isLimitReached
+                          ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                          : undefined
+                      }
+                      className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
+                        isLimitReached
+                          ? "cursor-not-allowed opacity-50 hover:bg-white"
+                          : ""
+                      }`}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Create user
+                    </button>
+                  </>
+                )}
               </div>
-            </div>
-
-            <div className="hidden w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] lg:flex">
-              <div className="min-w-0 flex-1">
-                <SearchInput
-                  value={tableSearch}
-                  onChange={(value) => {
-                    setTableSearch(value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search team members"
-                  loading={loading}
-                  showClearButton={true}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="relative z-[110] w-[180px] shrink-0">
-                <CustomSelect
-                  value={roleFilter}
-                  onChange={(value) => {
-                    setRoleFilter(
-                      value as
-                        | "all"
-                        | "admin"
-                        | "staff"
-                        | "viewer"
-                        | "delivery",
-                    );
-                    setCurrentPage(1);
-                  }}
-                  options={roleOptions}
-                  placeholder="All roles"
-                  className="h-9 w-full text-xs"
-                />
-              </div>
-
-              <div className="relative z-[110] w-[118px] shrink-0">
-                <CustomSelect
-                  value={String(pageSize)}
-                  onChange={(value) => {
-                    setPageSize(Number(value));
-                    setCurrentPage(1);
-                  }}
-                  options={pageSizeOptions}
-                  placeholder="10 / page"
-                  className="h-9 w-full text-xs"
-                />
-              </div>
-
-              {canManageUsers && (
-                <>
-                  <button
-                    type="button"
-                    onClick={openAddDispatcher}
-                    disabled={isLimitReached}
-                    title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
-                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
-                      isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-secondary" : ""
-                    }`}
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    Add member
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(true)}
-                    disabled={isLimitReached}
-                    title={isLimitReached ? `Staff limit reached (${currentStaffCount}/${maxStaff})` : undefined}
-                    className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
-                      isLimitReached ? "opacity-50 cursor-not-allowed hover:bg-white" : ""
-                    }`}
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    Create user
-                  </button>
-                </>
-              )}
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
-      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="relative z-0">
-          <CompanyUsersTable
-            users={paginatedUsers}
-            loading={loading}
-            currentUser={currentUser}
-            isAdmin={canManageUsers}
-            onEdit={(member) =>
-              setEditingUser({ ...member, user_id: member.id })
-            }
-            onDelete={setDeletingUser}
-          />
-        </div>
-
-        {!loading && filteredUsers.length > 0 && (
-          <div className="border-t border-secondary/10 px-3 py-2.5 sm:px-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              pageSize={pageSize}
-              onPageSizeChange={setPageSize}
-              pageSizeOptions={[5, 10, 15, 30, 60]}
-              enableUrlSync={true}
-            />
+      {/* Table */}
+      <div className="px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
+        <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <div className="relative z-0">
+           <CompanyUsersTable
+  users={paginatedUsers}
+  loading={loading}
+  currentUser={currentUser}
+  currentUserRole={currentUserRole}
+  canEdit={canManageUsers}
+  canDelete={canManageUsers}
+  onEdit={(member) =>
+    setEditingUser({ ...member, user_id: member.id })
+  }
+  onDelete={setDeletingUser}
+/>
           </div>
-        )}
 
-        {!loading && filteredUsers.length === 0 && (
-          <div className="border-t border-secondary/10 px-4 py-12 text-center">
-            <Users className="mx-auto h-7 w-7 text-secondary/30" />
-            <p className="mt-2 text-sm font-semibold text-secondary">
-              No users found
-            </p>
-            <p className="mt-1 text-xs text-secondary/50">
-              Try another search or role filter.
-            </p>
-            {(tableSearch || roleFilter !== "all") && (
-              <button
-                type="button"
-                onClick={() => {
-                  setTableSearch("");
-                  setRoleFilter("all");
-                }}
-                className="mt-3 h-9 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
-        )}
-      </section>
+          {!loading && filteredUsers.length > 0 && (
+            <div className="border-t border-secondary/10 px-3 py-3 sm:px-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+                pageSizeOptions={[5, 10, 15, 30, 60]}
+                enableUrlSync={true}
+              />
+            </div>
+          )}
 
+          {!loading && filteredUsers.length === 0 && (
+            <div className="border-t border-secondary/10 px-6 py-14 text-center sm:py-16">
+              <Users className="mx-auto h-8 w-8 text-secondary/30" />
+              <p className="mt-3 text-sm font-semibold text-secondary">
+                No users found
+              </p>
+              <p className="mt-1 text-xs text-secondary/50">
+                Try another search or role filter.
+              </p>
+              {(tableSearch || roleFilter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTableSearch("");
+                    setRoleFilter("all");
+                  }}
+                  className="mt-4 h-9 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Bottom padding for the outer card */}
+      <div className="h-4 sm:h-6 lg:h-8" />
+
+      {/* Mobile filter bottom sheet */}
       {showMobileFilterModal && (
         <div
           className="fixed inset-0 z-[70] lg:hidden"
@@ -697,10 +906,10 @@ export default function CompanyUsers() {
         >
           <div className="absolute inset-0 bg-secondary/35 backdrop-blur-[2px]" />
           <div
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t border-secondary/10 bg-white shadow-2xl"
+            className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-secondary/10 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-secondary/10 bg-white px-4 py-3">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-secondary/10 bg-white px-5 py-4">
               <div>
                 <h3 className="text-sm font-bold text-secondary">Filters</h3>
                 <p className="mt-0.5 text-[11px] text-secondary/50">
@@ -717,9 +926,9 @@ export default function CompanyUsers() {
               </button>
             </div>
 
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-5">
               <div>
-                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/50">
+                <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/50">
                   Role
                 </label>
                 <CustomSelect
@@ -739,7 +948,7 @@ export default function CompanyUsers() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2 border-t border-secondary/10 pt-3">
+              <div className="grid grid-cols-2 gap-2.5 border-t border-secondary/10 pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -748,14 +957,14 @@ export default function CompanyUsers() {
                     setCurrentPage(1);
                   }}
                   disabled={!tableSearch && roleFilter === "all"}
-                  className="h-10 rounded-lg border border-secondary/15 bg-white text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-11 rounded-lg border border-secondary/15 bg-white text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Clear all
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowMobileFilterModal(false)}
-                  className="h-10 rounded-lg bg-secondary text-xs font-semibold text-white transition hover:bg-secondary/90"
+                  className="h-11 rounded-lg bg-secondary text-xs font-semibold text-white transition hover:bg-secondary/90"
                 >
                   Show {filteredUsers.length}
                 </button>
@@ -765,6 +974,7 @@ export default function CompanyUsers() {
         </div>
       )}
 
+      {/* Modals */}
       <AddUserModal
         isOpen={showAddModal}
         onClose={() => {

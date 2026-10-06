@@ -1,8 +1,3 @@
-
-
-
-
-
 import { useState, useEffect, useMemo } from "react";
 import {
   Building2,
@@ -45,7 +40,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import api, { getMarketingPerformance, getAdminMarketingAgentPerformance } from "../../../services/api";
+import api, {
+  getMarketingPerformance,
+  getAdminMarketingAgentPerformance,
+} from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 
@@ -435,8 +433,11 @@ export default function MarketingOverview({ agentId, initialAgent }: { agentId?:
   const fetchCompanies = async () => {
     try {
       setCompanyLoading(true);
-      const res = await api.get('/companies/?ordering=name&page_size=20');
-      setCompanyData(res.data);
+
+      const response = await api.get("/companies/", {
+        params: { ordering: "name", limit: 20 },
+      });
+      setCompanyData(response.data);
     } catch (error) {
       console.error('Failed to fetch companies:', error);
     } finally {

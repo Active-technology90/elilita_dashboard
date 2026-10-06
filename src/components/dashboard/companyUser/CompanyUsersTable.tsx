@@ -1,6 +1,10 @@
 import { useMemo } from "react";
-import { Edit, Trash2, Star } from "lucide-react";
+import { Edit, Trash2, Star, ShieldCheck } from "lucide-react";
 import { DataTable, type Column } from "../../ui/DataTable";
+
+/* ──────────────────────────────────────────────────────────────────
+   Role display helpers
+   ────────────────────────────────────────────────────────────────── */
 
 const getRoleLabel = (role?: string) => {
   switch (role) {
@@ -36,6 +40,10 @@ const getRoleBadgeClass = (role?: string) => {
   }
 };
 
+/* ──────────────────────────────────────────────────────────────────
+   Types
+   ────────────────────────────────────────────────────────────────── */
+
 interface CompanyUser {
   id: number | string;
   user_id?: number | string;
@@ -55,8 +63,17 @@ interface CompanyUsersTableProps {
   onEdit: (user: CompanyUser) => void;
   onDelete: (user: CompanyUser) => void;
   currentUser: any;
-  isAdmin: boolean;
+  /** The current viewer's role within this company (or "superAdmin"). */
+  currentUserRole?: string | null;
+  /** Whether the current viewer may edit user roles. */
+  canEdit: boolean;
+  /** Whether the current viewer may delete users. */
+  canDelete: boolean;
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Component
+   ────────────────────────────────────────────────────────────────── */
 
 export function CompanyUsersTable({
   users,
@@ -64,10 +81,38 @@ export function CompanyUsersTable({
   onEdit,
   onDelete,
   currentUser,
-  isAdmin,
+  currentUserRole,
+  canEdit,
+  canDelete,
 }: CompanyUsersTableProps) {
+  /**
+   * A user is "self" when their user_id matches the current logged-in user.
+   * Prevents self-deletion and self-role-changes via the UI.
+   */
   const isSelf = (user: CompanyUser) =>
-    String(user.user_id) === String(currentUser?.id);
+    String(user.user_id ?? user.id) === String(currentUser?.id);
+
+  /**
+   * Admins cannot delete owners. Owners and super admins can.
+   */
+  const canDeleteTarget = (user: CompanyUser): boolean => {
+    if (isSelf(user)) return false;
+    if (user.role === "owner") {
+      return currentUserRole === "owner" || currentUserRole === "superAdmin";
+    }
+    return true;
+  };
+
+  /**
+   * Admins cannot edit owners' roles. Owners and super admins can.
+   * (Owners editing themselves is allowed for role change by owner/superAdmin.)
+   */
+  const canEditTarget = (user: CompanyUser): boolean => {
+    if (user.role === "owner") {
+      return currentUserRole === "owner" || currentUserRole === "superAdmin";
+    }
+    return true;
+  };
 
   const columns = useMemo<Column<CompanyUser>[]>(() => {
     const tableColumns: Column<CompanyUser>[] = [
@@ -120,10 +165,13 @@ export function CompanyUsersTable({
         className: "whitespace-nowrap",
         render: (user) => (
           <span
-            className={`inline-flex whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold sm:text-xs ${getRoleBadgeClass(
+            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-1 text-[10px] font-semibold sm:text-xs ${getRoleBadgeClass(
               user.role,
             )}`}
           >
+            {user.role === "owner" && (
+              <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            )}
             {getRoleLabel(user.role)}
           </span>
         ),
@@ -170,52 +218,64 @@ export function CompanyUsersTable({
       },
     ];
 
-    if (isAdmin) {
+    // Only render the Actions column when the viewer can do *something*
+    if (canEdit || canDelete) {
       tableColumns.push({
         key: "actions",
         header: "Actions",
         className: "whitespace-nowrap text-right",
         render: (user) => {
           const self = isSelf(user);
+          const editAllowed = canEdit && canEditTarget(user);
+          const deleteAllowed = canDelete && canDeleteTarget(user);
+
+          // Hide the whole cell if the viewer can't do anything to this row
+          if (!editAllowed && !deleteAllowed) {
+            return <div className="flex justify-end" />;
+          }
 
           return (
             <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                onClick={() => onEdit(user)}
-                className="rounded-md p-1.5 text-secondary transition hover:bg-secondary/10 hover:text-indigo-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/30"
-                title="Edit team role"
-                aria-label={`Edit ${user.username || user.email}`}
-              >
-                <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
+              {editAllowed && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(user)}
+                  className="rounded-md p-1.5 text-secondary transition hover:bg-secondary/10 hover:text-indigo-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/30"
+                  title="Edit team role"
+                  aria-label={`Edit ${user.username || user.email}`}
+                >
+                  <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!self) onDelete(user);
-                }}
-                disabled={self}
-                className={`rounded-md p-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/30 ${
-                  self
-                    ? "cursor-not-allowed text-gray-300"
-                    : "text-red-600 hover:bg-red-50 hover:text-red-800"
-                }`}
-                title={
-                  self
-                    ? "You cannot delete yourself"
-                    : user.role === "staff"
+              {deleteAllowed && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(user)}
+                  className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/30"
+                  title={
+                    user.role === "staff"
                       ? "Remove dispatcher"
                       : "Remove user"
-                }
-                aria-label={
-                  self
-                    ? "You cannot delete yourself"
-                    : `Remove ${user.username || user.email}`
-                }
-              >
-                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
+                  }
+                  aria-label={`Remove ${user.username || user.email}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </button>
+              )}
+
+              {/* Show a disabled delete button for self (for UX clarity) */}
+              {!deleteAllowed && self && (
+                <button
+                  type="button"
+                  disabled
+                  className="cursor-not-allowed rounded-md p-1.5 text-gray-300"
+                  title="You cannot delete yourself"
+                  aria-label="You cannot delete yourself"
+                >
+                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </button>
+              )}
             </div>
           );
         },
@@ -223,7 +283,7 @@ export function CompanyUsersTable({
     }
 
     return tableColumns;
-  }, [currentUser?.id, isAdmin, onDelete, onEdit]);
+  }, [currentUser?.id, currentUserRole, canEdit, canDelete, onDelete, onEdit]);
 
   return (
     <DataTable
