@@ -1,5 +1,5 @@
 // src/components/dashboard/CompanyManagement/LocationPickerModal.tsx
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point } from "@turf/helpers";
 
 /* ──────────────────────────────────────────────────────────────────
    Types & Constants
@@ -31,9 +33,99 @@ interface LatLng {
   lng: number;
 }
 
-const DEFAULT_CENTER: LatLng = { lat: 9.03, lng: 38.74 }; // Addis Ababa
+// Addis Ababa, Ethiopia — center
+const ADDIS_ABABA_CENTER: LatLng = { lat: 9.03, lng: 38.74 };
+
+/**
+ * Bounds derived from the polygon below.
+ * Covers the FULL extent so nothing inside gets cut off.
+ */
+const ADDIS_ABABA_BOUNDS = {
+  north: 9.0949264,
+  south: 8.8342838,
+  east: 38.9121271,
+  west: 38.6400171,
+};
+
+/**
+ * Addis Ababa boundary — exact coordinates from your GeoJSON file
+ * (3rd feature / largest polygon). This is the FULL city boundary.
+ */
+const ADDIS_ABABA_POLYGON = {
+  type: "Feature" as const,
+  properties: {
+    fill: "#312E81",
+    "fill-opacity": 0.1,
+    stroke: "#312E81",
+    "stroke-opacity": 0.6,
+  },
+  geometry: {
+    type: "Polygon" as const,
+    coordinates: [
+      [
+        [38.739807, 8.8973726],
+        [38.6920357, 8.9365647],
+        [38.6400171, 8.9693422],
+        [38.6839934, 9.0699516],
+        [38.7151664, 9.0864423],
+        [38.7652662, 9.0949264],
+        [38.8192621, 9.0770977],
+        [38.8723135, 9.0818733],
+        [38.8868501, 9.0501182],
+        [38.9121271, 8.993894],
+        [38.9019203, 8.9555833],
+        [38.8966715, 8.9337982],
+        [38.8612825, 8.9376826],
+        [38.878977, 8.9174833],
+        [38.8793702, 8.8972829],
+        [38.8701951, 8.8717572],
+        [38.8625788, 8.8811635],
+        [38.8302098, 8.8799093],
+        [38.8247933, 8.8419881],
+        [38.7947847, 8.8342838],
+        [38.7850125, 8.8348411],
+        [38.7741632, 8.854495],
+        [38.7497522, 8.8562817],
+        [38.739807, 8.8973726],
+      ],
+    ],
+  },
+};
+
+const OUTSIDE_MESSAGE =
+  "This location is outside Addis Ababa. Our service is currently available only within Addis Ababa.";
+
 const roundCoord = (n: number) => n.toFixed(6);
 const COORDINATE_REGEX = /^-?\d{1,3}(\.\d+)?$/;
+
+/* ──────────────────────────────────────────────────────────────────
+   Point-in-polygon using Turf.js
+   ────────────────────────────────────────────────────────────────── */
+
+const isWithinAddisAbaba = (lat: number, lng: number): boolean => {
+  if (isNaN(lat) || isNaN(lng)) return false;
+
+  // Quick bounding box check
+  if (
+    lat < ADDIS_ABABA_BOUNDS.south ||
+    lat > ADDIS_ABABA_BOUNDS.north ||
+    lng < ADDIS_ABABA_BOUNDS.west ||
+    lng > ADDIS_ABABA_BOUNDS.east
+  ) {
+    return false;
+  }
+
+  // Turf.js point-in-polygon
+  // ignoreBoundary = false → points ON the boundary count as inside
+  try {
+    return booleanPointInPolygon(
+      point([lng, lat]),
+      ADDIS_ABABA_POLYGON as any
+    );
+  } catch {
+    return false;
+  }
+};
 
 /* ──────────────────────────────────────────────────────────────────
    Component
@@ -50,14 +142,12 @@ export default function LocationPickerModal({
 }: LocationPickerModalProps) {
   // ── State ────────────────────────────────────────────────────────
   const [selectedLat, setSelectedLat] = useState<string>(
-    initialLat || String(DEFAULT_CENTER.lat)
+    initialLat || String(ADDIS_ABABA_CENTER.lat)
   );
   const [selectedLon, setSelectedLon] = useState<string>(
-    initialLon || String(DEFAULT_CENTER.lng)
+    initialLon || String(ADDIS_ABABA_CENTER.lng)
   );
-  const [searchQuery, setSearchQuery] = useState<string>(
-    initialAddress || ""
-  );
+  const [searchQuery, setSearchQuery] = useState<string>(initialAddress || "");
   const [displayAddress, setDisplayAddress] = useState<string>(
     initialAddress || ""
   );
@@ -71,6 +161,19 @@ export default function LocationPickerModal({
     "info"
   );
 
+  // ── Derived state: is current location valid? ─────────────────────
+  const isLocationValid = useMemo(() => {
+    if (
+      !COORDINATE_REGEX.test(selectedLat) ||
+      !COORDINATE_REGEX.test(selectedLon)
+    ) {
+      return false;
+    }
+    const lat = parseFloat(selectedLat);
+    const lng = parseFloat(selectedLon);
+    return isWithinAddisAbaba(lat, lng);
+  }, [selectedLat, selectedLon]);
+
   // ── Refs ─────────────────────────────────────────────────────────
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -78,14 +181,12 @@ export default function LocationPickerModal({
     "picker-map-" + Math.random().toString(36).slice(2)
   ).current;
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Keep latest values to avoid stale closures in Leaflet event handlers
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedLatRef = useRef(selectedLat);
   const selectedLonRef = useRef(selectedLon);
   const onSelectAddressRef = useRef(onSelectAddress);
   const onCloseRef = useRef(onClose);
   const onSelectRef = useRef(onSelect);
-  const displayAddressRef = useRef(displayAddress);
-  const searchQueryRef = useRef(searchQuery);
 
   // Sync refs
   useEffect(() => {
@@ -94,8 +195,6 @@ export default function LocationPickerModal({
     onSelectAddressRef.current = onSelectAddress;
     onCloseRef.current = onClose;
     onSelectRef.current = onSelect;
-    displayAddressRef.current = displayAddress;
-    searchQueryRef.current = searchQuery;
   });
 
   // ── Toast helper ──────────────────────────────────────────────────
@@ -103,7 +202,8 @@ export default function LocationPickerModal({
     (msg: string, type: "error" | "success" | "info" = "info") => {
       setToastMessage(msg);
       setToastType(type);
-      setTimeout(() => setToastMessage(null), 4000);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = setTimeout(() => setToastMessage(null), 4000);
     },
     []
   );
@@ -132,20 +232,19 @@ export default function LocationPickerModal({
       script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
       script.id = scriptId;
       script.onload = () => setLeafletLoaded(true);
-      script.onerror = () =>
-        showToast("Failed to load map library", "error");
+      script.onerror = () => showToast("Failed to load map library", "error");
       document.head.appendChild(script);
     } else {
       setLeafletLoaded(true);
     }
   }, [isOpen, showToast]);
 
-  // ── Helpers: geocode & reverse geocode ───────────────────────────
+  // ── Helpers: geocode & reverse geocode ────────────────────────────
   const reverseGeocode = useCallback(
     async (lat: number, lon: number): Promise<string | null> => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=en`
         );
         const data = await res.json();
         return data?.display_name ?? null;
@@ -159,15 +258,23 @@ export default function LocationPickerModal({
   const geocodeAddress = useCallback(
     async (address: string): Promise<LatLng | null> => {
       try {
+        const searchQueryStr = `${address}, Addis Ababa, Ethiopia`;
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            searchQueryStr
+          )}&limit=5&accept-language=en&bounded=1&viewbox=38.6400171,9.0949264,38.9121271,8.8342838`
         );
         const data = await res.json();
+
         if (data?.length > 0) {
-          return {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          };
+          for (const item of data) {
+            const lat = parseFloat(item.lat);
+            const lng = parseFloat(item.lon);
+            if (isWithinAddisAbaba(lat, lng)) {
+              return { lat, lng };
+            }
+          }
+          return null;
         }
         return null;
       } catch {
@@ -196,6 +303,18 @@ export default function LocationPickerModal({
         COORDINATE_REGEX.test(initialLat) &&
         COORDINATE_REGEX.test(initialLon)
       ) {
+        const lat = parseFloat(initialLat);
+        const lng = parseFloat(initialLon);
+
+        if (!isWithinAddisAbaba(lat, lng)) {
+          setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
+          setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
+          setSearchQuery("");
+          setDisplayAddress("");
+          showToast(OUTSIDE_MESSAGE, "error");
+          return;
+        }
+
         setSelectedLat(initialLat);
         setSelectedLon(initialLon);
         setSearchQuery(initialAddress || "");
@@ -214,11 +333,11 @@ export default function LocationPickerModal({
           setDisplayAddress(initialAddress);
         } else {
           showToast(
-            "Could not locate the company address. Using default location.",
+            "Could not locate the company address in Addis Ababa. Using default location.",
             "info"
           );
-          setSelectedLat(String(DEFAULT_CENTER.lat));
-          setSelectedLon(String(DEFAULT_CENTER.lng));
+          setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
+          setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
           setDisplayAddress("");
         }
         setSearching(false);
@@ -226,43 +345,69 @@ export default function LocationPickerModal({
       }
 
       // 3. Default center
-      setSelectedLat(String(DEFAULT_CENTER.lat));
-      setSelectedLon(String(DEFAULT_CENTER.lng));
+      setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
+      setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
       setDisplayAddress("");
     };
 
     init();
-  }, [isOpen, initialLat, initialLon, initialAddress, initialSetupDone, geocodeAddress, showToast]);
+  }, [
+    isOpen,
+    initialLat,
+    initialLon,
+    initialAddress,
+    initialSetupDone,
+    geocodeAddress,
+    showToast,
+  ]);
 
-  // ── Map creation (once per open, after initial coordinates are set) ─
+  // ── Map creation ──────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen || !leafletLoaded || !initialSetupDone) return;
 
     const L = (window as any).L;
     if (!L) return;
 
-    // Prevent duplicate creation
     if (mapRef.current) return;
 
-    const startLat = parseFloat(selectedLatRef.current) || DEFAULT_CENTER.lat;
-    const startLng = parseFloat(selectedLonRef.current) || DEFAULT_CENTER.lng;
+    const startLat =
+      parseFloat(selectedLatRef.current) || ADDIS_ABABA_CENTER.lat;
+    const startLng =
+      parseFloat(selectedLonRef.current) || ADDIS_ABABA_CENTER.lng;
 
     const container = document.getElementById(mapContainerId);
     if (!container) return;
 
-    // Map instance
+    // Map instance with restricted bounds to Addis Ababa
     const map = L.map(container, {
       zoomControl: false,
       attributionControl: false,
-    }).setView([startLat, startLng], 13);
+      maxBounds: [
+        [ADDIS_ABABA_BOUNDS.south, ADDIS_ABABA_BOUNDS.west],
+        [ADDIS_ABABA_BOUNDS.north, ADDIS_ABABA_BOUNDS.east],
+      ],
+      maxBoundsViscosity: 1.0,
+      minZoom: 11,
+    }).setView([startLat, startLng], 12);
     mapRef.current = map;
 
-    // Tile layer
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
+      noWrap: true,
     }).addTo(map);
 
-    // Custom marker icon (modern pin)
+    // Addis Ababa polygon overlay
+    L.geoJSON(ADDIS_ABABA_POLYGON, {
+      style: {
+        fillColor: "#312E81",
+        fillOpacity: 0.05,
+        color: "#312E81",
+        weight: 2,
+        opacity: 0.5,
+        dashArray: "5, 5",
+      },
+    }).addTo(map);
+
     const pinIcon = L.icon({
       iconUrl:
         "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCAzNiA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4IDBDOC4wNjcgMCAwIDguMDY3IDAgMThDMCAzMS41IDE4IDQ4IDE4IDQ4QzE4IDQ4IDM2IDMxLjUgMzYgMThDMzYgOC4wNjcgMjcuOTMzIDAgMTggMFoiIGZpbGw9IiM2NzRGQTMiLz4KPGNpcmNsZSBjeD0iMTgiIGN5PSIxOCIgcj0iNyIgZmlsbD0id2hpdGUiLz4KPC9zdmc+",
@@ -277,14 +422,12 @@ export default function LocationPickerModal({
     }).addTo(map);
     markerRef.current = marker;
 
-    // ── Helper to update everything when coordinates change ────────
     const handleCoordUpdate = async (lat: number, lng: number) => {
       const latStr = roundCoord(lat);
       const lngStr = roundCoord(lng);
       setSelectedLat(latStr);
       setSelectedLon(lngStr);
 
-      // Reverse geocode
       const cb = onSelectAddressRef.current;
       if (cb) {
         const address = await reverseGeocode(lat, lng);
@@ -297,21 +440,36 @@ export default function LocationPickerModal({
       }
     };
 
-    // Marker drag
+    // ── Marker drag: reject if outside ──
     marker.on("dragend", async () => {
       const pos = marker.getLatLng();
+      if (!isWithinAddisAbaba(pos.lat, pos.lng)) {
+        showToast(OUTSIDE_MESSAGE, "error");
+        const lastLat = parseFloat(selectedLatRef.current);
+        const lastLng = parseFloat(selectedLonRef.current);
+        if (!isNaN(lastLat) && !isNaN(lastLng)) {
+          marker.setLatLng([lastLat, lastLng]);
+        } else {
+          marker.setLatLng([ADDIS_ABABA_CENTER.lat, ADDIS_ABABA_CENTER.lng]);
+        }
+        return;
+      }
       await handleCoordUpdate(pos.lat, pos.lng);
     });
 
-    // Map click
+    // ── Map click: reject if outside ──
     map.on("click", async (e: any) => {
+      const { lat, lng } = e.latlng;
+      if (!isWithinAddisAbaba(lat, lng)) {
+        showToast(OUTSIDE_MESSAGE, "error");
+        return;
+      }
       marker.setLatLng(e.latlng);
-      await handleCoordUpdate(e.latlng.lat, e.latlng.lng);
+      await handleCoordUpdate(lat, lng);
     });
 
     setMapReady(true);
 
-    // ResizeObserver
     const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
     });
@@ -324,20 +482,20 @@ export default function LocationPickerModal({
       markerRef.current = null;
       setMapReady(false);
     };
-  }, [isOpen, leafletLoaded, initialSetupDone, reverseGeocode]);
+  }, [isOpen, leafletLoaded, initialSetupDone, reverseGeocode, showToast]);
 
-  // ── Sync map view when selected coordinates change (from search/GPS) ─
+  // ── Sync map view when selected coordinates change ────────────────
   useEffect(() => {
     if (!mapReady || !mapRef.current || !markerRef.current) return;
 
-    const lat = parseFloat(selectedLat) || DEFAULT_CENTER.lat;
-    const lng = parseFloat(selectedLon) || DEFAULT_CENTER.lng;
+    const lat = parseFloat(selectedLat) || ADDIS_ABABA_CENTER.lat;
+    const lng = parseFloat(selectedLon) || ADDIS_ABABA_CENTER.lng;
 
     mapRef.current.setView([lat, lng], mapRef.current.getZoom());
     markerRef.current.setLatLng([lat, lng]);
   }, [selectedLat, selectedLon, mapReady]);
 
-  // ── Search handler ───────────────────────────────────────────────
+  // ── Search handler ────────────────────────────────────────────────
   const performSearch = useCallback(
     async (query: string) => {
       if (!query.trim() || !mapRef.current) return;
@@ -356,7 +514,7 @@ export default function LocationPickerModal({
           setDisplayAddress(finalAddress);
           setSearchQuery(finalAddress);
         } else {
-          showToast("Address not found. Please try a different search.", "error");
+          showToast(OUTSIDE_MESSAGE, "error");
         }
       } catch {
         showToast("Search failed. Check your connection.", "error");
@@ -398,12 +556,20 @@ export default function LocationPickerModal({
       async (position) => {
         const curLat = position.coords.latitude;
         const curLon = position.coords.longitude;
+
+        if (!isWithinAddisAbaba(curLat, curLon)) {
+          showToast(OUTSIDE_MESSAGE, "error");
+          setDetecting(false);
+          return;
+        }
+
         setSelectedLat(roundCoord(curLat));
         setSelectedLon(roundCoord(curLon));
 
         const cb = onSelectAddressRef.current;
         const address = await reverseGeocode(curLat, curLon);
-        const finalAddress = address || `${curLat.toFixed(6)}, ${curLon.toFixed(6)}`;
+        const finalAddress =
+          address || `${curLat.toFixed(6)}, ${curLon.toFixed(6)}`;
         if (cb) cb(finalAddress);
         setDisplayAddress(finalAddress);
         setSearchQuery(finalAddress);
@@ -422,15 +588,6 @@ export default function LocationPickerModal({
     );
   };
 
-  // ── Copy coordinates ──────────────────────────────────────────────
-  // const copyCoordinates = () => {
-  //   const text = `${selectedLat}, ${selectedLon}`;
-  //   navigator.clipboard.writeText(text).then(
-  //     () => showToast("Coordinates copied to clipboard", "success"),
-  //     () => showToast("Failed to copy", "error")
-  //   );
-  // };
-
   // ── Save ──────────────────────────────────────────────────────────
   const handleSave = () => {
     if (
@@ -440,6 +597,15 @@ export default function LocationPickerModal({
       showToast("Invalid coordinates", "error");
       return;
     }
+
+    const lat = parseFloat(selectedLat);
+    const lng = parseFloat(selectedLon);
+
+    if (!isWithinAddisAbaba(lat, lng)) {
+      showToast(OUTSIDE_MESSAGE, "error");
+      return;
+    }
+
     onSelectRef.current(selectedLat, selectedLon);
     onCloseRef.current();
   };
@@ -448,6 +614,7 @@ export default function LocationPickerModal({
   useEffect(() => {
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -467,7 +634,7 @@ export default function LocationPickerModal({
                 Select Company Location
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
-                Search, move the marker, or use GPS
+                Addis Ababa, Ethiopia — Search, move the marker, or use GPS
               </p>
             </div>
           </div>
@@ -496,7 +663,6 @@ export default function LocationPickerModal({
 
             <div id={mapContainerId} className="w-full h-full" />
 
-            {/* Floating GPS button */}
             {leafletLoaded && initialSetupDone && (
               <button
                 onClick={handleDetectLocation}
@@ -514,7 +680,15 @@ export default function LocationPickerModal({
               </button>
             )}
 
-            {/* Toast / Error display on map area */}
+            {leafletLoaded && initialSetupDone && (
+              <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5">
+                <MapPin className="h-3 w-3 text-secondary" />
+                <span className="text-[10px] font-bold text-gray-700">
+                  Addis Ababa
+                </span>
+              </div>
+            )}
+
             {toastMessage && (
               <div
                 className={`absolute bottom-4 left-4 right-4 z-20 rounded-lg p-3 text-xs flex items-start gap-2 shadow-lg ${
@@ -550,7 +724,7 @@ export default function LocationPickerModal({
               <form onSubmit={handleSearchSubmit} className="relative">
                 <input
                   type="text"
-                  placeholder="Search address or place..."
+                  placeholder="Search address or place in Addis Ababa..."
                   value={searchQuery}
                   onChange={(e) => handleSearchInputChange(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white shadow-sm"
@@ -578,8 +752,35 @@ export default function LocationPickerModal({
                 </button>
               </form>
 
+              {/* Search restriction notice */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50/60 border border-indigo-100 rounded-xl">
+                <Info className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
+                <p className="text-[10px] text-indigo-600 font-medium">
+                  Search is restricted to Addis Ababa, Ethiopia
+                </p>
+              </div>
+
+              {/* Location validity warning */}
+              {!isLocationValid && (
+                <div className="flex items-start gap-2.5 px-3.5 py-3 bg-red-50 border border-red-200 rounded-xl">
+                  <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold text-red-700">
+                      Outside Addis Ababa
+                    </p>
+                    <p className="text-[10px] text-red-600 mt-0.5 leading-relaxed">
+                      {OUTSIDE_MESSAGE}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Coordinates Card */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2 md:space-y-4 shadow-sm">
+              <div
+                className={`bg-white rounded-2xl border p-4 space-y-2 md:space-y-4 shadow-sm transition-colors ${
+                  isLocationValid ? "border-gray-200" : "border-red-200"
+                }`}
+              >
                 <h4 className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
                   Target Coordinates
@@ -594,7 +795,11 @@ export default function LocationPickerModal({
                       inputMode="decimal"
                       value={selectedLat}
                       onChange={(e) => setSelectedLat(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-sm font-mono bg-gray-50 focus:bg-white focus:ring-1 focus:ring-secondary/30"
+                      className={`w-full border rounded-lg p-2 text-sm font-mono bg-gray-50 focus:bg-white focus:ring-1 ${
+                        isLocationValid
+                          ? "border-gray-200 focus:ring-secondary/30"
+                          : "border-red-300 focus:ring-red-300/30"
+                      }`}
                     />
                   </div>
                   <div>
@@ -606,17 +811,14 @@ export default function LocationPickerModal({
                       inputMode="decimal"
                       value={selectedLon}
                       onChange={(e) => setSelectedLon(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-sm font-mono bg-gray-50 focus:bg-white focus:ring-1 focus:ring-secondary/30"
+                      className={`w-full border rounded-lg p-2 text-sm font-mono bg-gray-50 focus:bg-white focus:ring-1 ${
+                        isLocationValid
+                          ? "border-gray-200 focus:ring-secondary/30"
+                          : "border-red-300 focus:ring-red-300/30"
+                      }`}
                     />
                   </div>
                 </div>
-                {/* <button
-                  onClick={copyCoordinates}
-                  className="w-full py-2 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy Coordinates
-                </button> */}
               </div>
 
               {/* Address Preview */}
@@ -634,7 +836,7 @@ export default function LocationPickerModal({
               <div className="hidden md:p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
                 <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
                   💡 Accurate coordinates ensure precise delivery routes, fees,
-                  and dispatch sequences.
+                  and dispatch sequences within Addis Ababa.
                 </p>
               </div>
             </div>
@@ -649,7 +851,15 @@ export default function LocationPickerModal({
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 bg-gradient-to-r from-secondary to-secondary-light hover:from-[#5b4694] hover:to-[#6b55a8] text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                disabled={!isLocationValid}
+                title={
+                  !isLocationValid ? OUTSIDE_MESSAGE : "Apply this location"
+                }
+                className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  isLocationValid
+                    ? "bg-gradient-to-r from-secondary to-secondary-light hover:from-[#5b4694] hover:to-[#6b55a8] text-white shadow-lg shadow-purple-100 active:scale-[0.98]"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
               >
                 <Check className="h-5 w-5" />
                 Apply Location

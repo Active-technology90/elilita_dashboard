@@ -452,7 +452,7 @@ export default function CompanyUsers() {
       {loading ? (
         <StatsSkeleton />
       ) : (
-        <section className="mb-4 hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
+        <section className="mb-6 hidden grid-cols-2 gap-2 sm:grid md:grid-cols-3 lg:grid-cols-5">
           <StatCard title="Total" value={users?.length || 0} icon={Users} />
           <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
           <StatCard
@@ -625,7 +625,7 @@ export default function CompanyUsers() {
         )}
       </div>
 
-      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+      <section className="relative mt-4 rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div className="relative z-0">
           <CompanyUsersTable
             users={paginatedUsers}
