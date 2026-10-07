@@ -30,12 +30,93 @@ interface ManageMembershipsModalProps {
   onRefresh?: () => void;
 }
 
-const roleOptions: UserRole[] = ["admin", "staff", "viewer", "delivery","owner"];
+const roleOptions: UserRole[] = ["admin", "staff", "viewer", "delivery", "owner"];
 
 const roleSelectOptions: SelectOption[] = roleOptions.map((role) => ({
   label: role.charAt(0).toUpperCase() + role.slice(1),
   value: role,
 }));
+
+/* ──────────────────────────────────────────────────────────────────
+   Error extractor — handles every shape the backend can return:
+     - ["message"]                      (top-level array of strings)
+     - { detail: "message" }
+     - { non_field_errors: ["message"] }
+     - { field: ["message"] }
+     - { detail: ["message"] }
+     - plain string
+     - fallback axios message
+   ────────────────────────────────────────────────────────────────── */
+const extractApiError = (err: any, fallback = "Something went wrong"): string => {
+  if (!err) return fallback;
+
+  const data = err?.response?.data;
+
+  // 1. Top-level array of strings: ["Subscription limit reached..."]
+  if (Array.isArray(data)) {
+    const joined = data
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          // e.g. [{ detail: "..." }, ...]
+          return extractApiError({ response: { data: item } }, "");
+        }
+        return String(item);
+      })
+      .filter(Boolean)
+      .join(" ");
+    if (joined.trim()) return joined.trim();
+  }
+
+  // 2. Plain string body
+  if (typeof data === "string" && data.trim()) {
+    return data.trim();
+  }
+
+  // 3. Object with known keys
+  if (data && typeof data === "object") {
+    // Prefer common top-level keys first
+    const preferred = ["detail", "message", "error", "non_field_errors"];
+    for (const key of preferred) {
+      const value = (data as any)[key];
+      if (Array.isArray(value) && value.length) {
+        const joined = value
+          .map((v) => (typeof v === "string" ? v : JSON.stringify(v)))
+          .filter(Boolean)
+          .join(" ");
+        if (joined.trim()) return joined.trim();
+      }
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    // Fall back to any first field error (e.g. { email: ["..."] })
+    const firstKey = Object.keys(data)[0];
+    if (firstKey) {
+      const value = (data as any)[firstKey];
+      if (Array.isArray(value) && value.length) {
+        const joined = value
+          .map((v) => (typeof v === "string" ? v : JSON.stringify(v)))
+          .filter(Boolean)
+          .join(" ");
+        if (joined.trim()) return joined.trim();
+      }
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+  }
+
+  // 4. Fall back to axios message only if nothing else matched
+  if (typeof err?.message === "string" && err.message.trim()) {
+    // If the message is the generic axios one, prefer the fallback text
+    if (/status code \d+/i.test(err.message)) return fallback;
+    return err.message;
+  }
+
+  return fallback;
+};
 
 const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
   isOpen,
@@ -59,7 +140,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [companyToRemove, setCompanyToRemove] = useState<{ id: number; name: string } | null>(null);
-const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<string | null>(null);
 
   // ✅ SAFE MEMO (must be after hooks)
   const availableFilteredCompanies = useMemo(() => {
@@ -68,9 +149,6 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
       (c) => !user.memberships.some((m) => m.company_id === c.id),
     );
   }, [availableCompanies, user]);
-
-  // ❗ MOVE THIS HERE (AFTER HOOKS)
-
 
   if (!isOpen || !user) return null;
 
@@ -104,7 +182,8 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
 
       onRefresh?.();
     } catch (err: any) {
-      setError(err.message || "Failed to add membership");
+      // 🔥 FIX: surface the real backend message instead of axios's generic one
+      setError(extractApiError(err, "Failed to add membership"));
     } finally {
       setLoading(false);
     }
@@ -128,7 +207,7 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
       setConfirmModalOpen(false);
       setCompanyToRemove(null);
     } catch (err: any) {
-      setError(err.message || "Failed to remove membership");
+      setError(extractApiError(err, "Failed to remove membership"));
     } finally {
       setRemovingCompanyId(null);
     }
@@ -164,22 +243,11 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
 
       onRefresh?.();
     } catch (err: any) {
-      setError(err.message || "Failed to update role");
+      setError(extractApiError(err, "Failed to update role"));
     } finally {
       setUpdatingRoleCompanyId(null);
     }
   };
-
-  // const availableFilteredCompanies = useMemo(
-  //   () =>
-  //     availableCompanies.filter(
-  //       (c) =>
-  //         !user.memberships.some(
-  //           (m) => m.company_id === c.id,
-  //         ),
-  //     ),
-  //   [availableCompanies, user.memberships],
-  // );
 
   // Transform companies into CustomSelect options
   const companySelectOptions: SelectOption[] =
@@ -215,7 +283,6 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
     xl:max-w-5xl
     2xl:max-w-6xl
   `;
-  
 
   return (
     <>
@@ -677,92 +744,92 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
                                     sm:flex-row sm:items-center sm:justify-between
                                   "
                                 >
-                                 
-<div className="w-full sm:w-44">
-  {editingRole === `${m.company_slug}-${m.company_id}` ? (
-    <div className="flex items-center gap-2">
-      <CustomSelect
-        value={m.role}
-        onChange={(val) => {
-          handleRoleChange(
-            m.company_slug,
-            m.company_id,
-            val as UserRole,
-          );
+                                  <div className="w-full sm:w-44">
+                                    {editingRole === `${m.company_slug}-${m.company_id}` ? (
+                                      <div className="flex items-center gap-2">
+                                        <CustomSelect
+                                          value={m.role}
+                                          onChange={(val) => {
+                                            handleRoleChange(
+                                              m.company_slug,
+                                              m.company_id,
+                                              val as UserRole,
+                                            );
 
-          setEditingRole(null);
-        }}
-        options={roleSelectOptions}
-        className="w-full"
-        maxHeight={180}
-      />
+                                            setEditingRole(null);
+                                          }}
+                                          options={roleSelectOptions}
+                                          className="w-full"
+                                          maxHeight={180}
+                                        />
 
-      {/* Cancel */}
-      <button
-        onClick={() => setEditingRole(null)}
-        className="
-          shrink-0
-          rounded-xl
-          border border-gray-200
-          bg-white
-          px-3 py-2
-          text-xs font-medium
-          text-gray-600
-          transition-all duration-200
-          hover:bg-gray-50
-        "
-      >
-        Cancel
-      </button>
-    </div>
-  ) : (
-    <div
-      className="
-        flex items-center justify-between gap-2
-        rounded-xl
-        border border-gray-200
-        bg-gray-50/70
-        px-3 py-2
-      "
-    >
-      {/* Current Role */}
-      <span
-        className="
-          truncate
-          text-sm
-          font-medium
-          text-gray-800
-        "
-      >
-        {m.role}
-      </span>
+                                        {/* Cancel */}
+                                        <button
+                                          onClick={() => setEditingRole(null)}
+                                          className="
+                                            shrink-0
+                                            rounded-xl
+                                            border border-gray-200
+                                            bg-white
+                                            px-3 py-2
+                                            text-xs font-medium
+                                            text-gray-600
+                                            transition-all duration-200
+                                            hover:bg-gray-50
+                                          "
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div
+                                        className="
+                                          flex items-center justify-between gap-2
+                                          rounded-xl
+                                          border border-gray-200
+                                          bg-gray-50/70
+                                          px-3 py-2
+                                        "
+                                      >
+                                        {/* Current Role */}
+                                        <span
+                                          className="
+                                            truncate
+                                            text-sm
+                                            font-medium
+                                            text-gray-800
+                                          "
+                                        >
+                                          {m.role}
+                                        </span>
 
-      {/* Edit Button */}
-      <button
-        onClick={() =>
-          setEditingRole(
-            `${m.company_slug}-${m.company_id}`,
-          )
-        }
-        className="
-          shrink-0
-          rounded-lg
-          border border-gray-200
-          bg-white
-          px-2.5 py-1.5
-          text-xs
-          font-medium
-          text-gray-600
-          transition-all duration-200
-          hover:border-gray-300
-          hover:bg-gray-50
-        "
-      >
-        Edit
-      </button>
-    </div>
-  )}
-</div>
+                                        {/* Edit Button */}
+                                        <button
+                                          onClick={() =>
+                                            setEditingRole(
+                                              `${m.company_slug}-${m.company_id}`,
+                                            )
+                                          }
+                                          className="
+                                            shrink-0
+                                            rounded-lg
+                                            border border-gray-200
+                                            bg-white
+                                            px-2.5 py-1.5
+                                            text-xs
+                                            font-medium
+                                            text-gray-600
+                                            transition-all duration-200
+                                            hover:border-gray-300
+                                            hover:bg-gray-50
+                                          "
+                                        >
+                                          Edit
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+
                                   {/* Mobile Remove */}
                                   <button
                                     onClick={() =>
@@ -859,7 +926,10 @@ const [editingRole, setEditingRole] = useState<string | null>(null);
 
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-red-700">
-                          Something went wrong
+                          {error.toLowerCase().includes("subscription") ||
+                          error.toLowerCase().includes("limit")
+                            ? "Subscription limit reached"
+                            : "Something went wrong"}
                         </p>
 
                         <p className="mt-0.5 text-xs  sm:text-sm  text-red-600 break-words">

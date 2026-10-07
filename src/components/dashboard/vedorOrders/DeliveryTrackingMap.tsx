@@ -1031,26 +1031,34 @@ export default function DeliveryTrackingMap({
     );
   }, [combinedOrders, selectedOrderId, allOrders, initialOrder]);
 
-  const liveDeliveries = useMemo(() => {
-    let filtered = combinedOrders.filter(order => {
-      const dest = getOrderDestination(order);
-      return order.delivery?.status === "out_for_delivery" &&
-             dest.lat != null && dest.lon != null &&
-             order.delivery.delivery_person_name !== "Unassigned";
-    });
+ const liveDeliveries = useMemo(() => {
+  let filtered = combinedOrders.filter(order => {
+    const dest = getOrderDestination(order);
+    const isLiveTracking = order.delivery?.status === "out_for_delivery";
+    const isSelectionMode = mode === "driver_selection";
 
-    if (mode === "driver_selection" && selectedOrderId) {
-      filtered = filtered.filter(o => o.id === selectedOrderId);
+    // In driver_selection mode, we want the selected order visible even if
+    // its status is not yet "out_for_delivery" (e.g. right after assignment).
+    if (!isSelectionMode && !isLiveTracking) return false;
+    if (dest.lat == null || dest.lon == null) return false;
+    if (!isSelectionMode && order.delivery.delivery_person_name === "Unassigned") {
+      return false;
     }
+    return true;
+  });
 
-    if (driverFilter === "in_house") {
-      filtered = filtered.filter(order => order.delivery.is_in_house === true);
-    } else if (driverFilter === "third_party") {
-      filtered = filtered.filter(order => order.delivery.is_in_house === false);
-    }
+  if (mode === "driver_selection" && selectedOrderId) {
+    filtered = filtered.filter(o => o.id === selectedOrderId);
+  }
 
-    return filtered;
-  }, [combinedOrders, driverFilter, mode, selectedOrderId]);
+  if (driverFilter === "in_house") {
+    filtered = filtered.filter(order => order.delivery.is_in_house === true);
+  } else if (driverFilter === "third_party") {
+    filtered = filtered.filter(order => order.delivery.is_in_house === false);
+  }
+
+  return filtered;
+}, [combinedOrders, driverFilter, mode, selectedOrderId]);
 
   /* ── Debug: log what the map sees for the selected order ── */
   useEffect(() => {
@@ -2282,46 +2290,44 @@ export default function DeliveryTrackingMap({
     } 
   }; 
  
-  const handleConfirmAssignment = async () => { 
-    if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return; 
-     
-    if (!normalizedOrder.canAssign) { 
-      showToast("error", normalizedOrder.assignmentBlockedReason || "Unable to assign driver"); 
-      return; 
+const handleConfirmAssignment = async () => { 
+  if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return; 
+  
+  if (!normalizedOrder.canAssign) { 
+    showToast("error", normalizedOrder.assignmentBlockedReason || "Unable to assign driver"); 
+    return; 
+  } 
+  
+  const driver = enhancedDrivers.find(d => d.id === pendingDriverId); 
+  if (!driver) { 
+    showToast("error", "Selected driver not found. Please refresh drivers."); 
+    return; 
+  } 
+  
+  if (!driver.isLive) {
+    showToast("error", "This driver is not currently live. Please select a live driver.");
+    return;
+  }
+  
+  setIsAssigning(true); 
+  try { 
+    await onDriverSelect(pendingDriverId); 
+    setSelectedDriverId(pendingDriverId); 
+    setShowConfirmPanel(false); 
+    setPendingDriverId(null); 
+    showToast("success", "Driver assigned successfully"); 
+    
+    // The parent modal (VendorOrderDetailModal) owns the close lifecycle.
+    // Do NOT call onClose() here — this prevents the double-close race.
+    if (onAssignmentComplete) { 
+      onAssignmentComplete(); 
     } 
-     
-    const driver = enhancedDrivers.find(d => d.id === pendingDriverId); 
-    if (!driver) { 
-      showToast("error", "Selected driver not found. Please refresh drivers."); 
-      return; 
-    } 
-     
-    if (!driver.isLive) {
-      showToast("error", "This driver is not currently live. Please select a live driver.");
-      return;
-    }
-     
-    setIsAssigning(true); 
-    try { 
-      await onDriverSelect(pendingDriverId); 
-      setSelectedDriverId(pendingDriverId); 
-      setShowConfirmPanel(false); 
-      setPendingDriverId(null); 
-      showToast("success", "Driver assigned successfully"); 
-       
-      if (onAssignmentComplete) { 
-        onAssignmentComplete(); 
-      } 
-       
-      setTimeout(() => { 
-        onClose(); 
-      }, 1500); 
-    } catch (err) { 
-      showToast("error", "Failed to assign driver. They may no longer be available."); 
-    } finally { 
-      setIsAssigning(false); 
-    } 
-  }; 
+  } catch (err) { 
+    showToast("error", "Failed to assign driver. They may no longer be available."); 
+  } finally { 
+    setIsAssigning(false); 
+  } 
+}; 
  
   const handleCancelSelection = () => { 
     setPendingDriverId(null); 
