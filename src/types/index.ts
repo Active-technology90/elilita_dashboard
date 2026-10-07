@@ -190,7 +190,7 @@ export interface CompanyListItem {
   license?: string | null;
   registered_by?: number;
   registered_by_username?: string;
-  chapa_sub_account_id?:number;
+  chapa_sub_account_id?: string | number;
 }
 
 // ─────────────────────────────────────────────────────────────

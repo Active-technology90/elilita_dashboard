@@ -4,7 +4,6 @@ import {
   Play,
   ExternalLink,
   HelpCircle,
-  CheckCircle2,
   Shield,
   Users,
   Truck,

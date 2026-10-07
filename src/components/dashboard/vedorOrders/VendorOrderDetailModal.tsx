@@ -325,8 +325,6 @@ const DeliveryCard = ({
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all");
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showDriverTypeFilter, setShowDriverTypeFilter] = useState(false);
-  const [showVehicleTypeFilter, setShowVehicleTypeFilter] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
@@ -1642,7 +1640,6 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setFilterType(option.value as any);
-                              setShowDriverTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
                             className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${filterType === option.value
@@ -1677,7 +1674,6 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setVehicleTypeFilter(option.value as any);
-                              setShowVehicleTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
                             className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${vehicleTypeFilter === option.value
