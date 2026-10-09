@@ -616,27 +616,28 @@ export default function CompanyUsers() {
         />
 
         {/* Stats — always visible on mobile too */}
-        <div className="mt-5 sm:mt-6">
-          {loading ? (
-            <StatsSkeleton />
-          ) : (
-            <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-              <StatCard title="Total" value={users?.length || 0} icon={Users} />
-              <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
-              <StatCard
-                title="Dispatchers"
-                value={roleCounts.staff}
-                icon={Briefcase}
-              />
-              <StatCard
-                title="Delivery"
-                value={roleCounts.delivery}
-                icon={Truck}
-              />
-              <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
-            </section>
-          )}
-        </div>
+        {/* Stats — hidden on mobile, visible from `sm` breakpoint up */}
+<div className="mt-5 hidden sm:mt-6 sm:block">
+  {loading ? (
+    <StatsSkeleton />
+  ) : (
+    <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
+      <StatCard title="Total" value={users?.length || 0} icon={Users} />
+      <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
+      <StatCard
+        title="Dispatchers"
+        value={roleCounts.staff}
+        icon={Briefcase}
+      />
+      <StatCard
+        title="Delivery"
+        value={roleCounts.delivery}
+        icon={Truck}
+      />
+      <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
+    </section>
+  )}
+</div>
 
         {/* Staff limit warning */}
         {isLimitReached && (

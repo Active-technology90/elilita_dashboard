@@ -41,7 +41,6 @@ import {
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { ConfirmationModal } from "../../ui/confimationModal";
-// import { CustomSelect } from "../../ui/CustomSelect";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
@@ -74,6 +73,145 @@ const formatAddress = (address?: string | null) => {
     .map((part) => part.trim())
     .filter(Boolean)
     .join(", ");
+};
+
+// ─── Fulfillment type normalizer ─────────────────────────────────
+// Backend may send "pickup", "self_pickup", "self-pickup", "onspot",
+// "in_store", "dine_in", "table", etc. Normalize them once.
+type FulfillmentKind = "delivery" | "pickup" | "onspot" | "unknown";
+
+const getFulfillmentKind = (order: any): FulfillmentKind => {
+  const raw = (
+    order?.fulfillment_type ||
+    order?.fulfillment ||
+    order?.order_type ||
+    ""
+  )
+    .toString()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (raw === "delivery" || raw === "home_delivery" || raw === "courier") {
+    return "delivery";
+  }
+  if (
+    raw === "pickup" ||
+    raw === "self_pickup" ||
+    raw === "selfpickup" ||
+    raw === "in_store" ||
+    raw === "store_pickup"
+  ) {
+    return "pickup";
+  }
+  if (
+    raw === "onspot" ||
+    raw === "on_spot" ||
+    raw === "dine_in" ||
+    raw === "dinein" ||
+    raw === "table" ||
+    raw === "table_order"
+  ) {
+    return "onspot";
+  }
+  return "unknown";
+};
+
+// ─── Customer info resolver ──────────────────────────────────────
+// For pickup/onspot orders, `recipient_*` may be empty because the
+// buyer is the customer, not a separate recipient. Fall back through
+// every plausible field on the order — including the tax invoice,
+// which is where the customer name often lives for paid orders.
+//
+// IMPORTANT: never fall back to the company/store name here, because
+// that makes the store look like the customer in the UI.
+const resolveCustomerName = (order: any): string => {
+  console.log("Resolving customer name for order:", order);
+  const candidate =
+    order?.recipient_name ||
+    order?.customer_name ||
+    order?.tax_invoice?.customer_name ||
+    order?.customer?.name ||
+    order?.customer?.full_name ||
+    order?.user?.name ||
+    order?.tax_invoice?.recipient_name ||
+    order?.invoice?.customer_name ||
+    order?.placed_by_name ||
+    "";
+
+  const trimmed = String(candidate).trim();
+  if (trimmed) return trimmed;
+
+  // No name found — use a truthful placeholder.
+  const kind = getFulfillmentKind(order);
+  if (kind === "pickup" || kind === "onspot") {
+    return "Walk-in Customer";
+  }
+  return "Customer";
+};
+
+// Returns true only when we actually have a real customer name from
+// the backend (so the UI can style it differently from the fallback).
+const hasCustomerName = (order: any): boolean => {
+  console.log("Checking customer name for order:", order?.id, order?.recipient_name, order?.customer_name, order?.tax_invoice?.customer_name, order?.customer?.name, order?.customer?.full_name, order?.user?.name, order?.tax_invoice?.recipient_name, order?.invoice?.customer_name, order?.placed_by_name);    
+  const candidate =
+    order?.recipient_name ||
+    order?.customer_name ||
+    order?.tax_invoice?.customer_name ||
+    order?.customer?.name ||
+    order?.customer?.full_name ||
+    order?.user?.name ||
+    order?.tax_invoice?.recipient_name ||
+    order?.invoice?.customer_name ||
+    order?.placed_by_name ||
+    "";
+  return String(candidate).trim().length > 0;
+};
+
+const resolveCustomerPhone = (order: any): string => {
+  const candidate =
+    order?.shipping_phone ||
+    order?.customer_phone ||
+    order?.customer?.phone ||
+    order?.customer?.phone_number ||
+    order?.user?.phone ||
+    order?.placed_by_phone ||
+    order?.tax_invoice?.customer_phone ||
+    order?.tax_invoice?.recipient_phone ||
+    order?.invoice?.customer_phone ||
+    "";
+
+  const trimmed = String(candidate).trim();
+  if (trimmed) return trimmed;
+
+  // For pickup/onspot orders, the store's contact phone is the
+  // appropriate fallback since the customer will call the store.
+  const kind = getFulfillmentKind(order);
+  if (kind === "pickup" || kind === "onspot") {
+    return (
+      order?.company?.contact_phone ||
+      order?.company?.phone ||
+      ""
+    );
+  }
+  return "";
+};
+
+const resolveCustomerImage = (order: any): string | undefined => {
+  return (
+    order?.recipient_image ||
+    order?.customer_image ||
+    order?.customer?.image ||
+    order?.customer?.profile_image ||
+    undefined
+  );
+};
+
+// ─── Human-readable fulfillment labels ───────────────────────────
+const FULFILLMENT_LABELS: Record<FulfillmentKind, string> = {
+  delivery: "Home Delivery",
+  pickup: "Self Pickup",
+  onspot: "On Spot (Dine-In)",
+  unknown: "Order",
 };
 
 // ─── Order Timeline Builder ──────────────────────────────
@@ -278,8 +416,9 @@ const StatusBadge = ({
   const displayStatus = getDisplayStatus(status, customLabels);
   return (
     <span
-      className={`px-2 md:px-2.5 py-0.5 md:py-1 text-[8px] md:text-[11px] font-bold uppercase tracking-wider rounded-full border shadow-sm ${styles[s] || "bg-gray-100 text-gray-600 border-gray-200"
-        }`}
+      className={`px-2 md:px-2.5 py-0.5 md:py-1 text-[8px] md:text-[11px] font-bold uppercase tracking-wider rounded-full border shadow-sm ${
+        styles[s] || "bg-gray-100 text-gray-600 border-gray-200"
+      }`}
     >
       {displayStatus}
     </span>
@@ -325,6 +464,8 @@ const DeliveryCard = ({
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all");
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDriverTypeFilter, setShowDriverTypeFilter] = useState(false);
+  const [showVehicleTypeFilter, setShowVehicleTypeFilter] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
@@ -342,7 +483,6 @@ const DeliveryCard = ({
     mode?: "full_trip" | "pickup_only" | "direct_customer";
   }>>({});
   const [showMapPreview, setShowMapPreview] = useState(false);
-
 
   const [usernameMap, setUsernameMap] = useState<Map<string, string>>(
     new Map(),
@@ -375,8 +515,8 @@ const DeliveryCard = ({
     const a =
       Math.sin(dLat / 2) ** 2 +
       Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -413,9 +553,6 @@ const DeliveryCard = ({
       : null;
   };
 
-  // IMPORTANT: keep this priority aligned with DeliveryTrackingMap.getOrderDestination().
-  // The delivery destination recorded on the vendor order is authoritative; shipping/master
-  // coordinates are fallbacks for older payload shapes.
   const getCustomerLocation = () => {
     const candidates = [
       { source: "delivery", value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon) },
@@ -466,35 +603,23 @@ const DeliveryCard = ({
 
   const getVehicleIcon = (type?: string) => {
     switch (type?.toLowerCase()) {
-      case "motorcycle":
-        return "🏍️";
-      case "car":
-        return "🚗";
-      case "bicycle":
-        return "🚲";
-      case "van":
-        return "🚐";
-      case "foot":
-        return "🚶";
-      default:
-        return "🛵";
+      case "motorcycle": return "🏍️";
+      case "car": return "🚗";
+      case "bicycle": return "🚲";
+      case "van": return "🚐";
+      case "foot": return "🚶";
+      default: return "🛵";
     }
   };
 
   const getVehicleName = (type?: string) => {
     switch (type?.toLowerCase()) {
-      case "motorcycle":
-        return "Motorcycle";
-      case "car":
-        return "Car";
-      case "bicycle":
-        return "Bicycle";
-      case "van":
-        return "Van";
-      case "foot":
-        return "On Foot";
-      default:
-        return "Vehicle";
+      case "motorcycle": return "Motorcycle";
+      case "car": return "Car";
+      case "bicycle": return "Bicycle";
+      case "van": return "Van";
+      case "foot": return "On Foot";
+      default: return "Vehicle";
     }
   };
 
@@ -505,11 +630,6 @@ const DeliveryCard = ({
     return `⭐ ${rating} (${reviews})`;
   };
 
-  // ── Canonical route calculation ───────────────────────────────────────────
-  // The number shown as "Trip" is ALWAYS:
-  //   Driver → Pickup + Pickup → Customer
-  // If pickup coordinates do not exist, it is Driver → Customer.
-  // OSRM is preferred. Haversine is only a resilient fallback and is labelled in debug output.
   const fetchDriverRoute = useCallback(async (
     driverId: number,
     fromLat: number,
@@ -681,7 +801,6 @@ const DeliveryCard = ({
     }
   }, []);
 
-  // Subscribe to real-time live GPS for eligible drivers via Firebase drivers/{driverId} 
   useEffect(() => {
     if (!showAssignForm || staffList.length === 0) return;
     const cleanups: Array<() => void> = [];
@@ -706,7 +825,6 @@ const DeliveryCard = ({
     };
   }, [showAssignForm, staffList]);
 
-  // Cleanup route request timers on unmount
   useEffect(() => {
     return () => {
       routeRequestTimers.current.forEach(timer => clearTimeout(timer));
@@ -849,25 +967,21 @@ const DeliveryCard = ({
     order?.delivery_address?.lon,
   ]);
 
-  // Filter and sort staff
   const filteredStaffList = useMemo(() => {
     let filtered = [...staffWithDistance];
 
-    // Filter by driver type (in-house vs 3PL) 
     if (filterType === "in_house") {
       filtered = filtered.filter((s) => s.is_in_house === true);
     } else if (filterType === "third_party") {
       filtered = filtered.filter((s) => s.is_in_house === false);
     }
 
-    // Filter by vehicle type 
     if (vehicleTypeFilter !== "all") {
       filtered = filtered.filter((s) =>
         s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase()
       );
     }
 
-    // Filter by search term 
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -879,10 +993,8 @@ const DeliveryCard = ({
       );
     }
 
-    // Sort based on selected criteria 
     return filtered.sort((a, b) => {
       if (sortBy === "distance") {
-        // Use two-leg OSRM road distance if available, otherwise fallback to haversine
         const distA = routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999;
         const distB = routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999;
         return sortOrder === "asc" ? distA - distB : distB - distA;
@@ -891,7 +1003,6 @@ const DeliveryCard = ({
         const ratingB = parseFloat(b.average_rating || "0");
         return sortOrder === "asc" ? ratingA - ratingB : ratingB - ratingA;
       } else {
-        // sort by name 
         const nameA = a.name?.toLowerCase() || "";
         const nameB = b.name?.toLowerCase() || "";
         return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
@@ -899,7 +1010,6 @@ const DeliveryCard = ({
     });
   }, [staffWithDistance, filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, routeData]);
 
-  // Pagination 
   const totalPages = Math.ceil(filteredStaffList.length / itemsPerPage);
   const paginatedStaffList = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -907,7 +1017,6 @@ const DeliveryCard = ({
     return filteredStaffList.slice(startIndex, endIndex);
   }, [filteredStaffList, currentPage, itemsPerPage]);
 
-  // Calculate two-leg OSRM routes for visible drivers only (debounced)
   useEffect(() => {
     if (!showAssignForm || paginatedStaffList.length === 0) return;
 
@@ -926,7 +1035,6 @@ const DeliveryCard = ({
       if (driver.live_lat != null && driver.live_lon != null &&
         isValidCoordinate(driver.live_lat, driver.live_lon)) {
 
-        // Debounce route calculation
         const timerKey = driver.id;
         if (routeRequestTimers.current.has(timerKey)) {
           clearTimeout(routeRequestTimers.current.get(timerKey));
@@ -965,7 +1073,6 @@ const DeliveryCard = ({
     order?.delivery_address?.lon,
   ]);
 
-  // Reset to first page when filters change 
   useEffect(() => {
     setCurrentPage(1);
   }, [filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, itemsPerPage]);
@@ -976,14 +1083,10 @@ const DeliveryCard = ({
     if (delivery?.cancelled_reason) return delivery.cancelled_reason;
     if (delivery?.reason) return delivery.reason;
     if (delivery?.status_reason) return delivery.status_reason;
-    if (order?.vendor_order_detail?.failure_reason)
-      return order.vendor_order_detail.failure_reason;
-    if (order?.vendor_order_detail?.cancellation_reason)
-      return order.vendor_order_detail.cancellation_reason;
-    if (order?.vendor_order_detail?.cancelled_reason)
-      return order.vendor_order_detail.cancelled_reason;
-    if (order?.vendor_order_detail?.reason)
-      return order.vendor_order_detail.reason;
+    if (order?.vendor_order_detail?.failure_reason) return order.vendor_order_detail.failure_reason;
+    if (order?.vendor_order_detail?.cancellation_reason) return order.vendor_order_detail.cancellation_reason;
+    if (order?.vendor_order_detail?.cancelled_reason) return order.vendor_order_detail.cancelled_reason;
+    if (order?.vendor_order_detail?.reason) return order.vendor_order_detail.reason;
     if (order?.failure_reason) return order.failure_reason;
     if (order?.cancellation_reason) return order.cancellation_reason;
     if (order?.cancelled_reason) return order.cancelled_reason;
@@ -1131,7 +1234,6 @@ const DeliveryCard = ({
     }
   };
 
-  // Determine best match (nearest driver with two-leg OSRM or haversine distance)
   const bestMatchDriver = useMemo(() => {
     if (filteredStaffList.length === 0 || sortBy !== "distance" || sortOrder !== "asc") return null;
     const firstDriver = filteredStaffList[0];
@@ -1271,7 +1373,7 @@ const DeliveryCard = ({
                               </button>
                             )}
 
-                          {order.fulfillment_type === "delivery" && (
+                          {getFulfillmentKind(order) === "delivery" && (
                             <button
                               type="button"
                               onClick={handleViewOnMap}
@@ -1286,10 +1388,11 @@ const DeliveryCard = ({
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
-                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 ${delivery?.status === "declined" || delivery?.status === "expired"
+                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 ${
+                                delivery?.status === "declined" || delivery?.status === "expired"
                                   ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-400 shadow-sm"
                                   : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10 focus:ring-secondary/15"
-                                }`}
+                              }`}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
                               Reassign driver
@@ -1299,37 +1402,6 @@ const DeliveryCard = ({
                       </div>
                     </div>
                   </section>
-
-                  {/* Operational alerts */}
-                  {/* {(delivery?.status === "declined" || delivery?.status === "expired") && (
-                    <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-amber-900">
-                            {delivery?.status === "expired" ? "Dispatch offer expired (120s timeout)" : "Driver declined delivery"}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-amber-700">
-                            {delivery.decline_reason
-                              ? `Reason: ${delivery.decline_reason}`
-                              : delivery?.status === "expired"
-                              ? "The assigned driver did not accept within 120 seconds. Reassign another driver to continue."
-                              : "The assigned driver declined the delivery. Reassign another driver to continue."}
-                          </p>
-                        </div>
-                      </div>
-                      {!deliveryStatus && (canManage || cod) && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAssignForm(true)}
-                          className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          Reassign driver
-                        </button>
-                      )}
-                    </div>
-                  )} */}
 
                   {isOrderFailed && failureReason && (
                     <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5">
@@ -1345,7 +1417,6 @@ const DeliveryCard = ({
                     </div>
                   )}
 
-                  {/* Dispatch history */}
                   {delivery?.attempts && delivery.attempts.length > 0 && (
                     <section className="rounded-2xl border border-gray-200 bg-white">
                       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 sm:px-5">
@@ -1455,7 +1526,7 @@ const DeliveryCard = ({
                       </button>
                     )}
 
-                    {order.fulfillment_type === "delivery" && (
+                    {getFulfillmentKind(order) === "delivery" && (
                       <button
                         type="button"
                         onClick={handleViewOnMap}
@@ -1477,7 +1548,6 @@ const DeliveryCard = ({
                     </div>
                   )}
 
-                  {/* Dispatch history even when driver is currently unassigned */}
                   {delivery?.attempts && delivery.attempts.length > 0 && (
                     <div className="mt-6 text-left">
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
@@ -1564,20 +1634,22 @@ const DeliveryCard = ({
                   <button
                     type="button"
                     onClick={() => setShowMapPreview(false)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${!showMapPreview
+                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
+                      !showMapPreview
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-800"
-                      }`}
+                    }`}
                   >
                     List
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowMapPreview(true)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${showMapPreview
+                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
+                      showMapPreview
                         ? "bg-white text-gray-900 shadow-sm"
                         : "text-gray-500 hover:text-gray-800"
-                      }`}
+                    }`}
                   >
                     Map
                   </button>
@@ -1624,7 +1696,6 @@ const DeliveryCard = ({
 
                   {/* Production filter controls */}
                   <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5">
-                    {/* Driver type row */}
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                         Driver Type
@@ -1640,12 +1711,14 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setFilterType(option.value as any);
+                              setShowDriverTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${filterType === option.value
+                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
+                              filterType === option.value
                                 ? "border-secondary bg-secondary text-white shadow-sm"
                                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                              }`}
+                            }`}
                           >
                             {option.label}
                           </button>
@@ -1655,7 +1728,6 @@ const DeliveryCard = ({
 
                     <div className="h-px bg-gray-200/80" />
 
-                    {/* Vehicle type row */}
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                         Vehicle
@@ -1674,12 +1746,14 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setVehicleTypeFilter(option.value as any);
+                              setShowVehicleTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${vehicleTypeFilter === option.value
+                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
+                              vehicleTypeFilter === option.value
                                 ? "border-secondary bg-secondary text-white shadow-sm"
                                 : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                              }`}
+                            }`}
                           >
                             {option.icon && <span className="mr-1">{option.icon}</span>}
                             {option.label}
@@ -1690,7 +1764,6 @@ const DeliveryCard = ({
 
                     <div className="h-px bg-gray-200/80" />
 
-                    {/* Sort and page controls */}
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                         Display
@@ -1818,17 +1891,19 @@ const DeliveryCard = ({
                                 key={staff.id}
                                 type="button"
                                 onClick={() => setSelectedUserId(staff.id)}
-                                className={`group relative block w-full px-4 py-3.5 text-left transition ${isSelected
+                                className={`group relative block w-full px-4 py-3.5 text-left transition ${
+                                  isSelected
                                     ? "bg-secondary/[0.045]"
                                     : "bg-white hover:bg-gray-50/80"
-                                  }`}
+                                }`}
                               >
                                 <div className="grid gap-3 lg:grid-cols-[minmax(190px,1.8fr)_110px_120px_150px_84px] lg:items-center">
                                   <div className="flex min-w-0 items-center gap-3">
-                                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${isSelected
+                                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
+                                      isSelected
                                         ? "border-secondary/25 bg-secondary/10 text-secondary"
                                         : "border-gray-200 bg-gray-50 text-gray-600"
-                                      }`}>
+                                    }`}>
                                       {getInitials(staff.name)}
                                     </div>
 
@@ -1962,13 +2037,15 @@ const DeliveryCard = ({
                                       <span className="text-[10px] text-gray-400">
                                         Unavailable
                                       </span>
-                                    )}                                  </div>
+                                    )}
+                                  </div>
 
                                   <div className="flex items-center justify-start lg:justify-end">
-                                    <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${isSelected
+                                    <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${
+                                      isSelected
                                         ? "border-secondary bg-secondary text-white"
                                         : "border-gray-200 bg-white text-gray-600 group-hover:border-secondary/25 group-hover:text-secondary"
-                                      }`}>
+                                    }`}>
                                       {isSelected ? (
                                         <>
                                           <Check className="mr-1 h-3 w-3" /> Selected
@@ -2013,10 +2090,11 @@ const DeliveryCard = ({
                                   key={pageNum}
                                   type="button"
                                   onClick={() => setCurrentPage(pageNum)}
-                                  className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${currentPage === pageNum
+                                  className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
+                                    currentPage === pageNum
                                       ? "bg-secondary text-white"
                                       : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                    }`}
+                                  }`}
                                 >
                                   {pageNum}
                                 </button>
@@ -2283,10 +2361,11 @@ const ReceiptReviewCard = ({
                   <button
                     onClick={() => setShowCODConfirm(true)}
                     disabled={!canCollect}
-                    className={`w-full py-3 rounded-2xl text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${canCollect
+                    className={`w-full py-3 rounded-2xl text-white text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 ${
+                      canCollect
                         ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                         : "bg-gray-300 cursor-not-allowed shadow-none"
-                      }`}
+                    }`}
                   >
                     {codConfirming ? (
                       <>
@@ -2492,12 +2571,13 @@ const ReceiptReviewCard = ({
                           {h.bank_name || "Unknown Bank"}
                         </span>
                         <span
-                          className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${h.status === "approved"
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${
+                            h.status === "approved"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                               : h.status === "rejected"
                                 ? "bg-rose-50 text-rose-700 border-rose-100"
                                 : "bg-gray-100 text-gray-600 border-gray-200"
-                            }`}
+                          }`}
                         >
                           {h.status}
                         </span>
@@ -2696,7 +2776,6 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         autoClose={false}
       />
 
-      {/* Out of Stock / Refund Request Modal */}
       <AnimatePresence>
         {showOutOfStockModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -2796,6 +2875,40 @@ export function VendorOrderDetailModal({
   const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">("tracking");
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>();
 
+  // ═══════════════════════════════════════════════════════════════════
+  // FIX: Local optimistic delivery override so the modal updates
+  // immediately after assignment, even before the parent refetches.
+  // ═══════════════════════════════════════════════════════════════════
+  const [localDeliveryOverride, setLocalDeliveryOverride] = useState<any>(null);
+
+  const effectiveOrder = useMemo(() => {
+    if (!localDeliveryOverride) return order;
+    return {
+      ...order,
+      delivery: {
+        ...(order.delivery || {}),
+        ...localDeliveryOverride,
+      },
+    };
+  }, [order, localDeliveryOverride]);
+
+  // Clear the optimistic override once the parent supplies authoritative
+  // delivery data that already has a driver name.
+  useEffect(() => {
+    if (
+      localDeliveryOverride &&
+      order?.delivery?.delivery_person_name &&
+      order.delivery.delivery_person_name !== "Unassigned"
+    ) {
+      setLocalDeliveryOverride(null);
+    }
+  }, [order?.delivery?.delivery_person_name, localDeliveryOverride]);
+
+  // If the order itself changes (different order selected), clear override.
+  useEffect(() => {
+    setLocalDeliveryOverride(null);
+  }, [order?.id]);
+
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
@@ -2805,55 +2918,83 @@ export function VendorOrderDetailModal({
     }
   };
 
-  // ─── Handle View on Map from DeliveryCard ──────────────────────
   const handleViewOnMap = useCallback((orderId: number) => {
     setSelectedOrderId(orderId);
     setMapMode("driver_selection");
     setIsMapOpen(true);
   }, []);
 
-  // ─── Handle driver selection from map ──────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // FIX: handleDriverSelect now applies an optimistic local override
+  // BEFORE awaiting onUpdate(), so the UI reflects the assignment
+  // instantly. It also returns the API payload for the map.
+  // ═══════════════════════════════════════════════════════════════════
   const handleDriverSelect = useCallback(async (driverId: number) => {
     try {
-      if (order.delivery) {
-        await updateDeliveryPerson(
-          order.delivery.id.toString(),
+      let updatedDelivery: any = null;
+
+      if (effectiveOrder.delivery) {
+        const res = await updateDeliveryPerson(
+          effectiveOrder.delivery.id.toString(),
           driverId
         );
+        updatedDelivery = res?.data ?? null;
       } else {
-        await assignDelivery({
-          vendor_order: order.id,
+        const res = await assignDelivery({
+          vendor_order: effectiveOrder.id,
           delivery_person: driverId,
         });
+        updatedDelivery = res?.data ?? null;
       }
-      // Refresh the order data
+
+      // Optimistic local override so the modal UI updates immediately.
+      setLocalDeliveryOverride((prev: any) => ({
+        ...(prev || {}),
+        ...(updatedDelivery || {}),
+        // Ensure a driver name is present so DeliveryCard switches to
+        // the "assigned driver" view right away.
+        delivery_person_name:
+          updatedDelivery?.delivery_person_name ??
+          prev?.delivery_person_name ??
+          "Assigned driver",
+        delivery_person_phone:
+          updatedDelivery?.delivery_person_phone ??
+          prev?.delivery_person_phone ??
+          "",
+        status: updatedDelivery?.status ?? prev?.status ?? "pending",
+      }));
+
+      // Trigger parent refetch. The effect above will clear the override
+      // once the parent passes back authoritative data.
       await onUpdate();
+
+      return updatedDelivery;
     } catch (err) {
+      // Roll back optimistic state on failure
+      setLocalDeliveryOverride(null);
       throw err;
     }
-  }, [order, onUpdate]);
+  }, [effectiveOrder, onUpdate]);
 
-  // ─── Handle assignment complete ────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════
+  // FIX: single close path — the map already closes itself via
+  // onClose after its success toast. Here we just clear selection.
+  // ═══════════════════════════════════════════════════════════════════
   const handleAssignmentComplete = useCallback(() => {
-    // The onUpdate has already been called in handleDriverSelect
-    // Just close the map after a brief delay
-    setTimeout(() => {
-      setIsMapOpen(false);
-      setSelectedOrderId(undefined);
-    }, 500);
+    setSelectedOrderId(undefined);
+    // Close immediately too, so UI is not stuck waiting for map timer.
+    setIsMapOpen(false);
   }, []);
 
-  // ─── Close map ──────────────────────────────────────────────────
   const handleCloseMap = useCallback(() => {
     setIsMapOpen(false);
     setSelectedOrderId(undefined);
   }, []);
 
-  // ─── Customer Order History ────────────────────────────────────
   const customerOrders = useMemo(() => {
-    if (!order || !allOrders.length) return [];
-    const customerPhone = order.shipping_phone;
-    const companyId = order.company?.id;
+    if (!effectiveOrder || !allOrders.length) return [];
+    const customerPhone = effectiveOrder.shipping_phone;
+    const companyId = effectiveOrder.company?.id;
     if (!customerPhone || !companyId) return [];
 
     return allOrders
@@ -2861,14 +3002,14 @@ export function VendorOrderDetailModal({
         (o: any) =>
           o.shipping_phone === customerPhone &&
           o.company?.id === companyId &&
-          o.id !== order.id,
+          o.id !== effectiveOrder.id,
       )
       .sort(
         (a: any, b: any) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       )
       .slice(0, 10);
-  }, [order, allOrders]);
+  }, [effectiveOrder, allOrders]);
 
   return (
     <>
@@ -2896,10 +3037,10 @@ export function VendorOrderDetailModal({
                 <div className="mt-1.5">
                   <div className="flex flex-wrap items-center gap-1 sm:gap-3 mb-0.5 sm:mb-1">
                     <h2 className="text-base sm:text-2xl font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent tracking-tight break-words">
-                      Order #{order.id}-{order.master_order_id}
+                      Order #{effectiveOrder.id}-{effectiveOrder.master_order_id}
                     </h2>
                     <StatusBadge
-                      status={order.status}
+                      status={effectiveOrder.status}
                       customLabels={{
                         pending: "Pending",
                       }}
@@ -2909,13 +3050,13 @@ export function VendorOrderDetailModal({
                     <span className="flex items-center gap-1 sm:gap-2 bg-secondary/10 px-1.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full border border-secondary/20 shadow-sm">
                       <Calendar className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-secondary" />
                       <span className="font-mono text-[8px] sm:text-[12px] font-semibold text-gray-700 tracking-tight">
-                        {new Date(order.created_at).toLocaleDateString("en-US", {
+                        {new Date(effectiveOrder.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}{" "}
                         <span className="text-secondary mx-0.5">•</span>{" "}
-                        {new Date(order.created_at).toLocaleTimeString("en-US", {
+                        {new Date(effectiveOrder.created_at).toLocaleTimeString("en-US", {
                           hour: "2-digit",
                           minute: "2-digit",
                           hour12: true,
@@ -2925,7 +3066,7 @@ export function VendorOrderDetailModal({
                     <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600">
                       <Building2 className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-secondary" />{" "}
                       <span className="font-medium text-[9px] sm:text-sm">
-                        {order.company?.name}
+                        {effectiveOrder.company?.name}
                       </span>
                     </span>
                   </div>
@@ -2959,8 +3100,7 @@ export function VendorOrderDetailModal({
 
             {/* Scrollable Content Grid */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-              {/* Alert banners for dispute / replacement */}
-              {order.status?.toLowerCase() === "replacement_in_progress" && (
+              {effectiveOrder.status?.toLowerCase() === "replacement_in_progress" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
@@ -2971,7 +3111,7 @@ export function VendorOrderDetailModal({
                   </div>
                 </div>
               )}
-              {order.status?.toLowerCase() === "disputed" && (
+              {effectiveOrder.status?.toLowerCase() === "disputed" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
@@ -2986,113 +3126,237 @@ export function VendorOrderDetailModal({
                 {/* Left Side: Order Composition & Shipping (8 cols) */}
                 <div className="col-span-12 lg:col-span-8 space-y-4 sm:space-y-6 md:space-y-8 lg:sticky lg:top-0">
                   {/* Customer Summary Section */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <Card title="Customer Profile" icon={User}>
-                      <div className="flex items-center gap-4">
-                        {order.recipient_image ? (
-                          <img
-                            src={order.recipient_image}
-                            alt="Recipient"
-                            className="w-10 md:w-14 h-10 object-contain md:h-14 rounded-full ring-2 ring-purple-200"
-                          />
-                        ) : (
-                          <div className="w-10 md:w-14 h-10 md:h-14 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border-2 border-white shadow-sm flex items-center justify-center text-secondary font-black text-xl">
-                            {getInitials(order.recipient_name)}
-                          </div>
-                        )}
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm md:text-base font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-                              {order.recipient_name}
-                            </p>
-                            {order.fulfillment_type === "pickup" && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
-                                <svg
-                                  className="w-3 h-3"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                  />
-                                </svg>
-                                Self Pickup
-                              </span>
-                            )}
-                            {order.fulfillment_type === "onspot" && (
-                              order.onspot_order_mode === "order_ahead" ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
-                                  <Clock className="h-3 w-3 text-purple-600" />
-                                  Pre-Order (Dine-In) • ETA:{" "}
-                                  {order.estimated_arrival_time
-                                    ? new Date(order.estimated_arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                    : "Upon Arrival"}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
-                                  On Spot at Table -{" "}
-                                  {order.table_number
-                                    ? `${order.table_number}`
-                                    : "Unassigned"}
-                                </span>
-                              )
-                            )}
-                          </div>
-                          {order.shipping_phone && (
-                            <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50/50 px-2 md:px-3 py-0.5 md:px-3 md:py-1.5 rounded-lg w-fit border border-blue-200 shadow-sm">
-                              <PhoneCall className="h-2.5 md:h-3.5 w-2.5 md:w-3.5 text-green-600" />
-                              <span className="text-xs font-mono font-bold text-green-700 tracking-tight">
-                                {order.shipping_phone}
-                              </span>
-                              <CopyButton text={order.shipping_phone} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
+                  {(() => {
+                    const fulfillmentKind = getFulfillmentKind(effectiveOrder);
+                    const customerName = resolveCustomerName(effectiveOrder);
+                    const hasName = hasCustomerName(effectiveOrder);
+                    const customerPhone = resolveCustomerPhone(effectiveOrder);
+                    const customerImage = resolveCustomerImage(effectiveOrder);
+                    const fulfillmentLabel = FULFILLMENT_LABELS[fulfillmentKind];
 
-                    {order.shipping_address_text && (
-                      <Card title="Shipping Destination" icon={MapPin}>
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
-                            <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                              Recipient Name:
-                            </span>
-                            <span className="text-sm font-bold text-secondary">
-                              {order.recipient_name ||
-                                "No recipient name provided."}
-                            </span>
-                          </div>
-                          <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
-                            <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                              Recipient Phone:
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <PhoneCall className="h-3.5 w-3.5 text-green-600" />
-                              <span className="text-sm font-mono font-bold text-green-700 tracking-tight">
-                                {order.shipping_phone ||
-                                  "No Phone Number provided."}
-                              </span>
-                              <CopyButton text={order.shipping_phone} />
+                    const isPickupLike =
+                      fulfillmentKind === "pickup" || fulfillmentKind === "onspot";
+
+                    const locationTitle = isPickupLike
+                      ? fulfillmentKind === "onspot"
+                        ? "Dine-In Details"
+                        : "Pickup Location"
+                      : "Shipping Destination";
+
+                    const storeName =
+                      effectiveOrder.company?.name ||
+                      effectiveOrder.vendor_orders?.[0]?.company?.name ||
+                      "Store";
+
+                    const storeAddress =
+                      formatAddress(
+                        effectiveOrder.company?.address ||
+                          effectiveOrder.company?.address_am ||
+                          effectiveOrder.company?.location ||
+                          "",
+                      ) ||
+                      effectiveOrder.shipping_address_text ||
+                      "Pickup address unavailable";
+
+                    const hasAnyLocationData = isPickupLike
+                      ? !!storeAddress
+                      : !!effectiveOrder.shipping_address_text;
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        {/* ── Customer Profile ─────────────────────────────────── */}
+                        <Card title="Customer Profile" icon={User}>
+                          <div className="flex items-center gap-4">
+                            {customerImage ? (
+                              <img
+                                src={customerImage}
+                                alt={customerName}
+                                className="w-10 md:w-14 h-10 md:h-14 object-cover rounded-full ring-2 ring-purple-200"
+                              />
+                            ) : (
+                              <div className="w-10 md:w-14 h-10 md:h-14 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border-2 border-white shadow-sm flex items-center justify-center text-secondary font-black text-xl">
+                                {getInitials(customerName)}
+                              </div>
+                            )}
+
+                            <div className="space-y-1 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p
+                                  className={`text-sm md:text-base font-black truncate ${
+                                    hasName
+                                      ? "bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent"
+                                      : "text-gray-400 italic"
+                                  }`}
+                                >
+                                  {customerName}
+                                </p>
+
+                                {/* Fulfillment type pill — always shown, correctly labeled */}
+                                {fulfillmentKind === "pickup" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                      />
+                                    </svg>
+                                    Self Pickup
+                                  </span>
+                                )}
+
+                                {fulfillmentKind === "onspot" &&
+                                  (effectiveOrder.onspot_order_mode === "order_ahead" ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
+                                      <Clock className="h-3 w-3 text-purple-600" />
+                                      Pre-Order (Dine-In) • ETA:{" "}
+                                      {effectiveOrder.estimated_arrival_time
+                                        ? new Date(
+                                            effectiveOrder.estimated_arrival_time,
+                                          ).toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })
+                                        : "Upon Arrival"}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
+                                      On Spot at Table -{" "}
+                                      {effectiveOrder.table_number || "Unassigned"}
+                                    </span>
+                                  ))}
+
+                                {fulfillmentKind === "delivery" && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                    <Truck className="h-3 w-3 text-emerald-600" />
+                                    Delivery
+                                  </span>
+                                )}
+                              </div>
+
+                              {customerPhone ? (
+                                <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50/50 px-2 md:px-3 py-0.5 md:py-1.5 rounded-lg w-fit border border-blue-200 shadow-sm">
+                                  <PhoneCall className="h-2.5 md:h-3.5 w-2.5 md:w-3.5 text-green-600" />
+                                  <span className="text-xs font-mono font-bold text-green-700 tracking-tight">
+                                    {customerPhone}
+                                  </span>
+                                  <CopyButton text={customerPhone} />
+                                </div>
+                              ) : (
+                                <p className="text-[11px] text-gray-400 italic">
+                                  No phone number on file
+                                </p>
+                              )}
+
+                              {/* Hint when no customer name was captured */}
+                              {!hasName && isPickupLike && (
+                                <p className="text-[10px] text-gray-400 italic">
+                                  Customer name not provided —{" "}
+                                  {fulfillmentKind === "onspot"
+                                    ? `Table ${effectiveOrder.table_number || "—"}`
+                                    : "walk-in order"}
+                                </p>
+                              )}
+
+                              {effectiveOrder.created_at && (
+                                <p className="text-[10px] text-gray-400 font-mono">
+                                  {new Date(effectiveOrder.created_at).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
-                            <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                              Shipping Address:
-                            </span>
-                            <span className="text-sm font-bold text-secondary">
-                              {formatAddress(order.shipping_address_text) ||
-                                "No address provided."}
-                            </span>
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-                  </div>
+                        </Card>
+
+                        {/* ── Location / Pickup Details ─────────────────────────── */}
+                        {hasAnyLocationData ? (
+                          <Card title={locationTitle} icon={MapPin}>
+                            <div className="space-y-3">
+                              {/* Recipient / Customer name row */}
+                              <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
+                                <span className="text-xs font-bold text-gray-500 min-w-[110px]">
+                                  {isPickupLike ? "Customer:" : "Recipient Name:"}
+                                </span>
+                                <span className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}>
+                                  {customerName}
+                                </span>
+                              </div>
+
+                              {/* Phone row */}
+                              <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
+                                <span className="text-xs font-bold text-gray-500 min-w-[110px]">
+                                  {isPickupLike ? "Contact:" : "Recipient Phone:"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <PhoneCall className="h-3.5 w-3.5 text-green-600" />
+                                  <span className="text-sm font-mono font-bold text-green-700 tracking-tight">
+                                    {customerPhone || "Not provided"}
+                                  </span>
+                                  {customerPhone && <CopyButton text={customerPhone} />}
+                                </div>
+                              </div>
+
+                              {/* Address row — store address for pickup, shipping for delivery */}
+                              <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
+                                <span className="text-xs font-bold text-gray-500 min-w-[110px]">
+                                  {isPickupLike
+                                    ? fulfillmentKind === "onspot"
+                                      ? "Store / Table:"
+                                      : "Pickup From:"
+                                    : "Shipping Address:"}
+                                </span>
+                                <span className="text-sm font-bold text-secondary">
+                                  {isPickupLike
+                                    ? fulfillmentKind === "onspot" &&
+                                      effectiveOrder.table_number
+                                      ? `${storeName} — Table ${effectiveOrder.table_number}`
+                                      : storeName
+                                    : formatAddress(effectiveOrder.shipping_address_text) ||
+                                      "No address provided."}
+                                </span>
+                              </div>
+
+                              {/* For pickup, show the store's full address as a secondary line */}
+                              {isPickupLike && storeAddress && (
+                                <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 border-l-4 border-gray-300">
+                                  <span className="text-xs font-bold text-gray-500 min-w-[110px]">
+                                    Address:
+                                  </span>
+                                  <span className="text-xs text-gray-600 leading-relaxed">
+                                    {storeAddress}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ) : (
+                          <Card title={locationTitle} icon={MapPin}>
+                            <div className="flex items-center justify-center py-6 text-center">
+                              <div>
+                                <MapPin className="mx-auto h-6 w-6 text-gray-300 mb-2" />
+                                <p className="text-xs text-gray-500">
+                                  {isPickupLike
+                                    ? "Store pickup address not configured"
+                                    : "Shipping address not provided"}
+                                </p>
+                              </div>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Main Order Table */}
                   <motion.div
@@ -3104,8 +3368,8 @@ export function VendorOrderDetailModal({
                         Item List
                       </h4>
                       <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-[10px] font-semibold text-purple-600 shadow-sm">
-                        {order.items.length}{" "}
-                        {order.items.length > 1 ? "ITEMS" : "ITEM"}
+                        {effectiveOrder.items.length}{" "}
+                        {effectiveOrder.items.length > 1 ? "ITEMS" : "ITEM"}
                       </span>
                     </div>
                     <div className="overflow-x-auto">
@@ -3128,7 +3392,7 @@ export function VendorOrderDetailModal({
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {(() => {
-                            const itemsByRound = order.items.reduce(
+                            const itemsByRound = effectiveOrder.items.reduce(
                               (acc: any, item: any) => {
                                 const r = item.round || 1;
                                 if (!acc[r]) acc[r] = [];
@@ -3235,29 +3499,31 @@ export function VendorOrderDetailModal({
                         Order Timeline
                       </h4>
                       <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {buildOrderTimeline(order).length} steps
+                        {buildOrderTimeline(effectiveOrder).length} steps
                       </span>
                     </div>
 
                     <div className="relative pl-6 space-y-4">
                       <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200" />
 
-                      {buildOrderTimeline(order).map((event: any) => (
+                      {buildOrderTimeline(effectiveOrder).map((event: any) => (
                         <div
                           key={event.id}
                           className="relative flex items-start gap-4"
                         >
                           <div
-                            className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${event.status === "completed"
+                            className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${
+                              event.status === "completed"
                                 ? "bg-emerald-500 border-emerald-500"
                                 : "bg-amber-500 border-amber-500 animate-pulse"
-                              }`}
+                            }`}
                           >
                             <div
-                              className={`absolute inset-0 rounded-full ${event.status === "completed"
+                              className={`absolute inset-0 rounded-full ${
+                                event.status === "completed"
                                   ? "bg-emerald-400/30 animate-pulse"
                                   : "bg-amber-400/30 animate-pulse"
-                                }`}
+                              }`}
                               style={{
                                 width: "200%",
                                 height: "200%",
@@ -3394,7 +3660,7 @@ export function VendorOrderDetailModal({
                             Total Amount
                           </p>
                           <h3 className="text-xl md:text-3xl font-black">
-                            {Number(order.amount).toLocaleString()}{" "}
+                            {Number(effectiveOrder.amount).toLocaleString()}{" "}
                             <span className="text-sm opacity-60">ETB</span>
                           </h3>
                         </div>
@@ -3403,19 +3669,19 @@ export function VendorOrderDetailModal({
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Subtotal</span>
                           <span>
-                            {Number(order.subtotal).toLocaleString()} ETB
+                            {Number(effectiveOrder.subtotal).toLocaleString()} ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">VAT</span>
                           <span>
-                            {Number(order.tax_amount).toLocaleString()} ETB
+                            {Number(effectiveOrder.tax_amount).toLocaleString()} ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Delivery Fee</span>
                           <span>
-                            {Number(order.delivery_fee || 0).toLocaleString()} ETB
+                            {Number(effectiveOrder.delivery_fee || 0).toLocaleString()} ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
@@ -3429,36 +3695,36 @@ export function VendorOrderDetailModal({
                   {/* Payment Receipt Review Card */}
                   <ReceiptReviewCard
                     receipt={receipt}
-                    paymentMethod={order.payment_method}
+                    paymentMethod={effectiveOrder.payment_method}
                     onUpdate={onUpdate}
                     readOnly={readOnly}
-                    status={order.payment_status}
-                    orderId={order.id}
-                    companySlug={order.company?.slug}
-                    orderStatus={order.status}
-                    receiptHistory={order.receipt_history}
+                    status={effectiveOrder.payment_status}
+                    orderId={effectiveOrder.id}
+                    companySlug={effectiveOrder.company?.slug}
+                    orderStatus={effectiveOrder.status}
+                    receiptHistory={effectiveOrder.receipt_history}
                     fulfillmentType={
-                      order.fulfillment_type ||
-                      (order.shipping_address_text ? "delivery" : "pickup")
+                      effectiveOrder.fulfillment_type ||
+                      (effectiveOrder.shipping_address_text ? "delivery" : "pickup")
                     }
                   />
 
                   {/* Preparation Card */}
-                  {(order.status === "confirmed" ||
-                    (order.payment_method === "cod" &&
-                      order.status === "pending")) && (
+                  {(effectiveOrder.status === "confirmed" ||
+                    (effectiveOrder.payment_method === "cod" &&
+                      effectiveOrder.status === "pending")) && (
                       <PreparationCard
-                        order={order}
+                        order={effectiveOrder}
                         onUpdate={onUpdate}
                         readOnly={readOnly}
                       />
                     )}
 
                   {/* Delivery person Assignment Card */}
-                  {order.fulfillment_type === "delivery" &&
-                    order.shipping_address_text && (
+                  {getFulfillmentKind(effectiveOrder) === "delivery" &&
+                    effectiveOrder.shipping_address_text && (
                       <DeliveryCard
-                        order={order}
+                        order={effectiveOrder}
                         onUpdate={onUpdate}
                         readOnly={readOnly}
                         onOpenLiveTracking={onOpenLiveTracking}
@@ -3480,7 +3746,7 @@ export function VendorOrderDetailModal({
           selectedOrderId={selectedOrderId}
           onDriverSelect={handleDriverSelect}
           onAssignmentComplete={handleAssignmentComplete}
-          initialOrder={order}
+          initialOrder={effectiveOrder}
         />
       )}
     </>

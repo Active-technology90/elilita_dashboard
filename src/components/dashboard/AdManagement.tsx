@@ -1047,7 +1047,7 @@ export default function AdManagement() {
         />
 
         {/* Stats Grid */}
-        <div className="mb-4 hidden xs:grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 hidden xs:grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total Ads"
             value={totalCount}
@@ -1083,7 +1083,7 @@ export default function AdManagement() {
           <EmptyState onCreateNew={openCreateModal} isReadOnly={isReadOnly} />
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedAds.map((ad) => (
                 <AdCard
                   key={ad.id}
