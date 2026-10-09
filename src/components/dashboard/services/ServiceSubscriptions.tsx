@@ -185,6 +185,84 @@ function SubscriptionStatusBadge({ status }: { status: string }) {
   );
 }
 
+function SubscriptionPaymentStatusBadge({ subscription }: { subscription: ServiceSubscription }) {
+  const method = (subscription.payment_method || subscription.latest_invoice?.payment_method)?.toLowerCase();
+  const status = (subscription.payment_status || subscription.latest_invoice?.status)?.toLowerCase();
+  const receipt = subscription.receipt || subscription.latest_invoice?.receipt;
+
+  if (method === "bank_transfer") {
+    if (status === "paid" || receipt?.status === "approved") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+          Paid
+        </span>
+      );
+    }
+    if (receipt?.status === "rejected" || status === "failed" || status === "payment_failed") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-red-50 text-red-700 border-red-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+          Receipt Rejected
+        </span>
+      );
+    }
+    if (receipt?.status === "pending" || Boolean(receipt)) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-300 animate-pulse">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+          Verify Receipt
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+        Awaiting Receipt
+      </span>
+    );
+  }
+
+  if (status === "paid") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+        Paid
+      </span>
+    );
+  }
+  if (status === "failed" || status === "payment_failed") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-red-50 text-red-700 border-red-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+        Failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+      Pending
+    </span>
+  );
+}
+
+function SubscriptionPaymentMethodBadge({ subscription }: { subscription: ServiceSubscription }) {
+  const method = (subscription.payment_method || subscription.latest_invoice?.payment_method || "—").toLowerCase();
+  const labelMap: Record<string, string> = {
+    bank_transfer: "Bank Transfer",
+    telebirr: "Telebirr",
+    chapa: "Chapa",
+    arifpay: "ArifPay",
+    cod: "Cash",
+  };
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+      {labelMap[method] || method.replace(/_/g, " ")}
+    </span>
+  );
+}
+
 function BillingDateCell({ date }: { date?: string | null }) {
   if (!date) {
     return <span className="text-gray-400">—</span>;
@@ -506,6 +584,22 @@ export default function ServiceSubscriptions() {
       textMode: "nowrap",
       render: (subscription) => (
         <SubscriptionStatusBadge status={subscription.status} />
+      ),
+    },
+    {
+      key: "payment_method",
+      header: "Payment Method",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <SubscriptionPaymentMethodBadge subscription={subscription} />
+      ),
+    },
+    {
+      key: "payment_status",
+      header: "Payment Status",
+      textMode: "nowrap",
+      render: (subscription) => (
+        <SubscriptionPaymentStatusBadge subscription={subscription} />
       ),
     },
     {

@@ -211,7 +211,14 @@ export default function CompanyProducts() {
         return created;
       }
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Save failed");
+      const errorMsg =
+        err?.response?.data?.detail ||
+        (Array.isArray(err?.response?.data) ? err.response.data[0] : null) ||
+        (typeof err?.response?.data === "object" && err?.response?.data !== null
+          ? Object.values(err.response.data).flat()[0]
+          : null) ||
+        "Save failed";
+      showToast("error", typeof errorMsg === "string" ? errorMsg : "Save failed");
       throw err;
     }
   };

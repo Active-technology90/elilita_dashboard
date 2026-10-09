@@ -129,27 +129,39 @@ export function ProductModal({
     const list: { id: string; label: string; icon: string }[] = [];
     const seen = new Set<string>();
 
+    const addPeriod = (id: string, label: string, icon: string) => {
+      const normId = String(id).toLowerCase().trim();
+      if (!normId || seen.has(normId)) return;
+      seen.add(normId);
+      list.push({
+        id: normId,
+        label,
+        icon,
+      });
+    };
+
     // 1. Configured meal categories from company
     if (Array.isArray(companyMealPeriods) && companyMealPeriods.length > 0) {
       for (const c of companyMealPeriods) {
-        if (c.id && !seen.has(c.id)) {
-          seen.add(c.id);
-          list.push({
-            id: c.id,
-            label: c.name + (c.name_am ? ` (${c.name_am})` : ""),
-            icon: c.icon || "🍽️",
-          });
+        if (c?.id) {
+          addPeriod(
+            c.id,
+            c.name + (c.name_am ? ` (${c.name_am})` : ""),
+            c.icon || "🍽️"
+          );
         }
       }
-    } else if (Array.isArray((currentCompany as any)?.meal_periods) && (currentCompany as any).meal_periods.length > 0) {
+    } else if (
+      Array.isArray((currentCompany as any)?.meal_periods) &&
+      (currentCompany as any).meal_periods.length > 0
+    ) {
       for (const c of (currentCompany as any).meal_periods) {
-        if (c.id && !seen.has(c.id)) {
-          seen.add(c.id);
-          list.push({
-            id: c.id,
-            label: c.name + (c.name_am ? ` (${c.name_am})` : ""),
-            icon: c.icon || "🍽️",
-          });
+        if (c?.id) {
+          addPeriod(
+            c.id,
+            c.name + (c.name_am ? ` (${c.name_am})` : ""),
+            c.icon || "🍽️"
+          );
         }
       }
     } else {
@@ -160,29 +172,30 @@ export function ProductModal({
         { id: "dinner", label: "Dinner (እራት)", icon: "moon" },
       ];
       for (const d of defaults) {
-        if (!seen.has(d.id)) {
-          seen.add(d.id);
-          list.push(d);
-        }
+        addPeriod(d.id, d.label, d.icon);
       }
     }
 
     // 2. Current product's existing meal periods (preserve any legacy assignments)
     if (Array.isArray(editingProduct?.meal_periods)) {
       for (const mp of editingProduct.meal_periods) {
-        if (mp && !seen.has(mp)) {
-          seen.add(mp);
-          list.push({
-            id: mp,
-            label: mp.replace(/-/g, " "),
-            icon: "utensils",
-          });
+        if (mp) {
+          addPeriod(mp, String(mp).replace(/-/g, " "), "utensils");
+        }
+      }
+    }
+
+    // 3. Current selected meal periods
+    if (Array.isArray(selectedMealPeriods)) {
+      for (const mp of selectedMealPeriods) {
+        if (mp) {
+          addPeriod(mp, String(mp).replace(/-/g, " "), "utensils");
         }
       }
     }
 
     return list;
-  }, [companyMealPeriods, currentCompany, editingProduct]);
+  }, [companyMealPeriods, currentCompany, editingProduct, selectedMealPeriods]);
 
   const maxFeatured = activeSub?.allowed_max_featured_products || 0;
   const currentFeatured = activeSub?.current_featured_products || 0;
@@ -198,6 +211,7 @@ export function ProductModal({
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -245,6 +259,9 @@ export function ProductModal({
       }
 
       // Edit mode: populate form with product data
+      const initialFeatured =
+        maxFeatured === 0 ? false : (editingProduct.is_featured || false);
+
       reset({
         sku: editingProduct.sku,
         title: editingProduct.title,
@@ -256,7 +273,7 @@ export function ProductModal({
         stock: editingProduct.stock,
         unit: editingProduct.unit,
         meal_periods: initialMeals,
-        is_featured: editingProduct.is_featured || false,
+        is_featured: initialFeatured,
         is_active: editingProduct.is_active !== undefined ? editingProduct.is_active : true,
       });
       setSelectedMealPeriods(initialMeals);
@@ -288,6 +305,63 @@ export function ProductModal({
       }
     }
   }, [editingProduct, reset, isOpen]);
+
+  // Fetch full product detail to ensure meal periods, description, and images are fresh
+  useEffect(() => {
+    if (!isOpen || !editingProduct?.id || !companySlug) return;
+    let isCancelled = false;
+
+    getCompanyProductDetail(companySlug, editingProduct.id)
+      .then((res) => {
+        if (isCancelled || !res?.data) return;
+        const detail = res.data;
+        const rawMeals =
+          detail.meal_periods ??
+          detail.attributes?.meal_periods ??
+          (detail as any).menu_category;
+
+        let fetchedMeals: string[] = [];
+        if (Array.isArray(rawMeals)) {
+          fetchedMeals = rawMeals
+            .filter(Boolean)
+            .map((m: any) => String(m).trim().toLowerCase());
+        } else if (typeof rawMeals === "string" && rawMeals.trim()) {
+          try {
+            const parsed = JSON.parse(rawMeals);
+            if (Array.isArray(parsed)) {
+              fetchedMeals = parsed
+                .filter(Boolean)
+                .map((m: any) => String(m).trim().toLowerCase());
+            } else {
+              fetchedMeals = [rawMeals.trim().toLowerCase()];
+            }
+          } catch {
+            fetchedMeals = [rawMeals.trim().toLowerCase()];
+          }
+        }
+
+        if (fetchedMeals.length > 0) {
+          setSelectedMealPeriods((prev) => (prev.length === 0 ? fetchedMeals : prev));
+        }
+
+        if (detail.description) {
+          setValue('description', detail.description);
+        }
+        if (detail.description_am) {
+          setValue('description_am', detail.description_am);
+        }
+        if (detail.title_am) {
+          setValue('title_am', detail.title_am);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch full product detail in modal:', err);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen, editingProduct?.id, companySlug, setValue]);
 
   // Fetch images when on gallery step
   useEffect(() => {
@@ -349,6 +423,7 @@ export function ProductModal({
       let productId = savedProductId;
       const payload = {
         ...data,
+        is_featured: maxFeatured === 0 ? false : Boolean(data.is_featured),
         meal_periods: selectedMealPeriods,
       };
 
@@ -764,17 +839,19 @@ export function ProductModal({
                       type="checkbox"
                       id="is_featured"
                       {...register('is_featured')}
-                      disabled={isSubmitting || isReadOnlyBasic || (!canFeatureMore && !editingProduct?.is_featured)}
+                      disabled={isSubmitting || isReadOnlyBasic || maxFeatured === 0 || (!canFeatureMore && !editingProduct?.is_featured)}
                       className="w-4 h-4 text-secondary bg-gray-100 border-gray-300 rounded focus:ring-secondary focus:ring-2 disabled:opacity-50"
                     />
                     <label htmlFor="is_featured" className="ml-2 text-sm font-medium text-gray-900 disabled:opacity-50 flex items-center gap-2">
                       Featured Product
-                      {!canFeatureMore && !editingProduct?.is_featured && (
+                      {maxFeatured === 0 ? (
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Not available in current plan</span>
+                      ) : !canFeatureMore && !editingProduct?.is_featured && (
                         <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">Limit Reached ({currentFeatured}/{maxFeatured})</span>
                       )}
                     </label>
                   </div>
-                  {activeSub && (
+                  {activeSub && maxFeatured !== 0 && (
                     <p className="text-xs text-gray-500 mt-1">
                       Featured products: {currentFeatured} / {maxFeatured === -1 ? 'Unlimited' : maxFeatured} used
                     </p>

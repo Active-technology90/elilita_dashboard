@@ -39,6 +39,92 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
+  const method = booking.payment_method?.toLowerCase();
+  const status = booking.payment_status?.toLowerCase();
+  const receipt = (booking as any)?.receipt;
+
+  if (method === "bank_transfer") {
+    if (status === "paid" || receipt?.status === "approved") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+          Paid
+        </span>
+      );
+    }
+    if (receipt?.status === "rejected" || status === "payment_failed") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-red-50 text-red-700 border-red-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+          Receipt Rejected
+        </span>
+      );
+    }
+    if (receipt?.status === "pending" || Boolean(receipt)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-300 animate-pulse">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+          Verify Receipt
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+        Awaiting Receipt
+      </span>
+    );
+  }
+
+  if (status === "paid") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+        Paid
+      </span>
+    );
+  }
+  if (status === "payment_failed" || status === "failed") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-red-50 text-red-700 border-red-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+        Failed
+      </span>
+    );
+  }
+  if (method === "cod" || status === "not_required") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-blue-50 text-blue-700 border-blue-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+        Pay at Venue
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+      Pending
+    </span>
+  );
+};
+
+const PaymentMethodBadge = ({ method }: { method?: string }) => {
+  const norm = method?.toLowerCase() || "—";
+  const labelMap: Record<string, string> = {
+    bank_transfer: "Bank Transfer",
+    telebirr: "Telebirr",
+    chapa: "Chapa",
+    arifpay: "ArifPay",
+    cod: "Cash (Venue)",
+  };
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+      {labelMap[norm] || norm.replace(/_/g, " ")}
+    </span>
+  );
+};
+
 const STATUS_OPTIONS: SelectOption[] = [
   { value: "all", label: "All Statuses" },
   { value: "pending", label: "Pending" },
@@ -178,6 +264,7 @@ export default function ServiceBookings() {
       setSelectedBooking(updated);
       setCompanyNotes(updated.company_notes || "");
       setFinalPrice(updated.final_price || updated.quoted_price || "");
+      await refetch();
     } catch {
       showToast("error", "Could not refresh booking");
     }
@@ -295,6 +382,18 @@ export default function ServiceBookings() {
       header: "Status",
       textMode: "nowrap",
       render: (booking) => <StatusBadge status={booking.status} />,
+    },
+    {
+      key: "payment_method",
+      header: "Payment Method",
+      textMode: "nowrap",
+      render: (booking) => <PaymentMethodBadge method={booking.payment_method} />,
+    },
+    {
+      key: "payment_status",
+      header: "Payment Status",
+      textMode: "nowrap",
+      render: (booking) => <PaymentStatusBadge booking={booking} />,
     },
     {
       key: "schedule",
@@ -518,7 +617,10 @@ export default function ServiceBookings() {
         {selectedBooking && (
           <ServiceBookingManageModal
             booking={selectedBooking}
-            onClose={() => setSelectedBooking(null)}
+            onClose={() => {
+              setSelectedBooking(null);
+              void refetch();
+            }}
             onStatusUpdate={handleStatusUpdate}
             companyNotes={companyNotes}
             setCompanyNotes={setCompanyNotes}

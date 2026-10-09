@@ -206,7 +206,10 @@ export default function Orders() {
         (o) =>
           String(o.id).includes(lower) ||
           o.recipient_name?.toLowerCase().includes(lower) ||
+          o.customer_username?.toLowerCase().includes(lower) ||
+          o.customer_name?.toLowerCase().includes(lower) ||
           o.shipping_phone?.toLowerCase().includes(lower) ||
+          o.customer_phone?.toLowerCase().includes(lower) ||
           o.shipping_address_text?.toLowerCase().includes(lower),
       );
     }
@@ -269,10 +272,30 @@ export default function Orders() {
         key: "recipient_name",
         header: "Customer",
         className: "min-w-[130px]",
-        render: (order) =>
-          order.recipient_name || (
-            <span className="italic text-gray-400">Pickup</span>
-          ),
+        render: (order) => {
+          const customerName =
+            order.recipient_name ||
+            order.customer_username ||
+            order.customer_name;
+          if (!customerName) {
+            return <span className="italic text-gray-400">—</span>;
+          }
+          return (
+            <div className="flex flex-col min-w-0">
+              <span className="font-medium text-gray-900 truncate" title={customerName}>
+                {customerName}
+              </span>
+              {order.customer_username &&
+                order.recipient_name &&
+                order.customer_username.toLowerCase() !==
+                  order.recipient_name.toLowerCase() && (
+                  <span className="text-[11px] text-gray-400 font-mono truncate">
+                    @{order.customer_username}
+                  </span>
+                )}
+            </div>
+          );
+        },
       },
       {
         key: "total_amount",

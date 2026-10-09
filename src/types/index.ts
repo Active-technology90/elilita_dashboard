@@ -256,6 +256,8 @@ export interface CompanyProductListItem {
   sku?: string;
   title: string;
   title_am?: string;
+  description?: string;
+  description_am?: string;
   price: string;
   compare_at_price?: string | null;
   currency: string;
@@ -452,6 +454,10 @@ export interface VendorOrder {
 export interface MasterOrder {
   id: number;
   user: number;
+  customer_username?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
   status: string;
   fulfillment_type: string;
   onspot_order_mode?: "already_here" | "order_ahead" | string;
@@ -863,6 +869,9 @@ export interface ServiceSubscription {
   invoices?: ServiceSubscriptionInvoice[];
   latest_invoice?: ServiceSubscriptionInvoice | null;
   session_logs?: ServiceSessionLog[];
+  payment_method?: string;
+  payment_status?: string;
+  receipt?: any;
   created_at: string;
   updated_at: string;
 }

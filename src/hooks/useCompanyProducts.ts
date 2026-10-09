@@ -62,15 +62,21 @@ export function useCompanyProducts({
         const items = res.data.results || [];
         setProducts(
           items.map((item: CompanyProductListItem) => ({
+            ...item,
             id: item.id,
             sku: item.sku || '',
             title: item.title,
+            title_am: item.title_am || '',
+            description: item.description || '',
+            description_am: item.description_am || '',
             price: Number(item.price),
-            currency: item.currency,
+            currency: item.currency || 'ETB',
             stock: item.stock,
             unit: item.unit || 'pc',
-            image: item.primary_image,
-            is_featured: item.is_featured,
+            image: item.primary_image || (item as any).image || (item as any).image_url,
+            is_featured: Boolean(item.is_featured),
+            is_active: item.is_active !== undefined ? item.is_active : true,
+            meal_periods: Array.isArray(item.meal_periods) ? item.meal_periods : [],
             average_rating: item.average_rating,     
             total_reviews: item.total_reviews,       
           }))

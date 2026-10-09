@@ -620,27 +620,47 @@ const TimelineCard = memo(({ order }: { order: MasterOrder }) => (
 TimelineCard.displayName = "TimelineCard";
 
 // Customer Profile Card (simplified for master order)
-const CustomerCard = memo(({ order }: { order: MasterOrder }) => (
-  <Card title="Customer Profile" icon={User}>
-    <div className="flex flex-row items-start gap-3 sm:gap-4">
-      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border-2 border-white shadow-sm flex items-center justify-center text-secondary font-black text-lg sm:text-xl flex-shrink-0">
-        {getInitials(order.recipient_name || "?")}
-      </div>
-      <div className="space-y-1 text-start sm:text-left">
-        <p className="font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent break-words">
-          {order.recipient_name || "N/A"}
-        </p>
-        <div className="flex items-center justify-center sm:justify-start gap-2 bg-gradient-to-r from-blue-50 to-indigo-50/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg w-full sm:w-fit border border-blue-200 shadow-sm">
-          <PhoneCall className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 flex-shrink-0" />
-          <span className="text-[10px] sm:text-xs font-mono font-bold text-green-700 tracking-tight break-all">
-            {order.shipping_phone || "No phone"}
-          </span>
-          <CopyButton text={order.shipping_phone} />
+const CustomerCard = memo(({ order }: { order: MasterOrder }) => {
+  const customerName =
+    order.recipient_name ||
+    order.customer_username ||
+    order.customer_name ||
+    "Customer";
+  const customerPhone = order.shipping_phone || order.customer_phone;
+
+  return (
+    <Card title="Customer Profile" icon={User}>
+      <div className="flex flex-row items-start gap-3 sm:gap-4">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 border-2 border-white shadow-sm flex items-center justify-center text-secondary font-black text-lg sm:text-xl flex-shrink-0">
+          {getInitials(customerName)}
+        </div>
+        <div className="space-y-1 text-start sm:text-left">
+          <p className="font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent break-words">
+            {customerName}
+          </p>
+          {order.customer_username &&
+            customerName.toLowerCase() !==
+              order.customer_username.toLowerCase() && (
+              <p className="text-xs text-gray-500 font-mono">
+                @{order.customer_username}
+              </p>
+            )}
+          {customerPhone ? (
+            <div className="flex items-center justify-center sm:justify-start gap-2 bg-gradient-to-r from-blue-50 to-indigo-50/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg w-full sm:w-fit border border-blue-200 shadow-sm">
+              <PhoneCall className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600 flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs font-mono font-bold text-green-700 tracking-tight break-all">
+                {customerPhone}
+              </span>
+              <CopyButton text={customerPhone} />
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400">No phone</span>
+          )}
         </div>
       </div>
-    </div>
-  </Card>
-));
+    </Card>
+  );
+});
 CustomerCard.displayName = "CustomerCard";
 
 // Shipping Card
@@ -649,7 +669,7 @@ const ShippingCard = memo(({ order }: { order: MasterOrder }) => (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row items-start gap-1 sm:gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
         <span className="text-[10px] sm:text-xs font-bold text-gray-500 sm:min-w-[80px]">Recipient:</span>
-        <span className="text-xs sm:text-sm font-bold text-secondary break-words">{order.recipient_name || "N/A"}</span>
+        <span className="text-xs sm:text-sm font-bold text-secondary break-words">{order.recipient_name || order.customer_username || order.customer_name || "N/A"}</span>
       </div>
       <div className="flex flex-col sm:flex-row items-start gap-1 sm:gap-2 p-2 rounded-lg bg-blue-50/30 border-l-4 border-green-500">
         <span className="text-[10px] sm:text-xs font-bold text-gray-500 sm:min-w-[80px]">Phone:</span>

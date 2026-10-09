@@ -206,14 +206,6 @@ const resolveCustomerImage = (order: any): string | undefined => {
   );
 };
 
-// ─── Human-readable fulfillment labels ───────────────────────────
-const FULFILLMENT_LABELS: Record<FulfillmentKind, string> = {
-  delivery: "Home Delivery",
-  pickup: "Self Pickup",
-  onspot: "On Spot (Dine-In)",
-  unknown: "Order",
-};
-
 // ─── Order Timeline Builder ──────────────────────────────
 const buildOrderTimeline = (order: any) => {
   const events: any[] = [];
@@ -464,8 +456,6 @@ const DeliveryCard = ({
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all");
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showDriverTypeFilter, setShowDriverTypeFilter] = useState(false);
-  const [showVehicleTypeFilter, setShowVehicleTypeFilter] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
@@ -1711,7 +1701,6 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setFilterType(option.value as any);
-                              setShowDriverTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
                             className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
@@ -1746,7 +1735,6 @@ const DeliveryCard = ({
                             type="button"
                             onClick={() => {
                               setVehicleTypeFilter(option.value as any);
-                              setShowVehicleTypeFilter(option.value !== "all");
                               setSelectedUserId("");
                             }}
                             className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
@@ -3132,7 +3120,6 @@ export function VendorOrderDetailModal({
                     const hasName = hasCustomerName(effectiveOrder);
                     const customerPhone = resolveCustomerPhone(effectiveOrder);
                     const customerImage = resolveCustomerImage(effectiveOrder);
-                    const fulfillmentLabel = FULFILLMENT_LABELS[fulfillmentKind];
 
                     const isPickupLike =
                       fulfillmentKind === "pickup" || fulfillmentKind === "onspot";

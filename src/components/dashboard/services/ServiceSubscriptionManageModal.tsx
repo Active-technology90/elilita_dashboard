@@ -20,7 +20,9 @@ import {
   getSubscriptionSessionLogs,
   createSubscriptionSessionLog,
   getManageStaff,
+  reviewReceipt,
 } from "../../../services/api";
+import { ConfirmationModal } from "../../ui/confimationModal";
 
 interface ServiceSubscriptionManageModalProps {
   isOpen: boolean;
@@ -70,6 +72,17 @@ export const ServiceSubscriptionManageModal: React.FC<
     useState<ServiceSessionLog["status"]>("attended");
   const [logNotes, setLogNotes] = useState("");
   const [savingSession, setSavingSession] = useState(false);
+
+  // Bank Transfer Receipt Review State
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [pendingReviewReceipt, setPendingReviewReceipt] = useState<{
+    id: number;
+    action: "approved" | "rejected";
+  } | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [submittingReceiptId, setSubmittingReceiptId] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (subscription) {
@@ -138,6 +151,38 @@ export const ServiceSubscriptionManageModal: React.FC<
       );
     } finally {
       setGeneratingInvoice(false);
+    }
+  };
+
+  const handleReceiptAction = (receiptId: number, action: "approved" | "rejected") => {
+    setPendingReviewReceipt({ id: receiptId, action });
+  };
+
+  const handleConfirmReceiptReview = async () => {
+    if (!pendingReviewReceipt) return;
+    const { id, action } = pendingReviewReceipt;
+    try {
+      setSubmittingReceiptId(id);
+      await reviewReceipt(id, {
+        status: action,
+        admin_notes: action === "rejected" ? reviewNotes || "Receipt rejected" : undefined,
+      });
+      onShowToast(
+        "success",
+        action === "approved"
+          ? "Receipt approved! Subscription invoice marked as paid."
+          : "Receipt rejected. Customer will be notified to re-upload.",
+      );
+      setPendingReviewReceipt(null);
+      setReviewNotes("");
+      onUpdated();
+    } catch (err: any) {
+      onShowToast(
+        "error",
+        err?.response?.data?.detail || `Failed to ${action} receipt.`,
+      );
+    } finally {
+      setSubmittingReceiptId(null);
     }
   };
 
@@ -439,43 +484,121 @@ export const ServiceSubscriptionManageModal: React.FC<
                   {subscription.invoices.map((inv) => (
                     <div
                       key={inv.id}
-                      className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                      className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-900">
-                            Invoice #{inv.id}
-                          </span>
-                          <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              inv.status === "paid"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : inv.status === "pending"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {inv.status.toUpperCase()}
-                          </span>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-900">
+                              Invoice #{inv.id}
+                            </span>
+                            <span
+                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                inv.status === "paid"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : inv.status === "pending"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {inv.status.toUpperCase()}
+                            </span>
+                            {inv.payment_method && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-700 capitalize">
+                                {inv.payment_method.replace(/_/g, " ")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Period: {inv.billing_period_start} →{" "}
+                            {inv.billing_period_end} | Due: {inv.due_date}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Period: {inv.billing_period_start} →{" "}
-                          {inv.billing_period_end} | Due: {inv.due_date}
-                        </p>
+
+                        <div className="text-right">
+                          <span className="text-base font-bold text-gray-900">
+                            {parseFloat(inv.amount).toLocaleString()}{" "}
+                            {inv.currency}
+                          </span>
+                          {inv.paid_at && (
+                            <span className="text-xs text-emerald-600 block mt-0.5">
+                              Paid at:{" "}
+                              {new Date(inv.paid_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-base font-bold text-gray-900">
-                          {parseFloat(inv.amount).toLocaleString()}{" "}
-                          {inv.currency}
-                        </span>
-                        {inv.paid_at && (
-                          <span className="text-xs text-emerald-600 block mt-0.5">
-                            Paid at:{" "}
-                            {new Date(inv.paid_at).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
+                      {/* Bank Transfer Receipt Details */}
+                      {inv.receipt && (
+                        <div className="mt-2 pt-3 border-t border-gray-100 bg-purple-50/40 p-3 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            {inv.receipt.receipt_image && (
+                              <div
+                                onClick={() => setPreviewImage(inv.receipt.receipt_image)}
+                                className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 cursor-zoom-in bg-white flex-shrink-0"
+                              >
+                                <img
+                                  src={inv.receipt.receipt_image}
+                                  alt="Receipt"
+                                  className="w-full h-full object-cover hover:scale-105 transition"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs font-bold text-gray-800">
+                                Bank Transfer: {inv.receipt.bank_name || "Bank Deposit"}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                Amount: {inv.receipt.amount} ETB
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                    inv.receipt.status === "approved"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : inv.receipt.status === "rejected"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-amber-100 text-amber-800 animate-pulse"
+                                  }`}
+                                >
+                                  {inv.receipt.status === "approved"
+                                    ? "Verified"
+                                    : inv.receipt.status === "rejected"
+                                      ? "Rejected"
+                                      : "Pending Verification"}
+                                </span>
+                                {inv.receipt.admin_notes && (
+                                  <span className="text-[11px] text-gray-500 italic">
+                                    "{inv.receipt.admin_notes}"
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {inv.receipt.status === "pending" && (
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleReceiptAction(inv.receipt.id, "approved")}
+                                disabled={submittingReceiptId === inv.receipt.id}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReceiptAction(inv.receipt.id, "rejected")}
+                                disabled={submittingReceiptId === inv.receipt.id}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -671,6 +794,51 @@ export const ServiceSubscriptionManageModal: React.FC<
           )}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-2xl max-h-[90vh]">
+            <img
+              src={previewImage}
+              alt="Receipt Preview"
+              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Action Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={Boolean(pendingReviewReceipt)}
+        onClose={() => {
+          setPendingReviewReceipt(null);
+          setReviewNotes("");
+        }}
+        onConfirm={handleConfirmReceiptReview}
+        title={
+          pendingReviewReceipt?.action === "approved"
+            ? "Approve Bank Receipt"
+            : "Reject Bank Receipt"
+        }
+        description={
+          pendingReviewReceipt?.action === "approved"
+            ? "Are you sure you want to approve this bank transfer receipt? The subscription invoice will be marked as paid and the subscription activated."
+            : "Are you sure you want to reject this receipt? The customer will receive a notification to re-upload their bank receipt."
+        }
+        confirmText={
+          pendingReviewReceipt?.action === "approved"
+            ? "Approve Receipt"
+            : "Reject Receipt"
+        }
+        confirmVariant={
+          pendingReviewReceipt?.action === "approved" ? "primary" : "danger"
+        }
+        loading={Boolean(submittingReceiptId)}
+      />
     </div>
   );
 };

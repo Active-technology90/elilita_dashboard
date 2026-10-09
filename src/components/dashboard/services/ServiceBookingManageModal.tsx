@@ -601,14 +601,41 @@ const ReceiptReviewCard = ({
         }}
         onConfirm={handleConfirm}
         title={
-          pendingAction === "approved" ? "Approve Receipt" : "Reject Receipt"
+          pendingAction === "approved"
+            ? "Approve Bank Receipt"
+            : "Reject Bank Receipt"
         }
-        description="This action will notify the customer and update the order workflow. Are you sure?"
-        confirmText={submitting ? "Processing..." : "Confirm Action"}
+        description={
+          pendingAction === "approved"
+            ? "Are you sure you want to approve this bank transfer receipt? The booking will be confirmed and marked as paid."
+            : "Are you sure you want to reject this receipt? The customer will be notified and asked to re-upload their bank receipt."
+        }
+        confirmText={
+          submitting
+            ? "Processing..."
+            : pendingAction === "approved"
+            ? "Approve Receipt"
+            : "Reject Receipt"
+        }
         confirmVariant={pendingAction === "approved" ? "primary" : "danger"}
-        loading={false}
+        loading={submitting}
         autoClose={false}
-      />
+      >
+        {pendingAction === "rejected" && (
+          <div className="mt-3">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Rejection Reason / Notes for Customer:
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Receipt image blurry, incorrect amount, or invalid transaction reference..."
+              rows={3}
+              className="w-full text-xs sm:text-sm border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition resize-none"
+            />
+          </div>
+        )}
+      </ConfirmationModal>
     </Card>
   );
 };

@@ -1,24 +1,17 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Truck,
   Wallet,
   Clock,
   CheckCircle2,
   AlertTriangle,
-  ArrowUpRight,
   Eye,
   RefreshCw,
   Search,
-  Filter,
   ChevronDown,
   ChevronUp,
   X,
-  CreditCard,
-  Building2,
-  Calendar,
   AlertCircle,
-  FileText,
-  User,
   Phone,
   Banknote,
 } from "lucide-react";
@@ -101,7 +94,7 @@ interface DriverUnpaidGroup {
 
 export function DriverPayoutsManagement({
   companySlug,
-  isSuperAdmin,
+  isSuperAdmin: _isSuperAdmin,
 }: DriverPayoutsManagementProps) {
   const { showToast } = useToast();
 
@@ -113,7 +106,7 @@ export function DriverPayoutsManagement({
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [payoutTypeFilter, setPayoutTypeFilter] = useState<string>("all");
+  const [payoutTypeFilter, _setPayoutTypeFilter] = useState<string>("all");
   const [expandedDrivers, setExpandedDrivers] = useState<Record<number, boolean>>({});
 
   // Disburse Modal State
@@ -130,7 +123,7 @@ export function DriverPayoutsManagement({
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState<DriverPayoutRecord | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [_loadingDetail, setLoadingDetail] = useState(false);
 
   // Helper: Filter orders by interval
   const selectOrdersByInterval = (
