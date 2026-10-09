@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, createContext, useContext } from "react";
+import { useState, useRef, useEffect, useMemo, createContext, useContext } from "react";
 import { RefreshButton } from "../ui/RefreshButton";
 import {
   LayoutDashboard,
@@ -483,6 +483,21 @@ export default function AdminDashboard() {
   // Hide "Company Users" only for staff (not for viewers)
   // const hideUsersSidebar = !isSuperAdmin && company?.role === "staff";
 
+  // ── Dynamic brand role label shown under "Elilita" ──────
+  const brandRoleLabel = useMemo(() => {
+    if (isMarketing) return "Marketing";
+    if (isSuperAdmin) return "Super Admin";
+
+    const role = company?.role;
+    if (role === "owner") return "Owner";
+    if (role === "admin") return "Admin";
+    if (role === "staff") return "Dispatcher";
+    if (role === "viewer") return "Viewer";
+    if (role === "delivery") return "Delivery";
+
+    return "Dashboard";
+  }, [isMarketing, isSuperAdmin, company?.role]);
+
   const currentCompanyMeta = companiesList.find(
     (c: any) => c.slug === company?.slug,
   );
@@ -937,7 +952,7 @@ export default function AdminDashboard() {
                 Elilita
               </p>
 
-              <p
+              {/* <p
                 className="
                   mt-1.5
                   text-[9px]
@@ -948,8 +963,8 @@ export default function AdminDashboard() {
                   text-white/50
                 "
               >
-                Admin
-              </p>
+                {brandRoleLabel}
+              </p> */}
             </div>
           )}
 

@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-// ... keep the same props interface
 interface CreateCompanyUserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,6 +28,8 @@ interface CreateCompanyUserModalProps {
     password: string;
     role: "admin" | "staff" | "viewer" | "delivery";
   }) => void;
+  /** Optional: pass backend field errors from parent, e.g. { username: ["Already exists"] } */
+  serverErrors?: Record<string, string | string[]>;
 }
 
 type FormErrors = {
@@ -46,6 +47,7 @@ export function CreateCompanyUserModal({
   onClose,
   loading,
   onSubmit,
+  serverErrors,
 }: CreateCompanyUserModalProps) {
   const [formData, setFormData] = useState({
     first_name: "",
@@ -64,9 +66,35 @@ export function CreateCompanyUserModal({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  // Ethiopian phone number: 09 or +251 followed by 9 and 8 digits
-  const phoneRegex = /^(\+251|0)?9\d{8}$/;
+
+  // ✅ Ethiopian mobile: Ethio Telecom (09/+2519) OR Safaricom (07/+2517)
+  // Accepts: 09XXXXXXXX, 07XXXXXXXX, +2519XXXXXXXX, +2517XXXXXXXX
+  const phoneRegex = /^(\+251|0)(9|7)\d{8}$/;
+
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+
+  // Normalize backend errors into a flat map of field -> message
+  const normalizedServerErrors = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (!serverErrors) return map;
+    Object.entries(serverErrors).forEach(([key, value]) => {
+      const msg = Array.isArray(value) ? value[0] : value;
+      if (msg) map[key] = String(msg);
+    });
+    // catch-all bucket for non_field_errors / detail
+    return map;
+  }, [serverErrors]);
+
+  const generalServerError =
+    normalizedServerErrors["non_field_errors"] ||
+    normalizedServerErrors["detail"] ||
+    normalizedServerErrors["__all__"];
+
+  const getFieldError = (field: keyof FormErrors): string | undefined => {
+    // Server error takes priority (it's the real truth)
+    if (normalizedServerErrors[field]) return normalizedServerErrors[field];
+    return errors[field];
+  };
 
   const validate = () => {
     const newErrors: FormErrors = {};
@@ -96,12 +124,11 @@ export function CreateCompanyUserModal({
       newErrors.email = "Invalid email address";
     }
 
-    // Enhanced phone validation with clear hint
     if (!formData.phone_number.trim()) {
       newErrors.phone_number = "Phone number is required";
     } else if (!phoneRegex.test(formData.phone_number)) {
       newErrors.phone_number =
-        "Use Ethiopian format: 09XXXXXXXX or +2519XXXXXXXX";
+        "Use 09XXXXXXXX, 07XXXXXXXX, +2519XXXXXXXX or +2517XXXXXXXX";
     }
 
     if (!formData.password) {
@@ -178,14 +205,19 @@ export function CreateCompanyUserModal({
     });
   };
 
-  const inputClass = (field: keyof FormErrors) => `
-    w-full pl-8 sm:pl-10 pr-8 sm:pr-12 py-2.5 sm:py-3 text-sm sm:text-base rounded-2xl border bg-white
-    outline-none transition-all duration-200
-    ${touched[field] && errors[field]
-      ? "border-red-300 focus:ring-4 focus:ring-red-100 focus:border-red-500"
-      : "border-gray-200 focus:ring-4 focus:ring-secondary/10 focus:border-secondary"
-    }
-  `;
+  const inputClass = (field: keyof FormErrors) => {
+    const hasError =
+      (touched[field] && !!getFieldError(field)) || !!getFieldError(field);
+    return `
+      w-full pl-8 sm:pl-10 pr-8 sm:pr-12 py-2.5 sm:py-3 text-sm sm:text-base rounded-2xl border bg-white
+      outline-none transition-all duration-200
+      ${
+        hasError
+          ? "border-red-300 focus:ring-4 focus:ring-red-100 focus:border-red-500"
+          : "border-gray-200 focus:ring-4 focus:ring-secondary/10 focus:border-secondary"
+      }
+    `;
+  };
 
   if (!isOpen) return null;
 
@@ -201,9 +233,13 @@ export function CreateCompanyUserModal({
         {/* HEADER */}
         <div className="sticky top-0 z-30 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-secondary/5 to-indigo-50 backdrop-blur-sm bg-opacity-95">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-secondary">{formData.role === "staff" ? "Create Dispatcher" : "Create User"}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-secondary">
+              {formData.role === "staff" ? "Create Dispatcher" : "Create User"}
+            </h2>
             <p className="text-xs sm:text-sm text-secondary/60 mt-1">
-              {formData.role === "staff" ? "Create and onboard a dispatcher" : "Create and onboard a company user instantly"}
+              {formData.role === "staff"
+                ? "Create and onboard a dispatcher"
+                : "Create and onboard a company user instantly"}
             </p>
           </div>
           <button
@@ -216,6 +252,14 @@ export function CreateCompanyUserModal({
 
         {/* BODY */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1 overflow-y-auto">
+          {/* General backend error banner */}
+          {generalServerError && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>{generalServerError}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             {/* FIRST NAME */}
             <div>
@@ -233,9 +277,10 @@ export function CreateCompanyUserModal({
                   className={inputClass("first_name")}
                 />
               </div>
-              {touched.first_name && errors.first_name && (
+              {getFieldError("first_name") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3.5 w-3.5" /> {errors.first_name}
+                  <AlertCircle className="h-3.5 w-3.5" />{" "}
+                  {getFieldError("first_name")}
                 </p>
               )}
             </div>
@@ -256,9 +301,10 @@ export function CreateCompanyUserModal({
                   className={inputClass("last_name")}
                 />
               </div>
-              {touched.last_name && errors.last_name && (
+              {getFieldError("last_name") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {errors.last_name}
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                  {getFieldError("last_name")}
                 </p>
               )}
             </div>
@@ -281,9 +327,10 @@ export function CreateCompanyUserModal({
                   className={inputClass("username")}
                 />
               </div>
-              {touched.username && errors.username && (
+              {getFieldError("username") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {errors.username}
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                  {getFieldError("username")}
                 </p>
               )}
             </div>
@@ -304,26 +351,27 @@ export function CreateCompanyUserModal({
                   className={inputClass("email")}
                 />
               </div>
-              {touched.email && errors.email && (
+              {getFieldError("email") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {errors.email}
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                  {getFieldError("email")}
                 </p>
               )}
             </div>
 
-            {/* PHONE – with restricted Ethiopian format hint */}
+            {/* PHONE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
                 Phone Number <span className="text-red-500">*</span>
                 <span className="text-[10px] sm:text-xs text-gray-400 ml-1">
-                  (restricted to Ethiopian numbers)
+                  (Ethio Telecom & Safaricom)
                 </span>
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="09XXXXXXXX or +2519XXXXXXXX"
+                  placeholder="09XXXXXXXX, 07XXXXXXXX or +251..."
                   value={formData.phone_number}
                   onChange={(e) => handleChange("phone_number", e.target.value)}
                   onBlur={() => handleBlur("phone_number")}
@@ -331,22 +379,23 @@ export function CreateCompanyUserModal({
                 />
                 <div
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-help"
-                  title="Only Ethiopian mobile numbers are accepted"
+                  title="Accepts Ethio Telecom (09/+2519) and Safaricom (07/+2517) numbers"
                 >
                   <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
               </div>
-              {touched.phone_number && errors.phone_number && (
+              {getFieldError("phone_number") ? (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {errors.phone_number}
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                  {getFieldError("phone_number")}
                 </p>
-              )}
-              {!errors.phone_number && (
+              ) : (
                 <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                  Example: +251911000000 or 0911000000
+                  Ethio Telecom: 0911000000 · Safaricom: 0711000000
                 </p>
               )}
             </div>
+
             {/* ROLE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
@@ -401,12 +450,13 @@ export function CreateCompanyUserModal({
                       Password strength
                     </span>
                     <span
-                      className={`text-[10px] sm:text-xs font-medium ${passwordStrength <= 1
+                      className={`text-[10px] sm:text-xs font-medium ${
+                        passwordStrength <= 1
                           ? "text-red-500"
                           : passwordStrength <= 3
                             ? "text-yellow-500"
                             : "text-green-600"
-                        }`}
+                      }`}
                     >
                       {passwordStrengthText()}
                     </span>
@@ -415,22 +465,24 @@ export function CreateCompanyUserModal({
                     {[1, 2, 3, 4].map((level) => (
                       <div
                         key={level}
-                        className={`h-2 flex-1 rounded-full transition ${passwordStrength >= level
+                        className={`h-2 flex-1 rounded-full transition ${
+                          passwordStrength >= level
                             ? passwordStrength <= 1
                               ? "bg-red-500"
                               : passwordStrength <= 3
                                 ? "bg-yellow-500"
                                 : "bg-green-500"
                             : "bg-gray-200"
-                          }`}
+                        }`}
                       />
                     ))}
                   </div>
                 </div>
               )}
-              {touched.password && errors.password && (
+              {getFieldError("password") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {errors.password}
+                  <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                  {getFieldError("password")}
                 </p>
               )}
             </div>
@@ -464,10 +516,10 @@ export function CreateCompanyUserModal({
                   )}
                 </button>
               </div>
-              {touched.confirm_password && errors.confirm_password && (
+              {getFieldError("confirm_password") && (
                 <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
-                  {errors.confirm_password}
+                  {getFieldError("confirm_password")}
                 </p>
               )}
             </div>
@@ -489,12 +541,15 @@ export function CreateCompanyUserModal({
           >
             {loading ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> Creating...
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />{" "}
+                Creating...
               </>
             ) : (
               <>
                 <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                {formData.role === "staff" ? "Create Dispatcher" : "Create User"}
+                {formData.role === "staff"
+                  ? "Create Dispatcher"
+                  : "Create User"}
               </>
             )}
           </button>

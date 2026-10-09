@@ -162,6 +162,7 @@ export default function Orders() {
         });
         if (!controller.signal.aborted) {
           setOrders(res.data.results);
+          console.log("Fetched orders:", res.data.results);
         }
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
@@ -272,6 +273,7 @@ export default function Orders() {
         key: "recipient_name",
         header: "Customer",
         className: "min-w-[130px]",
+
         render: (order) => {
           const customerName =
             order.recipient_name ||
@@ -296,6 +298,7 @@ export default function Orders() {
             </div>
           );
         },
+
       },
       {
         key: "total_amount",

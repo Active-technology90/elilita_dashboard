@@ -28,6 +28,59 @@ import { PageHeader } from "../../ui/PageHeader";
 import BottomSheet from "../../ui/BottomSheet";
 import { DataTable, type Column } from "../../ui/DataTable";
 
+/* ──────────────────────────────────────────────────────────────────
+   Status badge palette — the ONLY place non-secondary colors live.
+   Each status has a matching bg / text / border trio.
+   ────────────────────────────────────────────────────────────────── */
+const STATUS_STYLES: Record<
+  string,
+  { bg: string; text: string; border: string; dot: string }
+> = {
+  pending_review: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    dot: "bg-amber-500",
+  },
+  redelivery_in_progress: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+    dot: "bg-blue-500",
+  },
+  refund_approved: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  refunded: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  resolved: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  rejected: {
+    bg: "bg-red-50",
+    text: "text-red-700",
+    border: "border-red-200",
+    dot: "bg-red-500",
+  },
+};
+
+const DEFAULT_STATUS_STYLE = {
+  bg: "bg-gray-100",
+  text: "text-gray-700",
+  border: "border-gray-200",
+  dot: "bg-gray-400",
+};
+
 export default function DisputesManagement() {
   const { toast, showToast } = useToast();
   const [disputes, setDisputes] = useState<OrderDispute[]>([]);
@@ -286,11 +339,17 @@ export default function DisputesManagement() {
     return labels[status] || status;
   };
 
-  const getStatusBadge = (status: string) => (
-    <span className="inline-flex items-center rounded-full border border-secondary/15 bg-secondary/[0.06] px-2.5 py-1 text-[11px] font-semibold text-secondary">
-      {getStatusLabel(status)}
-    </span>
-  );
+  const getStatusBadge = (status: string) => {
+    const style = STATUS_STYLES[status] || DEFAULT_STATUS_STYLE;
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${style.bg} ${style.text} ${style.border}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+        {getStatusLabel(status)}
+      </span>
+    );
+  };
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
@@ -347,137 +406,136 @@ export default function DisputesManagement() {
     },
   ];
 
-
   const columns: Column<OrderDispute>[] = [
-      {
-        key: "id",
-        header: "Dispute",
-        className: "whitespace-nowrap align-top",
-        render: (d) => (
-          <div>
-            <p className="font-semibold text-secondary">#{d.id}</p>
-            <p className="mt-0.5 text-[11px] text-secondary/50">
-              Order #{d.master_order}
+    {
+      key: "id",
+      header: "Dispute",
+      className: "whitespace-nowrap align-top",
+      render: (d) => (
+        <div>
+          <p className="font-semibold text-secondary">#{d.id}</p>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Order #{d.master_order}
+          </p>
+          <p className="mt-0.5 text-[10px] text-gray-400">
+            {new Date(d.created_at).toLocaleDateString()}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "customer",
+      header: "Customer",
+      className: "max-w-[200px] align-top",
+      render: (d) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-gray-900">
+            {d.customer_name || d.raised_by_name}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-gray-500">
+            {d.customer_email || d.raised_by_email}
+          </p>
+          {(d.customer_phone || d.raised_by_phone) && (
+            <p className="mt-0.5 truncate text-[10px] text-gray-400">
+              {d.customer_phone || d.raised_by_phone}
             </p>
-            <p className="mt-0.5 text-[10px] text-secondary/35">
-              {new Date(d.created_at).toLocaleDateString()}
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "company_name",
+      header: "Vendor",
+      className: "max-w-[180px] align-top",
+      render: (d) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-gray-900">
+            {d.company_name || "Multi-Vendor"}
+          </p>
+          <p className="mt-0.5 truncate text-[10px] text-gray-400">
+            {d.initiator_role === "vendor"
+              ? "Vendor initiated"
+              : d.initiator_role === "superadmin"
+                ? `Admin · ${d.raised_by_name}`
+                : "Customer claim"}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "payment_method",
+      header: "Gateway",
+      className: "whitespace-nowrap align-top",
+      render: (d) => (
+        <span className="inline-flex rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-semibold uppercase text-gray-700">
+          {d.payment_method || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "reason",
+      header: "Issue",
+      className: "max-w-[230px] align-top",
+      render: (d) => (
+        <div className="min-w-0">
+          <p className="font-medium text-gray-900">{formatReason(d.reason)}</p>
+          {d.explanation && (
+            <p
+              className="mt-0.5 truncate text-[11px] text-gray-500"
+              title={d.explanation}
+            >
+              {d.explanation}
             </p>
-          </div>
-        ),
-      },
-      {
-        key: "customer",
-        header: "Customer",
-        className: "max-w-[200px] align-top",
-        render: (d) => (
-          <div className="min-w-0">
-            <p className="truncate font-medium text-secondary">
-              {d.customer_name || d.raised_by_name}
-            </p>
-            <p className="mt-0.5 truncate text-[11px] text-secondary/50">
-              {d.customer_email || d.raised_by_email}
-            </p>
-            {(d.customer_phone || d.raised_by_phone) && (
-              <p className="mt-0.5 truncate text-[10px] text-secondary/40">
-                {d.customer_phone || d.raised_by_phone}
-              </p>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "company_name",
-        header: "Vendor",
-        className: "max-w-[180px] align-top",
-        render: (d) => (
-          <div className="min-w-0">
-            <p className="truncate font-medium text-secondary">
-              {d.company_name || "Multi-Vendor"}
-            </p>
-            <p className="mt-0.5 truncate text-[10px] text-secondary/45">
-              {d.initiator_role === "vendor"
-                ? "Vendor initiated"
-                : d.initiator_role === "superadmin"
-                  ? `Admin · ${d.raised_by_name}`
-                  : "Customer claim"}
-            </p>
-          </div>
-        ),
-      },
-      {
-        key: "payment_method",
-        header: "Gateway",
-        className: "whitespace-nowrap align-top",
-        render: (d) => (
-          <span className="inline-flex rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold uppercase text-secondary">
-            {d.payment_method || "—"}
-          </span>
-        ),
-      },
-      {
-        key: "reason",
-        header: "Issue",
-        className: "max-w-[230px] align-top",
-        render: (d) => (
-          <div className="min-w-0">
-            <p className="font-medium text-secondary">{formatReason(d.reason)}</p>
-            {d.explanation && (
-              <p
-                className="mt-0.5 truncate text-[11px] text-secondary/50"
-                title={d.explanation}
-              >
-                {d.explanation}
-              </p>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "requested_resolution",
-        header: "Resolution",
-        className: "whitespace-nowrap align-top",
-        render: (d) => (
-          <span className="inline-flex items-center gap-1 rounded-md border border-secondary/10 bg-secondary/[0.05] px-2 py-1 text-[10px] font-semibold text-secondary">
-            {d.requested_resolution === "redelivery" ? (
-              <RotateCcw className="h-3 w-3" />
-            ) : (
-              <DollarSign className="h-3 w-3" />
-            )}
-            {d.requested_resolution === "redelivery" ? "Redelivery" : "Refund"}
-          </span>
-        ),
-      },
-      {
-        key: "refund_amount",
-        header: "Amount",
-        className: "whitespace-nowrap align-top font-semibold text-secondary",
-        render: (d) => `${d.refund_amount || d.master_order_total} ETB`,
-      },
-      {
-        key: "status",
-        header: "Status",
-        className: "whitespace-nowrap align-top",
-        render: (d) => getStatusBadge(d.status),
-      },
-      {
-        key: "actions",
-        header: "Action",
-        className: "whitespace-nowrap text-right align-top",
-        render: (d) => (
-          <button
-            type="button"
-            onClick={() => openReviewModal(d)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold text-white transition hover:bg-secondary/90 focus:outline-none focus:ring-2 focus:ring-secondary/20"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Review
-          </button>
-        ),
-      },
-    ];
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "requested_resolution",
+      header: "Resolution",
+      className: "whitespace-nowrap align-top",
+      render: (d) => (
+        <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-700">
+          {d.requested_resolution === "redelivery" ? (
+            <RotateCcw className="h-3 w-3" />
+          ) : (
+            <DollarSign className="h-3 w-3" />
+          )}
+          {d.requested_resolution === "redelivery" ? "Redelivery" : "Refund"}
+        </span>
+      ),
+    },
+    {
+      key: "refund_amount",
+      header: "Amount",
+      className: "whitespace-nowrap align-top font-semibold text-gray-900",
+      render: (d) => `${d.refund_amount || d.master_order_total} ETB`,
+    },
+    {
+      key: "status",
+      header: "Status",
+      className: "whitespace-nowrap align-top",
+      render: (d) => getStatusBadge(d.status),
+    },
+    {
+      key: "actions",
+      header: "Action",
+      className: "whitespace-nowrap text-right align-top",
+      render: (d) => (
+        <button
+          type="button"
+          onClick={() => openReviewModal(d)}
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-secondary px-2.5 text-[11px] font-semibold text-white transition hover:bg-secondary/90 focus:outline-none focus:ring-2 focus:ring-secondary/30"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Review
+        </button>
+      ),
+    },
+  ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
       <Toast toast={toast} />
 
       <PageHeader
@@ -489,7 +547,7 @@ export default function DisputesManagement() {
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
@@ -499,32 +557,33 @@ export default function DisputesManagement() {
         }
       />
 
+      {/* Metric cards */}
       <section className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {metricCards.map(({ label, value, note, icon: Icon }) => (
           <div
             key={label}
-            className="rounded-xl border border-secondary/10 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+            className="rounded-xl border border-gray-200 bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/30"
           >
             {loading ? (
               <div className="animate-pulse">
-                <div className="h-3 w-20 rounded bg-secondary/10" />
-                <div className="mt-2 h-7 w-12 rounded bg-secondary/10" />
-                <div className="mt-2 h-2.5 w-24 rounded bg-secondary/[0.07]" />
+                <div className="h-3 w-20 rounded bg-gray-100" />
+                <div className="mt-2 h-7 w-12 rounded bg-gray-100" />
+                <div className="mt-2 h-2.5 w-24 rounded bg-gray-50" />
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/55">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
                     {label}
                   </p>
-                  <p className="mt-0.5 text-xl font-bold tracking-tight text-secondary">
+                  <p className="mt-0.5 text-xl font-bold tracking-tight text-gray-900">
                     {value}
                   </p>
-                  <p className="mt-0.5 truncate text-[11px] text-secondary/55">
+                  <p className="mt-0.5 truncate text-[11px] text-gray-500">
                     {note}
                   </p>
                 </div>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
@@ -533,25 +592,26 @@ export default function DisputesManagement() {
         ))}
       </section>
 
-      <section className="relative rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+      {/* Table section */}
+      <section className="relative rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
         <div className="sticky -top-6 z-[2] -mt-6 bg-white pt-6">
-          <div className="relative z-[110] border-b border-secondary/10 bg-white px-3 py-2.5 sm:px-4">
+          <div className="relative z-[110] border-b border-gray-200 bg-white px-3 py-2.5 sm:px-4">
             <div className="flex items-center gap-2">
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-secondary/40" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search order, customer, vendor or issue"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+                  className="h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-xs font-medium text-gray-900 outline-none placeholder:text-gray-400 focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
                     aria-label="Clear search"
-                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-secondary/45 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -565,7 +625,7 @@ export default function DisputesManagement() {
                 className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition md:hidden ${
                   mobileFilterCount > 0
                     ? "border-secondary bg-secondary text-white"
-                    : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <Filter className="h-3.5 w-3.5" />
@@ -600,7 +660,7 @@ export default function DisputesManagement() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] md:inline-flex"
+                  className="hidden h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 md:inline-flex"
                 >
                   <XCircle className="h-3.5 w-3.5" />
                   Clear
@@ -618,7 +678,7 @@ export default function DisputesManagement() {
           <div className="space-y-4">
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
                   Status
                 </p>
                 {statusFilter !== "all" && (
@@ -640,7 +700,7 @@ export default function DisputesManagement() {
                     className={`min-h-11 rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${
                       statusFilter === option.value
                         ? "border-secondary bg-secondary text-white"
-                        : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {option.label}
@@ -651,7 +711,7 @@ export default function DisputesManagement() {
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
                   Resolution
                 </p>
                 {resolutionFilter !== "all" && (
@@ -673,7 +733,7 @@ export default function DisputesManagement() {
                     className={`min-h-11 rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${
                       resolutionFilter === option.value
                         ? "border-secondary bg-secondary text-white"
-                        : "border-secondary/10 bg-white text-secondary hover:bg-secondary/[0.04]"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {option.label}
@@ -682,7 +742,7 @@ export default function DisputesManagement() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 border-t border-secondary/10 pt-3">
+            <div className="flex items-center gap-2 border-t border-gray-200 pt-3">
               <button
                 type="button"
                 onClick={() => {
@@ -690,7 +750,7 @@ export default function DisputesManagement() {
                   setFilterSheetOpen(false);
                 }}
                 disabled={!hasActiveFilters}
-                className="h-10 flex-1 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                className="h-10 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Clear all
               </button>
@@ -721,7 +781,7 @@ export default function DisputesManagement() {
         </div>
 
         {!loading && filteredDisputes.length > 0 && (
-          <div className="flex flex-col gap-1 border-t border-secondary/10 px-4 py-2.5 text-[11px] text-secondary/50 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1 border-t border-gray-200 px-4 py-2.5 text-[11px] text-gray-500 sm:flex-row sm:items-center sm:justify-between">
             <span>
               {filteredDisputes.length} dispute
               {filteredDisputes.length === 1 ? "" : "s"}
@@ -731,18 +791,19 @@ export default function DisputesManagement() {
         )}
       </section>
 
+      {/* Review modal */}
       {selectedDispute && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary/35 p-3 backdrop-blur-[2px] sm:p-4">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-secondary/10 bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-secondary/10 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 backdrop-blur-[2px] sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-bold text-secondary">
+                  <h2 className="text-base font-bold text-gray-900">
                     Dispute #{selectedDispute.id}
                   </h2>
                   {getStatusBadge(selectedDispute.status)}
                 </div>
-                <p className="mt-1 text-[11px] text-secondary/50">
+                <p className="mt-1 text-[11px] text-gray-500">
                   Order #{selectedDispute.master_order} ·{" "}
                   {new Date(selectedDispute.created_at).toLocaleString()}
                 </p>
@@ -750,7 +811,7 @@ export default function DisputesManagement() {
               <button
                 type="button"
                 onClick={closeReviewModal}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-secondary/55 transition hover:bg-secondary/[0.06] hover:text-secondary"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
                 aria-label="Close dispute review"
               >
                 <XCircle className="h-4 w-4" />
@@ -759,13 +820,13 @@ export default function DisputesManagement() {
 
             <div className="overflow-y-auto px-5 py-4">
               <div className="space-y-3">
-                <div className="flex items-start gap-3 rounded-xl border border-secondary/10 bg-secondary/[0.035] px-3.5 py-3">
+                <div className="flex items-start gap-3 rounded-xl border border-secondary/20 bg-secondary/5 px-3.5 py-3">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-secondary" />
                   <div>
-                    <p className="text-xs font-semibold text-secondary">
+                    <p className="text-xs font-semibold text-gray-900">
                       Funds held in platform escrow
                     </p>
-                    <p className="mt-0.5 text-[11px] leading-4 text-secondary/55">
+                    <p className="mt-0.5 text-[11px] leading-4 text-gray-600">
                       Approved refunds return funds through{" "}
                       {String(
                         selectedDispute.payment_method ||
@@ -777,59 +838,59 @@ export default function DisputesManagement() {
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-secondary/10 bg-white p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
                       Customer
                     </p>
-                    <p className="mt-1 text-xs font-semibold text-secondary">
+                    <p className="mt-1 text-xs font-semibold text-gray-900">
                       {selectedDispute.customer_name ||
                         selectedDispute.raised_by_name}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                    <p className="mt-0.5 text-[11px] text-gray-500">
                       {selectedDispute.customer_email ||
                         selectedDispute.raised_by_email}
                     </p>
                     {(selectedDispute.customer_phone ||
                       selectedDispute.raised_by_phone) && (
-                      <p className="mt-0.5 text-[11px] text-secondary/45">
+                      <p className="mt-0.5 text-[11px] text-gray-400">
                         {selectedDispute.customer_phone ||
                           selectedDispute.raised_by_phone}
                       </p>
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-secondary/10 bg-white p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                  <div className="rounded-xl border border-gray-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
                       Vendor
                     </p>
-                    <p className="mt-1 text-xs font-semibold text-secondary">
+                    <p className="mt-1 text-xs font-semibold text-gray-900">
                       {selectedDispute.company_name || "Multi-Vendor"}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                    <p className="mt-0.5 text-[11px] text-gray-500">
                       Payment:{" "}
-                      <span className="font-medium uppercase text-secondary">
+                      <span className="font-medium uppercase text-gray-900">
                         {selectedDispute.payment_method}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-[11px] text-secondary/50">
+                    <p className="mt-0.5 text-[11px] text-gray-500">
                       Order total:{" "}
-                      <span className="font-semibold text-secondary">
+                      <span className="font-semibold text-gray-900">
                         {selectedDispute.master_order_total} ETB
                       </span>
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-secondary/10 bg-secondary/[0.025] p-3.5">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/45">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-500">
                       Reported issue
                     </p>
-                    <span className="rounded-md border border-secondary/10 bg-white px-2 py-1 text-[10px] font-semibold text-secondary">
+                    <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-700">
                       {formatReason(selectedDispute.reason)}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-secondary/70">
+                  <p className="mt-2 text-xs leading-5 text-gray-700">
                     {selectedDispute.explanation ||
                       "No additional explanation provided."}
                   </p>
@@ -840,14 +901,14 @@ export default function DisputesManagement() {
                         onClick={() =>
                           setPreviewImage(selectedDispute.evidence_image)
                         }
-                        className="group relative overflow-hidden rounded-lg border border-secondary/10"
+                        className="group relative overflow-hidden rounded-lg border border-gray-200"
                       >
                         <img
                           src={selectedDispute.evidence_image}
                           alt="Dispute evidence"
                           className="h-20 w-20 object-cover transition group-hover:scale-105"
                         />
-                        <span className="absolute inset-0 flex items-center justify-center bg-secondary/50 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">
                           View
                         </span>
                       </button>
@@ -855,20 +916,20 @@ export default function DisputesManagement() {
                   )}
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3.5 py-3">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center rounded-xl border border-secondary/20 bg-secondary/5 px-3.5 py-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-gray-600">
                       Requested resolution
                     </p>
-                    <p className="mt-0.5 text-xs font-semibold text-secondary">
+                    <p className="mt-0.5 text-xs font-semibold text-gray-900">
                       {selectedDispute.requested_resolution === "redelivery"
                         ? "Redelivery"
                         : "Financial refund"}
                     </p>
                   </div>
                   <div className="sm:text-right">
-                    <p className="text-[10px] text-secondary/45">Amount</p>
-                    <p className="text-sm font-bold text-secondary">
+                    <p className="text-[10px] text-gray-500">Amount</p>
+                    <p className="text-sm font-bold text-gray-900">
                       {selectedDispute.refund_amount ||
                         selectedDispute.master_order_total}{" "}
                       ETB
@@ -878,7 +939,7 @@ export default function DisputesManagement() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-600">
                       Refund amount (ETB)
                     </label>
                     <input
@@ -887,15 +948,15 @@ export default function DisputesManagement() {
                       value={customRefundAmount}
                       onChange={(e) => setCustomRefundAmount(e.target.value)}
                       disabled={selectedDispute.status === "refunded"}
-                      className="h-9 w-full rounded-lg border border-secondary/15 bg-white px-3 text-xs text-secondary outline-none focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10 disabled:bg-secondary/[0.03] disabled:opacity-60"
+                      className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 disabled:bg-gray-50 disabled:opacity-60"
                     />
-                    <p className="mt-1 text-[10px] text-secondary/40">
+                    <p className="mt-1 text-[10px] text-gray-400">
                       Adjust only for partial refunds.
                     </p>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/55">
+                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-600">
                       Admin notes
                     </label>
                     <textarea
@@ -904,48 +965,36 @@ export default function DisputesManagement() {
                       onChange={(e) => setAdminNotes(e.target.value)}
                       disabled={selectedDispute.status === "refunded"}
                       placeholder="Add review notes"
-                      className="w-full resize-none rounded-lg border border-secondary/15 bg-white px-3 py-2 text-xs text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10 disabled:bg-secondary/[0.03] disabled:opacity-60"
+                      className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none placeholder:text-gray-400 focus:border-secondary focus:ring-2 focus:ring-secondary/20 disabled:bg-gray-50 disabled:opacity-60"
                     />
                   </div>
                 </div>
 
                 {selectedDispute.gateway_refund_id && (
-                  <div className="rounded-lg border border-secondary/10 bg-secondary/[0.025] px-3 py-2 text-[11px] text-secondary/65">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] text-gray-600">
                     Refund ID:{" "}
-                    <span className="font-mono text-secondary">
+                    <span className="font-mono text-gray-900">
                       {selectedDispute.gateway_refund_id}
                     </span>
                   </div>
                 )}
 
                 {gatewayError && (
-                  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.05] p-3 text-[11px] leading-4 text-secondary">
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-[11px] leading-4 text-red-700">
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       <p>{gatewayError}</p>
                     </div>
-                    {/* {canForceManual && (
-                      <div className="mt-2 flex items-center justify-end border-t border-secondary/10 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleApproveRefund(true)}
-                          disabled={actionLoading}
-                          className="h-8 rounded-lg bg-secondary px-3 text-[11px] font-semibold text-white transition hover:bg-secondary/90 disabled:opacity-50"
-                        >
-                          Force manual refund
-                        </button>
-                      </div>
-                    )} */}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 border-t border-secondary/10 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex flex-col gap-2 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <button
                 type="button"
                 onClick={closeReviewModal}
-                className="h-9 w-full rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] sm:w-auto"
+                className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 sm:w-auto"
               >
                 Close
               </button>
@@ -959,7 +1008,7 @@ export default function DisputesManagement() {
                           type="button"
                           onClick={handleApproveRedelivery}
                           disabled={actionLoading}
-                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                         >
                           <RotateCcw className="h-3.5 w-3.5" />
                           Approve redelivery
@@ -968,7 +1017,7 @@ export default function DisputesManagement() {
                           type="button"
                           onClick={handleConvertToRefund}
                           disabled={actionLoading}
-                          className="h-9 rounded-lg border border-secondary/15 bg-secondary/[0.05] px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.08] disabled:opacity-50"
+                          className="h-9 rounded-lg border border-secondary/30 bg-secondary/10 px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/15 disabled:opacity-50"
                         >
                           Convert to refund
                         </button>
@@ -979,7 +1028,7 @@ export default function DisputesManagement() {
                       type="button"
                       onClick={handleReject}
                       disabled={actionLoading}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/20 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05] disabled:opacity-50"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       Reject
@@ -1008,7 +1057,7 @@ export default function DisputesManagement() {
       {previewImage && (
         <div
           onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-[60] flex cursor-pointer items-center justify-center bg-secondary/90 p-4"
+          className="fixed inset-0 z-[60] flex cursor-pointer items-center justify-center bg-black/80 p-4"
         >
           <img
             src={previewImage}

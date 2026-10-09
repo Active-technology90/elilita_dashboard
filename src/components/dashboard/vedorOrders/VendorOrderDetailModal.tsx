@@ -76,8 +76,6 @@ const formatAddress = (address?: string | null) => {
 };
 
 // ─── Fulfillment type normalizer ─────────────────────────────────
-// Backend may send "pickup", "self_pickup", "self-pickup", "onspot",
-// "in_store", "dine_in", "table", etc. Normalize them once.
 type FulfillmentKind = "delivery" | "pickup" | "onspot" | "unknown";
 
 const getFulfillmentKind = (order: any): FulfillmentKind => {
@@ -116,16 +114,16 @@ const getFulfillmentKind = (order: any): FulfillmentKind => {
   return "unknown";
 };
 
+/**
+ * Restaurant check — a company "supports table service" if the flag is true
+ * on either the top-level company or the first vendor order's company.
+ */
+const isRestaurant = (order: any): boolean =>
+  order?.company?.supports_table_service === true ||
+  order?.vendor_orders?.[0]?.company?.supports_table_service === true;
+
 // ─── Customer info resolver ──────────────────────────────────────
-// For pickup/onspot orders, `recipient_*` may be empty because the
-// buyer is the customer, not a separate recipient. Fall back through
-// every plausible field on the order — including the tax invoice,
-// which is where the customer name often lives for paid orders.
-//
-// IMPORTANT: never fall back to the company/store name here, because
-// that makes the store look like the customer in the UI.
 const resolveCustomerName = (order: any): string => {
-  console.log("Resolving customer name for order:", order);
   const candidate =
     order?.recipient_name ||
     order?.customer_name ||
@@ -141,7 +139,6 @@ const resolveCustomerName = (order: any): string => {
   const trimmed = String(candidate).trim();
   if (trimmed) return trimmed;
 
-  // No name found — use a truthful placeholder.
   const kind = getFulfillmentKind(order);
   if (kind === "pickup" || kind === "onspot") {
     return "Walk-in Customer";
@@ -149,10 +146,7 @@ const resolveCustomerName = (order: any): string => {
   return "Customer";
 };
 
-// Returns true only when we actually have a real customer name from
-// the backend (so the UI can style it differently from the fallback).
 const hasCustomerName = (order: any): boolean => {
-  console.log("Checking customer name for order:", order?.id, order?.recipient_name, order?.customer_name, order?.tax_invoice?.customer_name, order?.customer?.name, order?.customer?.full_name, order?.user?.name, order?.tax_invoice?.recipient_name, order?.invoice?.customer_name, order?.placed_by_name);    
   const candidate =
     order?.recipient_name ||
     order?.customer_name ||
@@ -183,15 +177,9 @@ const resolveCustomerPhone = (order: any): string => {
   const trimmed = String(candidate).trim();
   if (trimmed) return trimmed;
 
-  // For pickup/onspot orders, the store's contact phone is the
-  // appropriate fallback since the customer will call the store.
   const kind = getFulfillmentKind(order);
   if (kind === "pickup" || kind === "onspot") {
-    return (
-      order?.company?.contact_phone ||
-      order?.company?.phone ||
-      ""
-    );
+    return order?.company?.contact_phone || order?.company?.phone || "";
   }
   return "";
 };
@@ -493,11 +481,9 @@ const DeliveryCard = ({
   const cod = order.payment_method === "cod";
   const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
-  // OSRM route cache ref
   const routeCacheRef = useRef<Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>>(new Map());
   const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Helper function to calculate distance between two coordinates 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -1256,7 +1242,6 @@ const DeliveryCard = ({
             >
               {delivery?.delivery_person_name ? (
                 <>
-                  {/* Assigned driver */}
                   <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                     <div className="border-b border-gray-100 px-4 py-3 sm:px-5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1488,7 +1473,6 @@ const DeliveryCard = ({
                   )}
                 </>
               ) : (
-                /* No assigned driver */
                 <section className="rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 px-5 py-7 text-center sm:px-8 sm:py-8">
                   <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
                     <Truck className="h-5 w-5 text-gray-400" />
@@ -1595,7 +1579,6 @@ const DeliveryCard = ({
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
-              {/* Assignment header */}
               <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1672,7 +1655,6 @@ const DeliveryCard = ({
                 </div>
               ) : (
                 <>
-                  {/* Search */}
                   <div className="relative">
                     <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <input
@@ -1684,7 +1666,6 @@ const DeliveryCard = ({
                     />
                   </div>
 
-                  {/* Production filter controls */}
                   <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
@@ -1796,7 +1777,6 @@ const DeliveryCard = ({
                     </div>
                   </div>
 
-                  {/* Results summary */}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold text-gray-900">
@@ -1823,7 +1803,6 @@ const DeliveryCard = ({
                     </div>
                   </div>
 
-                  {/* Driver list */}
                   {loadingStaff ? (
                     <div className="flex min-h-48 items-center justify-center rounded-2xl border border-gray-200 bg-white">
                       <div className="text-center">
@@ -2103,7 +2082,6 @@ const DeliveryCard = ({
                     </>
                   )}
 
-                  {/* Assignment action bar */}
                   <div className="sticky bottom-0 z-10 -mx-2 mt-1 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
                     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
@@ -2657,13 +2635,25 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
   const isCOD = order.payment_method === "cod";
   const isReplacement = status === "replacement_in_progress";
 
+  // ✅ Only orders paid THROUGH the platform (chapa, telebirr, etc.)
+  // can be refunded. COD and bank_transfer collect money outside the
+  // platform, so there's nothing for the superadmin to refund.
+  const paymentMethod = String(order.payment_method || "").toLowerCase();
+  const isRefundablePaymentMethod =
+    paymentMethod !== "cod" &&
+    paymentMethod !== "bank_transfer" &&
+    paymentMethod !== "cash";
+
   const handlePrepare = async () => {
     setShowConfirm(false);
     setPreparing(true);
     try {
       await prepareVendorOrder(order.company.slug, order.id);
       await onUpdate();
-      showToast("success", isReplacement ? "Replacement marked as Prepared!" : "Order marked as Prepared!");
+      showToast(
+        "success",
+        isReplacement ? "Replacement marked as Prepared!" : "Order marked as Prepared!",
+      );
     } catch (err: any) {
       showToast(
         "error",
@@ -2698,8 +2688,16 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
     }
   };
 
-  const canPrepare = status === "confirmed" || (isCOD && status === "pending") || isReplacement;
-  const canRequestRefund = !readOnly && status !== "fulfilled" && status !== "cancelled" && status !== "refunded";
+  const canPrepare =
+    status === "confirmed" || (isCOD && status === "pending") || isReplacement;
+
+  // ✅ Refund button now also requires a refundable payment method.
+  const canRequestRefund =
+    !readOnly &&
+    isRefundablePaymentMethod &&
+    status !== "fulfilled" &&
+    status !== "cancelled" &&
+    status !== "refunded";
 
   if (!canPrepare && !canRequestRefund) {
     return null;
@@ -2730,7 +2728,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4" />
-                  {isReplacement ? "Mark Replacement as Prepared" : "Mark as Prepared"}
+                  {isReplacement
+                    ? "Mark Replacement as Prepared"
+                    : "Mark as Prepared"}
                 </>
               )}
             </button>
@@ -2742,7 +2742,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
               className="w-full py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
             >
               <AlertCircle className="h-4 w-4 text-rose-600" />
-              {isReplacement ? "Cannot Replace / Request Refund" : "Out of Stock / Request Refund"}
+              {isReplacement
+                ? "Cannot Replace / Request Refund"
+                : "Out of Stock / Request Refund"}
             </button>
           )}
         </div>
@@ -2752,7 +2754,11 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handlePrepare}
-        title={isReplacement ? "Mark Replacement as Prepared" : "Mark Order as Prepared"}
+        title={
+          isReplacement
+            ? "Mark Replacement as Prepared"
+            : "Mark Order as Prepared"
+        }
         description={
           isReplacement
             ? "Are you sure the replacement items are prepared and ready for dispatch?"
@@ -2778,7 +2784,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
                 Request Customer Refund
               </div>
               <p className="text-xs text-gray-500 mb-4">
-                If items are unavailable or cannot be replaced, submit a refund request. A Superadmin will review and disburse funds back to the customer.
+                If items are unavailable or cannot be replaced, submit a refund
+                request. A Superadmin will review and disburse funds back to
+                the customer.
               </p>
 
               <div className="space-y-3 mb-5">
@@ -2792,7 +2800,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
                     className="w-full text-xs rounded-xl border border-gray-300 p-2.5 focus:ring-2 focus:ring-secondary/20 focus:outline-none"
                   >
                     <option value="out_of_stock">Item Out of Stock</option>
-                    <option value="damaged_item">Ingredients/Items Damaged</option>
+                    <option value="damaged_item">
+                      Ingredients/Items Damaged
+                    </option>
                     <option value="other">Store Closed / Cannot Fulfill</option>
                   </select>
                 </div>
@@ -2863,10 +2873,6 @@ export function VendorOrderDetailModal({
   const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">("tracking");
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>();
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FIX: Local optimistic delivery override so the modal updates
-  // immediately after assignment, even before the parent refetches.
-  // ═══════════════════════════════════════════════════════════════════
   const [localDeliveryOverride, setLocalDeliveryOverride] = useState<any>(null);
 
   const effectiveOrder = useMemo(() => {
@@ -2880,8 +2886,6 @@ export function VendorOrderDetailModal({
     };
   }, [order, localDeliveryOverride]);
 
-  // Clear the optimistic override once the parent supplies authoritative
-  // delivery data that already has a driver name.
   useEffect(() => {
     if (
       localDeliveryOverride &&
@@ -2892,7 +2896,6 @@ export function VendorOrderDetailModal({
     }
   }, [order?.delivery?.delivery_person_name, localDeliveryOverride]);
 
-  // If the order itself changes (different order selected), clear override.
   useEffect(() => {
     setLocalDeliveryOverride(null);
   }, [order?.id]);
@@ -2912,11 +2915,6 @@ export function VendorOrderDetailModal({
     setIsMapOpen(true);
   }, []);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FIX: handleDriverSelect now applies an optimistic local override
-  // BEFORE awaiting onUpdate(), so the UI reflects the assignment
-  // instantly. It also returns the API payload for the map.
-  // ═══════════════════════════════════════════════════════════════════
   const handleDriverSelect = useCallback(async (driverId: number) => {
     try {
       let updatedDelivery: any = null;
@@ -2935,12 +2933,9 @@ export function VendorOrderDetailModal({
         updatedDelivery = res?.data ?? null;
       }
 
-      // Optimistic local override so the modal UI updates immediately.
       setLocalDeliveryOverride((prev: any) => ({
         ...(prev || {}),
         ...(updatedDelivery || {}),
-        // Ensure a driver name is present so DeliveryCard switches to
-        // the "assigned driver" view right away.
         delivery_person_name:
           updatedDelivery?.delivery_person_name ??
           prev?.delivery_person_name ??
@@ -2952,25 +2947,17 @@ export function VendorOrderDetailModal({
         status: updatedDelivery?.status ?? prev?.status ?? "pending",
       }));
 
-      // Trigger parent refetch. The effect above will clear the override
-      // once the parent passes back authoritative data.
       await onUpdate();
 
       return updatedDelivery;
     } catch (err) {
-      // Roll back optimistic state on failure
       setLocalDeliveryOverride(null);
       throw err;
     }
   }, [effectiveOrder, onUpdate]);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FIX: single close path — the map already closes itself via
-  // onClose after its success toast. Here we just clear selection.
-  // ═══════════════════════════════════════════════════════════════════
   const handleAssignmentComplete = useCallback(() => {
     setSelectedOrderId(undefined);
-    // Close immediately too, so UI is not stuck waiting for map timer.
     setIsMapOpen(false);
   }, []);
 
@@ -3019,7 +3006,6 @@ export function VendorOrderDetailModal({
             className="relative bg-gradient-to-br from-white via-white to-gray-50/50 w-full max-w-[95%] sm:max-w-8xl max-h-[90vh] sm:max-h-[92vh] rounded-2xl sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-white/20 backdrop-blur-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Header */}
             <div className="bg-secondary/20 backdrop-blur-md border-b border-secondary/15 px-3 sm:px-6 md:px-8 py-2 sm:py-4 md:py-5 sticky top-0 z-20 shadow-sm">
               <div className="flex flex-row justify-between items-start gap-2">
                 <div className="mt-1.5">
@@ -3086,7 +3072,6 @@ export function VendorOrderDetailModal({
               </div>
             </div>
 
-            {/* Scrollable Content Grid */}
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
               {effectiveOrder.status?.toLowerCase() === "replacement_in_progress" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
@@ -3111,9 +3096,7 @@ export function VendorOrderDetailModal({
                 </div>
               )}
               <div className="grid grid-cols-12 gap-4 sm:gap-6 md:gap-8 items-start">
-                {/* Left Side: Order Composition & Shipping (8 cols) */}
                 <div className="col-span-12 lg:col-span-8 space-y-4 sm:space-y-6 md:space-y-8 lg:sticky lg:top-0">
-                  {/* Customer Summary Section */}
                   {(() => {
                     const fulfillmentKind = getFulfillmentKind(effectiveOrder);
                     const customerName = resolveCustomerName(effectiveOrder);
@@ -3121,13 +3104,18 @@ export function VendorOrderDetailModal({
                     const customerPhone = resolveCustomerPhone(effectiveOrder);
                     const customerImage = resolveCustomerImage(effectiveOrder);
 
+                    const restaurant = isRestaurant(effectiveOrder);
+
+
                     const isPickupLike =
                       fulfillmentKind === "pickup" || fulfillmentKind === "onspot";
 
                     const locationTitle = isPickupLike
                       ? fulfillmentKind === "onspot"
-                        ? "Dine-In Details"
-                        : "Pickup Location"
+                        ? "Onspot Details"
+                        : restaurant
+                          ? "Takeaway Details"
+                          : "Pickup Location"
                       : "Shipping Destination";
 
                     const storeName =
@@ -3151,7 +3139,6 @@ export function VendorOrderDetailModal({
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        {/* ── Customer Profile ─────────────────────────────────── */}
                         <Card title="Customer Profile" icon={User}>
                           <div className="flex items-center gap-4">
                             {customerImage ? (
@@ -3178,7 +3165,6 @@ export function VendorOrderDetailModal({
                                   {customerName}
                                 </p>
 
-                                {/* Fulfillment type pill — always shown, correctly labeled */}
                                 {fulfillmentKind === "pickup" && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
                                     <svg
@@ -3194,7 +3180,7 @@ export function VendorOrderDetailModal({
                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                                       />
                                     </svg>
-                                    Self Pickup
+                                    {restaurant ? "Takeaway" : "Self Pickup"}
                                   </span>
                                 )}
 
@@ -3202,20 +3188,26 @@ export function VendorOrderDetailModal({
                                   (effectiveOrder.onspot_order_mode === "order_ahead" ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
                                       <Clock className="h-3 w-3 text-purple-600" />
-                                      Pre-Order (Dine-In) • ETA:{" "}
-                                      {effectiveOrder.estimated_arrival_time
-                                        ? new Date(
+                                      Pre-order
+                                      {effectiveOrder.estimated_arrival_time && (
+                                        <>
+                                          {" "}
+                                          · ETA:{" "}
+                                          {new Date(
                                             effectiveOrder.estimated_arrival_time,
                                           ).toLocaleTimeString([], {
                                             hour: "2-digit",
                                             minute: "2-digit",
-                                          })
-                                        : "Upon Arrival"}
+                                          })}
+                                        </>
+                                      )}
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
-                                      On Spot at Table -{" "}
-                                      {effectiveOrder.table_number || "Unassigned"}
+                                      Onspot
+                                      {effectiveOrder.table_number && (
+                                        <> · Table {effectiveOrder.table_number}</>
+                                      )}
                                     </span>
                                   ))}
 
@@ -3241,7 +3233,6 @@ export function VendorOrderDetailModal({
                                 </p>
                               )}
 
-                              {/* Hint when no customer name was captured */}
                               {!hasName && isPickupLike && (
                                 <p className="text-[10px] text-gray-400 italic">
                                   Customer name not provided —{" "}
@@ -3266,11 +3257,9 @@ export function VendorOrderDetailModal({
                           </div>
                         </Card>
 
-                        {/* ── Location / Pickup Details ─────────────────────────── */}
                         {hasAnyLocationData ? (
                           <Card title={locationTitle} icon={MapPin}>
                             <div className="space-y-3">
-                              {/* Recipient / Customer name row */}
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike ? "Customer:" : "Recipient Name:"}
@@ -3280,7 +3269,6 @@ export function VendorOrderDetailModal({
                                 </span>
                               </div>
 
-                              {/* Phone row */}
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike ? "Contact:" : "Recipient Phone:"}
@@ -3294,27 +3282,43 @@ export function VendorOrderDetailModal({
                                 </div>
                               </div>
 
-                              {/* Address row — store address for pickup, shipping for delivery */}
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
-                                      ? "Store / Table:"
-                                      : "Pickup From:"
+                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                        ? "Pre-order At:"
+                                        : "Onspot At:"
+                                      : restaurant
+                                        ? "Takeaway From:"
+                                        : "Pickup From:"
                                     : "Shipping Address:"}
                                 </span>
                                 <span className="text-sm font-bold text-secondary">
                                   {isPickupLike
-                                    ? fulfillmentKind === "onspot" &&
-                                      effectiveOrder.table_number
-                                      ? `${storeName} — Table ${effectiveOrder.table_number}`
+                                    ? fulfillmentKind === "onspot"
+                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                        ? `${storeName} — Pre-ordered${
+                                            effectiveOrder.estimated_arrival_time
+                                              ? ` for ${new Date(
+                                                  effectiveOrder.estimated_arrival_time,
+                                                ).toLocaleTimeString([], {
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                })}`
+                                              : ""
+                                          }`
+                                        : `${storeName}${
+                                            effectiveOrder.table_number
+                                              ? ` — Table ${effectiveOrder.table_number}`
+                                              : ""
+                                          }`
                                       : storeName
                                     : formatAddress(effectiveOrder.shipping_address_text) ||
                                       "No address provided."}
                                 </span>
                               </div>
 
-                              {/* For pickup, show the store's full address as a secondary line */}
                               {isPickupLike && storeAddress && (
                                 <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 border-l-4 border-gray-300">
                                   <span className="text-xs font-bold text-gray-500 min-w-[110px]">
@@ -3345,7 +3349,6 @@ export function VendorOrderDetailModal({
                     );
                   })()}
 
-                  {/* Main Order Table */}
                   <motion.div
                     variants={itemVariants}
                     className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm"
@@ -3473,7 +3476,6 @@ export function VendorOrderDetailModal({
                     </div>
                   </motion.div>
 
-                  {/* Order Timeline */}
                   <motion.div
                     variants={itemVariants}
                     className="bg-white rounded-3xl border border-gray-100 p-4 md:p-6 shadow-sm"
@@ -3564,7 +3566,6 @@ export function VendorOrderDetailModal({
                     </div>
                   </motion.div>
 
-                  {/* Customer Order History */}
                   {customerOrders.length > 0 && (
                     <motion.div
                       variants={itemVariants}
@@ -3628,9 +3629,7 @@ export function VendorOrderDetailModal({
                   )}
                 </div>
 
-                {/* Right Side: Finances & Workflow (4 cols) */}
                 <div className="col-span-12 lg:col-span-4 space-y-3 sm:space-y-4">
-                  {/* Financial Summary Card */}
                   <motion.div
                     variants={itemVariants}
                     className="bg-gradient-to-br from-secondary to-secondary-light rounded-[32px] p-4 text-white shadow-2xl shadow-purple-200 relative overflow-hidden group"
@@ -3679,7 +3678,6 @@ export function VendorOrderDetailModal({
                     </div>
                   </motion.div>
 
-                  {/* Payment Receipt Review Card */}
                   <ReceiptReviewCard
                     receipt={receipt}
                     paymentMethod={effectiveOrder.payment_method}
@@ -3696,7 +3694,6 @@ export function VendorOrderDetailModal({
                     }
                   />
 
-                  {/* Preparation Card */}
                   {(effectiveOrder.status === "confirmed" ||
                     (effectiveOrder.payment_method === "cod" &&
                       effectiveOrder.status === "pending")) && (
@@ -3707,7 +3704,6 @@ export function VendorOrderDetailModal({
                       />
                     )}
 
-                  {/* Delivery person Assignment Card */}
                   {getFulfillmentKind(effectiveOrder) === "delivery" &&
                     effectiveOrder.shipping_address_text && (
                       <DeliveryCard
@@ -3725,7 +3721,6 @@ export function VendorOrderDetailModal({
         </div>
       </AnimatePresence>
 
-      {/* Map Modal */}
       {isMapOpen && (
         <DeliveryTrackingMap
           onClose={handleCloseMap}

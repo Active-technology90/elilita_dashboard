@@ -51,6 +51,10 @@ const StatusBadge = ({
     pending: "Assigned",
     out_for_delivery: "In Transit",
     delivered: "Completed",
+    self_pickup: "Self Pickup",
+    takeaway: "Takeaway",
+    onspot: "Onspot",
+    no_assigned: "No Assigned",
   };
 
   const labels = type === "delivery" ? deliveryStatusLabels : orderStatusLabels;
@@ -76,6 +80,9 @@ const StatusBadge = ({
     fulfilled: "bg-green-100 text-green-800 border border-green-200",
     payment_rejected: "bg-red-50 text-red-700 border border-red-200",
     self_pickup: "bg-blue-50 text-blue-700 border border-blue-200",
+    takeaway: "bg-orange-50 text-orange-700 border border-orange-200",
+    onspot: "bg-purple-50 text-purple-700 border border-purple-200",
+    no_assigned: "bg-gray-100 text-gray-600 border border-gray-200",
   };
 
   const color = colors[normalizedStatus] || "bg-gray-100 text-gray-600";
@@ -145,6 +152,40 @@ const CompanyAvatar = ({
     )}
   </div>
 );
+
+/**
+ * Resolve the correct status key for the Delivery Status column.
+ *
+ * Restaurant (company.supports_table_service === true):
+ *   pickup    → takeaway
+ *   onspot    → onspot   (both already_here and order_ahead)
+ *
+ * Non-restaurant:
+ *   pickup    → self_pickup
+ *   onspot    → onspot
+ *
+ * Real delivery orders keep using the assigned delivery status.
+ */
+const resolveDeliveryStatusKey = (order: VendorOrder): string => {
+  const anyOrder = order as any;
+
+  const supportsTableService =
+    anyOrder?.company?.supports_table_service === true ||
+    anyOrder?.vendor_orders?.[0]?.company?.supports_table_service === true;
+
+  // Onspot — same label for both dine-in and pre-order in the list
+  if (anyOrder.fulfillment_type === "onspot") {
+    return "onspot";
+  }
+
+  // Pickup — restaurants call it "takeaway", others "self pickup"
+  if (!anyOrder.shipping_address_text) {
+    return supportsTableService ? "takeaway" : "self_pickup";
+  }
+
+  // Real delivery
+  return order.delivery?.status || "no_assigned";
+};
 
 /* ---------- Main Component ---------- */
 export default function CompanyOrders() {
@@ -417,7 +458,6 @@ export default function CompanyOrders() {
     }
   }, [fetchOrders, currentPage, selectedOrder]);
 
-
   const orderColumns = useMemo<Column<VendorOrder>[]>(() => {
     const cols: Column<VendorOrder>[] = [
       {
@@ -484,11 +524,7 @@ export default function CompanyOrders() {
         header: "Delivery Status",
         render: (order) => (
           <StatusBadge
-            status={
-              !order.shipping_address_text
-                ? "self_pickup"
-                : order.delivery?.status || "no assigned"
-            }
+            status={resolveDeliveryStatusKey(order)}
             type="delivery"
           />
         ),
@@ -540,7 +576,7 @@ export default function CompanyOrders() {
             </span>
           ) : undefined
         }
-        actionMobile ={
+        actionMobile={
           <button
             type="button"
             onClick={() => setShowTrackingMap(true)}

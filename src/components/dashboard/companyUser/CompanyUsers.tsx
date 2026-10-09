@@ -192,6 +192,10 @@ export default function CompanyUsers() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+  // Server-side field errors returned by the backend for user creation
+  const [createServerErrors, setCreateServerErrors] = useState<
+    Record<string, string | string[]>
+  >({});
   const [roleFilter, setRoleFilter] = useState<
     "all" | "admin" | "staff" | "viewer" | "delivery"
   >("all");
@@ -449,17 +453,72 @@ export default function CompanyUsers() {
     }
   };
 
+  /**
+   * Extract field-level errors from a backend response.
+   * Handles DRF's typical shapes:
+   *   { "username": ["already exists"] }
+   *   { "detail": "..." }
+   *   { "non_field_errors": ["..."] }
+   */
+  const extractServerErrors = (
+    err: any,
+  ): Record<string, string | string[]> => {
+    const data = err?.response?.data;
+
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      // Flat map of field -> string[] | string
+      const result: Record<string, string | string[]> = {};
+      let hasFieldError = false;
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (value == null) return;
+        if (Array.isArray(value)) {
+          result[key] = value.map(String);
+          hasFieldError = true;
+        } else if (typeof value === "string") {
+          result[key] = value;
+          hasFieldError = true;
+        } else if (typeof value === "object") {
+          // Nested serializer errors — flatten one level
+          Object.entries(value as Record<string, any>).forEach(
+            ([nestedKey, nestedValue]) => {
+              if (nestedValue == null) return;
+              result[nestedKey] = Array.isArray(nestedValue)
+                ? nestedValue.map(String)
+                : String(nestedValue);
+              hasFieldError = true;
+            },
+          );
+        }
+      });
+
+      if (hasFieldError) return result;
+    }
+
+    // Fallback: generic message
+    const fallback =
+      err?.response?.data?.detail ||
+      err?.message ||
+      "Failed to create user. Please try again.";
+
+    return { detail: String(fallback) };
+  };
+
   const handleCreateUser = async (data: any) => {
     if (!canManageUsers || !companySlug) return;
 
     setCreatingUser(true);
+    setCreateServerErrors({});
 
     try {
       await onboardCompanyStaff(companySlug, data);
       setShowCreateModal(false);
+      setCreateServerErrors({});
       await refetch();
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error("Create user error:", err);
+      const parsed = extractServerErrors(err);
+      setCreateServerErrors(parsed);
     } finally {
       setCreatingUser(false);
     }
@@ -615,29 +674,28 @@ export default function CompanyUsers() {
           loading={loading}
         />
 
-        {/* Stats — always visible on mobile too */}
         {/* Stats — hidden on mobile, visible from `sm` breakpoint up */}
-<div className="mt-5 hidden sm:mt-6 sm:block">
-  {loading ? (
-    <StatsSkeleton />
-  ) : (
-    <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-      <StatCard title="Total" value={users?.length || 0} icon={Users} />
-      <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
-      <StatCard
-        title="Dispatchers"
-        value={roleCounts.staff}
-        icon={Briefcase}
-      />
-      <StatCard
-        title="Delivery"
-        value={roleCounts.delivery}
-        icon={Truck}
-      />
-      <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
-    </section>
-  )}
-</div>
+        <div className="mt-5 hidden sm:mt-6 sm:block">
+          {loading ? (
+            <StatsSkeleton />
+          ) : (
+            <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
+              <StatCard title="Total" value={users?.length || 0} icon={Users} />
+              <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
+              <StatCard
+                title="Dispatchers"
+                value={roleCounts.staff}
+                icon={Briefcase}
+              />
+              <StatCard
+                title="Delivery"
+                value={roleCounts.delivery}
+                icon={Truck}
+              />
+              <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
+            </section>
+          )}
+        </div>
 
         {/* Staff limit warning */}
         {isLimitReached && (
@@ -654,8 +712,7 @@ export default function CompanyUsers() {
           </div>
         )}
 
-        {/* Desktop action buttons — inline with toolbar */}
-        {/* Mobile action buttons — full-width prominent buttons below */}
+        {/* Mobile action buttons */}
         {canManageUsers && (
           <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:hidden">
             <button
@@ -678,7 +735,10 @@ export default function CompanyUsers() {
             </button>
             <button
               type="button"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                setCreateServerErrors({});
+                setShowCreateModal(true);
+              }}
               disabled={isLimitReached}
               title={
                 isLimitReached
@@ -814,7 +874,10 @@ export default function CompanyUsers() {
 
                     <button
                       type="button"
-                      onClick={() => setShowCreateModal(true)}
+                      onClick={() => {
+                        setCreateServerErrors({});
+                        setShowCreateModal(true);
+                      }}
                       disabled={isLimitReached}
                       title={
                         isLimitReached
@@ -842,18 +905,18 @@ export default function CompanyUsers() {
       <div className="px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
         <section className="overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
           <div className="relative z-0">
-           <CompanyUsersTable
-  users={paginatedUsers}
-  loading={loading}
-  currentUser={currentUser}
-  currentUserRole={currentUserRole}
-  canEdit={canManageUsers}
-  canDelete={canManageUsers}
-  onEdit={(member) =>
-    setEditingUser({ ...member, user_id: member.id })
-  }
-  onDelete={setDeletingUser}
-/>
+            <CompanyUsersTable
+              users={paginatedUsers}
+              loading={loading}
+              currentUser={currentUser}
+              currentUserRole={currentUserRole}
+              canEdit={canManageUsers}
+              canDelete={canManageUsers}
+              onEdit={(member) =>
+                setEditingUser({ ...member, user_id: member.id })
+              }
+              onDelete={setDeletingUser}
+            />
           </div>
 
           {!loading && filteredUsers.length > 0 && (
@@ -997,9 +1060,13 @@ export default function CompanyUsers() {
 
       <CreateCompanyUserModal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setCreateServerErrors({});
+        }}
         loading={creatingUser}
         onSubmit={handleCreateUser}
+        serverErrors={createServerErrors}
       />
 
       <EditUserModal
