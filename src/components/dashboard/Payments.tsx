@@ -13,6 +13,7 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Truck,
 } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { Toast } from "../ui/Toast";
@@ -31,6 +32,7 @@ import type { PayoutData } from "../../utils/payoutReceipt";
 import { downloadPayoutCsv } from "../../utils/payoutReceipt";
 import { PayoutReceiptModal } from "./payments/PayoutReceiptModal";
 import { PayoutDetailModal } from "./payments/PayoutDetailModal";
+import { DriverPayoutsManagement } from "./payments/DriverPayoutsManagement";
 
 interface Payout extends PayoutData {
   id: number;
@@ -54,6 +56,8 @@ export default function Payments() {
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
 
   const isSuperAdmin = !user?.memberships?.length;
+
+  const [payoutCategory, setPayoutCategory] = useState<"vendor" | "driver">("vendor");
 
   // Company from context
   const companySlug = company?.slug ?? null;
@@ -450,8 +454,48 @@ export default function Payments() {
     <div className="space-y-6">
       <Toast toast={toast} />
 
-      {/* Main Container */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
+      {/* Category Toggle: Store/Vendor Payouts vs Courier/Driver Payouts */}
+      <div className="flex items-center gap-2 bg-gray-100/90 p-1.5 rounded-2xl w-fit">
+        <button
+          type="button"
+          onClick={() => setPayoutCategory("vendor")}
+          className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            payoutCategory === "vendor"
+              ? "bg-white text-secondary shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <Package2 className="h-4 w-4" />
+          <span>Company Payouts</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPayoutCategory("driver")}
+          className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            payoutCategory === "driver"
+              ? "bg-white text-secondary shadow-sm"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <Truck className="h-4 w-4" />
+          <span>Driver Payouts</span>
+        </button>
+      </div>
+
+      {/* Driver Payouts Management View */}
+      {payoutCategory === "driver" && (
+        <DriverPayoutsManagement
+          companySlug={effectiveCompanySlug}
+          isSuperAdmin={isSuperAdmin}
+        />
+      )}
+
+      {/* Vendor Payouts Management View */}
+      {payoutCategory === "vendor" && (
+        <>
+          {/* Main Container */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title="Payouts &amp; Receipts"
           icon={Package2}
@@ -896,6 +940,8 @@ export default function Payments() {
         onClose={() => setSelectedPayoutForDetail(null)}
         onOpenReceipt={(payout) => setSelectedPayoutForReceipt(payout as Payout)}
       />
+        </>
+      )}
     </div>
   );
 }

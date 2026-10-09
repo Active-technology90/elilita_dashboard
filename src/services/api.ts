@@ -754,6 +754,32 @@ export const getDeliveries = async (params?: {
   status?: string;
 }) => api.get<PaginatedResponse<Delivery>>("/deliveries/", { params });
 
+// ========== DRIVER PAYOUTS ==========
+export const getAdminUnpaidDeliveries = async (params?: {
+  company_slug?: string;
+  driver_id?: number;
+}) => api.get("/deliveries/admin/unpaid-orders/", { params });
+
+export const getAdminDriverPayouts = async (params?: {
+  company_slug?: string;
+  driver_id?: number;
+  status?: string;
+  payout_type?: string;
+}) => api.get("/deliveries/admin/payouts/", { params });
+
+export const getAdminDriverPayoutDetail = async (payoutId: number | string) =>
+  api.get(`/deliveries/admin/payouts/${payoutId}/`);
+
+export const createAdminDriverPayout = async (data: {
+  driver_id: number;
+  assignment_ids?: number[];
+  payout_type?: "instant" | "weekly" | "monthly" | "manual";
+  payment_method?: string;
+  transaction_reference?: string;
+  notes?: string;
+  deduct_cod?: boolean;
+}) => api.post("/deliveries/admin/payouts/", data);
+
 export const getAvailableDeliveryDrivers = async (
   companySlug: string,
   paramsOrInHouse?:
