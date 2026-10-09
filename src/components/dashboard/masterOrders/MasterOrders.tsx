@@ -162,6 +162,7 @@ export default function Orders() {
         });
         if (!controller.signal.aborted) {
           setOrders(res.data.results);
+          console.log("Fetched orders:", res.data.results);
         }
       } catch (err: any) {
         if (err.name === "CanceledError" || err.code === "ERR_CANCELED") return;
@@ -270,7 +271,7 @@ export default function Orders() {
         header: "Customer",
         className: "min-w-[130px]",
         render: (order) =>
-          order.recipient_name || (
+          order.recipient_name ||(
             <span className="italic text-gray-400">Pickup</span>
           ),
       },

@@ -1,5 +1,11 @@
 // src/components/dashboard/CompanyManagement/LocationPickerModal.tsx
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -116,7 +122,6 @@ const isWithinAddisAbaba = (lat: number, lng: number): boolean => {
   }
 
   // Turf.js point-in-polygon
-  // ignoreBoundary = false → points ON the boundary count as inside
   try {
     return booleanPointInPolygon(
       point([lng, lat]),
@@ -284,7 +289,72 @@ export default function LocationPickerModal({
     []
   );
 
-  // ── Initial coordinates setup (runs once per open) ───────────────
+  // ─────────────────────────────────────────────────────────────────
+  //  Current-location detection helper (reused by auto-detect + button)
+  // ─────────────────────────────────────────────────────────────────
+  const detectCurrentLocation = useCallback(
+    (opts: { silentOnDenied?: boolean } = {}) =>
+      new Promise<LatLng | null>((resolve) => {
+        if (!navigator.geolocation) {
+          if (!opts.silentOnDenied) {
+            showToast("Geolocation not supported by your browser.", "error");
+          }
+          resolve(null);
+          return;
+        }
+
+        setDetecting(true);
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const curLat = position.coords.latitude;
+            const curLon = position.coords.longitude;
+
+            if (!isWithinAddisAbaba(curLat, curLon)) {
+              // User's real position is outside Addis Ababa:
+              // fall back to whatever we had before and inform the user.
+              showToast(OUTSIDE_MESSAGE, "error");
+              setDetecting(false);
+              resolve(null);
+              return;
+            }
+
+            const latStr = roundCoord(curLat);
+            const lonStr = roundCoord(curLon);
+
+            setSelectedLat(latStr);
+            setSelectedLon(lonStr);
+
+            const cb = onSelectAddressRef.current;
+            const address = await reverseGeocode(curLat, curLon);
+            const finalAddress =
+              address || `${curLat.toFixed(6)}, ${curLon.toFixed(6)}`;
+            if (cb) cb(finalAddress);
+            setDisplayAddress(finalAddress);
+            setSearchQuery(finalAddress);
+
+            setDetecting(false);
+            resolve({ lat: curLat, lng: curLon });
+          },
+          (err) => {
+            setDetecting(false);
+            if (!opts.silentOnDenied) {
+              showToast(
+                err.code === 1
+                  ? "Location permission denied. Enable location access."
+                  : "Unable to retrieve location.",
+                "error"
+              );
+            }
+            resolve(null);
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }),
+    [reverseGeocode, showToast]
+  );
+
+  // ── Initial setup (runs once per open) — AUTO-DETECT CURRENT LOCATION ──
   useEffect(() => {
     if (!isOpen) {
       setInitialSetupDone(false);
@@ -296,7 +366,11 @@ export default function LocationPickerModal({
     setInitialSetupDone(true);
 
     const init = async () => {
-      // 1. Use explicit coordinates if both provided and valid
+      // 👉 Primary behavior: auto-detect the user's current location.
+      const detected = await detectCurrentLocation({ silentOnDenied: true });
+      if (detected) return; // Success — we're done.
+
+      // 👉 Fallback #1: use stored/initial coordinates if provided & valid
       if (
         initialLat &&
         initialLon &&
@@ -306,23 +380,23 @@ export default function LocationPickerModal({
         const lat = parseFloat(initialLat);
         const lng = parseFloat(initialLon);
 
-        if (!isWithinAddisAbaba(lat, lng)) {
-          setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
-          setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
-          setSearchQuery("");
-          setDisplayAddress("");
-          showToast(OUTSIDE_MESSAGE, "error");
+        if (isWithinAddisAbaba(lat, lng)) {
+          setSelectedLat(initialLat);
+          setSelectedLon(initialLon);
+          setSearchQuery(initialAddress || "");
+          setDisplayAddress(initialAddress || "");
           return;
         }
 
-        setSelectedLat(initialLat);
-        setSelectedLon(initialLon);
-        setSearchQuery(initialAddress || "");
-        setDisplayAddress(initialAddress || "");
+        setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
+        setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
+        setSearchQuery("");
+        setDisplayAddress("");
+        showToast(OUTSIDE_MESSAGE, "error");
         return;
       }
 
-      // 2. Geocode stored address
+      // 👉 Fallback #2: geocode the stored address
       if (initialAddress && initialAddress.trim() !== "") {
         setSearching(true);
         setSearchQuery(initialAddress);
@@ -344,22 +418,15 @@ export default function LocationPickerModal({
         return;
       }
 
-      // 3. Default center
+      // 👉 Fallback #3: default center of Addis Ababa
       setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
       setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
       setDisplayAddress("");
     };
 
     init();
-  }, [
-    isOpen,
-    initialLat,
-    initialLon,
-    initialAddress,
-    initialSetupDone,
-    geocodeAddress,
-    showToast,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialSetupDone]);
 
   // ── Map creation ──────────────────────────────────────────────────
   useEffect(() => {
@@ -388,7 +455,7 @@ export default function LocationPickerModal({
       ],
       maxBoundsViscosity: 1.0,
       minZoom: 11,
-    }).setView([startLat, startLng], 12);
+    }).setView([startLat, startLng], 15); // closer zoom for current location
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -544,48 +611,9 @@ export default function LocationPickerModal({
     setDisplayAddress("");
   };
 
-  // ── GPS detection ─────────────────────────────────────────────────
+  // ── Manual "My Location" button ──────────────────────────────────
   const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      showToast("Geolocation not supported by your browser.", "error");
-      return;
-    }
-
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const curLat = position.coords.latitude;
-        const curLon = position.coords.longitude;
-
-        if (!isWithinAddisAbaba(curLat, curLon)) {
-          showToast(OUTSIDE_MESSAGE, "error");
-          setDetecting(false);
-          return;
-        }
-
-        setSelectedLat(roundCoord(curLat));
-        setSelectedLon(roundCoord(curLon));
-
-        const cb = onSelectAddressRef.current;
-        const address = await reverseGeocode(curLat, curLon);
-        const finalAddress =
-          address || `${curLat.toFixed(6)}, ${curLon.toFixed(6)}`;
-        if (cb) cb(finalAddress);
-        setDisplayAddress(finalAddress);
-        setSearchQuery(finalAddress);
-        setDetecting(false);
-      },
-      (err) => {
-        showToast(
-          err.code === 1
-            ? "Location permission denied. Enable location access."
-            : "Unable to retrieve location.",
-          "error"
-        );
-        setDetecting(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    detectCurrentLocation({ silentOnDenied: false });
   };
 
   // ── Save ──────────────────────────────────────────────────────────
@@ -656,7 +684,9 @@ export default function LocationPickerModal({
                 <p className="text-xs text-gray-500 font-medium">
                   {!leafletLoaded
                     ? "Loading map..."
-                    : "Locating company address..."}
+                    : detecting
+                    ? "Detecting your current location..."
+                    : "Preparing location..."}
                 </p>
               </div>
             )}
@@ -852,9 +882,7 @@ export default function LocationPickerModal({
               <button
                 onClick={handleSave}
                 disabled={!isLocationValid}
-                title={
-                  !isLocationValid ? OUTSIDE_MESSAGE : "Apply this location"
-                }
+                title={!isLocationValid ? OUTSIDE_MESSAGE : "Apply this location"}
                 className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   isLocationValid
                     ? "bg-gradient-to-r from-secondary to-secondary-light hover:from-[#5b4694] hover:to-[#6b55a8] text-white shadow-lg shadow-purple-100 active:scale-[0.98]"

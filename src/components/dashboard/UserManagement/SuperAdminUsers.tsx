@@ -35,7 +35,6 @@ import {
 } from "../../../services/api";
 import type { User, UserRole, Membership } from "../../../types";
 import ReactDOM from "react-dom";
-// Import shared UI components
 import { Pagination } from "../../ui/Pagination";
 import EditUserModal from "./EditUserModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
@@ -47,6 +46,22 @@ import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
 import CreateUserModal from "./CreateUserModal";
 import PageHeader from "../../ui/PageHeader";
+
+// ============================================================
+// Role display labels — backend stores "staff", UI shows "Dispatcher"
+// ============================================================
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  staff: "Dispatcher",
+  viewer: "Viewer",
+  delivery: "Delivery",
+};
+
+const getRoleLabel = (role: string): string => {
+  if (!role) return "";
+  return ROLE_LABELS[role] ?? role.charAt(0).toUpperCase() + role.slice(1);
+};
 
 // ============================================================
 // Utility Functions
@@ -109,7 +124,7 @@ const roleOptions = [
     icon: <Shield className="h-4 w-4 text-secondary" />,
   },
   {
-    label: "Staff",
+    label: "Dispatcher", // backend: "staff"
     value: "staff",
     icon: <Users className="h-4 w-4 text-secondary" />,
   },
@@ -155,7 +170,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => (
 );
 
 // ============================================================
-// Filters Component (refactored to use BottomSheet)
+// Filters Component
 // ============================================================
 interface FiltersProps {
   searchTerm: string;
@@ -285,7 +300,6 @@ const UserFilters: React.FC<FiltersProps> = ({
 // ============================================================
 // Actions Dropdown Component
 // ============================================================
-
 interface ActionsDropdownProps {
   user: User;
   onView: (user: User) => void;
@@ -556,7 +570,7 @@ const UserTable: React.FC<UserTableProps> = ({
                                 {["admin", "staff", "viewer", "delivery"].map(
                                   (role) => (
                                     <option key={role} value={role}>
-                                      {role}
+                                      {getRoleLabel(role)}
                                     </option>
                                   ),
                                 )}
@@ -569,9 +583,9 @@ const UserTable: React.FC<UserTableProps> = ({
                                     `role-${user.id}-${membership.company_id}`,
                                   );
                                 }}
-                                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold capitalize transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
+                                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
                               >
-                                {membership.role}
+                                {getRoleLabel(membership.role)}
                               </button>
                             )}
                             <button
@@ -698,9 +712,9 @@ const UserMobileCards: React.FC<UserMobileCardsProps> = ({
                     {membership.company_name}
                   </span>
                   <span
-                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold capitalize ${roleStyles[membership.role]}`}
+                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${roleStyles[membership.role]}`}
                   >
-                    {membership.role}
+                    {getRoleLabel(membership.role)}
                   </span>
                 </div>
               ))}
@@ -868,11 +882,9 @@ const SuperAdminUsers: React.FC = () => {
   const [availableCompanies, setAvailableCompanies] = useState<
     Array<{ id: number; name: string; slug: string }>
   >([]);
-  // Table row role editing states
   const [editingRoleInTable, setEditingRoleInTable] = useState<string | null>(
     null,
   );
-  // Remove membership modal states
   const [removeMembershipModalOpen, setRemoveMembershipModalOpen] =
     useState(false);
   const [removeMembershipData, setRemoveMembershipData] = useState<{
@@ -1041,7 +1053,7 @@ const SuperAdminUsers: React.FC = () => {
     setManagingUser(user);
     setIsMembershipModalOpen(true);
   };
-  // ── Table row role change handler ──
+
   const handleRoleChangeFromTable = async (
     membership: Membership,
     newRole: UserRole,
@@ -1050,14 +1062,13 @@ const SuperAdminUsers: React.FC = () => {
     try {
       await updateUserCompanyRole(membership.company_slug, userId, newRole);
       await refreshAllUsers();
-      showToast("success", `Role updated to ${newRole}`);
+      showToast("success", `Role updated to ${getRoleLabel(newRole)}`);
       setEditingRoleInTable(null);
     } catch (err: any) {
       showToast("error", err.message || "Failed to update role");
     }
   };
 
-  // ── Table row remove membership handler ──
   const handleRemoveMembershipFromTable = (
     companyId: number,
     companyName: string,
@@ -1068,7 +1079,6 @@ const SuperAdminUsers: React.FC = () => {
     setRemoveMembershipModalOpen(true);
   };
 
-  // ── Confirm remove membership ──
   const confirmRemoveMembership = async () => {
     if (!removeMembershipData) return;
 
@@ -1077,7 +1087,6 @@ const SuperAdminUsers: React.FC = () => {
     setIsRemovingMembership(true);
 
     try {
-      // Find the user to get their memberships
       const userToRemove = allUsers.find((u) => u.id === userId);
       if (!userToRemove) {
         showToast("error", "User not found");
@@ -1085,7 +1094,6 @@ const SuperAdminUsers: React.FC = () => {
         return;
       }
 
-      // Find the membership to get the company_slug
       const membership = userToRemove.memberships.find(
         (m) => m.company_id === companyId,
       );
@@ -1095,7 +1103,6 @@ const SuperAdminUsers: React.FC = () => {
         return;
       }
 
-      // Use the company_slug from the membership (not from availableCompanies)
       await removeUserFromCompany(membership.company_slug, userId);
       await refreshAllUsers();
       showToast("success", `Removed ${userName} from ${companyName}`);
@@ -1178,7 +1185,7 @@ const SuperAdminUsers: React.FC = () => {
             icon={<Shield className="h-4 w-4" />}
           />
           <StatCard
-            title="Staff"
+            title="Dispatchers" // backend: "staff"
             value={stats.totalStaff}
             icon={<UserCheck className="h-4 w-4" />}
           />
@@ -1257,7 +1264,6 @@ const SuperAdminUsers: React.FC = () => {
         onClose={() => setIsViewModalOpen(false)}
         user={selectedUser}
         onEdit={handleEdit}
-        // onSuspend={(user) => console.log("Suspend user", user)}
         onDelete={handleRemove}
       />
 
@@ -1268,7 +1274,6 @@ const SuperAdminUsers: React.FC = () => {
         onSave={handleSaveEdit}
       />
 
-      {/* Confirm Delete Modal for Remove Membership */}
       <ConfirmDeleteModal
         isOpen={removeMembershipModalOpen}
         onClose={() => {
@@ -1286,7 +1291,7 @@ const SuperAdminUsers: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={() => {
           setIsCreateModalOpen(false);
-          refreshAllUsers(); // Refresh the user list
+          refreshAllUsers();
         }}
       />
       <ManageMembershipsModal

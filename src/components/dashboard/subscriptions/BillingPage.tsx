@@ -89,13 +89,10 @@ type Feedback = {
   message: string;
 } | null;
 
+/**
+ * GOLD — reserved ONLY for the primary upgrade / subscribe CTA.
+ */
 const GOLD = {
-  text: "text-[#8A6500]",
-  darkText: "text-[#6D4E00]",
-  border: "border-[#D9B24C]",
-  softBorder: "border-[#E8D08A]",
-  softBg: "bg-[#FFF9E8]",
-  mutedBg: "bg-[#FBF4DC]",
   button:
     "border border-[#E7C86E] bg-[#F4C44E] text-[#4E3900] shadow-sm hover:bg-[#F0BC37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C86E] focus-visible:ring-offset-2",
 };
@@ -163,16 +160,12 @@ const PLAN_ORDER: PlanTier[] = [
   "custom",
 ];
 
-
 type PlanFeatureItem = {
   label: string;
   enabled: boolean;
 };
 
-const PLAN_FEATURES: Record<
-  Exclude<PlanTier, "custom">,
-  PlanFeatureItem[]
-> = {
+const PLAN_FEATURES: Record<Exclude<PlanTier, "custom">, PlanFeatureItem[]> = {
   free: [
     { label: "Basic storefront and vendor profile", enabled: true },
     { label: "Limited product catalogue and basic categories", enabled: true },
@@ -244,9 +237,7 @@ const resolvePlanTier = (
 ): PlanTier => {
   if (!plan) return "custom";
 
-  const name = String(plan.name || "")
-    .trim()
-    .toLowerCase();
+  const name = String(plan.name || "").trim().toLowerCase();
   const price = Number(plan.price ?? 0);
 
   if (name.includes("premium") || name.includes("enterprise")) {
@@ -264,11 +255,7 @@ const resolvePlanTier = (
 
   if (name.includes("basic")) return "basic";
 
-  if (
-    name.includes("free") ||
-    name.includes("starter") ||
-    price === 0
-  ) {
+  if (name.includes("free") || name.includes("starter") || price === 0) {
     return "free";
   }
 
@@ -319,39 +306,39 @@ const calculateUsage = (current: number, limit: number) => {
 };
 
 const SkeletonCard = () => (
-  <div className="animate-pulse rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
-    <div className="h-3 w-24 rounded bg-slate-200" />
-    <div className="mt-3 h-7 w-32 rounded bg-slate-200" />
-    <div className="mt-3 h-9 w-36 rounded bg-slate-100" />
+  <div className="animate-pulse rounded-xl border border-secondary/10 bg-white p-5 shadow-sm">
+    <div className="h-3 w-24 rounded bg-secondary/[0.06]" />
+    <div className="mt-3 h-7 w-32 rounded bg-secondary/[0.06]" />
+    <div className="mt-3 h-9 w-36 rounded bg-secondary/[0.04]" />
     <div className="mt-5 space-y-2.5">
       {Array.from({ length: 5 }).map((_, index) => (
         <div
           key={index}
-          className="h-3 rounded bg-slate-100"
+          className="h-3 rounded bg-secondary/[0.04]"
           style={{ width: `${94 - index * 7}%` }}
         />
       ))}
     </div>
-    <div className="mt-5 h-11 rounded-xl bg-slate-100" />
+    <div className="mt-5 h-11 rounded-xl bg-secondary/[0.04]" />
   </div>
 );
 
 const SkeletonCurrentPlan = () => (
-  <div className="animate-pulse overflow-hidden rounded-2xl border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
+  <div className="animate-pulse overflow-hidden rounded-2xl border border-secondary/10 bg-white p-5 shadow-sm sm:p-6">
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
       <div>
-        <div className="h-3 w-28 rounded bg-slate-200" />
-        <div className="mt-3 h-10 w-52 rounded bg-slate-200" />
-        <div className="mt-3 h-3 w-80 max-w-full rounded bg-slate-100" />
+        <div className="h-3 w-28 rounded bg-secondary/[0.06]" />
+        <div className="mt-3 h-10 w-52 rounded bg-secondary/[0.06]" />
+        <div className="mt-3 h-3 w-80 max-w-full rounded bg-secondary/[0.04]" />
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="h-16 rounded-2xl bg-slate-100" />
-          <div className="h-16 rounded-2xl bg-slate-100" />
-          <div className="h-16 rounded-2xl bg-slate-100" />
+          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
+          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
+          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="h-24 rounded-2xl bg-[#FFF9E8]" />
-        <div className="h-24 rounded-2xl bg-[#FFF9E8]" />
+        <div className="h-24 rounded-2xl bg-secondary/[0.04]" />
+        <div className="h-24 rounded-2xl bg-secondary/[0.04]" />
       </div>
     </div>
   </div>
@@ -372,25 +359,25 @@ const UsageCard = ({
   const percentage = calculateUsage(current, limit);
 
   return (
-    <div className="rounded-2xl border border-[#EEE4C4] bg-[#FFFEFA] p-4 shadow-sm">
+    <div className="rounded-2xl border border-secondary/10 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <span className="text-[#D39D15]">{icon}</span>
+        <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
+          <span className="text-secondary">{icon}</span>
           {label}
         </div>
-        <span className="text-xs font-extrabold text-slate-900">
+        <span className="text-xs font-extrabold text-secondary">
           {current} / {formatLimit(limit)}
         </span>
       </div>
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#F4E7BD]">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary/[0.08]">
         <div
-          className="h-full rounded-full bg-[#E0B43B] transition-[width] duration-500"
+          className="h-full rounded-full bg-secondary transition-[width] duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
 
-      <p className="mt-2 text-[11px] text-slate-500">
+      <p className="mt-2 text-[11px] text-secondary/50">
         {unlimited
           ? "Unlimited on this plan."
           : `${Math.max(0, limit - current)} remaining on your current limit.`}
@@ -561,9 +548,10 @@ export default function BillingPage() {
           icon: <Shield className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-[#CDBDF2] bg-[#F4F0FF] text-[#7050BF]",
+            "cursor-not-allowed border border-secondary/15 bg-secondary/[0.06] text-secondary",
         };
       case "upgrade":
+        // ✅ GOLD — upgrade CTA stays gold
         return {
           label: "Upgrade Plan",
           icon: <ArrowUp className="h-4 w-4" />,
@@ -576,7 +564,7 @@ export default function BillingPage() {
           icon: <ArrowDown className="h-4 w-4" />,
           disabled: false,
           className:
-            "border border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2",
+            "border border-secondary/15 bg-white text-secondary hover:border-secondary/30 hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:ring-offset-2",
         };
       case "free_locked":
         return {
@@ -584,15 +572,15 @@ export default function BillingPage() {
           icon: <Clock className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-400",
+            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
         };
       case "subscribe":
+        // ✅ GOLD — subscribe CTA stays gold
         return {
           label: "Choose Plan",
           icon: <CreditCard className="h-4 w-4" />,
           disabled: false,
-          className:
-            "border border-[#E7C86E] bg-[#F4C44E] text-[#4E3900] shadow-sm hover:bg-[#F0BC37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C86E] focus-visible:ring-offset-2",
+          className: GOLD.button,
         };
     }
   };
@@ -637,11 +625,14 @@ export default function BillingPage() {
           ? "Active"
           : "Pending";
 
+  /**
+   * ✅ STRICT PALETTE — no colored text.
+   * All statuses use secondary / secondary-muted tokens.
+   * "Expired" is only differentiated by lower opacity + darker border.
+   */
   const statusClass = isExpired
-    ? "border-red-200 bg-red-50 text-red-700"
-    : status === "Expiring"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : "border-[#E7D089] bg-[#FFF7DD] text-[#8A6500]";
+    ? "border-secondary/25 bg-secondary/[0.04] text-secondary/60"
+    : "border-secondary/15 bg-secondary/[0.06] text-secondary";
 
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 px-1 pb-8 sm:px-2">
@@ -650,19 +641,13 @@ export default function BillingPage() {
         description="Manage your plan, usage, renewal, and available plans."
         icon={CreditCard}
         loading={isLoading}
-              className="mb-5 sm:mb-6"
+        className="mb-5 sm:mb-6"
       />
 
       {feedback && (
         <div
           role="status"
-          className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm ${
-            feedback.tone === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : feedback.tone === "error"
-                ? "border-red-200 bg-red-50 text-red-800"
-                : "border-[#E8D08A] bg-[#FFF9E8] text-[#6D4E00]"
-          }`}
+          className="flex items-start justify-between gap-3 rounded-xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-sm text-secondary shadow-sm"
         >
           <div className="flex min-w-0 items-start gap-2.5">
             {feedback.tone === "success" ? (
@@ -686,19 +671,21 @@ export default function BillingPage() {
       )}
 
       {loadError && !isLoading && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+        <div className="rounded-2xl border border-secondary/15 bg-secondary/[0.04] p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
               <div>
-                <p className="font-semibold text-red-900">Subscription data unavailable</p>
-                <p className="mt-1 text-sm text-red-700">{loadError}</p>
+                <p className="font-semibold text-secondary">
+                  Subscription data unavailable
+                </p>
+                <p className="mt-1 text-sm text-secondary/70">{loadError}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => void fetchData()}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-secondary/15 bg-white px-4 text-sm font-semibold text-secondary shadow-sm hover:bg-secondary/[0.04]"
             >
               <RefreshCw className="h-4 w-4" />
               Retry
@@ -710,54 +697,62 @@ export default function BillingPage() {
       {isLoading ? (
         <SkeletonCurrentPlan />
       ) : (
-        <section className="rounded-2xl border border-[#EEE4C4] bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#B88917]">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary/60">
                   Current subscription
                 </span>
-                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${statusClass}`}>
+                <span
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${statusClass}`}
+                >
                   {status}
                 </span>
               </div>
 
               <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
-                <h2 className="text-3xl font-black tracking-[-0.04em] text-slate-900 sm:text-4xl">
+                <h2 className="text-3xl font-black tracking-[-0.04em] text-secondary sm:text-4xl">
                   {activeSub?.plan?.name || currentPlanMeta.name}
                 </h2>
-                <span className="pb-1 text-sm font-semibold text-[#8A6500]">
+                <span className="pb-1 text-sm font-semibold text-secondary/70">
                   {currentPlanMeta.positioning}
                 </span>
               </div>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary/70">
                 {currentPlanMeta.purpose}
               </p>
 
               <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-[#EEE4C4] bg-[#FFFCF2] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Price</p>
-                  <p className="mt-1 text-sm font-extrabold text-slate-900">
+                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                    Price
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold text-secondary">
                     {isFree ? "Free" : `ETB ${formatEtb(currentPlanPrice)} / month`}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-[#EEE4C4] bg-[#FFFCF2] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Started</p>
-                  <p className="mt-1 text-sm font-extrabold text-slate-900">
+                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                    Started
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold text-secondary">
                     {formatDate(activeSub?.start_date)}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-[#EEE4C4] bg-[#FFFCF2] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">Renewal</p>
-                  <p className="mt-1 text-sm font-extrabold text-slate-900">
+                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                    Renewal
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold text-secondary">
                     {isFree ? "No renewal required" : formatDate(activeSub?.end_date)}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
-                <Store className="h-4 w-4 text-[#D39D15]" />
+              <div className="mt-4 flex items-center gap-2 text-xs text-secondary/60">
+                <Store className="h-4 w-4 text-secondary" />
                 Best suited for {currentPlanMeta.audience.toLowerCase()}.
               </div>
 
@@ -767,16 +762,19 @@ export default function BillingPage() {
                 daysRemaining !== undefined &&
                 daysRemaining <= 7 &&
                 daysRemaining > 0 && (
-                  <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-700">
+                  <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-xs leading-5 text-secondary">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    Your plan expires in {daysRemaining} day{daysRemaining === 1 ? "" : "s"}. Renew or upgrade to keep paid capabilities available.
+                    Your plan expires in {daysRemaining} day
+                    {daysRemaining === 1 ? "" : "s"}. Renew or upgrade to keep
+                    paid capabilities available.
                   </div>
                 )}
 
               {isExpired && (
-                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-5 text-red-700">
+                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/20 bg-secondary/[0.05] px-4 py-3 text-xs leading-5 text-secondary">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  Your subscription has expired. Choose a plan below to restore paid capabilities.
+                  Your subscription has expired. Choose a plan below to restore
+                  paid capabilities.
                 </div>
               )}
             </div>
@@ -809,28 +807,32 @@ export default function BillingPage() {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#D39D15]" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#8A6500]">
+              <Sparkles className="h-4 w-4 text-secondary" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/70">
                 Available plans
               </p>
             </div>
-            <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-slate-900">
-              {isExpired ? "Reactivate your business" : "Pick the plan that fits your store"}
+            <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-secondary">
+              {isExpired
+                ? "Reactivate your business"
+                : "Pick the plan that fits your store"}
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
-              Clear monthly pricing, simple limits, and only the most important features shown.
+            <p className="mt-1 text-xs text-secondary/55">
+              Clear monthly pricing, simple limits, and only the most important
+              features shown.
             </p>
           </div>
 
-          <span className="w-fit rounded-full border border-[#E8D08A] bg-[#FFF9E8] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A5700]">
+          <span className="w-fit rounded-full border border-secondary/15 bg-secondary/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
             Monthly billing · ETB
           </span>
         </div>
 
         {!isAuthorized && !isLoading && (
-          <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-            Only company owners and admins can change the subscription. You can still review plan benefits and limits.
+          <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-secondary/10 bg-secondary/[0.03] px-4 py-3 text-xs text-secondary/70">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-secondary/60" />
+            Only company owners and admins can change the subscription. You can
+            still review plan benefits and limits.
           </div>
         )}
 
@@ -841,10 +843,14 @@ export default function BillingPage() {
             ))}
           </div>
         ) : sortedPlans.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center shadow-sm">
-            <CreditCard className="mx-auto h-6 w-6 text-slate-400" />
-            <p className="mt-3 text-sm font-semibold text-slate-800">No plans available</p>
-            <p className="mt-1 text-xs text-slate-500">Subscription plans will appear here when they are configured.</p>
+          <div className="rounded-2xl border border-secondary/10 bg-white px-5 py-12 text-center shadow-sm">
+            <CreditCard className="mx-auto h-6 w-6 text-secondary/40" />
+            <p className="mt-3 text-sm font-semibold text-secondary">
+              No plans available
+            </p>
+            <p className="mt-1 text-xs text-secondary/50">
+              Subscription plans will appear here when they are configured.
+            </p>
           </div>
         ) : (
           <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -884,9 +890,18 @@ export default function BillingPage() {
                             : `Up to ${formatLimit(plan.max_staff_members ?? 5)} staff members`,
                         enabled: true,
                       },
-                      { label: "Ads on Company Detail Page", enabled: plan.can_ad_company_detail },
-                      { label: "Ads on Companies List Page", enabled: plan.can_ad_companies_list },
-                      { label: "Ads on Home Page", enabled: plan.can_ad_home_page },
+                      {
+                        label: "Ads on Company Detail Page",
+                        enabled: plan.can_ad_company_detail,
+                      },
+                      {
+                        label: "Ads on Companies List Page",
+                        enabled: plan.can_ad_companies_list,
+                      },
+                      {
+                        label: "Ads on Home Page",
+                        enabled: plan.can_ad_home_page,
+                      },
                     ];
 
               return (
@@ -894,57 +909,74 @@ export default function BillingPage() {
                   key={plan.id}
                   className={`relative mt-3 flex min-w-0 flex-col overflow-visible rounded-[26px] border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isCurrent
-                      ? "border-[#7050BF]"
+                      ? "border-secondary/40"
                       : isUpgrade || isPremium || isAdvanced
-                        ? "border-[#EAD487]"
-                        : "border-slate-200 hover:border-slate-300"
+                        ? "border-secondary/20"
+                        : "border-secondary/10 hover:border-secondary/25"
                   }`}
                 >
                   {isCurrent ? (
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7050BF] px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
                       Current Plan
                     </div>
                   ) : isUpgrade ? (
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F59E0B] px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
+                    // ✅ GOLD badge — matches the gold upgrade CTA
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F4C44E] px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#4E3900] shadow-sm">
                       ↑ Upgrade
                     </div>
                   ) : null}
 
                   <div className="min-h-6">
-                    <p className="min-w-0 truncate text-[11px] font-semibold text-slate-900">
+                    <p className="min-w-0 truncate text-[11px] font-semibold text-secondary">
                       {plan.name}
                     </p>
                   </div>
 
                   <div className="mt-8 flex items-end gap-1.5">
-                    <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-slate-950">
+                    <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-secondary">
                       {price === 0 ? "Free" : `${formatEtb(price)} ETB`}
                     </span>
-                    {price > 0 && <span className="pb-0.5 text-[11px] font-semibold text-slate-400">/mo</span>}
+                    {price > 0 && (
+                      <span className="pb-0.5 text-[11px] font-semibold text-secondary/45">
+                        /mo
+                      </span>
+                    )}
                   </div>
 
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.11em] text-slate-400">
+                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.11em] text-secondary/50">
                     What&apos;s included
                   </p>
 
                   <ul className="mt-4 space-y-3">
                     {includedItems.map((item) => (
-                      <li key={item.label} className="flex items-center gap-2.5">
+                      <li
+                        key={item.label}
+                        className="flex items-center gap-2.5"
+                      >
                         {item.enabled ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                          // ✅ Strict palette — check icon uses secondary
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-secondary" />
                         ) : (
-                          <XCircle className="h-4 w-4 shrink-0 text-slate-300" />
+                          <XCircle className="h-4 w-4 shrink-0 text-secondary/25" />
                         )}
-                        <span className={`text-[11px] leading-5 ${item.enabled ? "text-slate-700" : "text-slate-400 line-through"}`}>
+                        <span
+                          className={`text-[11px] leading-5 ${
+                            item.enabled
+                              ? "text-secondary/80"
+                              : "text-secondary/40 line-through"
+                          }`}
+                        >
                           {item.label}
                         </span>
                       </li>
                     ))}
                   </ul>
 
-                  <div className="mt-4 rounded-2xl border border-[#F2E5BA] bg-[#FFFBEE] px-3 py-2.5">
-                    <p className="text-[10px] font-semibold text-[#8A6500]">{meta.positioning}</p>
-                    <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                  <div className="mt-4 rounded-2xl border border-secondary/10 bg-secondary/[0.025] px-3 py-2.5">
+                    <p className="text-[10px] font-semibold text-secondary">
+                      {meta.positioning}
+                    </p>
+                    <p className="mt-1 text-[10px] leading-4 text-secondary/55">
                       {plan.description || meta.purpose}
                     </p>
                   </div>
@@ -953,13 +985,23 @@ export default function BillingPage() {
                     <button
                       type="button"
                       onClick={() => void handleSubscribe(plan.id)}
-                      disabled={!isAuthorized || button.disabled || subscribingTo === plan.id}
+                      disabled={
+                        !isAuthorized ||
+                        button.disabled ||
+                        subscribingTo === plan.id
+                      }
                       className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-extrabold transition-all duration-200 disabled:translate-y-0 disabled:shadow-none ${
-                        !isAuthorized && action !== "current" && action !== "free_locked"
-                          ? "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-300"
+                        !isAuthorized &&
+                        action !== "current" &&
+                        action !== "free_locked"
+                          ? "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/30"
                           : button.className
                       }`}
-                      title={!isAuthorized ? "Only company owners or admins can modify subscription plans" : undefined}
+                      title={
+                        !isAuthorized
+                          ? "Only company owners or admins can modify subscription plans"
+                          : undefined
+                      }
                     >
                       {subscribingTo === plan.id ? (
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
@@ -972,19 +1014,19 @@ export default function BillingPage() {
                     </button>
 
                     {action === "upgrade" && !isExpired && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
                         Starts after successful payment verification.
                       </p>
                     )}
 
                     {action === "downgrade" && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
                         Downgrade timing follows policy.
                       </p>
                     )}
 
                     {action === "free_locked" && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
                         Free access becomes available after the paid plan ends.
                       </p>
                     )}
@@ -996,21 +1038,23 @@ export default function BillingPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-[#E8D08A] bg-[#FFFDF6] p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] p-4 shadow-sm sm:p-5">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FBF0C8] text-[#8A6500]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
               <BadgeCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Plan notes</h3>
-              <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-600">
-                Upgrades can be requested at any time. Paid features become available after successful payment verification. Downgrades follow the billing policy.
+              <h3 className="text-sm font-bold text-secondary">Plan notes</h3>
+              <p className="mt-1 max-w-4xl text-xs leading-5 text-secondary/65">
+                Upgrades can be requested at any time. Paid features become
+                available after successful payment verification. Downgrades
+                follow the billing policy.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-[#E8D08A] bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-[#7A5700]">
+          <div className="flex items-center gap-2 rounded-xl border border-secondary/15 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
             <Shield className="h-3.5 w-3.5" />
             Owner / Admin managed
           </div>

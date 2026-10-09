@@ -364,7 +364,7 @@ export default function CompanyProducts() {
           />
 
           {isCompanyViewOnly && (
-            <div className="mb-3 mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
+            <div className="mb-6 mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
               <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>
                 This company is inactive. You can view and search its products,

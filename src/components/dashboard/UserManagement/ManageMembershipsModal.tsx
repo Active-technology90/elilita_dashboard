@@ -15,6 +15,8 @@ import type { User, UserRole } from "../../../types";
 import { useAddCompanyUser } from "../../../hooks/useAddCompanyUser";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
+// ⬇️ NEW — the searchable company picker
+import CompanySearchSelect from "../../ui/CompanySearchSelect";
 
 interface ManageMembershipsModalProps {
   isOpen: boolean;
@@ -38,27 +40,19 @@ const roleSelectOptions: SelectOption[] = roleOptions.map((role) => ({
 }));
 
 /* ──────────────────────────────────────────────────────────────────
-   Error extractor — handles every shape the backend can return:
-     - ["message"]                      (top-level array of strings)
-     - { detail: "message" }
-     - { non_field_errors: ["message"] }
-     - { field: ["message"] }
-     - { detail: ["message"] }
-     - plain string
-     - fallback axios message
+   Error extractor — handles every shape the backend can return
    ────────────────────────────────────────────────────────────────── */
 const extractApiError = (err: any, fallback = "Something went wrong"): string => {
   if (!err) return fallback;
 
   const data = err?.response?.data;
 
-  // 1. Top-level array of strings: ["Subscription limit reached..."]
+  // 1. Top-level array of strings
   if (Array.isArray(data)) {
     const joined = data
       .map((item) => {
         if (typeof item === "string") return item;
         if (item && typeof item === "object") {
-          // e.g. [{ detail: "..." }, ...]
           return extractApiError({ response: { data: item } }, "");
         }
         return String(item);
@@ -75,7 +69,6 @@ const extractApiError = (err: any, fallback = "Something went wrong"): string =>
 
   // 3. Object with known keys
   if (data && typeof data === "object") {
-    // Prefer common top-level keys first
     const preferred = ["detail", "message", "error", "non_field_errors"];
     for (const key of preferred) {
       const value = (data as any)[key];
@@ -91,7 +84,7 @@ const extractApiError = (err: any, fallback = "Something went wrong"): string =>
       }
     }
 
-    // Fall back to any first field error (e.g. { email: ["..."] })
+    // Fall back to any first field error
     const firstKey = Object.keys(data)[0];
     if (firstKey) {
       const value = (data as any)[firstKey];
@@ -108,9 +101,8 @@ const extractApiError = (err: any, fallback = "Something went wrong"): string =>
     }
   }
 
-  // 4. Fall back to axios message only if nothing else matched
+  // 4. Axios message (skip the generic "Request failed with status code ...")
   if (typeof err?.message === "string" && err.message.trim()) {
-    // If the message is the generic axios one, prefer the fallback text
     if (/status code \d+/i.test(err.message)) return fallback;
     return err.message;
   }
@@ -135,14 +127,21 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [updatingRoleCompanyId, setUpdatingRoleCompanyId] = useState<number | null>(null);
-  const [removingCompanyId, setRemovingCompanyId] = useState<number | null>(null);
+  const [updatingRoleCompanyId, setUpdatingRoleCompanyId] = useState<
+    number | null
+  >(null);
+  const [removingCompanyId, setRemovingCompanyId] = useState<number | null>(
+    null,
+  );
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [companyToRemove, setCompanyToRemove] = useState<{ id: number; name: string } | null>(null);
+  const [companyToRemove, setCompanyToRemove] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [editingRole, setEditingRole] = useState<string | null>(null);
 
-  // ✅ SAFE MEMO (must be after hooks)
+  // ✅ SAFE MEMO — must be after hooks
   const availableFilteredCompanies = useMemo(() => {
     if (!user) return [];
     return availableCompanies.filter(
@@ -171,18 +170,13 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
     setError("");
 
     try {
-      await addUser(
-        selectedCompany.slug,
-        userEmail,
-        selectedRole,
-      );
+      await addUser(selectedCompany.slug, userEmail, selectedRole);
 
       setSelectedCompanyId("");
       setSelectedRole("staff");
 
       onRefresh?.();
     } catch (err: any) {
-      // 🔥 FIX: surface the real backend message instead of axios's generic one
       setError(extractApiError(err, "Failed to add membership"));
     } finally {
       setLoading(false);
@@ -197,10 +191,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
     setError("");
 
     try {
-      await onRemoveMembership(
-        user.id,
-        companyToRemove.id,
-      );
+      await onRemoveMembership(user.id, companyToRemove.id);
 
       onRefresh?.();
 
@@ -213,15 +204,8 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
     }
   };
 
-  const handleRemoveClick = (
-    companyId: number,
-    companyName: string,
-  ) => {
-    setCompanyToRemove({
-      id: companyId,
-      name: companyName,
-    });
-
+  const handleRemoveClick = (companyId: number, companyName: string) => {
+    setCompanyToRemove({ id: companyId, name: companyName });
     setConfirmModalOpen(true);
   };
 
@@ -235,12 +219,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
     setError("");
 
     try {
-      await onUpdateRole(
-        user.id,
-        companySlug,
-        newRole,
-      );
-
+      await onUpdateRole(user.id, companySlug, newRole);
       onRefresh?.();
     } catch (err: any) {
       setError(extractApiError(err, "Failed to update role"));
@@ -248,16 +227,6 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
       setUpdatingRoleCompanyId(null);
     }
   };
-
-  // Transform companies into CustomSelect options
-  const companySelectOptions: SelectOption[] =
-    availableFilteredCompanies.map((c) => ({
-      label: c.name,
-      value: String(c.id),
-      icon: (
-        <Building2 className="h-4 w-4 text-violet-500" />
-      ),
-    }));
 
   // Responsive modal classes
   const modalContainerClasses = `
@@ -303,26 +272,10 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
             onClick={onClose}
           >
             <motion.div
-              initial={{
-                opacity: 0,
-                y: 40,
-                scale: 0.98,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-                scale: 1,
-              }}
-              exit={{
-                opacity: 0,
-                y: 30,
-                scale: 0.98,
-              }}
-              transition={{
-                type: "spring",
-                damping: 24,
-                stiffness: 260,
-              }}
+              initial={{ opacity: 0, y: 40, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.98 }}
+              transition={{ type: "spring", damping: 24, stiffness: 260 }}
               className={modalContainerClasses}
               onClick={(e) => e.stopPropagation()}
             >
@@ -332,19 +285,8 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
               </div>
 
               {/* Header */}
-              <div
-                className="
-                  sticky top-0 z-30
-                  border-b border-gray-200/70
-                  bg-white/90 backdrop-blur-xl
-                "
-              >
-                <div
-                  className="
-                    px-4 sm:px-6 lg:px-7
-                    py-4 sm:py-5
-                  "
-                >
+              <div className="sticky top-0 z-30 border-b border-gray-200/70 bg-white/90 backdrop-blur-xl">
+                <div className="px-4 sm:px-6 lg:px-7 py-4 sm:py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex items-start gap-3">
                       <div
@@ -373,16 +315,8 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                           Manage Memberships
                         </h2>
 
-                        <p
-                          className="
-                            mt-1
-                            text-xs  sm:text-sm  text-gray-500
-                            truncate
-                          "
-                        >
-                          {user.first_name ||
-                            user.username}{" "}
-                          • @{user.username}
+                        <p className="mt-1 text-xs sm:text-sm text-gray-500 truncate">
+                          {user.first_name || user.username} • @{user.username}
                         </p>
                       </div>
                     </div>
@@ -413,20 +347,8 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
               </div>
 
               {/* Scrollable Content */}
-              <div
-                className="
-                  flex-1 overflow-y-auto
-                  overscroll-contain
-                  scroll-smooth
-                "
-              >
-                <div
-                  className="
-                    px-4 sm:px-6 lg:px-7
-                    py-4 sm:py-6
-                    space-y-6
-                  "
-                >
+              <div className="flex-1 overflow-y-auto overscroll-contain scroll-smooth">
+                <div className="px-4 sm:px-6 lg:px-7 py-4 sm:py-6 space-y-6">
                   {/* Add Membership Section */}
                   <section
                     className="
@@ -439,34 +361,21 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                     "
                   >
                     <div className="flex items-center gap-2 mb-4">
-                      <div
-                        className="
-                          flex h-9 w-9 items-center justify-center
-                          rounded-xl
-                          bg-violet-100
-                        "
-                      >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100">
                         <UserPlus className="h-4 w-4 text-secondary" />
                       </div>
 
                       <div>
-                        <h3
-                          className="
-                            text-xs  sm:text-sm  sm:text-base
-                            font-semibold
-                            text-gray-900
-                          "
-                        >
+                        <h3 className="text-xs sm:text-sm sm:text-base font-semibold text-gray-900">
                           Add New Membership
                         </h3>
-
                         <p className="text-xs sm:text-sm text-gray-500">
                           Assign this user to another company
                         </p>
                       </div>
                     </div>
 
-                    {/* Better Mobile Layout */}
+                    {/* Add membership form */}
                     <div
                       className="
                         grid grid-cols-1
@@ -476,20 +385,14 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                         lg:grid-cols-[1fr_160px_auto]
                       "
                     >
-                      {/* Company */}
+                      {/* Company — searchable */}
                       <div className="min-w-0">
-                        <CustomSelect
-                          value={selectedCompanyId.toString()}
-                          onChange={(val) =>
-                            setSelectedCompanyId(
-                              val === ""
-                                ? ""
-                                : Number(val),
-                            )
-                          }
-                          options={companySelectOptions}
+                        <CompanySearchSelect
+                          companies={availableFilteredCompanies}
+                          value={selectedCompanyId}
+                          onChange={setSelectedCompanyId}
                           placeholder="Select a company"
-                          className="w-full"
+                          emptyMessage="No companies match your search"
                           maxHeight={240}
                         />
                       </div>
@@ -498,11 +401,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                       <div className="min-w-0">
                         <CustomSelect
                           value={selectedRole}
-                          onChange={(val) =>
-                            setSelectedRole(
-                              val as UserRole,
-                            )
-                          }
+                          onChange={(val) => setSelectedRole(val as UserRole)}
                           options={roleSelectOptions}
                           className="w-full"
                           maxHeight={180}
@@ -512,9 +411,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                       {/* Button */}
                       <button
                         onClick={handleAdd}
-                        disabled={
-                          !selectedCompanyId || loading
-                        }
+                        disabled={!selectedCompanyId || loading}
                         className="
                           h-8 sm:h-8 md:h-11
                           px-3
@@ -544,14 +441,13 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                           <Plus className="h-3 w-3 md:h-4 md:w-4" />
                         )}
 
-                        <span className=" text-xs  sm:text-sm ">
+                        <span className="text-xs sm:text-sm">
                           Add Membership
                         </span>
                       </button>
                     </div>
 
-                    {availableFilteredCompanies.length ===
-                      0 &&
+                    {availableFilteredCompanies.length === 0 &&
                       selectedCompanyId === "" && (
                         <div
                           className="
@@ -574,14 +470,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                   <section>
                     <div className="flex items-center gap-2 mb-4">
                       <Sparkles className="h-4 w-4 secondary" />
-
-                      <h3
-                        className="
-                          text-xs   sm:text-base
-                          font-semibold
-                          text-gray-900
-                        "
-                      >
+                      <h3 className="text-xs sm:text-base font-semibold text-gray-900">
                         Current Companies
                       </h3>
                     </div>
@@ -596,15 +485,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                           text-center
                         "
                       >
-                        <div
-                          className="
-                            mx-auto mb-4
-                            flex h-16 w-16
-                            items-center justify-center
-                            rounded-3xl
-                            bg-gray-100
-                          "
-                        >
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gray-100">
                           <Building2 className="h-8 w-8 text-secondary" />
                         </div>
 
@@ -612,17 +493,15 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                           No memberships yet
                         </h4>
 
-                        <p className="mt-1 text-xs  sm:text-sm  text-gray-500">
-                          This user has not been assigned to any
-                          company.
+                        <p className="mt-1 text-xs sm:text-sm text-gray-500">
+                          This user has not been assigned to any company.
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {user.memberships.map((m) => {
                           const isUpdating =
-                            updatingRoleCompanyId ===
-                            m.company_id;
+                            updatingRoleCompanyId === m.company_id;
 
                           return (
                             <motion.div
@@ -641,7 +520,6 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                 hover:shadow-lg
                               "
                             >
-                              {/* Better Mobile Card Structure */}
                               <div className="flex flex-col gap-4">
                                 {/* Top */}
                                 <div className="flex items-start gap-3">
@@ -662,7 +540,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                     <h4
                                       className="
                                         truncate
-                                        text-xs  sm:text-sm  sm:text-base
+                                        text-xs sm:text-sm sm:text-base
                                         font-semibold
                                         text-gray-900
                                       "
@@ -671,11 +549,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                     </h4>
 
                                     <div className="mt-1 flex items-center gap-2">
-                                      <span
-                                        className="
-                                          text-xs text-gray-500
-                                        "
-                                      >
+                                      <span className="text-xs text-gray-500">
                                         Membership Access
                                       </span>
 
@@ -707,8 +581,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                       )
                                     }
                                     disabled={
-                                      removingCompanyId ===
-                                      m.company_id
+                                      removingCompanyId === m.company_id
                                     }
                                     aria-label={`Remove ${m.company_name}`}
                                     className="
@@ -728,8 +601,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                       disabled:opacity-50
                                     "
                                   >
-                                    {removingCompanyId ===
-                                    m.company_id ? (
+                                    {removingCompanyId === m.company_id ? (
                                       <RefreshCw className="h-4 w-4 animate-spin" />
                                     ) : (
                                       <Trash2 className="h-4 w-4" />
@@ -745,7 +617,8 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                   "
                                 >
                                   <div className="w-full sm:w-44">
-                                    {editingRole === `${m.company_slug}-${m.company_id}` ? (
+                                    {editingRole ===
+                                    `${m.company_slug}-${m.company_id}` ? (
                                       <div className="flex items-center gap-2">
                                         <CustomSelect
                                           value={m.role}
@@ -755,7 +628,6 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                               m.company_id,
                                               val as UserRole,
                                             );
-
                                             setEditingRole(null);
                                           }}
                                           options={roleSelectOptions}
@@ -763,7 +635,6 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                           maxHeight={180}
                                         />
 
-                                        {/* Cancel */}
                                         <button
                                           onClick={() => setEditingRole(null)}
                                           className="
@@ -791,19 +662,10 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                           px-3 py-2
                                         "
                                       >
-                                        {/* Current Role */}
-                                        <span
-                                          className="
-                                            truncate
-                                            text-sm
-                                            font-medium
-                                            text-gray-800
-                                          "
-                                        >
+                                        <span className="truncate text-sm font-medium text-gray-800">
                                           {m.role}
                                         </span>
 
-                                        {/* Edit Button */}
                                         <button
                                           onClick={() =>
                                             setEditingRole(
@@ -839,8 +701,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                       )
                                     }
                                     disabled={
-                                      removingCompanyId ===
-                                      m.company_id
+                                      removingCompanyId === m.company_id
                                     }
                                     className="
                                       sm:hidden
@@ -851,7 +712,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                       bg-red-50/70
                                       px-4
 
-                                      text-xs  sm:text-sm 
+                                      text-xs sm:text-sm
                                       font-medium
                                       text-red-600
 
@@ -864,8 +725,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                                       disabled:opacity-50
                                     "
                                   >
-                                    {removingCompanyId ===
-                                    m.company_id ? (
+                                    {removingCompanyId === m.company_id ? (
                                       <RefreshCw className="h-4 w-4 animate-spin" />
                                     ) : (
                                       <Trash2 className="h-4 w-4" />
@@ -892,28 +752,15 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                   bg-white/95 backdrop-blur-xl
                 "
                 style={{
-                  paddingBottom:
-                    "max(env(safe-area-inset-bottom), 16px)",
+                  paddingBottom: "max(env(safe-area-inset-bottom), 16px)",
                 }}
               >
-                <div
-                  className="
-                    px-4 sm:px-6 lg:px-7
-                    py-4
-                    space-y-4
-                  "
-                >
+                <div className="px-4 sm:px-6 lg:px-7 py-4 space-y-4">
                   {/* Error Message */}
                   {error && (
                     <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: 10,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                      }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
                       className="
                         flex items-start gap-3
                         rounded-2xl
@@ -932,7 +779,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                             : "Something went wrong"}
                         </p>
 
-                        <p className="mt-0.5 text-xs  sm:text-sm  text-red-600 break-words">
+                        <p className="mt-0.5 text-xs sm:text-sm text-red-600 break-words">
                           {error}
                         </p>
                       </div>
@@ -940,12 +787,7 @@ const ManageMembershipsModal: React.FC<ManageMembershipsModalProps> = ({
                   )}
 
                   {/* Footer Actions */}
-                  <div
-                    className="
-                      flex flex-col-reverse gap-3
-                      sm:flex-row sm:justify-end
-                    "
-                  >
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
                       onClick={onClose}
                       className="

@@ -7,14 +7,21 @@ import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect } from "../../ui/CustomSelect";
 import type { CompanyListItem } from "../../../types";
 
-// ---- shared components ----
 import MobileCardSkeleton from "../../ui/MobileCardSkeleton";
-// import MobileActionBar from "../../ui/MobileActionBar";
 import BottomSheet from "../../ui/BottomSheet";
 import { TableControls } from "../../ui/TableControls";
 
 interface SuperAdminViewProps {
+  /** Paginated slice — used only for the table + mobile cards. */
   paginatedItems: (CompanyListItem & { rowNumber?: number })[];
+
+  /**
+   * ⬇️ NEW — Full filtered dataset (NOT paginated).
+   * Used for the stat cards so the counts reflect the entire
+   * filtered list, not just the current page.
+   */
+  allFilteredItems: CompanyListItem[];
+
   columns: Column<CompanyListItem>[];
   loading: boolean;
   sortField: string;
@@ -25,6 +32,7 @@ interface SuperAdminViewProps {
   onPageChange: (page: number) => void;
   onEdit: (company: CompanyListItem) => void;
   onDelete?: (company: CompanyListItem) => void;
+
   // Mobile filter props
   inputValue: string;
   onInputChange: (value: string) => void;
@@ -39,12 +47,13 @@ interface SuperAdminViewProps {
   categoryOptions: string[];
   subCategoryOptions: string[];
   onClearAll: () => void;
-    pageSize: number;
+  pageSize: number;
   onPageSizeChange: (size: number) => void;
 }
 
 export default function SuperAdminView({
   paginatedItems,
+  allFilteredItems,
   columns,
   loading,
   sortField,
@@ -78,7 +87,6 @@ export default function SuperAdminView({
   const [tempSubCategory, setTempSubCategory] = useState(subCategoryFilter);
   const [tempSort, setTempSort] = useState(`${sortField}|${sortOrder}`);
 
-  // Active filter badge count
   const activeFilterCount = [
     businessTypeFilter !== "all",
     categoryFilter !== "all",
@@ -86,7 +94,6 @@ export default function SuperAdminView({
     inputValue.trim() !== "",
   ].filter(Boolean).length;
 
-  // Sync temp state when sheet opens
   useEffect(() => {
     if (sheetOpen) {
       setTempBusinessType(businessTypeFilter);
@@ -118,45 +125,108 @@ export default function SuperAdminView({
     setSheetOpen(false);
   };
 
+  /* ──────────────────────────────────────────────────────────────
+     Stats — computed from the FULL filtered list, not the page.
+     ────────────────────────────────────────────────────────────── */
+  const totalCompanies = allFilteredItems.length;
+  const activeCompanies = allFilteredItems.filter((c) => c.is_active).length;
+  const inactiveCompanies = totalCompanies - activeCompanies;
+  const uniqueCategories = new Set(
+    allFilteredItems.map((c) => c.category_name).filter(Boolean),
+  ).size;
+
   // ---- card helpers ----
   const renderStatusBadge = (isActive: boolean) => (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold leading-none shadow-sm ${
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm ${
         isActive
-          ? "bg-gradient-to-r from-green-50 to-green-100 text-green-700 border border-green-200"
-          : "bg-gradient-to-r from-red-50 to-red-100 text-red-700 border border-red-200"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-red-200 bg-red-50 text-red-700"
       }`}
     >
       <span
-        className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-red-500"} mr-1.5`}
+        className={`mr-1.5 h-1.5 w-1.5 rounded-full ${
+          isActive ? "bg-emerald-500" : "bg-red-500"
+        }`}
       />
       {isActive ? "Active" : "Inactive"}
     </span>
   );
 
   return (
-  <div className="space-y-4 sm:space-y-5">
-    {/* Stat cards — Featured card removed */}
-    {!loading && paginatedItems.length > 0 && (
-      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200/50 shadow-sm">
-          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Total Companies</p>
-          <p className="text-2xl font-black text-gray-900 mt-1">{paginatedItems.length}</p>
+    <div className="space-y-4 sm:space-y-5">
+      {/* ============ STAT CARDS ============ */}
+      {!loading && totalCompanies > 0 && (
+        <div className="hidden gap-3 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {/* Total */}
+          <div className="rounded-xl border border-secondary/10 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/20">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                  Total Companies
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
+                  {totalCompanies}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* Active */}
+          <div className="rounded-xl border border-secondary/10 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/20">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                  Active
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
+                  {activeCompanies}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* Inactive */}
+          <div className="rounded-xl border border-secondary/10 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/20">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                  Inactive
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
+                  {inactiveCompanies}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="rounded-xl border border-secondary/10 bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-secondary/20">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
+                  Categories
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
+                  {uniqueCategories}
+                </p>
+              </div>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07] text-secondary">
+                <ImageIcon className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-4 border border-emerald-200/50 shadow-sm">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Active</p>
-          <p className="text-2xl font-black text-gray-900 mt-1">
-            {paginatedItems.filter(c => c.is_active).length}
-          </p>
-        </div>
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4 border border-purple-200/50 shadow-sm">
-          <p className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Categories</p>
-          <p className="text-2xl font-black text-gray-900 mt-1">
-            {new Set(paginatedItems.map(c => c.category_name)).size}
-          </p>
-        </div>
-      </div>
-    )}
+      )}
 
       {/* ============ DESKTOP / TABLET ============ */}
       <div className="hidden md:block">
@@ -175,65 +245,47 @@ export default function SuperAdminView({
 
       {/* ============ MOBILE LAYOUT ============ */}
       <div className="block md:hidden">
-        {/* Search */}
-        <div className="sticky top-0 z-40  ">
-  <TableControls
-    pageSize={pageSize}
-    onPageSizeChange={onPageSizeChange}
-  >
-    {/* LEFT SIDE = SEARCH + FILTER */}
-    <div className="relative flex-1">
-      <SearchInput
-        value={inputValue}
-        onChange={onInputChange}
-        debounceMs={0}
-        loading={loading}
-        showClearButton={false}
-        placeholder="Search companies..."
-        className="rounded-xl shadow-sm border-secondary focus:ring-2 focus:ring-secondary/30"
-      />
+        {/* Search + filter */}
+        <div className="sticky top-0 z-40">
+          <TableControls
+            pageSize={pageSize}
+            onPageSizeChange={onPageSizeChange}
+          >
+            <div className="relative flex-1">
+              <SearchInput
+                value={inputValue}
+                onChange={onInputChange}
+                debounceMs={0}
+                loading={loading}
+                showClearButton={false}
+                placeholder="Search companies..."
+                className="rounded-xl border-secondary shadow-sm focus:ring-2 focus:ring-secondary/30"
+              />
+              <button
+                onClick={() => setSheetOpen(true)}
+                className="absolute right-4 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-secondary text-white shadow-md transition active:scale-95"
+              >
+                <Filter size={14} strokeWidth={2.5} />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          </TableControls>
+        </div>
 
-      {/* FILTER BUTTON INSIDE SEARCH */}
-      <button
-        onClick={() => setSheetOpen(true)}
-        className="absolute right-4 top-1/2 -translate-y-1/2
-        h-6 w-6 rounded-full bg-secondary text-white
-        flex items-center justify-center shadow-md
-        active:scale-95 transition"
-      >
-        <Filter size={14} strokeWidth={2.5} />
-
-        {activeFilterCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
-            {activeFilterCount}
-          </span>
-        )}
-      </button>
-    </div>
-  </TableControls>
-</div>
         {/* Cards */}
         {loading ? (
           <MobileCardSkeleton count={5} />
         ) : paginatedItems.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-10 text-center mx-4">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-              <svg
-                className="w-8 h-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                />
-              </svg>
+          <div className="mx-4 rounded-2xl border border-secondary/10 bg-white p-10 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary/[0.06]">
+              <ImageIcon size={28} className="text-secondary/40" />
             </div>
-            <h3 className="text-gray-500 font-medium">No companies found</h3>
-            <p className="text-gray-400 text-sm mt-1">
+            <h3 className="font-medium text-secondary">No companies found</h3>
+            <p className="mt-1 text-sm text-secondary/50">
               Try adjusting your filters or add a new company
             </p>
           </div>
@@ -242,93 +294,86 @@ export default function SuperAdminView({
             {paginatedItems.map((company, idx) => (
               <div
                 key={company.id ?? idx}
-                className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1"
+                className="group overflow-hidden rounded-2xl border border-secondary/10 bg-white shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="px-4 py-1">
                   <div className="flex items-start gap-4 pt-1">
                     <div className="flex-shrink-0">
                       {company.logo ? (
                         <div className="relative">
-                          <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 to-transparent rounded-full blur-sm"></div>
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-secondary/20 to-transparent blur-sm"></div>
                           <img
                             src={company.logo}
                             alt={company.name}
-                            className="relative w-14 h-14 rounded-full object-cover ring-2 ring-white shadow-lg"
+                            className="relative h-14 w-14 rounded-full object-cover shadow-lg ring-2 ring-white"
                           />
                         </div>
                       ) : (
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-inner">
-                          <ImageIcon size={24} className="text-gray-400" />
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary/[0.06] shadow-inner">
+                          <ImageIcon size={24} className="text-secondary/40" />
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 py-1">
-                      <h3 className="text-base font-bold text-gray-900 truncate leading-tight">
+                    <div className="min-w-0 flex-1 py-1">
+                      <h3 className="truncate text-base font-bold leading-tight text-gray-900">
                         {company.name}
                       </h3>
-                      <p className="text-xs font-mono text-gray-500 truncate mt-0.5 tracking-tight">
+                      <p className="mt-0.5 truncate font-mono text-xs tracking-tight text-gray-500">
                         {company.slug}
                       </p>
                     </div>
-                    <div className="flex-shrink-0 flex gap-1.5">
+                    <div className="flex flex-shrink-0 gap-1.5">
                       {onEdit && (
                         <button
                           onClick={() => onEdit(company)}
-                          className="p-2.5 text-blue-600 hover:text-blue-800 rounded-xl hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all duration-200 active:scale-95"
+                          className="rounded-xl p-2.5 text-secondary transition-all duration-200 hover:bg-secondary/[0.06] active:scale-95"
                           aria-label="Edit company"
                         >
-                          <Edit className="h-4.5 w-4.5" strokeWidth={1.75} />
+                          <Edit className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
                       {onDelete && (
                         <button
                           onClick={() => onDelete(company)}
-                          className="p-2.5 text-red-600 hover:text-red-800 rounded-xl hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/40 transition-all duration-200 active:scale-95"
+                          className="rounded-xl p-2.5 text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95"
                           aria-label="Delete company"
                         >
-                          <Trash2 className="h-4.5 w-4.5" strokeWidth={1.75} />
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Info grid — typography normalized */}
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Category
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
-                        {company.category_name || "—"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Subcategory
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
-                        {company.sub_category_name || "—"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Business Type
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-gray-800 uppercase truncate">
-                        {company.business_type || "—"}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100">
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-                        Row Number
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-gray-800 truncate">
-                        #{company.rowNumber ?? "—"}
-                      </p>
-                    </div>
+                    {[
+                      { label: "Category", value: company.category_name || "—" },
+                      {
+                        label: "Subcategory",
+                        value: company.sub_category_name || "—",
+                      },
+                      {
+                        label: "Business Type",
+                        value: (company.business_type || "—").toUpperCase(),
+                      },
+                      {
+                        label: "Row Number",
+                        value: `#${company.rowNumber ?? "—"}`,
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-xl border border-secondary/10 bg-secondary/[0.02] p-2.5"
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/50">
+                          {item.label}
+                        </p>
+                        <p className="mt-1 truncate text-xs font-semibold text-gray-800">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
-                  {/* Status — Featured badge removed */}
                   <div className="flex flex-wrap gap-4 py-2">
                     {renderStatusBadge(company.is_active)}
                   </div>
@@ -348,13 +393,13 @@ export default function SuperAdminView({
             <>
               <button
                 onClick={clearAll}
-                className="flex-1 h-12 rounded-2xl bg-gray-100 text-sm font-semibold text-gray-700 active:scale-[0.98] transition-all"
+                className="h-12 flex-1 rounded-2xl bg-secondary/[0.06] text-sm font-semibold text-secondary transition-all active:scale-[0.98]"
               >
                 Clear
               </button>
               <button
                 onClick={applyFilters}
-                className="flex-1 h-12 rounded-2xl bg-secondary text-sm font-semibold text-white shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all"
+                className="h-12 flex-1 rounded-2xl bg-secondary text-sm font-semibold text-white shadow-lg shadow-secondary/20 transition-all active:scale-[0.98]"
               >
                 Apply Filters
               </button>
@@ -362,9 +407,8 @@ export default function SuperAdminView({
           }
         >
           <div className="space-y-4 px-2">
-            {/* Sort section */}
             <div>
-              <label className="text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2 block">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
                 Sort By
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -377,10 +421,10 @@ export default function SuperAdminView({
                   <button
                     key={opt.value}
                     onClick={() => setTempSort(opt.value)}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-medium transition-all active:scale-95 ${
+                    className={`rounded-xl px-3 py-2.5 text-xs font-medium transition-all active:scale-95 ${
                       tempSort === opt.value
                         ? "bg-secondary text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-secondary/[0.06] text-secondary hover:bg-secondary/[0.1]"
                     }`}
                   >
                     {opt.label}
@@ -389,20 +433,20 @@ export default function SuperAdminView({
               </div>
             </div>
 
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-secondary/10" />
 
             {/* Business Type */}
             <div>
-              <label className="text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2 block">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
                 Business Type
               </label>
               {loading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-secondary border-t-transparent" />
+                <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
                   <span>Loading...</span>
                 </div>
               ) : businessTypeOptions.length === 0 ? (
-                <p className="text-sm text-gray-400 italic py-2">
+                <p className="py-2 text-sm italic text-secondary/40">
                   No types available
                 </p>
               ) : (
@@ -424,16 +468,16 @@ export default function SuperAdminView({
 
             {/* Category */}
             <div>
-              <label className="text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2 block">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
                 Category
               </label>
               {loading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-secondary border-t-transparent" />
+                <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
                   <span>Loading...</span>
                 </div>
               ) : categoryOptions.length === 0 ? (
-                <p className="text-sm text-gray-400 italic py-2">
+                <p className="py-2 text-sm italic text-secondary/40">
                   No categories available
                 </p>
               ) : (
@@ -455,16 +499,16 @@ export default function SuperAdminView({
 
             {/* Subcategory */}
             <div>
-              <label className="text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2 block">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
                 Subcategory
               </label>
               {loading ? (
-                <div className="flex items-center gap-2 text-gray-400 text-sm py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-secondary border-t-transparent" />
+                <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
                   <span>Loading...</span>
                 </div>
               ) : subCategoryOptions.length === 0 ? (
-                <p className="text-sm text-gray-400 italic py-2">
+                <p className="py-2 text-sm italic text-secondary/40">
                   No subcategories available
                 </p>
               ) : (
@@ -495,12 +539,6 @@ export default function SuperAdminView({
           onPageChange={onPageChange}
         />
       </div>
-
-      <style>{`
-        .safe-bottom {
-          padding-bottom: env(safe-area-inset-bottom, 1rem);
-        }
-      `}</style>
     </div>
   );
 }
