@@ -297,7 +297,7 @@ export function DriverPayoutsManagement({
       setUnpaidItems(unpaidList);
       setPayouts(payoutList);
     } catch (err: any) {
-      showToast("error", err.message || "Failed to load driver payout data");
+      showToast("error", err.message || "Failed to load Delivery person  payout data");
     } finally {
       setLoading(false);
     }
@@ -444,7 +444,7 @@ export function DriverPayoutsManagement({
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
             <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-            Disputed by Driver
+            Disputed by Delivery person 
           </span>
         );
       case "cancelled":
@@ -476,7 +476,7 @@ export function DriverPayoutsManagement({
               ETB {totalUnpaidGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </h3>
             <p className="text-xs text-gray-400 mt-1">
-              {unpaidItems.length} orders across {driverGroups.length} drivers
+              {unpaidItems.length} orders across {driverGroups.length} Delivery person 
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -504,12 +504,12 @@ export function DriverPayoutsManagement({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Awaiting Driver Check
+              Awaiting Delivery person  Check
             </p>
             <h3 className="text-2xl font-black text-gray-600 mt-1">
               {awaitingConfirmationCount} Payouts
             </h3>
-            <p className="text-xs text-gray-400 mt-1">Disbursed · pending driver confirmation</p>
+            <p className="text-xs text-gray-400 mt-1">Disbursed · pending Delivery person confirmation</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <AlertTriangle className="w-6 h-6" />
@@ -590,8 +590,8 @@ export function DriverPayoutsManagement({
                 type="text"
                 placeholder={
                   activeTab === "unpaid"
-                    ? "Search driver name or phone..."
-                    : "Search payout # or driver..."
+                    ? "Search Delivery person  name or phone..."
+                    : "Search payout # or Delivery person ..."
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -888,7 +888,7 @@ export function DriverPayoutsManagement({
                   <Wallet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-base">Disburse Driver Payout</h3>
+                  <h3 className="font-bold text-gray-900 text-base">Disburse Delivery person  Payout</h3>
                   <p className="text-xs text-gray-400">
                     Settle completed deliveries for {selectedDriverGroup.driver_name}
                   </p>
@@ -1112,7 +1112,7 @@ export function DriverPayoutsManagement({
                       Deduct COD Cash Retained ({selectedCodCollected.toFixed(2)} ETB)
                     </span>
                     <span className="text-[11px] text-orange-800">
-                      Driver already holds this physical cash from customers, so deducting it ensures accurate reconciliation.
+                      Delivery person  already holds this physical cash from customers, so deducting it ensures accurate reconciliation.
                     </span>
                   </div>
                 </label>
@@ -1204,9 +1204,9 @@ export function DriverPayoutsManagement({
               <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
                 <div>
-                  <h5 className="font-bold text-red-900 text-xs">Driver Dispute Filed</h5>
+                  <h5 className="font-bold text-red-900 text-xs">Delivery person  Dispute Filed</h5>
                   <p className="text-xs text-red-700 mt-1">
-                    {selectedPayout.dispute_reason || "Driver reported an issue with this payout."}
+                    {selectedPayout.dispute_reason || "Delivery person reported an issue with this payout."}
                   </p>
                   {selectedPayout.disputed_at && (
                     <p className="text-[10px] text-red-500 mt-1">

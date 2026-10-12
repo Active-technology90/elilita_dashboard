@@ -823,10 +823,10 @@ export default function StaffManagement() {
 
       {/* Header */}
       <PageHeader
-        title="Staff & Specialists"
+        title={company?.name || undefined}
         description="Manage your service team, schedules, and service assignments."
         icon={Users}
-        eyebrow={company?.name || undefined}
+        eyebrow="Staff & Specialists" 
         badge={
           <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
             {staff.length} staff

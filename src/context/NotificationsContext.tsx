@@ -1,7 +1,4 @@
 // src/context/NotificationsContext.tsx
-// Shared notification state for the dashboard: auto-registers for web push on
-// login, polls the in-app center, surfaces foreground pushes as toasts, and
-// exposes unread count + list to the header bell and the notifications page.
 import React, {
   createContext,
   useCallback,
@@ -10,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import {
   getNotifications,
@@ -22,8 +20,9 @@ import {
 } from "../services/notifications";
 import { useAuth } from "./authContext";
 import {
-  dispatchPushNavigation,
-} from "../utils/notificationNavigation";
+  getNotificationRoute,
+  normalizePushPayload,
+} from "../utils/notificationRouting";
 
 export interface AppNotification {
   id: number;
@@ -66,14 +65,22 @@ function currentPushState(): PushState {
   return Notification.permission as PushState;
 }
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+export function NotificationsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate(); // ✅ needed for routing
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const [pushState, setPushState] = useState<PushState>(currentPushState());
   const foregroundUnsub = useRef<() => void>(() => {});
 
+  // ---------------------------------------------------------------------
+  // Data fetching
+  // ---------------------------------------------------------------------
   const refetch = useCallback(async () => {
     if (!localStorage.getItem("access")) return;
     setLoading(true);
@@ -82,7 +89,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         getNotifications(),
         getUnreadCount(),
       ]);
-      const data = listRes.data as { results?: AppNotification[] } | AppNotification[];
+      const data = listRes.data as
+        | { results?: AppNotification[] }
+        | AppNotification[];
       setNotifications(Array.isArray(data) ? data : data.results ?? []);
       setUnread(unreadRes.data.unread);
     } catch {
@@ -102,7 +111,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (!ids.length) return;
     await markNotificationsRead(ids);
     setNotifications((ns) =>
-      ns.map((n) => (ids.includes(n.id) ? { ...n, is_read: true } : n))
+      ns.map((n) => (ids.includes(n.id) ? { ...n, is_read: true } : n)),
     );
     setUnread((u) => Math.max(0, u - ids.length));
   }, []);
@@ -112,25 +121,43 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     setPushState(currentPushState());
   }, []);
 
-  // Background notification click → service worker postMessage → navigate dashboard.
+  // ---------------------------------------------------------------------
+  // Service worker click → postMessage → route to correct detail page
+  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const onMessage = (event: MessageEvent) => {
       if (event.data?.type !== "PUSH_NOTIFICATION_CLICK") return;
-      dispatchPushNavigation(event.data.payload ?? {});
+
+      const { event: evName, data } = normalizePushPayload(
+        event.data.payload ?? {},
+      );
+      const route = getNotificationRoute(evName, data);
+
+      if (route) {
+        navigate(route);
+      } else {
+        navigate("/dashboard/notifications");
+      }
+
+      // Refresh list/badge
+      refetch();
     };
 
     navigator.serviceWorker.addEventListener("message", onMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
-  }, []);
+    return () =>
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [navigate, refetch]);
 
+  // ---------------------------------------------------------------------
+  // Auth effects: initial fetch, FCM register, foreground toast, polling
+  // ---------------------------------------------------------------------
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
 
     refetch();
 
-    // Register this browser for background + foreground FCM on every login/session.
     registerPushForSession("admin").finally(() => {
       setPushState(currentPushState());
     });
@@ -139,7 +166,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     listenForegroundMessages((payload) => {
       const title = payload.notification?.title ?? "Notification";
       const body = payload.notification?.body ?? "";
-      const data = (payload.data ?? {}) as Record<string, unknown>;
+      const rawData = (payload.data ?? {}) as Record<string, unknown>;
+
+      // Normalize once, use for both the click target and the toast
+      const { event: evName, data } = normalizePushPayload(rawData);
 
       toast.success(
         (t) => (
@@ -147,12 +177,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             type="button"
             onClick={() => {
               toast.dismiss(t.id);
-              dispatchPushNavigation({
-                pushTab: data.type === "vendor_order" ? "auto" : "notifications",
-                pushType: typeof data.type === "string" ? data.type : null,
-                vendor_order_id:
-                  data.vendor_order_id != null ? String(data.vendor_order_id) : null,
-              });
+              const route = getNotificationRoute(evName, data);
+              if (route) navigate(route);
+              else navigate("/dashboard/notifications");
             }}
             className="text-left w-full"
           >
@@ -163,6 +190,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         ),
         { duration: 8000 },
       );
+
       refetch();
     }).then((unsub) => {
       foregroundUnsub.current = unsub;
@@ -173,13 +201,25 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       clearInterval(interval);
       foregroundUnsub.current();
     };
-  }, [isAuthenticated, isLoading, refetch]);
+  }, [isAuthenticated, isLoading, refetch, navigate]);
 
   return (
     <Ctx.Provider
-      value={{ notifications, unread, loading, pushState, refetch, markAllRead, markRead, enablePush }}
+      value={{
+        notifications,
+        unread,
+        loading,
+        pushState,
+        refetch,
+        markAllRead,
+        markRead,
+        enablePush,
+      }}
     >
-      <Toaster position="top-right" toastOptions={{ style: { fontSize: "14px" } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{ style: { fontSize: "14px" } }}
+      />
       {children}
     </Ctx.Provider>
   );

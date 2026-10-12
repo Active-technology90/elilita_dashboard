@@ -1,9 +1,11 @@
 // src/components/dashboard/notifications/NotificationsPage.tsx
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, Bell, CheckCheck } from "lucide-react";
 import { useNotifications } from "../../../context/NotificationsContext";
 import { getEventMeta, formatRelativeTime } from "./meta";
 import PageHeader from "../../ui/PageHeader";
+import { getNotificationRoute } from "../../../utils/notificationRouting";
 
 function getNotificationDateGroup(iso: string): string {
   try {
@@ -14,13 +16,13 @@ function getNotificationDateGroup(iso: string): string {
     const startOfToday = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate()
+      now.getDate(),
     ).getTime();
     const startOfYesterday = startOfToday - 86_400_000;
     const startOfNotificationDay = new Date(
       date.getFullYear(),
       date.getMonth(),
-      date.getDate()
+      date.getDate(),
     ).getTime();
 
     if (startOfNotificationDay >= startOfToday) return "Today";
@@ -32,7 +34,7 @@ function getNotificationDateGroup(iso: string): string {
 }
 
 function groupNotificationsByDate<T extends { created_at: string }>(
-  items: T[]
+  items: T[],
 ): { label: string; items: T[] }[] {
   const groups: { label: string; items: T[] }[] = [];
 
@@ -64,20 +66,16 @@ function NotificationSkeleton() {
 }
 
 interface NotificationsPageProps {
-  /** Called when a notification is clicked. The full notification object is passed. */
+  /** Called when the arrow is clicked. If omitted, uses internal routing. */
   onNotificationClick?: (notification: any) => void;
 }
 
 export default function NotificationsPage({
   onNotificationClick,
 }: NotificationsPageProps) {
-  const {
-    notifications,
-    unread,
-    loading,
-    markAllRead,
-    markRead,
-  } = useNotifications();
+  const navigate = useNavigate(); // ✅ for routing
+  const { notifications, unread, loading, markAllRead, markRead } =
+    useNotifications();
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [markingAll, setMarkingAll] = useState(false);
@@ -87,7 +85,7 @@ export default function NotificationsPage({
       filter === "unread"
         ? notifications.filter((n) => !n.is_read)
         : notifications,
-    [notifications, filter]
+    [notifications, filter],
   );
 
   const grouped = useMemo(() => groupNotificationsByDate(filtered), [filtered]);
@@ -111,22 +109,28 @@ export default function NotificationsPage({
     }
   };
 
+  /** Click on card content → only marks as read. */
   const handleNotificationRead = (notification: any) => {
-    // Clicking the notification content only marks an unread item as read.
     if (!notification.is_read) {
       markRead([notification.id]);
     }
   };
 
+  /** Click on arrow → mark read + route to correct detail page. */
   const handleNotificationRoute = (notification: any) => {
-    // Only the arrow opens/routes to the notification details.
     if (!notification.is_read) {
       markRead([notification.id]);
     }
 
+    // If a parent passes onNotificationClick, respect it
     if (onNotificationClick) {
       onNotificationClick(notification);
+      return;
     }
+
+    // Otherwise use the central router
+    const route = getNotificationRoute(notification.event, notification);
+    if (route) navigate(route);
   };
 
   return (
@@ -175,15 +179,17 @@ export default function NotificationsPage({
               type="button"
               onClick={() => setFilter(f)}
               aria-pressed={active}
-              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 ${active
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 ${
+                active
                   ? "bg-white text-secondary shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
-                }`}
+              }`}
             >
               {f}
               <span
-                className={`text-[10px] sm:text-xs font-bold ${active ? "text-secondary" : "text-gray-400"
-                  }`}
+                className={`text-[10px] sm:text-xs font-bold ${
+                  active ? "text-secondary" : "text-gray-400"
+                }`}
               >
                 {count}
               </span>
@@ -243,10 +249,11 @@ export default function NotificationsPage({
                   return (
                     <div
                       key={n.id}
-                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 ${n.is_read
+                      className={`group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 ${
+                        n.is_read
                           ? "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
                           : "border-secondary/15 bg-gradient-to-r from-secondary/[0.07] via-white to-white shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-secondary/25 hover:shadow-sm"
-                        }`}
+                      }`}
                     >
                       {!n.is_read && (
                         <span
@@ -298,10 +305,11 @@ export default function NotificationsPage({
                           </span>
 
                           <span
-                            className={`mt-1 block text-sm leading-5 sm:text-[15px] ${n.is_read
+                            className={`mt-1 block text-sm leading-5 sm:text-[15px] ${
+                              n.is_read
                                 ? "font-semibold text-gray-800"
                                 : "font-bold text-gray-950"
-                              }`}
+                            }`}
                           >
                             {n.title}
                           </span>

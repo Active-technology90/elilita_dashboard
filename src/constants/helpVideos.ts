@@ -31,7 +31,7 @@ export function extractYoutubeId(urlOrId?: string): string {
 
   // Short URL (youtu.be/...) or embed URL (youtube.com/embed/...)
   const shortOrEmbedMatch = trimmed.match(
-    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed|v)\/)([a-zA-Z0-9_-]{11})/
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed|v)\/)([a-zA-Z0-9_-]{11})/,
   );
   if (shortOrEmbedMatch && shortOrEmbedMatch[1]) {
     return shortOrEmbedMatch[1];
@@ -55,16 +55,19 @@ export function extractYoutubeStartSeconds(urlOrId?: string): number | null {
 }
 
 export const ROLE_HELP_VIDEOS: Record<"owner" | "admin" | "staff", HelpVideo> = {
+  // -------------------------------------------------------------------------
+  // Company Owner — https://youtu.be/C71wNbptvV4
+  // -------------------------------------------------------------------------
   owner: {
     id: "owner-guide",
     role: "owner",
     roleLabel: "Company Owner",
-    title: "Company Owner Operations & Setup Guide",
+    title: "Elilita Help for Company Owners",
     description:
-      "Comprehensive walkthrough for owners: setting up bank accounts for payouts, KYC verification, managing company settings, and inviting administrators.",
-    youtubeId: "6yO7MxZSI6w",
-    youtubeUrl: "https://www.youtube.com/watch?v=6yO7MxZSI6w&t=3s",
-    duration: "00:33",
+      "This is help for company owners to get a clue for their own dashboard at first instance for the platform or any time to get started.",
+    youtubeId: "C71wNbptvV4",
+    youtubeUrl: "https://youtu.be/C71wNbptvV4",
+    duration: "",
     topics: [
       "Company Profile & KYC setup",
       "Bank Account & Settlement Configuration",
@@ -72,16 +75,20 @@ export const ROLE_HELP_VIDEOS: Record<"owner" | "admin" | "staff", HelpVideo> = 
       "Subscription Plans & Billing",
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Company Admin — https://youtu.be/FvYD_wqMasM
+  // -------------------------------------------------------------------------
   admin: {
     id: "admin-guide",
     role: "admin",
     roleLabel: "Company Admin",
-    title: "Company Administrator Operations Guide",
+    title: "Elilita Help for Company Admin",
     description:
-      "Guide for company administrators: managing product catalogs, stock availability, service offerings, branch schedules, and monitoring company activities.",
-    youtubeId: "6yO7MxZSI6w",
-    youtubeUrl: "https://www.youtube.com/watch?v=6yO7MxZSI6w&t=3s",
-    duration: "00:33",
+      "This is help for company administrators to get a clue for their own dashboard at first instance for the platform or any time to get started.",
+    youtubeId: "FvYD_wqMasM",
+    youtubeUrl: "https://youtu.be/FvYD_wqMasM",
+    duration: "",
     topics: [
       "Creating and Managing Products & Categories",
       "Managing Service Offerings & Availability",
@@ -89,20 +96,24 @@ export const ROLE_HELP_VIDEOS: Record<"owner" | "admin" | "staff", HelpVideo> = 
       "Branch Staff & Availability Schedules",
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Company Dispatcher — https://youtu.be/3UHIaKv6_Nc
+  // -------------------------------------------------------------------------
   staff: {
     id: "dispatcher-guide",
     role: "staff",
     roleLabel: "Dispatcher",
-    title: "Dispatcher Operations & Delivery Dispatch Guide",
+    title: "Elilita Help for Company Dispatcher",
     description:
-      "Operational guide for dispatchers: monitoring incoming vendor orders, tracking delivery drivers, assigning couriers, and resolving order escalations.",
-    youtubeId: "6yO7MxZSI6w",
-    youtubeUrl: "https://www.youtube.com/watch?v=6yO7MxZSI6w&t=3s",
-    duration: "00:33",
+      "This is help for the company dispatcher to get a clue for their own dashboard at first instance for the platform or any time to get started.",
+    youtubeId: "3UHIaKv6_Nc",
+    youtubeUrl: "https://youtu.be/3UHIaKv6_Nc",
+    duration: "",
     topics: [
       "Real-time Order Monitoring & Queue Management",
       "Assigning Deliveries to Couriers",
-      "Tracking Live Driver Locations",
+      "Tracking Live Locations",
       "Updating Order Statuses & Handling Escalations",
     ],
   },

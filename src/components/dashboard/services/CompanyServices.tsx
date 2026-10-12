@@ -781,10 +781,10 @@ export default function CompanyServices() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="My Services"
+          title={companyName || undefined}
           description="Manage service offerings, pricing, duration, and booking options."
           icon={Wrench}
-          eyebrow={companyName || undefined}
+          eyebrow="My Services"
           actions={
             <>
               {isSuperAdmin && (

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+// src/components/dashboard/ads/AdManagement.tsx
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -20,6 +21,9 @@ import {
   CircleCheck,
   CircleAlert,
   Info,
+  Ruler,
+  FileImage,
+  HardDrive,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -38,7 +42,120 @@ import { useCurrentCompany } from "../../context/CurrentCompanyContext";
 import PageHeader from "../ui/PageHeader";
 
 // ----------------------------------------------------------------------
-// Types – matches the system’s expected ad structure
+// Centralized image URL resolver
+// ----------------------------------------------------------------------
+const MEDIA_BASE = "https://backend.elilitapp.com";
+
+function resolveAdImageUrl(path?: string | null): string {
+  if (!path) return "";
+
+  const trimmed = String(path).trim();
+  if (!trimmed) return "";
+
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("data:")
+  ) {
+    return trimmed;
+  }
+
+  const cleaned = trimmed.replace(/^\/+/, "");
+
+  if (cleaned.startsWith("media/")) {
+    return `${MEDIA_BASE}/${cleaned}`;
+  }
+
+  return `${MEDIA_BASE}/media/${cleaned}`;
+}
+
+// ----------------------------------------------------------------------
+// Recommended ad image spec
+// ----------------------------------------------------------------------
+const AD_IMAGE_SPEC = {
+  width: 1200,
+  height: 400,
+  ratio: "3:1",
+  maxSizeMB: 2,
+  formats: ["image/jpeg", "image/png", "image/webp"],
+  formatLabel: "JPG, PNG, or WebP",
+} as const;
+
+// ----------------------------------------------------------------------
+// Stable default subscription object
+// ----------------------------------------------------------------------
+const DEFAULT_ADS_SUB = {
+  plan: {
+    can_ad_home_page: true,
+    can_ad_companies_list: true,
+    can_ad_company_detail: true,
+  },
+} as const;
+
+// ----------------------------------------------------------------------
+// Image dimension checker
+// ----------------------------------------------------------------------
+const TARGET_ASPECT = AD_IMAGE_SPEC.width / AD_IMAGE_SPEC.height; // 3.0
+const ASPECT_TOLERANCE = 0.15; // ±15% → 2.55 : 3.45
+
+interface ImageDimensionCheck {
+  ok: boolean;
+  width: number;
+  height: number;
+  aspect: number;
+  reason?: string;
+  severity: "error" | "warning" | "ok";
+}
+
+async function checkImageDimensions(
+  file: File,
+): Promise<ImageDimensionCheck> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      const aspect = w / h;
+      const diff = Math.abs(aspect - TARGET_ASPECT) / TARGET_ASPECT;
+
+      if (diff <= ASPECT_TOLERANCE) {
+        resolve({ ok: true, width: w, height: h, aspect, severity: "ok" });
+        return;
+      }
+
+      const direction = aspect > TARGET_ASPECT ? "wider" : "taller";
+      resolve({
+        ok: false,
+        width: w,
+        height: h,
+        aspect,
+        severity: "warning",
+        reason: `Your image is ${w}×${h} px and looks ${direction} than the recommended ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px. It will still display, but with empty space around it.`,
+      });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({
+        ok: false,
+        width: 0,
+        height: 0,
+        aspect: 0,
+        severity: "error",
+        reason: "Could not read image dimensions. Please try another file.",
+      });
+    };
+
+    img.src = url;
+  });
+}
+
+// ----------------------------------------------------------------------
+// Types
 // ----------------------------------------------------------------------
 interface Ad {
   id: number;
@@ -61,7 +178,7 @@ interface ToastState {
 }
 
 // ----------------------------------------------------------------------
-// Toast System (self-contained)
+// Toast System (stable callbacks)
 // ----------------------------------------------------------------------
 const useToast = () => {
   const [toast, setToast] = useState<ToastState>({
@@ -69,20 +186,29 @@ const useToast = () => {
     type: "info",
     visible: false,
   });
-  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showToast = (type: ToastType, message: string, duration = 3000) => {
-    if (timeoutId) clearTimeout(timeoutId);
-    setToast({ message, type, visible: true });
-    timeoutId = setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, duration);
-  };
+  const showToast = useCallback(
+    (type: ToastType, message: string, duration = 3000) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setToast({ message, type, visible: true });
+      timeoutRef.current = setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, duration);
+    },
+    [],
+  );
 
-  const hideToast = () => {
-    if (timeoutId) clearTimeout(timeoutId);
+  const hideToast = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setToast((prev) => ({ ...prev, visible: false }));
-  };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return { toast, showToast, hideToast };
 };
@@ -140,7 +266,7 @@ const Toast = ({
 const ITEMS_PER_PAGE = 6;
 
 // ----------------------------------------------------------------------
-// Reusable UI Components (inline, uses dashboard color #6750A4)
+// Reusable UI Components
 // ----------------------------------------------------------------------
 const Button: React.FC<{
   children: React.ReactNode;
@@ -165,7 +291,7 @@ const Button: React.FC<{
     "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
   const variants = {
     primary:
-      "bg-secondary  text-white shadow-md hover:shadow-lg focus:ring-[#674FA3]",
+      "bg-secondary text-white shadow-md hover:shadow-lg focus:ring-[#674FA3]",
     secondary:
       "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500",
     outline:
@@ -218,7 +344,7 @@ const Input: React.FC<{
       onChange={onChange}
       placeholder={placeholder}
       required={required}
-      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-secondary  transition-all ${
+      className={`w-full px-4 py-2.5 border rounded-xl bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-secondary transition-all ${
         error ? "border-red-300 focus:ring-red-500" : "border-gray-200"
       }`}
     />
@@ -272,51 +398,143 @@ const StatCard: React.FC<{
 );
 
 // ----------------------------------------------------------------------
-// Image Uploader with drag & drop and preview
+// Image Spec Info Panel
+// ----------------------------------------------------------------------
+const ImageSpecInfo: React.FC = () => (
+  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-4">
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10">
+        <ImageIcon className="h-4 w-4 text-secondary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900">
+          Recommended image specifications
+        </p>
+        <p className="mt-0.5 text-xs text-gray-500">
+          Following these ensures your ad looks clear and sharp on all screens.
+        </p>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
+            <Ruler className="h-3.5 w-3.5 shrink-0 text-secondary" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                Dimensions
+              </p>
+              <p className="text-xs font-semibold text-gray-800">
+                {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
+            <FileImage className="h-3.5 w-3.5 shrink-0 text-secondary" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                Ratio & Format
+              </p>
+              <p className="text-xs font-semibold text-gray-800">
+                {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
+            <HardDrive className="h-3.5 w-3.5 shrink-0 text-secondary" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                Max File Size
+              </p>
+              <p className="text-xs font-semibold text-gray-800">
+                {AD_IMAGE_SPEC.maxSizeMB} MB
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] text-gray-500">
+          <Info className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>
+            Keep text and logos in the <strong>center area</strong> of the image
+            for best results on all screen sizes.
+          </span>
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+// ----------------------------------------------------------------------
+// Image Uploader — with dimension validation & feedback
 // ----------------------------------------------------------------------
 const ImageUploader: React.FC<{
   onFileChange: (file: File | null) => void;
   previewUrl?: string | null;
   existingImage?: string;
-}> = ({ onFileChange, previewUrl, existingImage }) => {
+  error?: string;
+}> = ({ onFileChange, previewUrl, existingImage, error }) => {
   const [preview, setPreview] = useState<string | null>(
-    previewUrl ||
-      (existingImage
-        ? existingImage.startsWith("http") || existingImage.startsWith("blob:")
-          ? existingImage
-          : existingImage.startsWith("/")
-            ? `https://backend.elilitapp.com${existingImage}`
-            : `https://backend.elilitapp.com/media/${existingImage}`
-        : null),
+    previewUrl || resolveAdImageUrl(existingImage) || null,
   );
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [dimCheck, setDimCheck] = useState<ImageDimensionCheck | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setImageFailed(false);
     if (previewUrl) {
       setPreview(previewUrl);
-    } else if (existingImage) {
-      if (
-        existingImage.startsWith("http") ||
-        existingImage.startsWith("blob:")
-      ) {
-        setPreview(existingImage);
-      } else if (existingImage.startsWith("/")) {
-        setPreview(`https://backend.elilitapp.com${existingImage}`);
-      } else {
-        setPreview(`https://backend.elilitapp.com/media/${existingImage}`);
-      }
+      setDimCheck(null);
+      setPendingFile(null);
     } else {
-      setPreview(null);
+      const resolved = resolveAdImageUrl(existingImage);
+      setPreview(resolved || null);
+      setDimCheck(null);
+      setPendingFile(null);
     }
   }, [previewUrl, existingImage]);
 
-  const handleFile = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    onFileChange(file);
+  const validateFile = (file: File): string | null => {
+    if (!AD_IMAGE_SPEC.formats.includes(file.type as any)) {
+      return `Unsupported format. Please upload ${AD_IMAGE_SPEC.formatLabel}.`;
+    }
+    if (file.size > AD_IMAGE_SPEC.maxSizeMB * 1024 * 1024) {
+      return `File is too large. Maximum size is ${AD_IMAGE_SPEC.maxSizeMB} MB.`;
+    }
+    return null;
+  };
+
+  const handleFile = async (file: File) => {
+    const err = validateFile(file);
+    if (err) {
+      setFileError(err);
+      setDimCheck(null);
+      setPendingFile(null);
+      return;
+    }
+    setFileError(null);
+    setImageFailed(false);
+
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result as string);
     reader.readAsDataURL(file);
+
+    const check = await checkImageDimensions(file);
+    setDimCheck(check);
+
+    if (check.severity === "error") {
+      // Don't send broken files to the parent
+      setFileError(check.reason || "Invalid image file.");
+      setPendingFile(null);
+      return;
+    }
+
+    // Accept the file (even if the ratio is a warning — user can still save)
+    setPendingFile(file);
+    onFileChange(file);
   };
 
   const onDrop = (e: React.DragEvent) => {
@@ -336,32 +554,43 @@ const ImageUploader: React.FC<{
   const clearImage = () => {
     onFileChange(null);
     setPreview(null);
+    setFileError(null);
+    setImageFailed(false);
+    setDimCheck(null);
+    setPendingFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Advertisement Image
-      </label>
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium text-gray-700">
+          Advertisement Image <span className="text-red-500">*</span>
+        </label>
+        <p className="mt-0.5 text-xs text-gray-500">
+          Recommended: {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px (
+          {AD_IMAGE_SPEC.ratio}) · {AD_IMAGE_SPEC.formatLabel} · Max{" "}
+          {AD_IMAGE_SPEC.maxSizeMB} MB
+        </p>
+      </div>
+
+      <ImageSpecInfo />
+
       <div
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={`relative w-full rounded-xl overflow-hidden transition-all duration-200 ${
-          isDragging
-            ? "ring-2 ring-secondary  ring-offset-2 bg-[#674FA3]/5"
-            : ""
+          isDragging ? "ring-2 ring-secondary ring-offset-2 bg-[#674FA3]/5" : ""
         }`}
       >
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={AD_IMAGE_SPEC.formats.join(",")}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) handleFile(file);
-            // Allow re‑selecting the same file
             e.target.value = "";
           }}
           className="hidden"
@@ -370,25 +599,56 @@ const ImageUploader: React.FC<{
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-gray-50 ${
               isDragging
-                ? "border-secondary  bg-[#674FA3]/5"
+                ? "border-secondary bg-[#674FA3]/5"
                 : "border-gray-200"
             }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <Upload className="mx-auto h-10 w-10 text-gray-400" />
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm font-medium text-gray-700">
               Drag & drop an image here, or click to browse
             </p>
-            <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 10MB</p>
+            <p className="mt-1 text-xs text-gray-400">
+              {AD_IMAGE_SPEC.formatLabel} · up to {AD_IMAGE_SPEC.maxSizeMB} MB
+            </p>
+
+            <div className="mx-auto mt-4 flex max-w-xs items-center justify-center">
+              <div
+                className="w-full rounded-lg border border-dashed border-secondary/30 bg-secondary/[0.03]"
+                style={{ aspectRatio: "3 / 1" }}
+              >
+                <div className="flex h-full items-center justify-center">
+                  <span className="text-[10px] font-medium text-secondary/60">
+                    Preview area · {AD_IMAGE_SPEC.ratio}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="relative group">
-            <img
-              src={preview}
-              alt="Preview"
-              className="w-full h-56 sm:h-64 object-cover rounded-xl shadow-sm"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-black/50 p-3 flex items-center justify-center gap-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <div
+              className="w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center"
+              style={{ aspectRatio: "3 / 1" }}
+            >
+              {imageFailed ? (
+                <div className="text-center">
+                  <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Image failed to load. Please re-upload.
+                  </p>
+                </div>
+              ) : (
+                <img
+                  src={preview}
+                  alt="Preview"
+                  onError={() => setImageFailed(true)}
+                  className="h-full w-full object-contain"
+                />
+              )}
+            </div>
+
+            <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-black/55 p-3 flex items-center justify-center gap-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -409,6 +669,86 @@ const ImageUploader: React.FC<{
           </div>
         )}
       </div>
+
+      {/* Dimension feedback */}
+      {dimCheck && preview && pendingFile && (
+        <div
+          className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${
+            dimCheck.severity === "ok"
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          {dimCheck.severity === "ok" ? (
+            <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          )}
+
+          <div className="min-w-0 flex-1">
+            {dimCheck.severity === "ok" ? (
+              <>
+                <p className="text-xs font-semibold text-emerald-900">
+                  Perfect size · {dimCheck.width} × {dimCheck.height} px
+                </p>
+                <p className="mt-0.5 text-[11px] text-emerald-700">
+                  Matches the recommended {AD_IMAGE_SPEC.ratio} aspect ratio.
+                  Displays edge-to-edge on all screens.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-amber-900">
+                  Size mismatch · {dimCheck.width} × {dimCheck.height} px
+                  {dimCheck.aspect > 0 && (
+                    <span className="ml-1.5 font-normal text-amber-700">
+                      (aspect {dimCheck.aspect.toFixed(2)}:1)
+                    </span>
+                  )}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-5 text-amber-800">
+                  {dimCheck.reason}
+                </p>
+                <p className="mt-1.5 text-[11px] font-medium text-amber-900">
+                  💡 Resize your image to{" "}
+                  <span className="font-bold">
+                    {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+                  </span>{" "}
+                  for the best result.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Large-file hint */}
+      {pendingFile && pendingFile.size > 1.5 * 1024 * 1024 && (
+        <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-blue-900">
+              Large file ({(pendingFile.size / 1024 / 1024).toFixed(2)} MB)
+            </p>
+            <p className="mt-0.5 text-[11px] text-blue-700">
+              For faster uploads, consider compressing your image at{" "}
+              <a
+                href="https://tinypng.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline hover:no-underline"
+              >
+                tinypng.com
+              </a>
+              . Target under 500 KB for the best experience.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {(fileError || error) && (
+        <p className="text-xs text-red-500">{fileError || error}</p>
+      )}
     </div>
   );
 };
@@ -420,10 +760,16 @@ const AdCard: React.FC<{
   ad: Ad;
   onEdit: (ad: Ad) => void;
   onDelete: (ad: Ad) => void;
-  getImageUrl: (url: string) => string;
   isReadOnly: boolean;
   isSuperAdmin: boolean;
-}> = ({ ad, onEdit, onDelete, getImageUrl, isReadOnly, isSuperAdmin }) => {
+}> = ({ ad, onEdit, onDelete, isReadOnly, isSuperAdmin }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = resolveAdImageUrl(ad.image);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [ad.image]);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -432,39 +778,53 @@ const AdCard: React.FC<{
       transition={{ duration: 0.2 }}
       className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
     >
-      <div className="relative h-52 overflow-hidden">
-        <img
-          src={getImageUrl(ad.image)}
-          alt={ad.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <div className="absolute top-4 right-4">
+      <div
+        className="relative w-full overflow-hidden bg-gray-100 flex items-center justify-center"
+        style={{ aspectRatio: "3 / 1" }}
+      >
+        {imageUrl && !imageFailed ? (
+          <img
+            src={imageUrl}
+            alt={ad.title}
+            onError={() => setImageFailed(true)}
+            className="h-full w-full object-contain transition-transform duration-500"
+          />
+        ) : (
+          <div className="text-center">
+            <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
+            <p className="mt-1 text-xs text-gray-400">
+              {imageFailed ? "Image failed to load" : "No image"}
+            </p>
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
           <Badge variant={ad.is_active ? "active" : "inactive"}>
             {ad.is_active ? "Active" : "Inactive"}
           </Badge>
         </div>
       </div>
+
       <div className="p-5">
-        <h3 className="font-semibold text-xl text-gray-900 mb-1 truncate">
+        <h3 className="font-semibold text-lg text-gray-900 mb-1 truncate">
           {ad.title}
         </h3>
         {isSuperAdmin && (
-          <h3 className="font-semibold text-sm text-gray-900 mb-1 truncate">
+          <p className="text-xs font-medium text-gray-500 mb-1 truncate">
             {ad?.company_name}
-          </h3>
+          </p>
         )}
         {ad.target_link && (
           <a
             href={ad.target_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-sm text-secondary  hover:underline gap-1 mb-4"
+            className="inline-flex items-center text-sm text-secondary hover:underline gap-1 mb-3"
           >
             <Globe className="w-3.5 h-3.5" />{" "}
             {ad.target_link.replace(/^https?:\/\//, "")}
           </a>
         )}
-        <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
           <Button
             variant="ghost"
             size="sm"
@@ -720,7 +1080,7 @@ const LoadingSkeleton: React.FC = () => (
         key={i}
         className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-pulse"
       >
-        <div className="h-52 bg-gray-200" />
+        <div className="w-full bg-gray-200" style={{ aspectRatio: "3 / 1" }} />
         <div className="p-5 space-y-3">
           <div className="h-6 bg-gray-200 rounded w-3/4" />
           <div className="h-4 bg-gray-200 rounded w-1/2" />
@@ -738,7 +1098,7 @@ const LoadingSkeleton: React.FC = () => (
 // MAIN COMPONENT
 // ----------------------------------------------------------------------
 export default function AdManagement() {
-  const baseReadOnly = useReadOnly(); // respects viewer mode from dashboard
+  const baseReadOnly = useReadOnly();
   const { user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
   const { company } = useCurrentCompany();
@@ -773,107 +1133,98 @@ export default function AdManagement() {
   // ------------------------------------------------------------
   // Role / permission determination
   // ------------------------------------------------------------
-  const isSuperAdmin = !user?.memberships?.length; // true if no company memberships
+  const isSuperAdmin = !user?.memberships?.length;
 
   const companyRole = (() => {
     if (!user || !company?.slug) return "";
-    if (isSuperAdmin) return "admin"; // super admin can manage any company
+    if (isSuperAdmin) return "admin";
     const membership = user.memberships?.find(
       (m: any) => m.company_slug === company.slug,
     );
     return membership?.role || "";
   })();
 
-  // A user is a true company admin (not super admin) if they have a company slug
-  // and are not a super admin. This ensures company‑scoped API endpoints are used.
   const isCompanyAdmin = !isSuperAdmin && Boolean(company?.slug);
 
-  const canManageAds = isSuperAdmin ||companyRole === "owner"; // super admin or company admin/manager can manage ads
-  const isReadOnly = baseReadOnly || !canManageAds; // combined read‑only state
+  const canManageAds = isSuperAdmin || companyRole === "owner";
+  const isReadOnly = baseReadOnly || !canManageAds;
 
-  // ------------------------------------------------------------
-  // Effects
-  // ------------------------------------------------------------
-  useEffect(() => {
-    fetchAds();
-    // Fetch subscription only for non‑super‑admin company users.
-    // Super admins do not need a company subscription check.
-    if (!isSuperAdmin && company && company.slug) {
-      getMySubscription(company.slug)
-        .then((res) => setActiveSub(res.data))
-        .catch(console.error);
-    } else {
-      // Default: full placement permissions for super admins / no company context
-      setActiveSub({
-        plan: {
-          can_ad_home_page: true,
-          can_ad_companies_list: true,
-          can_ad_company_detail: true,
-        },
-      });
-    }
-  }, [company?.slug, isSuperAdmin]);
+  // Extract primitive for stable deps
+  const companySlug = company?.slug ?? null;
 
   // ------------------------------------------------------------
   // Data fetching
   // ------------------------------------------------------------
-  const fetchAds = async () => {
+  const fetchAds = useCallback(async () => {
     try {
       setIsLoading(true);
       let response;
-      if (isCompanyAdmin) {
-        response = await getCompanyAds(company!.slug);
+      if (isCompanyAdmin && companySlug) {
+        response = await getCompanyAds(companySlug);
       } else {
-        // Global ads for super admin / no company context
         response = await getAds();
       }
       const adsList = Array.isArray(response.data)
         ? response.data
         : response.data?.results || [];
 
-      console.log("--- Ads Fetched Successfully ---");
-      console.table(
-        adsList.map((ad: Ad) => ({
-          ID: ad.id,
-          Title: ad.title,
-          "Raw Image Path": ad.image,
-          "Resolved Image URL": ad.image
-            ? ad.image.startsWith("http") || ad.image.startsWith("blob:")
-              ? ad.image
-              : ad.image.startsWith("/")
-                ? `https://backend.elilitapp.com${ad.image}`
-                : `https://backend.elilitapp.com/media/${ad.image}`
-            : "",
-        })),
-      );
+      if (import.meta.env.DEV) {
+        adsList.forEach((ad: Ad) => {
+          console.log(
+            `[AdManagement] ad #${ad.id} "${ad.title}" raw:`,
+            ad.image,
+            "→ resolved:",
+            resolveAdImageUrl(ad.image),
+          );
+        });
+      }
 
       setAds(adsList);
-      console.log("adsList", adsList);
     } catch (error) {
       showToast("error", "Failed to load advertisements");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isCompanyAdmin, companySlug, showToast]);
+
+  // ------------------------------------------------------------
+  // Effects
+  // ------------------------------------------------------------
+  useEffect(() => {
+    if (!isSuperAdmin && companySlug) {
+      getMySubscription(companySlug)
+        .then((res) => setActiveSub(res.data))
+        .catch(console.error);
+    } else {
+      setActiveSub((prev) => (prev === DEFAULT_ADS_SUB ? prev : DEFAULT_ADS_SUB));
+    }
+  }, [companySlug, isSuperAdmin]);
+
+  useEffect(() => {
+    fetchAds();
+  }, [fetchAds]);
 
   // ------------------------------------------------------------
   // Handlers
   // ------------------------------------------------------------
-  const handleDeleteClick = (ad: Ad) => {
-    if (isReadOnly) return;
-    setAdToDelete(ad);
-    setDeleteModalOpen(true);
-  };
+  const handleDeleteClick = useCallback(
+    (ad: Ad) => {
+      if (isReadOnly) return;
+      setAdToDelete(ad);
+      setDeleteModalOpen(true);
+    },
+    [isReadOnly],
+  );
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (adToDelete && !isReadOnly) {
       try {
-        if (isCompanyAdmin) {
-          await deleteCompanyAd(company!.slug, adToDelete.id);
+        if (isCompanyAdmin && companySlug) {
+          await deleteCompanyAd(companySlug, adToDelete.id);
         } else {
           await deleteAd(adToDelete.id);
         }
-        setAds(ads.filter((ad) => ad.id !== adToDelete.id));
+        setAds((prev) => prev.filter((ad) => ad.id !== adToDelete.id));
         showToast("success", "Advertisement deleted successfully");
       } catch (error) {
         showToast("error", "Failed to delete Advertisement");
@@ -882,9 +1233,9 @@ export default function AdManagement() {
         setAdToDelete(null);
       }
     }
-  };
+  }, [adToDelete, isReadOnly, isCompanyAdmin, companySlug, showToast]);
 
-  const openCreateModal = () => {
+  const openCreateModal = useCallback(() => {
     if (isReadOnly) return;
     setEditingId(null);
     setTitle("");
@@ -895,75 +1246,102 @@ export default function AdManagement() {
     setImagePreview(null);
     setFormErrors({});
     setModalOpen(true);
-  };
+  }, [isReadOnly]);
 
-  const openEditModal = (ad: Ad) => {
-    if (isReadOnly) return;
-    setEditingId(ad.id);
-    setTitle(ad.title);
-    setTargetLink(ad.target_link || "");
-    setTargetPages(ad.target_pages);
-    setIsActive(ad.is_active);
-    setImageFile(null);
-    setImagePreview(null);
-    setFormErrors({});
-    setModalOpen(true);
-  };
+  const openEditModal = useCallback(
+    (ad: Ad) => {
+      if (isReadOnly) return;
+      setEditingId(ad.id);
+      setTitle(ad.title);
+      setTargetLink(ad.target_link || "");
+      setTargetPages(ad.target_pages);
+      setIsActive(ad.is_active);
+      setImageFile(null);
+      setImagePreview(null);
+      setFormErrors({});
+      setModalOpen(true);
+    },
+    [isReadOnly],
+  );
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const errors: { title?: string; image?: string } = {};
     if (!title.trim()) errors.title = "Advertisement title is required";
     if (!editingId && !imageFile)
       errors.image = "Please select an image for new Advertisement";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [title, editingId, imageFile]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReadOnly) return;
-    if (!validateForm()) return;
-    setIsSubmitting(true);
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("is_active", String(isActive));
-    if (imageFile) formData.append("image", imageFile);
-    formData.append("target_pages", JSON.stringify(targetPages));
-    formData.append("target_link", targetLink || "");
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isReadOnly) return;
+      if (!validateForm()) return;
+      setIsSubmitting(true);
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("is_active", String(isActive));
+      if (imageFile) formData.append("image", imageFile);
+      formData.append("target_pages", JSON.stringify(targetPages));
+      formData.append("target_link", targetLink || "");
 
-    try {
-      if (editingId) {
-        if (isCompanyAdmin) {
-          await updateCompanyAd(company!.slug, editingId, formData);
+      try {
+        if (editingId) {
+          if (isCompanyAdmin && companySlug) {
+            await updateCompanyAd(companySlug, editingId, formData);
+          } else {
+            await updateAd(editingId, formData);
+          }
+          showToast("success", "Advertisement updated successfully");
         } else {
-          await updateAd(editingId, formData);
+          if (isCompanyAdmin && companySlug) {
+            await createCompanyAd(companySlug, formData);
+          } else {
+            await createAd(formData);
+          }
+          showToast("success", "New Advertisement created");
         }
-        showToast("success", "Advertisement updated successfully");
-      } else {
-        if (isCompanyAdmin) {
-          await createCompanyAd(company!.slug, formData);
-        } else {
-          await createAd(formData);
-        }
-        showToast("success", "New Advertisement created");
+        setModalOpen(false);
+        fetchAds();
+      } catch (error: any) {
+        const isTimeout =
+          error?.code === "ECONNABORTED" ||
+          /timeout/i.test(error?.message || "");
+        showToast(
+          "error",
+          isTimeout
+            ? "Upload timed out. Please check your connection and try again."
+            : error?.message || "Failed to save Advertisement",
+        );
+      } finally {
+        setIsSubmitting(false);
       }
-      setModalOpen(false);
-      fetchAds();
-    } catch (error: any) {
-      showToast("error", error.message || "Failed to save Advertisement");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [
+      isReadOnly,
+      validateForm,
+      title,
+      isActive,
+      imageFile,
+      targetPages,
+      targetLink,
+      editingId,
+      isCompanyAdmin,
+      companySlug,
+      showToast,
+      fetchAds,
+    ],
+  );
 
-  const handleImageChange = (file: File | null) => {
+  const handleImageChange = useCallback((file: File | null) => {
     setImageFile(file);
     if (file) {
       setImagePreview(URL.createObjectURL(file));
     } else {
       setImagePreview(null);
     }
-  };
+  }, []);
 
   // ------------------------------------------------------------
   // Filtering & Pagination
@@ -988,15 +1366,6 @@ export default function AdManagement() {
 
   const totalCount = ads.length;
   const activeCount = ads.filter((ad) => ad.is_active).length;
-
-  const getImageUrl = (image: string) => {
-    if (!image) return "";
-    if (image.startsWith("http") || image.startsWith("blob:")) return image;
-    if (image.startsWith("/")) {
-      return `https://backend.elilitapp.com${image}`;
-    }
-    return `https://backend.elilitapp.com/media/${image}`;
-  };
 
   // ------------------------------------------------------------
   // Render
@@ -1090,7 +1459,6 @@ export default function AdManagement() {
                   ad={ad}
                   onEdit={openEditModal}
                   onDelete={handleDeleteClick}
-                  getImageUrl={getImageUrl}
                   isReadOnly={isReadOnly}
                   isSuperAdmin={isSuperAdmin}
                 />
@@ -1116,7 +1484,7 @@ export default function AdManagement() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
-          title={editingId ? "Edit Advertisment" : "Create New Advertisment"}
+          title={editingId ? "Edit Advertisement" : "Create New Advertisement"}
           isSubmitting={isSubmitting}
         >
           <Input
@@ -1231,16 +1599,15 @@ export default function AdManagement() {
               </label>
             </div>
           </div>
+
           <ImageUploader
             onFileChange={handleImageChange}
             previewUrl={imagePreview}
             existingImage={
               editingId ? ads.find((a) => a.id === editingId)?.image : undefined
             }
+            error={formErrors.image}
           />
-          {formErrors.image && (
-            <p className="text-sm text-red-500 -mt-2">{formErrors.image}</p>
-          )}
         </FormModal>
       </div>
       <Toast toast={toast} onHide={hideToast} />

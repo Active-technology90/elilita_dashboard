@@ -479,7 +479,7 @@ export default function Payments() {
           }`}
         >
           <Truck className="h-4 w-4" />
-          <span>Driver Payouts</span>
+          <span>Delivery person Payouts</span>
         </button>
       </div>
 
