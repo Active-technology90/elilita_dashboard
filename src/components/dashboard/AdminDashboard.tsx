@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, createContext, useContext } from "react";
+import { useState, useRef, useEffect, createContext, useContext } from "react";
 import { RefreshButton } from "../ui/RefreshButton";
 import {
   LayoutDashboard,
@@ -483,20 +483,6 @@ export default function AdminDashboard() {
   // Hide "Company Users" only for staff (not for viewers)
   // const hideUsersSidebar = !isSuperAdmin && company?.role === "staff";
 
-  // ── Dynamic brand role label shown under "Elilita" ──────
-  const brandRoleLabel = useMemo(() => {
-    if (isMarketing) return "Marketing";
-    if (isSuperAdmin) return "Super Admin";
-
-    const role = company?.role;
-    if (role === "owner") return "Owner";
-    if (role === "admin") return "Admin";
-    if (role === "staff") return "Dispatcher";
-    if (role === "viewer") return "Viewer";
-    if (role === "delivery") return "Delivery";
-
-    return "Dashboard";
-  }, [isMarketing, isSuperAdmin, company?.role]);
 
   const currentCompanyMeta = companiesList.find(
     (c: any) => c.slug === company?.slug,
@@ -1291,15 +1277,7 @@ export default function AdminDashboard() {
                 />
               )}
 
-              {!isDispatcher && (
-                <SidebarItem
-                  icon={<SettingsIcon className="h-5 w-5" />}
-                  label="Settings"
-                  active={activeTab === "settings"}
-                  collapsed={sidebarCollapsed}
-                  onClick={() => navigate("settings")}
-                />
-              )}
+
 
               {!isSuperAdmin && !isDispatcher && (
                 <SidebarItem
@@ -1310,7 +1288,15 @@ export default function AdminDashboard() {
                   onClick={() => navigate("billing")}
                 />
               )}
-
+              {!isDispatcher && (
+                <SidebarItem
+                  icon={<SettingsIcon className="h-5 w-5" />}
+                  label="Settings"
+                  active={activeTab === "settings"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("settings")}
+                />
+              )}
               {/* <div className={`mt-8 px-4 ${sidebarCollapsed ? "hidden" : ""}`}>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
               Account

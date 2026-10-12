@@ -191,6 +191,7 @@ export interface CompanyListItem {
   registered_by?: number;
   registered_by_username?: string;
   chapa_sub_account_id?: string | number;
+  created_at?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

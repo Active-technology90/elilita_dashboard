@@ -49,72 +49,6 @@ type PaginatedResponse<T> = {
   next: string | null;
 };
 
-/* ──────────────────────────────────────────────────────────────────
-   DEBUG HELPERS — flip DEBUG to false to silence
-   ────────────────────────────────────────────────────────────────── */
-
-const DEBUG = false;
-
-const dbg = {
-  group(label: string) {
-    if (!DEBUG) return;
-    // eslint-disable-next-line no-console
-    console.group(
-      `%c[CompanyManagement] ${label}`,
-      "color:#674FA3;font-weight:bold",
-    );
-  },
-  end() {
-    if (!DEBUG) return;
-    // eslint-disable-next-line no-console
-    console.groupEnd();
-  },
-  log(label: string, value: unknown) {
-    if (!DEBUG) return;
-    // eslint-disable-next-line no-console
-    console.log(`  ${label}:`, value);
-  },
-  inspectFields(source: any, label: string) {
-    if (!DEBUG || !source) return;
-
-    const fields = [
-      "description",
-      "description_am",
-      "contact_phone",
-      "contact_email",
-      "phone",
-      "phone_number",
-      "email",
-      "address",
-      "address_am",
-      "created_at",
-    ];
-
-    const present: Record<string, unknown> = {};
-    const missing: string[] = [];
-
-    for (const f of fields) {
-      const v = source[f];
-      if (v === undefined) {
-        missing.push(f);
-      } else {
-        present[f] =
-          typeof v === "string" && v.length > 60 ? `${v.slice(0, 60)}…` : v;
-      }
-    }
-
-    // eslint-disable-next-line no-console
-    console.log(`%c  ▶ ${label}`, "color:#10b981;font-weight:bold");
-    // eslint-disable-next-line no-console
-    console.log("    All keys:", Object.keys(source));
-    // eslint-disable-next-line no-console
-    console.log("    Present:", present);
-    if (missing.length) {
-      // eslint-disable-next-line no-console
-      console.warn("    Missing:", missing);
-    }
-  },
-};
 
 /* ──────────────────────────────────────────────────────────────────
    Helpers
@@ -1473,7 +1407,6 @@ export default function CompanyManagement() {
           <CompanyForm
             formData={formData}
             setFormData={setFormData}
-              canManageActiveStatus={isSuperAdmin}
             formErrors={formErrors}
             categories={categories}
             headCompanies={headCompanies}

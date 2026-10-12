@@ -6,9 +6,6 @@ import {
   Calendar,
   ShieldCheck,
   Users,
-  TrendingUp,
-  TrendingDown,
-  Target,
   CheckCircle2,
   XCircle,
   LayoutGrid,
@@ -18,9 +15,6 @@ import {
   Star,
   Briefcase,
   Layers,
-  Package,
-  DollarSign,
-  ShoppingBag,
 } from "lucide-react";
 import {
   XAxis,
