@@ -29,6 +29,7 @@ import {
   Users,
   Search,
   ChevronDown,
+  Filter,
 } from "lucide-react";
 import {
   getAvailableDeliveryDrivers,
@@ -44,6 +45,7 @@ import { ConfirmationModal } from "../../ui/confimationModal";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
+import { CustomSelect } from "../../ui/CustomSelect";
 
 // ---------- Animation Variants ----------
 const containerVariants = {
@@ -423,7 +425,197 @@ const CopyButton = ({ text }: { text?: string | null }) => {
   );
 };
 
+
+/* ─── Filter Type Card (Delivery Person Type option) ─── */
 // ─── DELIVERY CARD WITH VIEW ON MAP ──────────────────────────────
+
+/* ─── Filter Type Dropdown (Delivery Person Type selector) ─── */
+/* ─── Compact Filter Dropdown (used for both Type & Vehicle) ─── */
+const FilterDropdown = ({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  variant = "type",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{
+    value: string;
+    label: string;
+    count: number;
+    description?: string;
+    icon?: React.ReactNode;
+    emoji?: string;
+    accent?: "secondary" | "emerald" | "blue";
+  }>;
+  ariaLabel: string;
+  variant?: "type" | "vehicle";
+}) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [open]);
+
+  const selected = options.find((o) => o.value === value) ?? options[0];
+
+  const accentStyles = {
+    secondary: "bg-secondary/10 text-secondary",
+    emerald: "bg-emerald-100 text-emerald-700",
+    blue: "bg-blue-100 text-blue-700",
+  } as const;
+
+  const renderIcon = (
+    opt: (typeof options)[number],
+    isSelected: boolean,
+  ) => {
+    if (variant === "vehicle") {
+      return (
+        <span
+          className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-sm ${
+            isSelected ? "bg-secondary/10" : "bg-gray-100"
+          }`}
+          aria-hidden="true"
+        >
+          {opt.emoji}
+        </span>
+      );
+    }
+    const cls = isSelected
+      ? accentStyles[opt.accent ?? "secondary"]
+      : "bg-gray-100 text-gray-500";
+    return (
+      <span
+        className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ${cls}`}
+        aria-hidden="true"
+      >
+        {opt.icon}
+      </span>
+    );
+  };
+
+  return (
+    <div ref={ref} className="relative w-full">
+      {/* ── Trigger ── */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-left transition hover:border-gray-300 hover:bg-gray-50 focus:border-secondary/50 focus:outline-none focus:ring-2 focus:ring-secondary/10"
+      >
+        {renderIcon(selected, true)}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-semibold text-gray-900">
+            {selected.label}
+          </p>
+          {variant === "type" && selected.description && (
+            <p className="truncate text-[10px] text-gray-500">
+              {selected.description}
+            </p>
+          )}
+        </div>
+
+        <span className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-bold text-gray-600">
+          {selected.count}
+        </span>
+
+        <ChevronDown
+          className={`h-3.5 w-3.5 flex-shrink-0 text-gray-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* ── Menu ── */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            role="listbox"
+            aria-label={ariaLabel}
+            className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white p-0.5 shadow-xl"
+          >
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition ${
+                    isSelected ? "bg-secondary/5" : "hover:bg-gray-50"
+                  }`}
+                >
+                  {renderIcon(opt, isSelected)}
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`truncate text-xs ${
+                        isSelected
+                          ? "font-bold text-secondary"
+                          : "font-semibold text-gray-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </p>
+                    {variant === "type" && opt.description && (
+                      <p className="truncate text-[10px] text-gray-500">
+                        {opt.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <span
+                    className={`flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                      isSelected
+                        ? "bg-secondary/10 text-secondary"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {opt.count}
+                  </span>
+
+                  {isSelected && (
+                    <Check
+                      className="h-3.5 w-3.5 flex-shrink-0 text-secondary"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 const DeliveryCard = ({
   order,
   onUpdate,
@@ -436,26 +628,43 @@ const DeliveryCard = ({
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
   const [assigning, setAssigning] = useState(false);
   const [showAssignForm, setShowAssignForm] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "in_house" | "third_party">("all");
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<"all" | "motorcycle" | "car" | "bicycle" | "van" | "foot">("all");
+
+  const [showFilters, setShowFilters] = useState(false);
+  const filtersRef = useRef<HTMLDivElement>(null);
+
+  const [filterType, setFilterType] = useState<
+    "all" | "in_house" | "third_party"
+  >("all");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<
+    "all" | "motorcycle" | "car" | "bicycle" | "van" | "foot"
+  >("all");
+
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">("distance");
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">(
+    "distance",
+  );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [routeData, setRouteData] = useState<Record<number, {
-    distanceKm: number | null;
-    durationMinutes: number | null;
-    legOneDistanceKm?: number;
-    legOneDurationMinutes?: number;
-    legTwoDistanceKm?: number;
-    legTwoDurationMinutes?: number;
-    loading: boolean;
-    error?: boolean;
-    source?: "osrm" | "cache" | "haversine";
-    mode?: "full_trip" | "pickup_only" | "direct_customer";
-  }>>({});
+
+  const [routeData, setRouteData] = useState<
+    Record<
+      number,
+      {
+        distanceKm: number | null;
+        durationMinutes: number | null;
+        legOneDistanceKm?: number;
+        legOneDurationMinutes?: number;
+        legTwoDistanceKm?: number;
+        legTwoDurationMinutes?: number;
+        loading: boolean;
+        error?: boolean;
+        source?: "osrm" | "cache" | "haversine";
+        mode?: "full_trip" | "pickup_only" | "direct_customer";
+      }
+    >
+  >({});
   const [showMapPreview, setShowMapPreview] = useState(false);
 
   const [usernameMap, setUsernameMap] = useState<Map<string, string>>(
@@ -469,18 +678,60 @@ const DeliveryCard = ({
   const [driverLocations, setDriverLocations] = useState<
     Record<
       number,
-      { latitude: number; longitude: number; is_online?: boolean; updated_at?: number }
+      {
+        latitude: number;
+        longitude: number;
+        is_online?: boolean;
+        updated_at?: number;
+      }
     >
   >({});
+
   const delivery = order.delivery;
   const canManage = !readOnly && order.status?.toLowerCase() === "processing";
   const cod = order.payment_method === "cod";
   const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
-  const routeCacheRef = useRef<Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>>(new Map());
-  const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const routeCacheRef = useRef<
+    Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>
+  >(new Map());
+  const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  /* ── Close filters popover on outside click / Escape ── */
+  useEffect(() => {
+    if (!showFilters) return;
+
+    const isMobile = () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      // Skip on mobile — backdrop handles closing
+      if (isMobile()) return;
+      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowFilters(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [showFilters]);
+
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -493,28 +744,13 @@ const DeliveryCard = ({
     return R * c;
   };
 
-  const isValidCoordinate = (lat: number, lon: number): boolean => {
-    return (
-      Number.isFinite(lat) &&
-      Number.isFinite(lon) &&
-      lat >= -90 &&
-      lat <= 90 &&
-      lon >= -180 &&
-      lon <= 180
-    );
-  };
-
-  const routeDebugEnabled = () => {
-    if (typeof window === "undefined") return false;
-    const queryEnabled = new URLSearchParams(window.location.search).get("debugDeliveryRoute") === "1";
-    const storageEnabled = window.localStorage.getItem("debugDeliveryRoute") === "1";
-    return queryEnabled || storageEnabled;
-  };
-
-  const routeDebug = (label: string, payload: unknown) => {
-    if (!routeDebugEnabled()) return;
-    console.log(`[DeliveryRoute:list] ${label}`, payload);
-  };
+  const isValidCoordinate = (lat: number, lon: number): boolean =>
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180;
 
   const parseCoordinatePair = (lat: unknown, lon: unknown) => {
     if (lat == null || lon == null) return null;
@@ -527,71 +763,79 @@ const DeliveryCard = ({
 
   const getCustomerLocation = () => {
     const candidates = [
-      { source: "delivery", value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon) },
-      { source: "shipping", value: parseCoordinatePair(order?.shipping_lat, order?.shipping_lon) },
-      { source: "customer", value: parseCoordinatePair(order?.customer_lat, order?.customer_lon) },
-      { source: "delivery_address", value: parseCoordinatePair(order?.delivery_address?.lat, order?.delivery_address?.lon) },
       {
-        source: "nested_delivery",
+        value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon),
+      },
+      { value: parseCoordinatePair(order?.shipping_lat, order?.shipping_lon) },
+      { value: parseCoordinatePair(order?.customer_lat, order?.customer_lon) },
+      {
+        value: parseCoordinatePair(
+          order?.delivery_address?.lat,
+          order?.delivery_address?.lon,
+        ),
+      },
+      {
         value: parseCoordinatePair(
           order?.vendor_orders?.[0]?.delivery?.customer_lat,
           order?.vendor_orders?.[0]?.delivery?.customer_lon,
         ),
       },
       {
-        source: "nested_shipping",
         value: parseCoordinatePair(
           order?.vendor_orders?.[0]?.shipping_lat,
           order?.vendor_orders?.[0]?.shipping_lon,
         ),
       },
     ];
-
-    const match = candidates.find((candidate) => candidate.value != null);
-    if (match) {
-      routeDebug("customer coordinate source", { source: match.source, ...match.value });
-      return match.value;
-    }
-    routeDebug("customer coordinate unavailable", { orderId: order?.id });
-    return null;
+    return candidates.find((c) => c.value != null)?.value ?? null;
   };
 
   const getPickupLocation = () => {
     const directCompany = order?.company;
     const nestedCompany = order?.vendor_orders?.[0]?.company;
-    const direct = parseCoordinatePair(directCompany?.latitude, directCompany?.longitude);
-    if (direct) {
-      routeDebug("pickup coordinate source", { source: "order.company", ...direct });
-      return direct;
-    }
-    const nested = parseCoordinatePair(nestedCompany?.latitude, nestedCompany?.longitude);
-    if (nested) {
-      routeDebug("pickup coordinate source", { source: "vendor_orders[0].company", ...nested });
-      return nested;
-    }
-    routeDebug("pickup coordinate unavailable", { orderId: order?.id });
-    return null;
+    const direct = parseCoordinatePair(
+      directCompany?.latitude,
+      directCompany?.longitude,
+    );
+    if (direct) return direct;
+    const nested = parseCoordinatePair(
+      nestedCompany?.latitude,
+      nestedCompany?.longitude,
+    );
+    return nested ?? null;
   };
 
   const getVehicleIcon = (type?: string) => {
     switch (type?.toLowerCase()) {
-      case "motorcycle": return "🏍️";
-      case "car": return "🚗";
-      case "bicycle": return "🚲";
-      case "van": return "🚐";
-      case "foot": return "🚶";
-      default: return "🛵";
+      case "motorcycle":
+        return "🏍️";
+      case "car":
+        return "🚗";
+      case "bicycle":
+        return "🚲";
+      case "van":
+        return "🚐";
+      case "foot":
+        return "🚶";
+      default:
+        return "🛵";
     }
   };
 
   const getVehicleName = (type?: string) => {
     switch (type?.toLowerCase()) {
-      case "motorcycle": return "Motorcycle";
-      case "car": return "Car";
-      case "bicycle": return "Bicycle";
-      case "van": return "Van";
-      case "foot": return "On Foot";
-      default: return "Vehicle";
+      case "motorcycle":
+        return "Motorcycle";
+      case "car":
+        return "Car";
+      case "bicycle":
+        return "Bicycle";
+      case "van":
+        return "Van";
+      case "foot":
+        return "On Foot";
+      default:
+        return "Vehicle";
     }
   };
 
@@ -602,204 +846,169 @@ const DeliveryCard = ({
     return `⭐ ${rating} (${reviews})`;
   };
 
-  const fetchDriverRoute = useCallback(async (
-    driverId: number,
-    fromLat: number,
-    fromLon: number,
-    pickupLat: number | null,
-    pickupLon: number | null,
-    customerLat: number | null,
-    customerLon: number | null,
-  ) => {
-    const CACHE_TTL = 5 * 60 * 1000;
-
-    const fetchLeg = async (
-      from: { lat: number; lon: number },
-      to: { lat: number; lon: number },
+  const fetchDriverRoute = useCallback(
+    async (
+      driverId: number,
+      fromLat: number,
+      fromLon: number,
+      pickupLat: number | null,
+      pickupLon: number | null,
+      customerLat: number | null,
+      customerLon: number | null,
     ) => {
-      const key = `${from.lat.toFixed(5)},${from.lon.toFixed(5)}_${to.lat.toFixed(5)},${to.lon.toFixed(5)}`;
-      const cached = routeCacheRef.current.get(key);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return { ...cached, source: "cache" as const };
-      }
-
-      const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
-        const data = await response.json();
-        if (data.code !== "Ok" || !data.routes?.length) {
-          throw new Error(`OSRM route failed: ${data.code || "unknown"}`);
+      const CACHE_TTL = 5 * 60 * 1000;
+      const fetchLeg = async (
+        from: { lat: number; lon: number },
+        to: { lat: number; lon: number },
+      ) => {
+        const key = `${from.lat.toFixed(5)},${from.lon.toFixed(5)}_${to.lat.toFixed(5)},${to.lon.toFixed(5)}`;
+        const cached = routeCacheRef.current.get(key);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+          return { ...cached, source: "cache" as const };
         }
-        const result = {
-          distanceKm: data.routes[0].distance / 1000,
-          durationMinutes: data.routes[0].duration / 60,
-          timestamp: Date.now(),
-        };
-        routeCacheRef.current.set(key, result);
-        return { ...result, source: "osrm" as const };
-      } catch (error) {
-        const fallbackDistance = calculateDistance(from.lat, from.lon, to.lat, to.lon);
-        routeDebug("OSRM leg fallback", { driverId, from, to, fallbackDistance, error });
-        return {
-          distanceKm: fallbackDistance,
-          durationMinutes: null,
-          timestamp: Date.now(),
-          source: "haversine" as const,
-        };
-      }
-    };
-
-    setRouteData((prev) => ({
-      ...prev,
-      [driverId]: { distanceKm: null, durationMinutes: null, loading: true },
-    }));
-
-    const driver = { lat: fromLat, lon: fromLon };
-    const customer =
-      customerLat != null && customerLon != null
-        ? { lat: customerLat, lon: customerLon }
-        : null;
-    const pickup =
-      pickupLat != null && pickupLon != null
-        ? { lat: pickupLat, lon: pickupLon }
-        : null;
-
-    try {
-      if (pickup && !customer) {
-        const legOne = await fetchLeg(driver, pickup);
-        const result = {
-          distanceKm: legOne.distanceKm,
-          durationMinutes: legOne.durationMinutes,
-          legOneDistanceKm: legOne.distanceKm,
-          legOneDurationMinutes: legOne.durationMinutes ?? undefined,
-          loading: false,
-          source: legOne.source,
-          mode: "pickup_only" as const,
-        };
-        setRouteData((prev) => ({ ...prev, [driverId]: result }));
-        routeDebug("delivery person route resolved", {
-          driverId,
-          routeMode: "delivery person→pickup (customer unavailable)",
-          driver,
-          pickup,
-          customer: null,
-          pickupKm: result.legOneDistanceKm,
-          pickupMinutes: result.legOneDurationMinutes ?? null,
-          source: result.source,
-        });
-        return;
-      }
-
-      if (!pickup && customer) {
-        const direct = await fetchLeg(driver, customer);
-        const result = {
-          distanceKm: direct.distanceKm,
-          durationMinutes: direct.durationMinutes,
-          legOneDistanceKm: direct.distanceKm,
-          legOneDurationMinutes: direct.durationMinutes ?? undefined,
-          loading: false,
-          source: direct.source,
-          mode: "direct_customer" as const,
-        };
-        setRouteData((prev) => ({ ...prev, [driverId]: result }));
-        routeDebug("delivery person route resolved", {
-          driverId,
-          routeMode: "delivery person→customer",
-          driver,
-          customer,
-          totalKm: result.distanceKm,
-          totalMinutes: result.durationMinutes,
-          source: result.source,
-        });
-        return;
-      }
-
-      if (!pickup || !customer) {
-        throw new Error("No routable pickup or customer coordinates");
-      }
-
-      const [legOne, legTwo] = await Promise.all([
-        fetchLeg(driver, pickup),
-        fetchLeg(pickup, customer),
-      ]);
-
-      const durationMinutes =
-        legOne.durationMinutes != null && legTwo.durationMinutes != null
-          ? legOne.durationMinutes + legTwo.durationMinutes
-          : null;
-      const source =
-        legOne.source === "haversine" || legTwo.source === "haversine"
-          ? "haversine"
-          : legOne.source === "cache" && legTwo.source === "cache"
-            ? "cache"
-            : "osrm";
-      const result = {
-        distanceKm: legOne.distanceKm + legTwo.distanceKm,
-        durationMinutes,
-        legOneDistanceKm: legOne.distanceKm,
-        legOneDurationMinutes: legOne.durationMinutes ?? undefined,
-        legTwoDistanceKm: legTwo.distanceKm,
-        legTwoDurationMinutes: legTwo.durationMinutes ?? undefined,
-        loading: false,
-        source: source as "osrm" | "cache" | "haversine",
-        mode: "full_trip" as const,
+        const url = `https://router.project-osrm.org/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=false`;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
+          const data = await response.json();
+          if (data.code !== "Ok" || !data.routes?.length) {
+            throw new Error(`OSRM route failed: ${data.code || "unknown"}`);
+          }
+          const result = {
+            distanceKm: data.routes[0].distance / 1000,
+            durationMinutes: data.routes[0].duration / 60,
+            timestamp: Date.now(),
+          };
+          routeCacheRef.current.set(key, result);
+          return { ...result, source: "osrm" as const };
+        } catch {
+          const fallbackDistance = calculateDistance(
+            from.lat,
+            from.lon,
+            to.lat,
+            to.lon,
+          );
+          return {
+            distanceKm: fallbackDistance,
+            durationMinutes: null,
+            timestamp: Date.now(),
+            source: "haversine" as const,
+          };
+        }
       };
 
-      setRouteData((prev) => ({ ...prev, [driverId]: result }));
-      routeDebug("delivery person route resolved", {
-        driverId,
-        routeMode: "delivery person→pickup→customer",
-        driver,
-        pickup,
-        customer,
-        legOneKm: result.legOneDistanceKm,
-        legTwoKm: result.legTwoDistanceKm,
-        totalKm: result.distanceKm,
-        totalMinutes: result.durationMinutes,
-        source: result.source,
-      });
-    } catch (error) {
-      console.error("[DeliveryRoute:list] route calculation failed", { driverId, error });
       setRouteData((prev) => ({
         ...prev,
-        [driverId]: {
-          distanceKm: null,
-          durationMinutes: null,
-          loading: false,
-          error: true,
-        },
+        [driverId]: { distanceKm: null, durationMinutes: null, loading: true },
       }));
-    }
-  }, []);
+
+      const driver = { lat: fromLat, lon: fromLon };
+      const customer =
+        customerLat != null && customerLon != null
+          ? { lat: customerLat, lon: customerLon }
+          : null;
+      const pickup =
+        pickupLat != null && pickupLon != null
+          ? { lat: pickupLat, lon: pickupLon }
+          : null;
+
+      try {
+        if (pickup && !customer) {
+          const legOne = await fetchLeg(driver, pickup);
+          setRouteData((prev) => ({
+            ...prev,
+            [driverId]: {
+              distanceKm: legOne.distanceKm,
+              durationMinutes: legOne.durationMinutes,
+              legOneDistanceKm: legOne.distanceKm,
+              legOneDurationMinutes: legOne.durationMinutes ?? undefined,
+              loading: false,
+              source: legOne.source,
+              mode: "pickup_only",
+            },
+          }));
+          return;
+        }
+        if (!pickup && customer) {
+          const direct = await fetchLeg(driver, customer);
+          setRouteData((prev) => ({
+            ...prev,
+            [driverId]: {
+              distanceKm: direct.distanceKm,
+              durationMinutes: direct.durationMinutes,
+              legOneDistanceKm: direct.distanceKm,
+              legOneDurationMinutes: direct.durationMinutes ?? undefined,
+              loading: false,
+              source: direct.source,
+              mode: "direct_customer",
+            },
+          }));
+          return;
+        }
+        if (!pickup || !customer) throw new Error("No coordinates");
+        const [legOne, legTwo] = await Promise.all([
+          fetchLeg(driver, pickup),
+          fetchLeg(pickup, customer),
+        ]);
+        const durationMinutes =
+          legOne.durationMinutes != null && legTwo.durationMinutes != null
+            ? legOne.durationMinutes + legTwo.durationMinutes
+            : null;
+        const source =
+          legOne.source === "haversine" || legTwo.source === "haversine"
+            ? "haversine"
+            : legOne.source === "cache" && legTwo.source === "cache"
+              ? "cache"
+              : "osrm";
+        setRouteData((prev) => ({
+          ...prev,
+          [driverId]: {
+            distanceKm: legOne.distanceKm + legTwo.distanceKm,
+            durationMinutes,
+            legOneDistanceKm: legOne.distanceKm,
+            legOneDurationMinutes: legOne.durationMinutes ?? undefined,
+            legTwoDistanceKm: legTwo.distanceKm,
+            legTwoDurationMinutes: legTwo.durationMinutes ?? undefined,
+            loading: false,
+            source: source as "osrm" | "cache" | "haversine",
+            mode: "full_trip",
+          },
+        }));
+      } catch {
+        setRouteData((prev) => ({
+          ...prev,
+          [driverId]: {
+            distanceKm: null,
+            durationMinutes: null,
+            loading: false,
+            error: true,
+          },
+        }));
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!showAssignForm || staffList.length === 0) return;
     const cleanups: Array<() => void> = [];
-
     staffList.forEach((driver) => {
       const driverRef = ref(db, `drivers/${driver.id}`);
       const callback = (snapshot: any) => {
         const data = snapshot.val();
         if (data && data.latitude != null && data.longitude != null) {
-          setDriverLocations((prev) => ({
-            ...prev,
-            [driver.id]: data,
-          }));
+          setDriverLocations((prev) => ({ ...prev, [driver.id]: data }));
         }
       };
       onValue(driverRef, callback);
       cleanups.push(() => off(driverRef, "value", callback));
     });
-
-    return () => {
-      cleanups.forEach((cleanup) => cleanup());
-    };
+    return () => cleanups.forEach((c) => c());
   }, [showAssignForm, staffList]);
 
   useEffect(() => {
     return () => {
-      routeRequestTimers.current.forEach(timer => clearTimeout(timer));
+      routeRequestTimers.current.forEach((t) => clearTimeout(t));
       routeRequestTimers.current.clear();
     };
   }, []);
@@ -813,7 +1022,6 @@ const DeliveryCard = ({
         is_online: localLoc.is_online !== false,
       };
     }
-
     if (liveDriverLocations && typeof liveDriverLocations === "object") {
       const entries = Object.values(liveDriverLocations);
       for (const entry of entries as any[]) {
@@ -827,14 +1035,14 @@ const DeliveryCard = ({
           }
         }
       }
-      const directMatch =
+      const direct =
         (liveDriverLocations as any)[driverId] ||
         (liveDriverLocations as any)[String(driverId)];
-      if (directMatch) {
+      if (direct) {
         return {
-          lat: Number(directMatch.lat ?? directMatch.latitude),
-          lon: Number(directMatch.lon ?? directMatch.longitude ?? directMatch.lng),
-          is_online: directMatch.is_online !== false,
+          lat: Number(direct.lat ?? direct.latitude),
+          lon: Number(direct.lon ?? direct.longitude ?? direct.lng),
+          is_online: direct.is_online !== false,
         };
       }
     }
@@ -842,15 +1050,21 @@ const DeliveryCard = ({
   };
 
   const getReferenceLocation = () => {
-    const storeLat = order.company?.latitude ? parseFloat(order.company.latitude) : null;
-    const storeLon = order.company?.longitude ? parseFloat(order.company.longitude) : null;
-    if (storeLat != null && storeLon != null && isValidCoordinate(storeLat, storeLon)) {
+    const storeLat = order.company?.latitude
+      ? parseFloat(order.company.latitude)
+      : null;
+    const storeLon = order.company?.longitude
+      ? parseFloat(order.company.longitude)
+      : null;
+    if (
+      storeLat != null &&
+      storeLon != null &&
+      isValidCoordinate(storeLat, storeLon)
+    ) {
       return { lat: storeLat, lon: storeLon, type: "store" };
     }
     const custLoc = getCustomerLocation();
-    if (custLoc) {
-      return { ...custLoc, type: "customer" };
-    }
+    if (custLoc) return { ...custLoc, type: "customer" };
     return null;
   };
 
@@ -864,7 +1078,8 @@ const DeliveryCard = ({
           : null;
         return {
           ...s,
-          calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+          calculated_distance:
+            distance != null ? Math.round(distance * 10) / 10 : null,
           location_source: "live",
           isLive: true,
           isOnline: liveLoc.is_online !== false,
@@ -881,7 +1096,8 @@ const DeliveryCard = ({
             : null;
           return {
             ...s,
-            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+            calculated_distance:
+              distance != null ? Math.round(distance * 10) / 10 : null,
             location_source: "current",
             isLive: false,
             isOnline: true,
@@ -899,7 +1115,8 @@ const DeliveryCard = ({
             : null;
           return {
             ...s,
-            calculated_distance: distance != null ? Math.round(distance * 10) / 10 : null,
+            calculated_distance:
+              distance != null ? Math.round(distance * 10) / 10 : null,
             location_source: "last_known",
             isLive: false,
             isOnline: true,
@@ -941,19 +1158,16 @@ const DeliveryCard = ({
 
   const filteredStaffList = useMemo(() => {
     let filtered = [...staffWithDistance];
-
     if (filterType === "in_house") {
       filtered = filtered.filter((s) => s.is_in_house === true);
     } else if (filterType === "third_party") {
       filtered = filtered.filter((s) => s.is_in_house === false);
     }
-
     if (vehicleTypeFilter !== "all") {
-      filtered = filtered.filter((s) =>
-        s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase()
+      filtered = filtered.filter(
+        (s) => s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase(),
       );
     }
-
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -961,14 +1175,15 @@ const DeliveryCard = ({
           s.name?.toLowerCase().includes(search) ||
           s.phone?.toLowerCase().includes(search) ||
           s.username?.toLowerCase().includes(search) ||
-          s.company_name?.toLowerCase().includes(search)
+          s.company_name?.toLowerCase().includes(search),
       );
     }
-
     return filtered.sort((a, b) => {
       if (sortBy === "distance") {
-        const distA = routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999;
-        const distB = routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999;
+        const distA =
+          routeData[a.id]?.distanceKm ?? a.calculated_distance ?? 999999;
+        const distB =
+          routeData[b.id]?.distanceKm ?? b.calculated_distance ?? 999999;
         return sortOrder === "asc" ? distA - distB : distB - distA;
       } else if (sortBy === "rating") {
         const ratingA = parseFloat(a.average_rating || "0");
@@ -977,41 +1192,43 @@ const DeliveryCard = ({
       } else {
         const nameA = a.name?.toLowerCase() || "";
         const nameB = b.name?.toLowerCase() || "";
-        return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+        return sortOrder === "asc"
+          ? nameA.localeCompare(nameB)
+          : nameB.localeCompare(nameA);
       }
     });
-  }, [staffWithDistance, filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, routeData]);
+  }, [
+    staffWithDistance,
+    filterType,
+    vehicleTypeFilter,
+    searchTerm,
+    sortBy,
+    sortOrder,
+    routeData,
+  ]);
 
   const totalPages = Math.ceil(filteredStaffList.length / itemsPerPage);
   const paginatedStaffList = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredStaffList.slice(startIndex, endIndex);
+    return filteredStaffList.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredStaffList, currentPage, itemsPerPage]);
 
   useEffect(() => {
     if (!showAssignForm || paginatedStaffList.length === 0) return;
-
     const customerLoc = getCustomerLocation();
     const pickupLoc = getPickupLocation();
-
-    if (!customerLoc && !pickupLoc) {
-      routeDebug("route calculation skipped", {
-        orderId: order?.id,
-        reason: "no pickup or customer coordinates",
-      });
-      return;
-    }
+    if (!customerLoc && !pickupLoc) return;
 
     paginatedStaffList.forEach((driver) => {
-      if (driver.live_lat != null && driver.live_lon != null &&
-        isValidCoordinate(driver.live_lat, driver.live_lon)) {
-
+      if (
+        driver.live_lat != null &&
+        driver.live_lon != null &&
+        isValidCoordinate(driver.live_lat, driver.live_lon)
+      ) {
         const timerKey = driver.id;
         if (routeRequestTimers.current.has(timerKey)) {
           clearTimeout(routeRequestTimers.current.get(timerKey));
         }
-
         routeRequestTimers.current.set(
           timerKey,
           setTimeout(() => {
@@ -1025,7 +1242,7 @@ const DeliveryCard = ({
               customerLoc?.lon ?? null,
             );
             routeRequestTimers.current.delete(timerKey);
-          }, 300)
+          }, 300),
         );
       }
     });
@@ -1047,7 +1264,14 @@ const DeliveryCard = ({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterType, vehicleTypeFilter, searchTerm, sortBy, sortOrder, itemsPerPage]);
+  }, [
+    filterType,
+    vehicleTypeFilter,
+    searchTerm,
+    sortBy,
+    sortOrder,
+    itemsPerPage,
+  ]);
 
   const getOrderFailureReason = () => {
     if (delivery?.failure_reason) return delivery.failure_reason;
@@ -1055,10 +1279,14 @@ const DeliveryCard = ({
     if (delivery?.cancelled_reason) return delivery.cancelled_reason;
     if (delivery?.reason) return delivery.reason;
     if (delivery?.status_reason) return delivery.status_reason;
-    if (order?.vendor_order_detail?.failure_reason) return order.vendor_order_detail.failure_reason;
-    if (order?.vendor_order_detail?.cancellation_reason) return order.vendor_order_detail.cancellation_reason;
-    if (order?.vendor_order_detail?.cancelled_reason) return order.vendor_order_detail.cancelled_reason;
-    if (order?.vendor_order_detail?.reason) return order.vendor_order_detail.reason;
+    if (order?.vendor_order_detail?.failure_reason)
+      return order.vendor_order_detail.failure_reason;
+    if (order?.vendor_order_detail?.cancellation_reason)
+      return order.vendor_order_detail.cancellation_reason;
+    if (order?.vendor_order_detail?.cancelled_reason)
+      return order.vendor_order_detail.cancelled_reason;
+    if (order?.vendor_order_detail?.reason)
+      return order.vendor_order_detail.reason;
     if (order?.failure_reason) return order.failure_reason;
     if (order?.cancellation_reason) return order.cancellation_reason;
     if (order?.cancelled_reason) return order.cancelled_reason;
@@ -1081,22 +1309,23 @@ const DeliveryCard = ({
     delivery?.status?.toLowerCase() === "cancelled" ||
     delivery?.status?.toLowerCase() === "rejected";
 
-  const fetchStaff = async (filter: "all" | "in_house" | "third_party", vehicleType?: string) => {
+  const fetchStaff = async (
+    filter: "all" | "in_house" | "third_party",
+    vehicleType?: string,
+  ) => {
     if (!order.company?.slug) return;
     setLoadingStaff(true);
     try {
       const params: any = {
         vendor_order_id: order.id,
-        driver_type: filter === "all" ? "all" : filter === "in_house" ? "in_house" : "3pl",
+        driver_type:
+          filter === "all" ? "all" : filter === "in_house" ? "in_house" : "3pl",
       };
-
       if (vehicleType && vehicleType !== "all") {
         params.vehicle_type = vehicleType;
       }
-
       const res = await getAvailableDeliveryDrivers(order.company.slug, params);
       const allDrivers = res.data || [];
-
       const mapped = allDrivers.map((s: any) => ({
         id: s.id,
         name: `${s.name || s.username || ""}`.trim(),
@@ -1119,27 +1348,22 @@ const DeliveryCard = ({
         can_batch: !!s.can_batch,
       }));
       setStaffList(mapped);
-
-      const ratingMap = new Map();
+      const rMap = new Map();
       mapped.forEach((staff: any) => {
         if (staff.phone) {
-          ratingMap.set(staff.phone, {
+          rMap.set(staff.phone, {
             average_rating: staff.average_rating,
             total_reviews: staff.total_reviews,
           });
         }
       });
-      setRatingMap(ratingMap);
-
-      const map = new Map();
+      setRatingMap(rMap);
+      const uMap = new Map();
       mapped.forEach((staff: any) => {
-        if (staff.phone && staff.username) {
-          map.set(staff.phone, staff.username);
-        }
+        if (staff.phone && staff.username) uMap.set(staff.phone, staff.username);
       });
-      setUsernameMap(map);
-    } catch (err) {
-      console.error("Failed to fetch available delivery personnel", err);
+      setUsernameMap(uMap);
+    } catch {
       showToast("error", "Failed to load delivery personnel");
     } finally {
       setLoadingStaff(false);
@@ -1169,16 +1393,24 @@ const DeliveryCard = ({
         });
       }
       await onUpdate();
-      const selectedDriverObj = staffList.find((s) => s.id === Number(selectedUserId));
+      const selectedDriverObj = staffList.find(
+        (s) => s.id === Number(selectedUserId),
+      );
       if (selectedDriverObj?.is_en_route) {
-        showToast("success", "Offer sent to en-route delivery person (45s window to respond)");
+        showToast(
+          "success",
+          "Offer sent to en-route delivery person (45s window to respond)",
+        );
       } else if (selectedDriverObj?.is_at_vendor) {
-        showToast("success", "Order batched with delivery person currently at store!");
+        showToast(
+          "success",
+          "Order batched with delivery person currently at store!",
+        );
       } else {
         showToast("success", "Delivery person assigned successfully");
       }
       setShowAssignForm(false);
-    } catch (err: any) {
+    } catch {
       showToast("error", "Failed to assign delivery person");
     } finally {
       setAssigning(false);
@@ -1186,13 +1418,13 @@ const DeliveryCard = ({
   };
 
   const formatDistance = (distance: number | null | undefined) => {
-    if (distance == null) return "Distance unavailable";
+    if (distance == null) return "—";
     if (distance < 1) return `${(distance * 1000).toFixed(0)} m`;
     return `${distance.toFixed(1)} km`;
   };
 
   const formatDuration = (minutes: number | null | undefined) => {
-    if (minutes == null) return "ETA unavailable";
+    if (minutes == null) return "";
     if (minutes < 1) return "< 1 min";
     if (minutes < 60) return `~${Math.round(minutes)} min`;
     const hours = Math.floor(minutes / 60);
@@ -1201,20 +1433,66 @@ const DeliveryCard = ({
   };
 
   const handleViewOnMap = () => {
-    if (onViewOnMap && order.id) {
-      onViewOnMap(order.id);
-    }
+    if (onViewOnMap && order.id) onViewOnMap(order.id);
   };
 
   const bestMatchDriver = useMemo(() => {
-    if (filteredStaffList.length === 0 || sortBy !== "distance" || sortOrder !== "asc") return null;
-    const firstDriver = filteredStaffList[0];
-    if (firstDriver && (firstDriver.live_lat != null || firstDriver.calculated_distance != null)) {
-      return firstDriver;
+    if (
+      filteredStaffList.length === 0 ||
+      sortBy !== "distance" ||
+      sortOrder !== "asc"
+    )
+      return null;
+    const first = filteredStaffList[0];
+    if (first && (first.live_lat != null || first.calculated_distance != null)) {
+      return first;
     }
     return null;
   }, [filteredStaffList, sortBy, sortOrder]);
 
+  const selectedDriver = useMemo(
+    () => staffList.find((s) => s.id === Number(selectedUserId)),
+    [staffList, selectedUserId],
+  );
+
+  const activeFilterCount =
+    (filterType !== "all" ? 1 : 0) + (vehicleTypeFilter !== "all" ? 1 : 0);
+
+  // Stats for header
+  const inHouseCount = staffWithDistance.filter((s) => s.is_in_house).length;
+  const thirdPartyCount = staffWithDistance.filter((s) => !s.is_in_house).length;
+
+  // Filter counts (based on unfiltered staff list)
+  const allCount = staffWithDistance.length;
+  const inHouseFilterCount = staffWithDistance.filter(
+    (s) => s.is_in_house,
+  ).length;
+  const thirdPartyFilterCount = staffWithDistance.filter(
+    (s) => !s.is_in_house,
+  ).length;
+
+  const vehicleCounts: Record<string, number> = {
+    all: staffWithDistance.length,
+    motorcycle: staffWithDistance.filter(
+      (s) => s.vehicle_type?.toLowerCase() === "motorcycle",
+    ).length,
+    car: staffWithDistance.filter(
+      (s) => s.vehicle_type?.toLowerCase() === "car",
+    ).length,
+    bicycle: staffWithDistance.filter(
+      (s) => s.vehicle_type?.toLowerCase() === "bicycle",
+    ).length,
+    van: staffWithDistance.filter(
+      (s) => s.vehicle_type?.toLowerCase() === "van",
+    ).length,
+    foot: staffWithDistance.filter(
+      (s) => s.vehicle_type?.toLowerCase() === "foot",
+    ).length,
+  };
+
+  /* ─────────────────────────────────────────────────────────────
+     RENDER
+     ───────────────────────────────────────────────────────────── */
   return (
     <>
       <Card
@@ -1229,6 +1507,9 @@ const DeliveryCard = ({
       >
         <AnimatePresence mode="wait">
           {!showAssignForm ? (
+            /* ═══════════════════════════════════════════════════════
+               DELIVERY SUMMARY VIEW
+               ═══════════════════════════════════════════════════════ */
             <motion.div
               key="delivery-summary"
               initial={{ opacity: 0, y: 4 }}
@@ -1252,7 +1533,6 @@ const DeliveryCard = ({
                         <StatusBadge status={delivery.status || "pending"} />
                       </div>
                     </div>
-
                     <div className="p-4 sm:p-5">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex min-w-0 items-center gap-3.5">
@@ -1261,7 +1541,6 @@ const DeliveryCard = ({
                               type="button"
                               onClick={() => setShowFullscreenImage(true)}
                               className="group relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 sm:h-16 sm:w-16"
-                              aria-label="View delivery person image"
                             >
                               <img
                                 src={delivery.delivery_person_image}
@@ -1278,17 +1557,18 @@ const DeliveryCard = ({
                           ) : (
                             <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/5 text-lg font-bold text-secondary sm:h-16 sm:w-16">
                               {getInitials(
-                                usernameMap.get(delivery.delivery_person_phone) ||
-                                delivery.delivery_person_name,
+                                usernameMap.get(
+                                  delivery.delivery_person_phone,
+                                ) || delivery.delivery_person_name,
                               )}
                             </div>
                           )}
-
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <h5 className="truncate text-base font-semibold text-gray-950 sm:text-lg">
-                                {usernameMap.get(delivery.delivery_person_phone) ||
-                                  delivery.delivery_person_name}
+                                {usernameMap.get(
+                                  delivery.delivery_person_phone,
+                                ) || delivery.delivery_person_name}
                               </h5>
                               {delivery.logistics_company_name ? (
                                 <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
@@ -1300,41 +1580,42 @@ const DeliveryCard = ({
                                 </span>
                               )}
                             </div>
-
                             <p className="mt-1 truncate text-xs text-gray-500">
-                              {delivery.logistics_company_name || "Company delivery team"}
+                              {delivery.logistics_company_name ||
+                                "Company delivery team"}
                             </p>
-
                             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
                               <span className="inline-flex items-center gap-1.5">
                                 <PhoneCall className="h-3.5 w-3.5 text-gray-400" />
                                 <span className="font-medium">
                                   {delivery.delivery_person_phone || "No phone"}
                                 </span>
-                                <CopyButton text={delivery.delivery_person_phone} />
+                                <CopyButton
+                                  text={delivery.delivery_person_phone}
+                                />
                               </span>
-
                               {ratingMap.has(delivery.delivery_person_phone) && (
                                 <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
                                   {renderRating(
-                                    ratingMap.get(delivery.delivery_person_phone)!
-                                      .average_rating,
-                                    ratingMap.get(delivery.delivery_person_phone)!
-                                      .total_reviews,
+                                    ratingMap.get(
+                                      delivery.delivery_person_phone,
+                                    )!.average_rating,
+                                    ratingMap.get(
+                                      delivery.delivery_person_phone,
+                                    )!.total_reviews,
                                   )}
                                 </span>
                               )}
                             </div>
                           </div>
                         </div>
-
                         <div className="flex flex-wrap gap-2 lg:justify-end">
                           {delivery?.status === "out_for_delivery" &&
                             onOpenLiveTracking && (
                               <button
                                 type="button"
                                 onClick={onOpenLiveTracking}
-                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700"
                               >
                                 <span className="relative flex h-2 w-2">
                                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
@@ -1343,26 +1624,25 @@ const DeliveryCard = ({
                                 Live tracking
                               </button>
                             )}
-
                           {getFulfillmentKind(order) === "delivery" && (
                             <button
                               type="button"
                               onClick={handleViewOnMap}
-                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-secondary/15"
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
                             >
                               <MapPin className="h-3.5 w-3.5 text-secondary" />
                               View map
                             </button>
                           )}
-
                           {!deliveryStatus && (canManage || cod) && (
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
-                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 ${
-                                delivery?.status === "declined" || delivery?.status === "expired"
-                                  ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-400 shadow-sm"
-                                  : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10 focus:ring-secondary/15"
+                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
+                                delivery?.status === "declined" ||
+                                delivery?.status === "expired"
+                                  ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
+                                  : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10"
                               }`}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
@@ -1398,24 +1678,25 @@ const DeliveryCard = ({
                           </p>
                         </div>
                         <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-500">
-                          {delivery.attempts.length} {delivery.attempts.length === 1 ? "attempt" : "attempts"}
+                          {delivery.attempts.length}{" "}
+                          {delivery.attempts.length === 1
+                            ? "attempt"
+                            : "attempts"}
                         </span>
                       </div>
-
                       <div className="max-h-52 divide-y divide-gray-100 overflow-y-auto">
                         {delivery.attempts.map((att: any) => {
-                          const attemptStatus = att.status?.toLowerCase();
+                          const s = att.status?.toLowerCase();
                           const statusClass =
-                            attemptStatus === "accepted"
+                            s === "accepted"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : attemptStatus === "declined"
+                              : s === "declined"
                                 ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : attemptStatus === "expired"
+                                : s === "expired"
                                   ? "bg-amber-50 text-amber-800 border-amber-200"
-                                  : attemptStatus === "reassigned"
+                                  : s === "reassigned"
                                     ? "bg-purple-50 text-purple-700 border-purple-200"
                                     : "bg-blue-50 text-blue-700 border-blue-200";
-
                           return (
                             <div
                               key={att.id}
@@ -1424,7 +1705,8 @@ const DeliveryCard = ({
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="truncate text-xs font-semibold text-gray-800">
-                                    {att.driver_name || `Delivery Person #${att.driver}`}
+                                    {att.driver_name ||
+                                      `Delivery Person #${att.driver}`}
                                   </p>
                                   {att.driver_phone && (
                                     <span className="text-[10px] text-gray-400 font-mono">
@@ -1443,21 +1725,25 @@ const DeliveryCard = ({
                                 </div>
                                 {att.decline_reason && (
                                   <p className="mt-1 text-[11px] text-gray-600">
-                                    <span className="font-medium text-gray-700">Reason:</span> {att.decline_reason}
+                                    <span className="font-medium text-gray-700">
+                                      Reason:
+                                    </span>{" "}
+                                    {att.decline_reason}
                                   </p>
                                 )}
                               </div>
-
                               <div className="flex flex-shrink-0 items-center gap-2">
-                                <span className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}>
-                                  {attemptStatus === "expired" ? "Expired (Timeout)" : att.status}
+                                <span
+                                  className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
+                                >
+                                  {s === "expired" ? "Expired (Timeout)" : att.status}
                                 </span>
                                 {att.assigned_at && (
                                   <span className="hidden text-[10px] text-gray-400 sm:inline">
-                                    {new Date(att.assigned_at).toLocaleTimeString([], {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })}
+                                    {new Date(att.assigned_at).toLocaleTimeString(
+                                      [],
+                                      { hour: "2-digit", minute: "2-digit" },
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -1483,41 +1769,43 @@ const DeliveryCard = ({
                       ? "Previous delivery person attempt was declined or expired. Choose an available delivery person to reassign this order."
                       : "Choose an available in-house delivery person or logistics partner to continue this delivery."}
                   </p>
-
                   <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
                     {!deliveryStatus && canManage && (
                       <button
                         type="button"
                         onClick={() => setShowAssignForm(true)}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light focus:outline-none focus:ring-2 focus:ring-secondary/25"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        {delivery?.attempts && delivery.attempts.length > 0 ? "Reassign delivery person" : "Assign delivery person"}
+                        {delivery?.attempts && delivery.attempts.length > 0
+                          ? "Reassign delivery person"
+                          : "Assign delivery person"}
                       </button>
                     )}
-
                     {getFulfillmentKind(order) === "delivery" && (
                       <button
                         type="button"
                         onClick={handleViewOnMap}
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-secondary/15"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
                       >
                         <MapPin className="h-3.5 w-3.5 text-secondary" />
                         View delivery map
                       </button>
                     )}
                   </div>
-
                   {isOrderFailed && failureReason && (
                     <div className="mx-auto mt-4 flex max-w-lg items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-left">
                       <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600" />
                       <div>
-                        <p className="text-xs font-semibold text-rose-900">Delivery issue</p>
-                        <p className="mt-1 text-xs leading-5 text-rose-700">{failureReason}</p>
+                        <p className="text-xs font-semibold text-rose-900">
+                          Delivery issue
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-rose-700">
+                          {failureReason}
+                        </p>
                       </div>
                     </div>
                   )}
-
                   {delivery?.attempts && delivery.attempts.length > 0 && (
                     <div className="mt-6 text-left">
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
@@ -1531,23 +1819,26 @@ const DeliveryCard = ({
                       </div>
                       <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white max-h-48 overflow-y-auto">
                         {delivery.attempts.map((att: any) => {
-                          const attemptStatus = att.status?.toLowerCase();
+                          const s = att.status?.toLowerCase();
                           const statusClass =
-                            attemptStatus === "accepted"
+                            s === "accepted"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : attemptStatus === "declined"
+                              : s === "declined"
                                 ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : attemptStatus === "expired"
+                                : s === "expired"
                                   ? "bg-amber-50 text-amber-800 border-amber-200"
-                                  : attemptStatus === "reassigned"
+                                  : s === "reassigned"
                                     ? "bg-purple-50 text-purple-700 border-purple-200"
                                     : "bg-blue-50 text-blue-700 border-blue-200";
-
                           return (
-                            <div key={att.id} className="p-3 flex items-start justify-between gap-2">
+                            <div
+                              key={att.id}
+                              className="p-3 flex items-start justify-between gap-2"
+                            >
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-gray-800">
-                                  {att.driver_name || `Delivery Person #${att.driver}`}
+                                  {att.driver_name ||
+                                    `Delivery Person #${att.driver}`}
                                 </p>
                                 {att.decline_reason && (
                                   <p className="text-[11px] text-gray-500 mt-0.5">
@@ -1555,8 +1846,10 @@ const DeliveryCard = ({
                                   </p>
                                 )}
                               </div>
-                              <span className={`rounded border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}>
-                                {attemptStatus === "expired" ? "Expired" : att.status}
+                              <span
+                                className={`rounded border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
+                              >
+                                {s === "expired" ? "Expired" : att.status}
                               </span>
                             </div>
                           );
@@ -1568,6 +1861,9 @@ const DeliveryCard = ({
               )}
             </motion.div>
           ) : (
+            /* ═══════════════════════════════════════════════════════
+               ASSIGNMENT VIEW — PREMIUM DISPATCH UI
+               ═══════════════════════════════════════════════════════ */
             <motion.div
               key="driver-assignment"
               initial={{ opacity: 0, y: 4 }}
@@ -1575,31 +1871,26 @@ const DeliveryCard = ({
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
-              <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAssignForm(false)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
-                      aria-label="Back to delivery details"
-                    >
-                      <span className="text-base leading-none">←</span>
-                    </button>
-                    <div>
-                      <h5 className="text-sm font-semibold text-gray-950">
-                        {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
-                          ? "Reassign delivery person"
-                          : "Assign delivery person"}
-                      </h5>
-                      <p className="mt-0.5 text-[11px] text-gray-500">
-                        Compare availability, vehicle, rating and route before assigning.
-                      </p>
-                    </div>
+              {/* ═══ HEADER: title + subtitle + List/Map toggle ═══ */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h5 className="text-sm font-bold text-gray-950">
+                      {delivery?.delivery_person_name ||
+                      (delivery?.attempts && delivery.attempts.length > 0)
+                        ? "Reassign delivery person"
+                        : "Assign delivery person"}
+                    </h5>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      Choose the best available driver for this order
+                    </p>
                   </div>
                 </div>
 
-                <div className="inline-flex self-start rounded-lg border border-gray-200 bg-gray-50 p-1 sm:self-auto">
+                <div className="inline-flex self-start rounded-lg border border-gray-200 bg-gray-50 p-0.5 sm:self-auto">
                   <button
                     type="button"
                     onClick={() => setShowMapPreview(false)}
@@ -1626,8 +1917,9 @@ const DeliveryCard = ({
               </div>
 
               {showMapPreview ? (
-                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
-                  <div className="flex min-h-[300px] items-center justify-center p-8 text-center">
+                /* ═══ MAP PREVIEW ═══ */
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                  <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
                     <div>
                       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
                         <MapPin className="h-5 w-5 text-secondary" />
@@ -1636,7 +1928,8 @@ const DeliveryCard = ({
                         Delivery route map
                       </h6>
                       <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-                        Open the full map to review the order location, live delivery personnel and route context.
+                        Open the full map to review the order location, live
+                        delivery personnel and route context.
                       </p>
                       <button
                         type="button"
@@ -1650,423 +1943,625 @@ const DeliveryCard = ({
                   </div>
                 </div>
               ) : (
+                /* ═══ LIST VIEW ═══ */
                 <>
-                  <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search delivery person, phone, username or logistics company"
-                      className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-4 focus:ring-secondary/10"
-                    />
-                  </div>
-
-                  <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Delivery Person Type
-                      </span>
-                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-                        {[
-                          { value: "all", label: "All" },
-                          { value: "in_house", label: "In-house" },
-                          { value: "third_party", label: "3PL" },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                              setFilterType(option.value as any);
-                              setSelectedUserId("");
-                            }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
-                              filterType === option.value
-                                ? "border-secondary bg-secondary text-white shadow-sm"
-                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
+                  {/* ─── TOOLBAR: search + Filters + sort icon ─── */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    {/* Search */}
+                    <div className="relative min-w-0 flex-1">
+                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Search drivers…"
+                        aria-label="Search delivery personnel"
+                        className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
+                      />
                     </div>
 
-                    <div className="h-px bg-gray-200/80" />
+                    {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
+                    <div className="relative" ref={filtersRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters((v) => !v)}
+                        aria-haspopup="dialog"
+                        aria-expanded={showFilters}
+                        className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
+                          activeFilterCount > 0
+                            ? "border-secondary bg-secondary/5 text-secondary"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Filter className="h-3.5 w-3.5" />
+                        Filters
+                        {activeFilterCount > 0 && (
+                          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
+                            {activeFilterCount}
+                          </span>
+                        )}
+                      </button>
 
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Vehicle
-                      </span>
-                      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
-                        {[
-                          { value: "all", label: "All", icon: "" },
-                          { value: "motorcycle", label: "Motorcycle", icon: "🏍️" },
-                          { value: "car", label: "Car", icon: "🚗" },
-                          { value: "bicycle", label: "Bicycle", icon: "🚲" },
-                          { value: "van", label: "Van", icon: "🚐" },
-                          { value: "foot", label: "Foot", icon: "🚶" },
-                        ].map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                              setVehicleTypeFilter(option.value as any);
-                              setSelectedUserId("");
-                            }}
-                            className={`flex-shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition ${
-                              vehicleTypeFilter === option.value
-                                ? "border-secondary bg-secondary text-white shadow-sm"
-                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900"
-                            }`}
-                          >
-                            {option.icon && <span className="mr-1">{option.icon}</span>}
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
+                      <AnimatePresence>
+                        {showFilters && (
+                          <>
+                            {/* ── BACKDROP (mobile only) ── */}
+                            <motion.div
+                              key="filter-backdrop"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.15 }}
+                              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
+                              onClick={() => setShowFilters(false)}
+                              aria-hidden="true"
+                            />
+
+                            {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
+                            <motion.div
+                              key="filter-panel"
+                              initial={{ opacity: 0, y: 40, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 40, scale: 0.98 }}
+                              transition={{
+                                type: "spring",
+                                damping: 26,
+                                stiffness: 320,
+                              }}
+                              role="dialog"
+                              aria-modal="true"
+                              aria-label="Filter delivery personnel"
+                              className={[
+                                "z-50 flex flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl",
+                                "fixed inset-x-0 bottom-0 max-h-[88vh] rounded-t-3xl",
+                                "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-12",
+                                "sm:max-h-[80vh] sm:w-[420px] sm:max-w-[420px] sm:rounded-2xl",
+                              ].join(" ")}
+                              style={{
+                                paddingBottom: "env(safe-area-inset-bottom)",
+                              }}
+                            >
+                              {/* Drag handle (mobile only) */}
+                              <div className="flex justify-center pt-3 sm:hidden">
+                                <span
+                                  className="h-1 w-10 rounded-full bg-gray-300"
+                                  aria-hidden="true"
+                                />
+                              </div>
+
+                              {/* STICKY HEADER */}
+                            {/* HEADER */}
+<div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
+  <div className="flex items-center gap-2">
+    <Filter className="h-3.5 w-3.5 text-secondary" />
+    <h3 className="text-xs font-bold text-gray-900">Filter drivers</h3>
+    <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+      {filteredStaffList.length}
+    </span>
+  </div>
+  <div className="flex flex-shrink-0 items-center gap-0.5">
+    {activeFilterCount > 0 && (
+      <button
+        type="button"
+        onClick={() => {
+          setFilterType("all");
+          setVehicleTypeFilter("all");
+          setSelectedUserId("");
+        }}
+        className="rounded-md px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary/10"
+      >
+        Clear
+      </button>
+    )}
+    <button
+      type="button"
+      onClick={() => setShowFilters(false)}
+      aria-label="Close filters"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
+  </div>
+</div>
+
+                              {/* SCROLLABLE BODY */}
+                            {/* SCROLLABLE BODY */}
+<div className="flex-1 overflow-y-auto px-4 py-3">
+  {/* ═══ Delivery Person Type ═══ */}
+  <div className="mb-2.5">
+    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+      Delivery Person Type
+    </label>
+
+    <FilterDropdown
+      variant="type"
+      value={filterType}
+      onChange={(v) => {
+        setFilterType(v as "all" | "in_house" | "third_party");
+        setSelectedUserId("");
+      }}
+      ariaLabel="Delivery person type"
+      options={[
+        {
+          value: "all",
+          label: "All drivers",
+          description: "Every available driver",
+          count: allCount,
+          accent: "secondary",
+          icon: <Users className="h-3 w-3" />,
+        },
+        {
+          value: "in_house",
+          label: "In-house",
+          description: "Your company drivers",
+          count: inHouseFilterCount,
+          accent: "emerald",
+          icon: <Truck className="h-3 w-3" />,
+        },
+        {
+          value: "third_party",
+          label: "3PL Partners",
+          description: "Third-party logistics",
+          count: thirdPartyFilterCount,
+          accent: "blue",
+          icon: <Building2 className="h-3 w-3" />,
+        },
+      ]}
+    />
+  </div>
+
+  {/* ═══ Vehicle Type ═══ */}
+  <div>
+    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+      Vehicle Type
+    </label>
+
+    <FilterDropdown
+      variant="vehicle"
+      value={vehicleTypeFilter}
+      onChange={(v) => {
+        setVehicleTypeFilter(
+          v as "all" | "motorcycle" | "car" | "bicycle" | "van" | "foot",
+        );
+        setSelectedUserId("");
+      }}
+      ariaLabel="Vehicle type"
+      options={[
+        {
+          value: "all",
+          emoji: "🚚",
+          label: "All vehicles",
+          count: vehicleCounts.all,
+        },
+        {
+          value: "motorcycle",
+          emoji: "🏍️",
+          label: "Motorcycle",
+          count: vehicleCounts.motorcycle,
+        },
+        {
+          value: "car",
+          emoji: "🚗",
+          label: "Car",
+          count: vehicleCounts.car,
+        },
+        {
+          value: "bicycle",
+          emoji: "🚲",
+          label: "Bicycle",
+          count: vehicleCounts.bicycle,
+        },
+        {
+          value: "van",
+          emoji: "🚐",
+          label: "Van",
+          count: vehicleCounts.van,
+        },
+        {
+          value: "foot",
+          emoji: "🚶",
+          label: "On Foot",
+          count: vehicleCounts.foot,
+        },
+      ]}
+    />
+  </div>
+</div>
+                              {/* STICKY FOOTER */}
+                             {/* FOOTER */}
+<div className="border-t border-gray-100 bg-white px-4 py-2.5 sm:rounded-b-xl">
+  <div className="flex gap-2">
+    <button
+      type="button"
+      disabled={activeFilterCount === 0}
+      onClick={() => {
+        setFilterType("all");
+        setVehicleTypeFilter("all");
+        setSelectedUserId("");
+      }}
+      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      Reset
+    </button>
+    <button
+      type="button"
+      onClick={() => setShowFilters(false)}
+      className="flex-1 rounded-lg bg-secondary px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light"
+    >
+      Show {filteredStaffList.length}{" "}
+      {filteredStaffList.length === 1 ? "driver" : "drivers"}
+    </button>
+  </div>
+</div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
 
-                    <div className="h-px bg-gray-200/80" />
-
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Display
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative flex-shrink-0">
-                          <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                            className="h-8 appearance-none rounded-lg border border-gray-200 bg-white py-1 pl-3 pr-8 text-[11px] font-semibold text-gray-600 outline-none transition hover:border-gray-300 focus:border-secondary/50"
-                          >
-                            <option value="distance">Distance</option>
-                            <option value="rating">Rating</option>
-                            <option value="name">Name</option>
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                          className="h-8 flex-shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-[11px] font-semibold text-gray-600 transition hover:border-gray-300 hover:text-gray-900"
-                          aria-label={`Sort ${sortOrder === "asc" ? "descending" : "ascending"}`}
+                    {/* Sort button (icon-style dropdown) */}
+                    <div className="relative flex-shrink-0">
+                      <select
+                        value={`${sortBy}|${sortOrder}`}
+                        onChange={(e) => {
+                          const [field, order] = e.target.value.split("|");
+                          setSortBy(field as any);
+                          setSortOrder(order as "asc" | "desc");
+                        }}
+                        aria-label="Sort"
+                        className="h-10 appearance-none rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs font-semibold text-gray-700 outline-none transition hover:border-gray-300 focus:border-secondary/50"
+                        style={{ paddingLeft: "2.25rem" }}
+                      >
+                        <option value="distance|asc">Distance · Nearest</option>
+                        <option value="distance|desc">Distance · Farthest</option>
+                        <option value="rating|desc">Rating · Highest</option>
+                        <option value="rating|asc">Rating · Lowest</option>
+                        <option value="name|asc">Name · A → Z</option>
+                        <option value="name|desc">Name · Z → A</option>
+                      </select>
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         >
-                          {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
-                        </button>
-
-                        <div className="relative flex-shrink-0">
-                          <select
-                            value={itemsPerPage}
-                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                            className="h-8 appearance-none rounded-lg border border-gray-200 bg-white py-1 pl-3 pr-8 text-[11px] font-semibold text-gray-600 outline-none transition hover:border-gray-300 focus:border-secondary/50"
-                          >
-                            <option value={10}>10 / page</option>
-                            <option value={25}>25 / page</option>
-                            <option value={50}>50 / page</option>
-                            <option value={100}>100 / page</option>
-                          </select>
-                          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                        </div>
-                      </div>
+                          <line x1="4" y1="6" x2="20" y2="6" />
+                          <line x1="4" y1="12" x2="14" y2="12" />
+                          <line x1="4" y1="18" x2="8" y2="18" />
+                        </svg>
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900">
-                        Available delivery personnel
-                        <span className="ml-1.5 font-medium text-gray-400">
-                          {filteredStaffList.length}
-                        </span>
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-gray-400">
-                        Select one delivery person, then confirm the assignment below.
-                      </p>
-                    </div>
+                  {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+                    <h6 className="text-sm font-bold text-gray-900">
+                      Available drivers
+                    </h6>
+                    <p className="text-[11px] text-gray-500">
+                      {inHouseCount} in-house · {thirdPartyCount} third-party
+                    </p>
+                  </div>
 
+                  {/* ─── ACTIVE FILTER CHIPS ─── */}
+                  {activeFilterCount > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-medium text-gray-500">
-                        {staffWithDistance.filter((s) => s.is_in_house).length} in-house
-                      </span>
-                      <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-medium text-gray-500">
-                        {staffWithDistance.filter((s) => !s.is_in_house).length} 3PL
-                      </span>
-                      <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-medium text-gray-500">
-                        {staffWithDistance.filter((s) => s.calculated_distance != null).length} located
-                      </span>
+                      {filterType !== "all" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                          {filterType === "in_house" ? "In-house" : "3PL"}
+                          <button
+                            type="button"
+                            onClick={() => setFilterType("all")}
+                            aria-label="Remove type filter"
+                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      )}
+                      {vehicleTypeFilter !== "all" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                          <span>{getVehicleIcon(vehicleTypeFilter)}</span>
+                          {getVehicleName(vehicleTypeFilter)}
+                          <button
+                            type="button"
+                            onClick={() => setVehicleTypeFilter("all")}
+                            aria-label="Remove vehicle filter"
+                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  )}
 
+                  {/* ─── DRIVER LIST ─── */}
                   {loadingStaff ? (
-                    <div className="flex min-h-48 items-center justify-center rounded-2xl border border-gray-200 bg-white">
+                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
                       <div className="text-center">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
                         <p className="mt-2 text-xs font-medium text-gray-500">
-                          Loading available delivery personnel...
+                          Loading drivers…
                         </p>
                       </div>
                     </div>
                   ) : filteredStaffList.length === 0 ? (
-                    <div className="flex min-h-48 items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
+                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
                       <div>
-                        <Users className="mx-auto h-8 w-8 text-gray-300" />
+                        <Users className="mx-auto h-7 w-7 text-gray-300" />
                         <p className="mt-2 text-sm font-semibold text-gray-800">
-                          No matching delivery personnel
+                          No drivers found
                         </p>
                         <p className="mt-1 text-xs text-gray-500">
-                          {searchTerm || filterType !== "all" || vehicleTypeFilter !== "all"
+                          {searchTerm ||
+                          filterType !== "all" ||
+                          vehicleTypeFilter !== "all"
                             ? "Try changing the search or filters."
-                            : "There are no available delivery personnel for this order right now."}
+                            : "There are no available drivers right now."}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <>
-                      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                        <div className="hidden grid-cols-[minmax(190px,1.8fr)_110px_120px_150px_84px] items-center gap-3 border-b border-gray-100 bg-gray-50/80 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 lg:grid">
-                          <span>Delivery Person</span>
-                          <span>Vehicle</span>
-                          <span>Rating</span>
-                          <span>Route</span>
-                          <span className="text-right">Select</span>
-                        </div>
+                      {/* Driver list */}
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                        {paginatedStaffList.map((staff, index) => {
+                          const isSelected = selectedUserId === staff.id;
+                          const hasLocation =
+                            staff.calculated_distance != null;
+                          const globalIndex =
+                            (currentPage - 1) * itemsPerPage + index;
+                          const isNearest =
+                            globalIndex === 0 &&
+                            sortBy === "distance" &&
+                            sortOrder === "asc" &&
+                            hasLocation;
+                          const routeInfo = routeData[staff.id];
+                          const roadDistance = routeInfo?.distanceKm;
+                          const roadDuration = routeInfo?.durationMinutes;
+                          const isRouteLoading = routeInfo?.loading;
+                          const isBestMatch = bestMatchDriver?.id === staff.id;
 
-                        <div className="max-h-[470px] divide-y divide-gray-100 overflow-y-auto">
-                          {paginatedStaffList.map((staff, index) => {
-                            const isSelected = selectedUserId === staff.id;
-                            const hasLocation = staff.calculated_distance != null;
-                            const globalIndex = (currentPage - 1) * itemsPerPage + index;
-                            const isNearest =
-                              globalIndex === 0 &&
-                              sortBy === "distance" &&
-                              sortOrder === "asc" &&
-                              hasLocation;
-                            const routeInfo = routeData[staff.id];
-                            const roadDistance = routeInfo?.distanceKm;
-                            const roadDuration = routeInfo?.durationMinutes;
-                            const isRouteLoading = routeInfo?.loading;
-                            const isBestMatch = bestMatchDriver?.id === staff.id;
+                          return (
+                            <button
+                              key={staff.id}
+                              type="button"
+                              onClick={() => setSelectedUserId(staff.id)}
+                              aria-pressed={isSelected}
+                              aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
+                              className={`group relative block w-full px-4 py-4 text-left transition ${
+                                isSelected
+                                  ? "bg-secondary/[0.04]"
+                                  : "bg-white hover:bg-gray-50/70"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                {/* Avatar tile */}
+                                <div
+                                  className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
+                                    isSelected
+                                      ? "border-secondary/30 bg-secondary/10 text-secondary"
+                                      : "border-gray-200 bg-gray-50 text-gray-600"
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  {getInitials(staff.name)}
+                                </div>
 
-                            return (
-                              <button
-                                key={staff.id}
-                                type="button"
-                                onClick={() => setSelectedUserId(staff.id)}
-                                className={`group relative block w-full px-4 py-3.5 text-left transition ${
-                                  isSelected
-                                    ? "bg-secondary/[0.045]"
-                                    : "bg-white hover:bg-gray-50/80"
-                                }`}
-                              >
-                                <div className="grid gap-3 lg:grid-cols-[minmax(190px,1.8fr)_110px_120px_150px_84px] lg:items-center">
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${
-                                      isSelected
-                                        ? "border-secondary/25 bg-secondary/10 text-secondary"
-                                        : "border-gray-200 bg-gray-50 text-gray-600"
-                                    }`}>
-                                      {getInitials(staff.name)}
-                                    </div>
-
-                                    <div className="min-w-0">
-                                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                        <p className="max-w-full truncate text-xs font-semibold text-gray-900 sm:text-sm">
-                                          {staff.name}
-                                        </p>
-                                        {(isBestMatch || isNearest) && (
-                                          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                                            Best match
-                                          </span>
-                                        )}
-                                        {staff.is_at_vendor && (
-                                          <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
-                                            🏬 At Store ({staff.active_orders_count} orders - Batchable)
-                                          </span>
-                                        )}
-                                        {staff.is_en_route && (
-                                          <span className="rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold text-indigo-700">
-                                            🚗 En Route ({staff.active_orders_count} in transit)
-                                          </span>
-                                        )}
-                                        {!staff.is_at_vendor && !staff.is_en_route && staff.active_orders_count === 0 && (
-                                          <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                                            🟢 Available (Idle)
-                                          </span>
-                                        )}
-                                        {staff.location_source === "live" && (
-                                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-600">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                            Live
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-gray-500">
-                                        <span>
-                                          {staff.is_in_house
-                                            ? "In-house"
-                                            : staff.company_name || "3PL partner"}
-                                        </span>
-                                        {staff.phone && (
-                                          <>
-                                            <span className="text-gray-300">•</span>
-                                            <span className="font-mono">{staff.phone}</span>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 lg:block">
-                                    <span className="text-[10px] font-medium text-gray-400 lg:hidden">
-                                      Vehicle
-                                    </span>
-                                    <span className="text-xs font-medium text-gray-700">
-                                      {getVehicleIcon(staff.vehicle_type)} {getVehicleName(staff.vehicle_type)}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 lg:block">
-                                    <span className="text-[10px] font-medium text-gray-400 lg:hidden">
-                                      Rating
-                                    </span>
-                                    <span className="text-xs font-medium text-gray-700">
-                                      {staff.average_rating && staff.average_rating !== "0.00"
-                                        ? renderRating(staff.average_rating, staff.total_reviews)
-                                        : "No reviews"}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 lg:block">
-                                    <span className="text-[10px] font-medium text-gray-400 lg:hidden">
-                                      Trip
-                                    </span>
-                                    {isRouteLoading ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        Calculating
-                                      </span>
-                                    ) : routeInfo?.mode === "pickup_only" && routeInfo.legOneDistanceKm != null ? (
-                                      <div>
-                                        <p className="text-[10px] font-semibold text-gray-500">
-                                          Trip <span className="text-gray-400">—</span>
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-semibold text-gray-800">
-                                          Pickup {formatDistance(routeInfo.legOneDistanceKm)}
-                                        </p>
-                                        {routeInfo.legOneDurationMinutes != null && (
-                                          <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-500">
-                                            <Clock className="h-3 w-3" />
-                                            {formatDuration(routeInfo.legOneDurationMinutes)}
-                                          </p>
-                                        )}
-                                        <p className="mt-0.5 text-[9px] text-amber-600">
-                                          Customer route unavailable
-                                        </p>
-                                      </div>
-                                    ) : roadDistance != null ? (
-                                      <div>
-                                        <p className="text-xs font-semibold text-gray-800" title={routeInfo?.mode === "direct_customer" ? "Delivery Person → customer" : "Total trip: Delivery Person → pickup → customer"}>
-                                          {formatDistance(roadDistance)}
-                                        </p>
-                                        <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-400">
-                                          {routeInfo?.mode === "direct_customer" ? "Direct to customer" : "Total trip"}
-                                          {routeInfo?.source === "haversine" ? " · estimate" : ""}
-                                        </p>
-                                        {roadDuration != null && (
-                                          <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-gray-500">
-                                            <Clock className="h-3 w-3" />
-                                            {formatDuration(roadDuration)}
-                                          </p>
-                                        )}
-                                        {routeInfo?.legOneDistanceKm != null && routeInfo?.legTwoDistanceKm != null && (
-                                          <p className="mt-1 text-[9px] leading-tight text-gray-400">
-                                            {formatDistance(routeInfo.legOneDistanceKm)} to store
-                                            <span className="mx-1">•</span>
-                                            {formatDistance(routeInfo.legTwoDistanceKm)} to customer
-                                          </p>
-                                        )}
-                                      </div>
-                                    ) : hasLocation ? (
-                                      <div>
-                                        <p className="text-xs font-semibold text-gray-700">
-                                          {formatDistance(staff.calculated_distance)}
-                                        </p>
-                                        <p className="mt-0.5 text-[9px] text-gray-400">Straight-line fallback</p>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[10px] text-gray-400">
-                                        Unavailable
+                                {/* Center: name + meta */}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                    <p className="truncate text-sm font-bold text-gray-900">
+                                      {staff.name}
+                                    </p>
+                                    {(isBestMatch || isNearest) && (
+                                      <span
+                                        title="Closest available match"
+                                        className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                                      >
+                                        Best match
                                       </span>
                                     )}
                                   </div>
 
-                                  <div className="flex items-center justify-start lg:justify-end">
-                                    <span className={`inline-flex min-w-[72px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition ${
-                                      isSelected
-                                        ? "border-secondary bg-secondary text-white"
-                                        : "border-gray-200 bg-white text-gray-600 group-hover:border-secondary/25 group-hover:text-secondary"
-                                    }`}>
-                                      {isSelected ? (
-                                        <>
-                                          <Check className="mr-1 h-3 w-3" /> Selected
-                                        </>
-                                      ) : (
-                                        "Select"
-                                      )}
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                    <span className="font-medium">
+                                      {staff.is_in_house
+                                        ? "In-house"
+                                        : staff.company_name || "3PL partner"}
+                                    </span>
+                                    <span
+                                      className="text-gray-300"
+                                      aria-hidden="true"
+                                    >
+                                      ·
+                                    </span>
+                                    <span>
+                                      {getVehicleName(staff.vehicle_type)}
                                     </span>
                                   </div>
+
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                    {staff.location_source === "live" && (
+                                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                                        Live
+                                      </span>
+                                    )}
+                                    {staff.is_at_vendor ? (
+                                      <span className="font-semibold text-amber-700">
+                                        🏬 At Store
+                                      </span>
+                                    ) : staff.is_en_route ? (
+                                      <span className="font-semibold text-indigo-700">
+                                        🚗 En Route
+                                      </span>
+                                    ) : staff.active_orders_count === 0 ? (
+                                      <span className="font-semibold text-emerald-700">
+                                        ● Available
+                                      </span>
+                                    ) : (
+                                      <span className="font-semibold text-gray-500">
+                                        {staff.active_orders_count} active
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+
+                                {/* Right: rating + distance + radio */}
+                                <div className="flex flex-shrink-0 items-center gap-3 self-center">
+                                  <div className="hidden text-right sm:block">
+                                    {staff.average_rating &&
+                                    staff.average_rating !== "0.00" ? (
+                                      <p className="text-xs font-bold text-gray-800">
+                                        ⭐{" "}
+                                        {parseFloat(
+                                          staff.average_rating,
+                                        ).toFixed(1)}
+                                        {staff.total_reviews && (
+                                          <span className="ml-1 text-[10px] font-medium text-gray-400">
+                                            ({staff.total_reviews})
+                                          </span>
+                                        )}
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs font-medium text-gray-400">
+                                        No reviews
+                                      </p>
+                                    )}
+
+                                    <div className="mt-1 text-[10px] text-gray-500">
+                                      {isRouteLoading ? (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Calculating…
+                                        </span>
+                                      ) : roadDistance != null ? (
+                                        <span>
+                                          {formatDistance(roadDistance)}
+                                          {roadDuration != null && (
+                                            <>
+                                              {" · "}
+                                              {formatDuration(roadDuration)}
+                                            </>
+                                          )}
+                                        </span>
+                                      ) : hasLocation ? (
+                                        <span>
+                                          ~
+                                          {formatDistance(
+                                            staff.calculated_distance,
+                                          )}
+                                        </span>
+                                      ) : (
+                                        <span>Distance unavailable</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    aria-hidden="true"
+                                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
+                                      isSelected
+                                        ? "border-secondary bg-secondary text-white"
+                                        : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
+                                    }`}
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Mobile rating / distance line */}
+                              <div className="mt-2 flex items-center justify-between sm:hidden">
+                                <span className="text-[10px] text-gray-500">
+                                  {staff.average_rating &&
+                                  staff.average_rating !== "0.00"
+                                    ? `⭐ ${parseFloat(
+                                        staff.average_rating,
+                                      ).toFixed(1)} (${staff.total_reviews})`
+                                    : "No reviews"}
+                                </span>
+                                <span className="text-[10px] text-gray-500">
+                                  {isRouteLoading
+                                    ? "Calculating…"
+                                    : roadDistance != null
+                                      ? formatDistance(roadDistance)
+                                      : hasLocation
+                                        ? `~${formatDistance(
+                                            staff.calculated_distance,
+                                          )}`
+                                        : "Distance unavailable"}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
 
+                      {/* Pagination */}
                       {totalPages > 1 && (
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <p className="text-[10px] font-medium text-gray-400">
                             Page {currentPage} of {totalPages}
                           </p>
-
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                              onClick={() =>
+                                setCurrentPage((prev) => Math.max(1, prev - 1))
+                              }
                               disabled={currentPage === 1}
                               className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               Previous
                             </button>
-
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                              let pageNum;
-                              if (totalPages <= 5) pageNum = i + 1;
-                              else if (currentPage <= 3) pageNum = i + 1;
-                              else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
-                              else pageNum = currentPage - 2 + i;
-
-                              return (
-                                <button
-                                  key={pageNum}
-                                  type="button"
-                                  onClick={() => setCurrentPage(pageNum)}
-                                  className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
-                                    currentPage === pageNum
-                                      ? "bg-secondary text-white"
-                                      : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                  }`}
-                                >
-                                  {pageNum}
-                                </button>
-                              );
-                            })}
-
+                            {Array.from(
+                              { length: Math.min(5, totalPages) },
+                              (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) pageNum = i + 1;
+                                else if (currentPage <= 3) pageNum = i + 1;
+                                else if (currentPage >= totalPages - 2)
+                                  pageNum = totalPages - 4 + i;
+                                else pageNum = currentPage - 2 + i;
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    type="button"
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    aria-current={
+                                      currentPage === pageNum
+                                        ? "page"
+                                        : undefined
+                                    }
+                                    className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
+                                      currentPage === pageNum
+                                        ? "bg-secondary text-white"
+                                        : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              },
+                            )}
                             <button
                               type="button"
-                              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                              onClick={() =>
+                                setCurrentPage((prev) =>
+                                  Math.min(totalPages, prev + 1),
+                                )
+                              }
                               disabled={currentPage === totalPages}
                               className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
                             >
@@ -2078,16 +2573,37 @@ const DeliveryCard = ({
                     </>
                   )}
 
-                  <div className="sticky bottom-0 z-10 -mx-2 mt-1 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
-                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        {selectedUserId ? (
-                          <p className="truncate text-[11px] font-medium text-gray-500">
-                            Selected: <span className="font-semibold text-gray-800">{staffList.find((s) => s.id === selectedUserId)?.name || `Delivery Person #${selectedUserId}`}</span>
-                          </p>
+                  {/* ═══ STICKY ACTION BAR ═══ */}
+                  <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        {selectedDriver ? (
+                          <div className="flex items-center gap-3">
+                            <span
+                              aria-hidden="true"
+                              className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
+                            >
+                              <Check className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-gray-900">
+                                {selectedDriver.name} selected
+                              </p>
+                              <p className="truncate text-[10px] text-gray-500">
+                                {selectedDriver.is_in_house
+                                  ? "In-house"
+                                  : selectedDriver.company_name ||
+                                    "3PL partner"}
+                                {selectedDriver.vehicle_type &&
+                                  ` · ${getVehicleName(
+                                    selectedDriver.vehicle_type,
+                                  )}`}
+                              </p>
+                            </div>
+                          </div>
                         ) : (
                           <p className="text-[11px] text-gray-400">
-                            Select a delivery person to enable assignment.
+                            Select a driver to continue.
                           </p>
                         )}
                       </div>
@@ -2104,19 +2620,21 @@ const DeliveryCard = ({
                           type="button"
                           onClick={handleAssign}
                           disabled={assigning || !selectedUserId}
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:min-w-36 sm:flex-none"
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
                         >
                           {assigning ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Assigning...
+                              Assigning…
                             </>
                           ) : (
                             <>
                               <CheckCircle className="h-3.5 w-3.5" />
-                              {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
-                                ? "Reassign delivery person"
-                                : "Assign delivery person"}
+                              {delivery?.delivery_person_name ||
+                              (delivery?.attempts &&
+                                delivery.attempts.length > 0)
+                                ? "Reassign driver"
+                                : "Assign driver"}
                             </>
                           )}
                         </button>
@@ -2130,29 +2648,31 @@ const DeliveryCard = ({
         </AnimatePresence>
       </Card>
 
+      {/* Fullscreen delivery person image */}
       <AnimatePresence>
         {showFullscreenImage && delivery?.delivery_person_image && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delivery person image"
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-lg"
             onClick={() => setShowFullscreenImage(false)}
           >
             <button
               type="button"
               onClick={() => setShowFullscreenImage(false)}
-              className="absolute right-6 top-6 z-10 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition hover:scale-110 hover:bg-white/20"
               aria-label="Close image preview"
+              className="absolute right-6 top-6 z-10 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition hover:scale-110 hover:bg-white/20"
             >
               <X className="h-6 w-6" />
             </button>
-
             <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-4 py-2 text-xs font-medium text-white/70 backdrop-blur-sm">
               <ZoomIn className="h-3.5 w-3.5" />
               <span>Click anywhere to close</span>
             </div>
-
             <motion.img
               src={delivery.delivery_person_image}
               alt="Delivery Person"

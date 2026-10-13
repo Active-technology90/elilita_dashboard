@@ -65,7 +65,7 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
             you, or contact support.
           </p>
 
-          {user?.email && (
+          {/* {user?.email && (
             <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs text-amber-800">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div className="min-w-0">
@@ -73,7 +73,7 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
                 <p className="truncate font-mono">{user.email}</p>
               </div>
             </div>
-          )}
+          )} */}
 
           <button
             type="button"
@@ -81,7 +81,7 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6a5acd] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#5a4ac0] active:scale-[0.98]"
           >
             <LogOut className="h-4 w-4" />
-            Sign out
+            Sign in with a different account
           </button>
         </div>
       </div>

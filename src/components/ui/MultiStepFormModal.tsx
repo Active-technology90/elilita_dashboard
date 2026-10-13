@@ -37,6 +37,7 @@ interface MultiStepFormModalProps {
   showStepIndicator?: boolean;
   closeOnBackdrop?: boolean;
   preventCloseWhileSubmitting?: boolean;
+  disableSubmit?: boolean;
   autoSave?: {
     data: Record<string, any>;
     save: (data: Record<string, any>) => void;
@@ -103,6 +104,7 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
   showStepIndicator = true,
   closeOnBackdrop = true,
   preventCloseWhileSubmitting = true,
+  disableSubmit ,
   autoSave,
 }) => {
   const [currentStep, setCurrentStep] = useState(() => initialStep);
@@ -409,7 +411,7 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
                   <button
                     type="button"
                     onClick={prevStep}
-                    disabled={submitting || isValidating}
+                    disabled={submitting || isValidating }
                     className="
                       h-10 min-h-10 px-4 rounded-xl
                       border border-gray-300
@@ -452,7 +454,7 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
                 ) : (
                   <button
                     type="submit"
-                    disabled={submitting || isValidating}
+                    disabled={submitting || isValidating || disableSubmit}
                     className="
                       px-5 h-10 min-h-10 rounded-xl
                       bg-secondary

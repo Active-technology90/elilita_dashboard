@@ -5,7 +5,6 @@ import {
   Award,
   Calendar,
   ShieldCheck,
-  Users,
   CheckCircle2,
   XCircle,
   LayoutGrid,
@@ -13,7 +12,6 @@ import {
   BarChart3,
   PieChart,
   Star,
-  Briefcase,
   Layers,
 } from "lucide-react";
 import {
@@ -36,6 +34,10 @@ import api, {
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
+
+/* ============================================================
+   TYPES
+   ============================================================ */
 
 interface Agent {
   id: number;
@@ -94,7 +96,7 @@ interface PerformanceData {
 }
 
 /* ============================================================
-   Summary Card — matches Overview.tsx SummaryCard style
+   Summary Card
    ============================================================ */
 
 interface SummaryStatCardProps {
@@ -194,7 +196,7 @@ const SummaryStatCard = ({
 };
 
 /* ============================================================
-   Progress Ring — Overview-style neutral card
+   Progress Ring
    ============================================================ */
 
 interface ProgressRingProps {
@@ -296,31 +298,52 @@ export default function MarketingOverview({
   initialAgent?: any;
 }) {
   const [loading, setLoading] = useState(true);
-  const [_refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<PerformanceData | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const { toast, showToast } = useToast();
 
-  const [companyData, setCompanyData] = useState<any>(null);
-  const [_companyLoading, setCompanyLoading] = useState(false);
-
+  /* ============================================================
+     FETCH PERFORMANCE
+     ============================================================ */
   const fetchPerformance = async (showRefresh = false) => {
+    const mode = agentId ? `agent #${agentId}` : "self (marketing)";
+    console.log(
+      `%c[MarketingOverview] 🚀 Fetching performance data — ${mode}`,
+      "color: #674FA3; font-weight: bold;",
+    );
+
     try {
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
       setError("");
 
       if (agentId) {
+        // ─── Admin viewing a specific agent ───
+        console.log(
+          `%c[MarketingOverview] 📡 Calling getAdminMarketingAgentPerformance(${agentId})`,
+          "color: #3B82F6;",
+        );
         try {
           const res = await getAdminMarketingAgentPerformance(agentId);
+          console.log(
+            `%c[MarketingOverview] ✅ Performance loaded for agent #${agentId}`,
+            "color: #10B981; font-weight: bold;",
+            res.data,
+          );
           setData(res.data);
         } catch (apiErr: any) {
+          console.warn(
+            `%c[MarketingOverview] ⚠️ 404 or error for agent #${agentId} — falling back to initialAgent data`,
+            "color: #F59E0B;",
+            apiErr,
+          );
           if (apiErr?.response?.status === 404 && initialAgent) {
             const dailyTarget = Number(initialAgent.daily_target) || 0;
             const weeklyTarget = Number(initialAgent.weekly_target) || 0;
             const companiesCount = Number(initialAgent.companies_count) || 0;
-            setData({
+            const fallback: PerformanceData = {
               agent: {
                 id: initialAgent.id,
                 username: initialAgent.username || `Agent #${agentId}`,
@@ -343,13 +366,64 @@ export default function MarketingOverview({
               active_subscriptions_count: 0,
               registrations_by_plan: {},
               daily_performance: [],
-            });
+            };
+            console.log(
+              "%c[MarketingOverview] 🧩 Using fallback performance data",
+              "color: #F59E0B;",
+              fallback,
+            );
+            setData(fallback);
             return;
           }
           throw apiErr;
         }
       } else {
+        // ─── Marketing user viewing their own dashboard ───
+        console.log(
+          "%c[MarketingOverview] 📡 Calling getMarketingPerformance() (self)",
+          "color: #3B82F6;",
+        );
         const res = await getMarketingPerformance();
+        console.log(
+          "%c[MarketingOverview] ✅ Own performance loaded",
+          "color: #10B981; font-weight: bold;",
+          res.data,
+        );
+
+        // 🔍 Detailed diagnostic log
+        if (res.data) {
+          console.log(
+            "%c[MarketingOverview] 📊 Data summary",
+            "color: #674FA3; font-weight: bold;",
+            {
+              agent: res.data.agent,
+              total_companies_registered:
+                res.data.total_companies_registered,
+              active_subscriptions_count:
+                res.data.active_subscriptions_count,
+              target_progress: res.data.target_progress,
+              registrations_by_plan: res.data.registrations_by_plan,
+              daily_performance_days: res.data.daily_performance?.length ?? 0,
+              daily_performance: res.data.daily_performance,
+            },
+          );
+
+          // 🔍 Per-day breakdown
+          if (Array.isArray(res.data.daily_performance)) {
+            res.data.daily_performance.forEach((day: any) => {
+              console.log(
+                `%c[MarketingOverview] 📅 ${day.date} — ${day.companies_registered_count} companies, ${day.subscriptions_started?.length ?? 0} subscriptions`,
+                "color: #6B7280;",
+                {
+                  date: day.date,
+                  companies: day.companies,
+                  subscriptions: day.subscriptions_started,
+                },
+              );
+            });
+          }
+        }
+
         setData(res.data);
       }
 
@@ -357,7 +431,13 @@ export default function MarketingOverview({
         showToast("success", "Dashboard refreshed successfully");
       }
     } catch (err: any) {
-      console.error(err);
+      console.error(
+        "%c[MarketingOverview] ❌ Failed to load performance metrics",
+        "color: #EF4444; font-weight: bold;",
+        err,
+      );
+      console.error("Response data:", err?.response?.data);
+      console.error("Status:", err?.response?.status);
       setError(
         err.response?.data?.error ||
           err.response?.data?.detail ||
@@ -369,25 +449,18 @@ export default function MarketingOverview({
     }
   };
 
-  const fetchCompanies = async () => {
-    try {
-      setCompanyLoading(true);
-      const response = await api.get("/companies/", {
-        params: { ordering: "name", limit: 20 },
-      });
-      setCompanyData(response.data);
-    } catch (error) {
-      console.error("Failed to fetch companies:", error);
-    } finally {
-      setCompanyLoading(false);
-    }
-  };
-
   useEffect(() => {
+    console.log(
+      "%c[MarketingOverview] 🔄 Component mounted / props changed",
+      "color: #674FA3; font-weight: bold;",
+      { agentId, initialAgent },
+    );
     fetchPerformance();
-    fetchCompanies();
   }, [agentId, initialAgent]);
 
+  /* ============================================================
+     DERIVED DATA
+     ============================================================ */
   const chartData = useMemo(() => {
     if (!data?.daily_performance) return [];
     return [...data.daily_performance].reverse().map((day) => ({
@@ -429,40 +502,47 @@ export default function MarketingOverview({
     }));
   }, [data]);
 
+  // ✅ All stats now derived from data (agent's own registrations)
   const activeCompaniesCount = useMemo(() => {
-    if (!companyData?.results) return 0;
-    return companyData.results.filter((company: any) => company.is_active)
-      .length;
-  }, [companyData]);
+    if (!data?.daily_performance) return 0;
+    const seen = new Set<number>();
+    data.daily_performance.forEach((day) => {
+      day.companies.forEach((c) => {
+        if (c.is_active) seen.add(c.id);
+      });
+    });
+    return seen.size;
+  }, [data]);
 
-  const featuredCount = useMemo(() => {
-    if (!companyData?.results) return 0;
-    return companyData.results.filter((company: any) => company.is_featured)
-      .length;
-  }, [companyData]);
+  const featuredCompaniesCount = useMemo(() => {
+    // Not directly returned by API — leave at 0 unless data includes it
+    return 0;
+  }, [data]);
 
   const uniqueCategories = useMemo(() => {
-    if (!companyData?.results) return 0;
-    const categories = new Set(
-      companyData.results.map((company: any) => company.category_name),
-    );
-    return categories.size;
-  }, [companyData]);
+    if (!data?.daily_performance) return 0;
+    const seen = new Set<string>();
+    data.daily_performance.forEach((day) => {
+      day.companies.forEach((c) => {
+        if (c.business_type) seen.add(c.business_type);
+      });
+    });
+    return seen.size;
+  }, [data]);
 
   const categoryData = useMemo(() => {
-    if (!companyData?.results) return [];
-    const categoryMap = new Map();
-    companyData.results.forEach((company: any) => {
-      const name = company.category_name || "Uncategorized";
-      categoryMap.set(name, (categoryMap.get(name) || 0) + 1);
+    if (!data?.daily_performance) return [];
+    const map = new Map<string, number>();
+    data.daily_performance.forEach((day) => {
+      day.companies.forEach((c) => {
+        const key = c.business_type || "Uncategorized";
+        map.set(key, (map.get(key) || 0) + 1);
+      });
     });
-    return Array.from(categoryMap.entries()).map(([name, count]) => ({
-      name,
-      count,
-    }));
-  }, [companyData]);
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [data]);
 
-  /* Neutral palette — same as Overview.tsx */
+  /* Neutral palette */
   const CHART_COLORS = [
     "var(--color-secondary)",
     "#6B7280",
@@ -473,14 +553,13 @@ export default function MarketingOverview({
   ];
 
   /* ------------------------------------------------------------
-     LOADING SKELETON (Overview-matching)
+     LOADING
      ------------------------------------------------------------ */
   if (loading) {
     return (
       <div className="w-full max-w-[1600px] mx-auto space-y-6 px-2 sm:px-4 lg:px-6">
         <Toast toast={toast} />
 
-        {/* Header */}
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 animate-pulse rounded-xl bg-secondary/[0.06]" />
           <div className="space-y-2">
@@ -489,7 +568,6 @@ export default function MarketingOverview({
           </div>
         </div>
 
-        {/* Summary grid */}
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_260px]">
           <div className="h-[190px] animate-pulse rounded-xl border border-secondary/10 bg-white" />
           <div className="grid grid-cols-1 grid-rows-3 gap-2">
@@ -502,7 +580,6 @@ export default function MarketingOverview({
           </div>
         </div>
 
-        {/* Progress rings */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {[1, 2].map((i) => (
             <div
@@ -512,7 +589,6 @@ export default function MarketingOverview({
           ))}
         </div>
 
-        {/* Charts */}
         <div className="h-[300px] animate-pulse rounded-2xl border border-secondary/10 bg-white" />
       </div>
     );
@@ -557,9 +633,7 @@ export default function MarketingOverview({
     <div className="w-full max-w-[1600px] mx-auto space-y-6 px-2 sm:px-4 lg:px-6">
       <Toast toast={toast} />
 
-      {/* =========================================================
-          HEADER
-          ========================================================= */}
+      {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
@@ -607,9 +681,7 @@ export default function MarketingOverview({
         </div>
       </div>
 
-      {/* =========================================================
-          SUMMARY — same layout as Overview.tsx
-          ========================================================= */}
+      {/* SUMMARY */}
       <section className="rounded-2xl bg-white p-3 sm:p-4">
         <div className="mb-3 flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
           <span className="font-semibold text-secondary">
@@ -620,7 +692,6 @@ export default function MarketingOverview({
         </div>
 
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_260px]">
-          {/* Featured card */}
           <SummaryStatCard
             featured
             title="Total Companies"
@@ -640,7 +711,6 @@ export default function MarketingOverview({
             ]}
           />
 
-          {/* Three stacked cards */}
           <div className="grid grid-cols-1 grid-rows-3 gap-2">
             <SummaryStatCard
               title="Active Companies"
@@ -649,11 +719,11 @@ export default function MarketingOverview({
             />
             <SummaryStatCard
               title="Featured Companies"
-              value={featuredCount.toLocaleString()}
+              value={featuredCompaniesCount.toLocaleString()}
               icon={Star}
             />
             <SummaryStatCard
-              title="Categories"
+              title="Business Types"
               value={uniqueCategories.toLocaleString()}
               icon={Layers}
             />
@@ -661,9 +731,7 @@ export default function MarketingOverview({
         </div>
       </section>
 
-      {/* =========================================================
-          TARGET PROGRESS
-          ========================================================= */}
+      {/* TARGET PROGRESS */}
       <section className="space-y-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
@@ -690,9 +758,7 @@ export default function MarketingOverview({
         </div>
       </section>
 
-      {/* =========================================================
-          CATEGORY CHART
-          ========================================================= */}
+      {/* CATEGORY CHART */}
       {categoryData.length > 0 && (
         <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
           <div className="mb-5 flex items-center gap-3">
@@ -701,10 +767,10 @@ export default function MarketingOverview({
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900">
-                Companies by Category
+                Companies by Business Type
               </h3>
               <p className="text-[11px] text-gray-400">
-                Distribution across business categories
+                Distribution across business types
               </p>
             </div>
           </div>
@@ -756,9 +822,7 @@ export default function MarketingOverview({
         </section>
       )}
 
-      {/* =========================================================
-          SUBSCRIPTION BREAKDOWN
-          ========================================================= */}
+      {/* SUBSCRIPTION BREAKDOWN */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:col-span-2 sm:p-6">
           <div className="mb-5 flex items-center gap-3">
@@ -770,7 +834,7 @@ export default function MarketingOverview({
                 Subscription Breakdown
               </h3>
               <p className="text-[11px] text-gray-400">
-                Plan distribution across all companies
+                Plan distribution across your companies
               </p>
             </div>
           </div>
@@ -814,7 +878,7 @@ export default function MarketingOverview({
                       </div>
                       <p className="mt-2 text-[10px] font-medium text-gray-500">
                         {percentage > 0
-                          ? `${Math.round(percentage)}% of total subscriptions`
+                          ? `${Math.round(percentage)}% of total`
                           : "No active subscriptions"}
                       </p>
                     </div>
@@ -897,9 +961,7 @@ export default function MarketingOverview({
         </div>
       </section>
 
-      {/* =========================================================
-          PERFORMANCE TRENDS
-          ========================================================= */}
+      {/* PERFORMANCE TRENDS */}
       {chartData.length > 0 && (
         <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -912,7 +974,7 @@ export default function MarketingOverview({
                   Performance Trends
                 </h3>
                 <p className="text-[11px] text-gray-400">
-                  Timeline of onboarding history
+                  Your onboarding history timeline
                 </p>
               </div>
             </div>
@@ -1001,306 +1063,7 @@ export default function MarketingOverview({
         </section>
       )}
 
-      {/* =========================================================
-          RECENT COMPANIES
-          ========================================================= */}
-      {companyData?.results && companyData.results.length > 0 && (
-        <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
-                <Building2 className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">
-                  Recent Companies
-                </h3>
-                <p className="text-[11px] text-gray-400">
-                  Latest registrations on the platform
-                </p>
-              </div>
-            </div>
-            <span className="rounded-full border border-secondary/10 bg-secondary/[0.04] px-3 py-1.5 text-xs font-semibold text-gray-500">
-              {companyData.results.length} shown
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {companyData.results.slice(0, 6).map((company: any) => (
-              <div
-                key={company.id}
-                className="flex items-center gap-3 rounded-xl border border-secondary/10 bg-white p-3 transition-all hover:border-secondary/20"
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-secondary/10 bg-secondary/[0.04]">
-                  {company.logo ? (
-                    <img
-                      src={company.logo}
-                      alt={company.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Building2 className="h-6 w-6 text-gray-400" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-gray-900">
-                    {company.name}
-                  </p>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-medium text-gray-500">
-                      {company.category_name}
-                    </span>
-                    <span className="h-1 w-1 rounded-full bg-gray-300" />
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${
-                        company.is_active
-                          ? "border-secondary/20 bg-secondary/[0.06] text-secondary"
-                          : "border-gray-200 bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {company.is_active ? "Active" : "Inactive"}
-                    </span>
-                    {company.is_featured && (
-                      <span className="rounded-full border border-secondary/20 bg-secondary/[0.06] px-2 py-0.5 text-[9px] font-bold text-secondary">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className={`h-2 w-2 shrink-0 rounded-full ${
-                    company.is_active ? "bg-secondary" : "bg-gray-300"
-                  }`}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* =========================================================
-          COMPANY OVERVIEW (Registered By + Business Types)
-          ========================================================= */}
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
-              <Users className="h-5 w-5 text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Registered By
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Who registered the companies
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-xl border border-secondary/10 bg-white p-3">
-              <span className="text-sm font-medium text-gray-600">
-                Marketing Team
-              </span>
-              <span className="text-sm font-bold text-secondary">
-                {companyData?.results?.filter(
-                  (c: any) => c.registered_by_username === "marketingone",
-                ).length || 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-secondary/10 bg-white p-3">
-              <span className="text-sm font-medium text-gray-600">Kaleb</span>
-              <span className="text-sm font-bold text-secondary">
-                {companyData?.results?.filter(
-                  (c: any) => c.registered_by_username === "kaleb",
-                ).length || 0}
-              </span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-secondary/10 bg-white p-3">
-              <span className="text-sm font-medium text-gray-600">
-                Unassigned
-              </span>
-              <span className="text-sm font-bold text-gray-400">
-                {companyData?.results?.filter(
-                  (c: any) => !c.registered_by_username,
-                ).length || 0}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:col-span-2 sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
-              <Briefcase className="h-5 w-5 text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Business Types
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Distribution by business model
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {["brand", "store", "service"].map((type) => {
-              const count =
-                companyData?.results?.filter(
-                  (c: any) => c.business_type === type,
-                ).length || 0;
-              const percentage = companyData?.count
-                ? Math.round((count / companyData.count) * 100)
-                : 0;
-
-              return (
-                <div
-                  key={type}
-                  className="rounded-xl border border-secondary/10 bg-white p-3"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-sm font-medium capitalize text-gray-600">
-                      {type}
-                    </span>
-                    <span className="text-sm font-bold text-gray-900">
-                      {count}
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                    <div
-                      className="h-full rounded-full bg-secondary transition-all duration-1000"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[9px] text-gray-400">
-                    {percentage}% of total
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================
-          COMPANY STATUS + FEATURED
-          ========================================================= */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
-              <ShieldCheck className="h-5 w-5 text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Company Status
-              </h3>
-              <p className="text-[11px] text-gray-400">Active vs Inactive</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">
-                  Active
-                </span>
-                <span className="text-sm font-bold text-secondary">
-                  {activeCompaniesCount}
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all duration-1000"
-                  style={{
-                    width: `${
-                      companyData?.count
-                        ? (activeCompaniesCount / companyData.count) * 100
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">
-                  Inactive
-                </span>
-                <span className="text-sm font-bold text-gray-500">
-                  {companyData?.count
-                    ? companyData.count - activeCompaniesCount
-                    : 0}
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-gray-400 transition-all duration-1000"
-                  style={{
-                    width: `${
-                      companyData?.count
-                        ? ((companyData.count - activeCompaniesCount) /
-                            companyData.count) *
-                          100
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-secondary/15 bg-secondary/[0.06]">
-              <Star className="h-5 w-5 text-secondary" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Featured Status
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Premium featured companies
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-center py-4">
-            <div className="text-center">
-              <p className="text-4xl font-extrabold text-secondary">
-                {featuredCount}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                Featured Companies
-              </p>
-              <div className="mt-3 flex items-center justify-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${
-                      i < Math.min(Math.ceil(featuredCount / 2), 5)
-                        ? "fill-secondary text-secondary"
-                        : "text-gray-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="mt-2 text-[10px] text-gray-400">
-                {companyData?.count
-                  ? Math.round((featuredCount / companyData.count) * 100)
-                  : 0}
-                % of total companies
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================
-          DAILY ACTIVITY LOG
-          ========================================================= */}
+      {/* DAILY ACTIVITY LOG */}
       <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] sm:p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -1312,7 +1075,7 @@ export default function MarketingOverview({
                 Daily Activity Log
               </h3>
               <p className="text-[11px] text-gray-400">
-                Chronological audit of registrations and subscriptions
+                Your registrations and subscriptions by day
               </p>
             </div>
           </div>

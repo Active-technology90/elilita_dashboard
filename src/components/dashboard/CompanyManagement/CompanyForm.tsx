@@ -16,7 +16,6 @@ import {
   Phone,
   Mail,
   MapPinned,
-  Palette,
   FileCheck2,
   Image as ImageIcon,
   Eye,
@@ -26,6 +25,8 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   AlertTriangle,
+  ScrollText,
+  Palette,
 } from "lucide-react";
 import { CustomSelect } from "../../ui/CustomSelect";
 import MealCategoryIcon, {
@@ -60,13 +61,16 @@ export interface CompanyFormData {
   logo: File | null;
   cover_image: File | null;
   chapa_sub_account_id: string;
-  theme_primary: string;
-  theme_dark: string;
-  theme_light: string;
+  // theme_primary: string;   // COMMENTED OUT
+  // theme_dark: string;      // COMMENTED OUT
+  // theme_light: string;     // COMMENTED OUT
   tin_number: string;
   vat_registration_number: string;
-  tax_type: string;
+  fan_number: string; // 16-digit FAN number
+  tax_type: string; // Always "none" (No Tax)
+  // tax_comment: string;     // COMMENTED OUT
   license: File | string | null;
+  moa_file: File | string | null; // MOA document
   contact_phone: string;
   contact_email: string;
 }
@@ -90,6 +94,8 @@ interface CompanyFormProps {
   headCompanyName?: string | null;
   headCompanies?: HeadCompany[];
   currentStep?: number;
+  agreedToTerms?: boolean;
+  onAgreedToTermsChange?: (agreed: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }
@@ -167,12 +173,13 @@ const BUSINESS_TYPE_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-const TAX_TYPE_OPTIONS = [
-  { value: "none", label: "No Tax" },
-  { value: "vat", label: "VAT (15%)" },
-  { value: "turnover_goods", label: "Turnover Tax - Goods (2%)" },
-  { value: "turnover_services", label: "Turnover Tax - Services (10%)" },
-];
+// COMMENTED OUT — Tax Type options (always "No Tax" now)
+// const TAX_TYPE_OPTIONS = [
+//   { value: "none", label: "No Tax" },
+//   { value: "vat", label: "VAT (15%)" },
+//   { value: "turnover_goods", label: "Turnover Tax - Goods (2%)" },
+//   { value: "turnover_services", label: "Turnover Tax - Services (10%)" },
+// ];
 
 /* -------------------------------------------------------------------------- */
 /*                                 COMPONENT                                  */
@@ -197,6 +204,8 @@ export default function CompanyForm({
   headCompanyName,
   headCompanies = [],
   currentStep = 0,
+  agreedToTerms = false,
+  onAgreedToTermsChange,
   onSubmit,
   onClose: _onClose,
 }: CompanyFormProps) {
@@ -1040,8 +1049,10 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Theme colors */}
-        <div>
+        {/* ============================================================ */}
+        {/* THEME COLORS — COMMENTED OUT                                  */}
+        {/* ============================================================ */}
+        {/* <div>
           <label className={labelClassName}>
             <span className="inline-flex items-center gap-1">
               <Palette className="h-3.5 w-3.5" /> Theme Colors
@@ -1096,7 +1107,7 @@ export default function CompanyForm({
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* GPS */}
         <div>
@@ -1324,7 +1335,136 @@ export default function CompanyForm({
           </div>
         </div>
 
+        {/* TIN / VAT / FAN row */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* TIN */}
+          <div>
+            <label className={labelClassName}>TIN Number</label>
+            <div className="relative">
+              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Enter TIN number"
+                value={formData.tin_number}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tin_number: e.target.value,
+                  }))
+                }
+                disabled={!isEditingActive}
+                className={`${inputClassName(formErrors.tin_number)} pl-10`}
+              />
+            </div>
+          </div>
+
+          {/* VAT */}
+          <div>
+            <label className={labelClassName}>VAT Registration Number</label>
+            <div className="relative">
+              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Enter VAT registration number"
+                value={formData.vat_registration_number}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    vat_registration_number: e.target.value,
+                  }))
+                }
+                disabled={!isEditingActive}
+                className={`${inputClassName()} pl-10`}
+              />
+            </div>
+          </div>
+
+          {/* FAN — 16 digits */}
+          <div>
+            <label className={labelClassName}>
+              FAN Number <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={16}
+                placeholder="Enter 16-digit FAN number"
+                value={formData.fan_number}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 16);
+                  setFormData((prev) => ({
+                    ...prev,
+                    fan_number: digitsOnly,
+                  }));
+                }}
+                disabled={!isEditingActive}
+                className={`${inputClassName(formErrors.fan_number)} pl-10 font-mono tracking-wider`}
+              />
+            </div>
+            {formErrors.fan_number ? (
+              <p className="mt-1 text-xs text-red-500">
+                {formErrors.fan_number}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-400">
+                {formData.fan_number.length}/16 digits
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* TAX TYPE — Fixed to "No Tax"                                  */}
+        {/* ============================================================ */}
+        {/* <div className="mt-4">
+          <label className={labelClassName}>Tax Type</label>
+          <div
+            className={`flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 ${!isEditingActive ? "opacity-70" : ""}`}
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/10">
+              <FileCheck2 className="h-4 w-4 text-secondary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">No Tax</p>
+              <p className="text-xs text-gray-500">
+                Tax type is fixed to "No Tax" for this company.
+              </p>
+            </div>
+           
+            <input type="hidden" value="none" readOnly />
+          </div>
+        </div> */}
+
+        {/* ============================================================ */}
+        {/* TAX COMMENT — COMMENTED OUT                                   */}
+        {/* ============================================================ */}
+        {/* <div className="mt-4">
+          <label className={labelClassName}>
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare className="h-3.5 w-3.5" /> Tax Comment
+            </span>
+          </label>
+          <textarea
+            placeholder="Add a comment or note about the tax configuration..."
+            value={formData.tax_comment}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                tax_comment: e.target.value,
+              }))
+            }
+            rows={2}
+            disabled={!isEditingActive}
+            className={`${inputClassName()} resize-none`}
+          />
+        </div> */}
+
+        {/* LICENSE + MOA row */}
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* LICENSE */}
           <div>
             <label className={labelClassName}>License Document</label>
@@ -1407,59 +1547,91 @@ export default function CompanyForm({
             )}
           </div>
 
-          {/* TIN */}
+          {/* MOA FILE */}
           <div>
-            <label className={labelClassName}>TIN Number</label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Enter TIN number"
-                value={formData.tin_number}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tin_number: e.target.value,
-                  }))
-                }
-                disabled={!isEditingActive}
-                className={`${inputClassName(formErrors.tin_number)} pl-10`}
-              />
-            </div>
+            <label className={labelClassName}>
+              <span className="inline-flex items-center gap-1">
+                <ScrollText className="h-3.5 w-3.5" /> MOA Document
+              </span>
+            </label>
+            {formData.moa_file && typeof formData.moa_file === "string" ? (
+              <div className="flex items-center gap-3 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                  <ScrollText className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-gray-800">
+                    Existing MOA document
+                  </p>
+                  <a
+                    href={formData.moa_file}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 underline"
+                  >
+                    View file
+                  </a>
+                </div>
+                {isEditingActive && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, moa_file: null }))
+                    }
+                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            ) : formData.moa_file instanceof File ? (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                  <ScrollText className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-gray-800">
+                    {formData.moa_file.name}
+                  </p>
+                  <p className="text-xs text-emerald-600">
+                    ✓ Uploaded ({(formData.moa_file.size / 1024).toFixed(1)} KB)
+                  </p>
+                </div>
+                {isEditingActive && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, moa_file: null }))
+                    }
+                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="file"
+                  id="moa-upload"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  disabled={!isEditingActive}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setFormData((prev) => ({ ...prev, moa_file: file }));
+                  }}
+                  className={`w-full rounded-xl border p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-secondary hover:file:bg-secondary/20 ${
+                    formErrors.moa_file ? "border-red-500" : "border-gray-300"
+                  } ${!isEditingActive ? "bg-gray-50" : ""}`}
+                />
+                {isEditingActive && !formData.moa_file && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    PDF, DOC, DOCX, JPG, PNG up to 10MB
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* VAT */}
-          <div>
-            <label className={labelClassName}>VAT Registration Number</label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Enter VAT registration number"
-                value={formData.vat_registration_number}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    vat_registration_number: e.target.value,
-                  }))
-                }
-                disabled={!isEditingActive}
-                className={`${inputClassName()} pl-10`}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className={labelClassName}>Tax Type</label>
-          <CustomSelect
-            value={formData.tax_type}
-            onChange={(value) =>
-              setFormData((prev) => ({ ...prev, tax_type: value }))
-            }
-            options={TAX_TYPE_OPTIONS}
-            placeholder="Select Tax Type"
-          />
         </div>
       </div>
     </div>
@@ -1469,451 +1641,521 @@ export default function CompanyForm({
   /*                       STEP 4 — REVIEW & SUMMARY                          */
   /* ======================================================================== */
 
-  const renderStep4 = () => (
-    <div className="mx-auto max-w-4xl space-y-4">
-      <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
-          <Check className="h-5 w-5 text-emerald-600" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">
-            Review Your Company Details
-          </h3>
-          <p className="text-xs text-gray-500">
-            Verify all information before submitting
-          </p>
-        </div>
-      </div>
+  const renderStep4 = () => {
+    const isFanValid =
+      !!formData.fan_number && /^\d{16}$/.test(formData.fan_number);
 
-      {/* Business info */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-          <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
-            <Building2 className="h-4 w-4 text-secondary" />
-            Business Information
-          </h4>
+    return (
+      <div className="mx-auto max-w-4xl space-y-4">
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+            <Check className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">
+              Review Your Company Details
+            </h3>
+            <p className="text-xs text-gray-500">
+              Verify all information before submitting
+            </p>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Company Name
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.name || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Slug
-            </p>
-            <p className="font-mono text-sm text-gray-700">
-              {formData.slug || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Business Type
-            </p>
-            <p className="text-sm font-semibold capitalize text-gray-900">
-              {formData.business_type || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Category
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {categories.find((c) => c.id === formData.category)?.name || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Subcategory
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {subcategories.find((s) => s.id === formData.sub_category)?.name ||
-                "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Head Company
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {headCompanies.find((hc) => hc.id === formData.head_company)
-                ?.name ||
-                headCompanyName ||
-                "—"}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Description
-            </p>
-            <p className="text-sm text-gray-700">
-              {formData.description || "—"}
-            </p>
-          </div>
-          {formData.description_am && (
-            <div className="col-span-2">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Description (Amharic)
-              </p>
-              <p className="text-sm text-gray-700">{formData.description_am}</p>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Location */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-          <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
-            <MapPinned className="h-4 w-4 text-secondary" />
-            Location &amp; Contact
-          </h4>
-        </div>
-        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
-          <div className="col-span-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Address
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.address || "—"}
-            </p>
+        {/* Business info */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
+              <Building2 className="h-4 w-4 text-secondary" />
+              Business Information
+            </h4>
           </div>
-          {formData.address_am && (
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+            <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Address (Amharic)
-              </p>
-              <p className="text-sm text-gray-700">{formData.address_am}</p>
-            </div>
-          )}
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Phone
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.contact_phone || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Email
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.contact_email || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Minimum Order Total
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.minimum_order_total || "0.00"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Maximum COD Limit
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.maximum_cod_total || "0.00 (Unlimited)"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Delivery Fee/KM
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.delivery_fee_per_km || "0.00"}
-            </p>
-          </div>
-          {formData.latitude && formData.longitude && (
-            <div className="col-span-2">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                GPS Coordinates
+                Company Name
               </p>
               <p className="text-sm font-semibold text-gray-900">
-                {formData.latitude}, {formData.longitude}
+                {formData.name || "—"}
               </p>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Media */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-          <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
-            <ImageIcon className="h-4 w-4 text-secondary" />
-            Media &amp; Documents
-          </h4>
-        </div>
-        <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
-          <div>
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
-              Logo
-            </p>
-            {logoPreview ? (
-              <img
-                src={logoPreview}
-                alt="Logo"
-                className="h-20 w-20 rounded-xl border border-gray-200 object-cover"
-              />
-            ) : (
-              <p className="text-sm text-gray-500">No logo uploaded</p>
-            )}
-          </div>
-          <div>
-            <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
-              Cover Image
-            </p>
-            {coverPreview ? (
-              <img
-                src={coverPreview}
-                alt="Cover"
-                className="h-24 w-full rounded-xl border border-gray-200 object-cover"
-              />
-            ) : (
-              <p className="text-sm text-gray-500">No cover image uploaded</p>
-            )}
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              TIN Number
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.tin_number || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              VAT Number
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.vat_registration_number || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              Tax Type
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.tax_type === "vat"
-                ? "VAT (15%)"
-                : formData.tax_type === "turnover_goods"
-                ? "Turnover Tax - Goods (2%)"
-                : formData.tax_type === "turnover_services"
-                ? "Turnover Tax - Services (10%)"
-                : "No Tax"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-400">
-              License
-            </p>
-            <p className="text-sm font-semibold text-gray-900">
-              {formData.license
-                ? formData.license instanceof File
-                  ? formData.license.name
-                  : "Uploaded"
-                : "—"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Theme + Status */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-          <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
-            <Palette className="h-4 w-4 text-secondary" />
-            Theme &amp; Status
-          </h4>
-        </div>
-        <div className="p-4">
-          <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-3">
-            {[
-              { label: "Theme Primary", value: formData.theme_primary },
-              { label: "Theme Dark", value: formData.theme_dark },
-              { label: "Theme Light", value: formData.theme_light },
-            ].map((t) => (
-              <div key={t.label}>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Slug
+              </p>
+              <p className="font-mono text-sm text-gray-700">
+                {formData.slug || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Business Type
+              </p>
+              <p className="text-sm font-semibold capitalize text-gray-900">
+                {formData.business_type || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Category
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {categories.find((c) => c.id === formData.category)?.name ||
+                  "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Subcategory
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {subcategories.find((s) => s.id === formData.sub_category)
+                  ?.name || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Head Company
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {headCompanies.find((hc) => hc.id === formData.head_company)
+                  ?.name ||
+                  headCompanyName ||
+                  "—"}
+              </p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Description
+              </p>
+              <p className="text-sm text-gray-700">
+                {formData.description || "—"}
+              </p>
+            </div>
+            {formData.description_am && (
+              <div className="col-span-2">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                  {t.label}
+                  Description (Amharic)
                 </p>
-                <div className="mt-1 flex items-center gap-2">
-                  <span
-                    className="h-6 w-6 rounded-lg border border-gray-200"
-                    style={{ backgroundColor: t.value }}
-                  />
-                  <span className="font-mono text-sm">{t.value}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Active status pill — shown to everyone so they can see current state */}
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                formData.is_active
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border border-gray-200 bg-gray-50 text-gray-500"
-              }`}
-            >
-              {formData.is_active ? "Active" : "Inactive"}
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                formData.supports_table_service
-                  ? "border border-secondary/20 bg-secondary/10 text-secondary"
-                  : "border border-gray-200 bg-gray-50 text-gray-500"
-              }`}
-            >
-              {formData.supports_table_service
-                ? "Table Service"
-                : "No Table Service"}
-            </span>
-            {formData.supports_table_service && (
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  formData.show_order_queue
-                    ? "border border-purple-200 bg-purple-50 text-purple-700"
-                    : "border border-gray-200 bg-gray-50 text-gray-500"
-                }`}
-              >
-                {formData.show_order_queue ? "Queue Visible" : "Queue Hidden"}
-              </span>
-            )}
-            {formData.supports_table_service && activeCategories.length > 0 && (
-              <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t border-gray-100 pt-2.5">
-                <span className="text-xs font-semibold text-gray-500">
-                  Meal Periods:
-                </span>
-                {activeCategories.map((c) => (
-                  <span
-                    key={c.id}
-                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800"
-                  >
-                    <span>{c.icon || "🍽️"}</span>
-                    <span>{c.name}</span>
-                    {c.name_am && (
-                      <span className="text-gray-400">({c.name_am})</span>
-                    )}
-                  </span>
-                ))}
+                <p className="text-sm text-gray-700">
+                  {formData.description_am}
+                </p>
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Company Verification — super admin only */}
-      {showVerificationBlock && (
-        <div
-          className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
-            isCompanyVerified
-              ? "border-blue-200 bg-blue-50"
-              : "border-amber-200 bg-amber-50"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                isCompanyVerified ? "bg-blue-100" : "bg-amber-100"
-              }`}
-            >
-              {isCompanyVerified ? (
-                <ShieldCheck className="h-5 w-5 text-blue-600" />
+        {/* Location */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
+              <MapPinned className="h-4 w-4 text-secondary" />
+              Location &amp; Contact
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+            <div className="col-span-2">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Address
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.address || "—"}
+              </p>
+            </div>
+            {formData.address_am && (
+              <div className="col-span-2">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                  Address (Amharic)
+                </p>
+                <p className="text-sm text-gray-700">{formData.address_am}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Phone
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.contact_phone || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Email
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.contact_email || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Minimum Order Total
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.minimum_order_total || "0.00"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Maximum COD Limit
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.maximum_cod_total || "0.00 (Unlimited)"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Delivery Fee/KM
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.delivery_fee_per_km || "0.00"}
+              </p>
+            </div>
+            {formData.latitude && formData.longitude && (
+              <div className="col-span-2">
+                <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                  GPS Coordinates
+                </p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {formData.latitude}, {formData.longitude}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Media */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
+              <ImageIcon className="h-4 w-4 text-secondary" />
+              Media &amp; Documents
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+            <div>
+              <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
+                Logo
+              </p>
+              {logoPreview ? (
+                <img
+                  src={logoPreview}
+                  alt="Logo"
+                  className="h-20 w-20 rounded-xl border border-gray-200 object-cover"
+                />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <p className="text-sm text-gray-500">No logo uploaded</p>
               )}
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900">
-                Company Verification
+              <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
+                Cover Image
               </p>
-              <p className="mt-0.5 text-xs text-gray-500">
-                {isCompanyVerified
-                  ? "Verified. The active status can now be changed."
-                  : "Verify this company before activating it."}
+              {coverPreview ? (
+                <img
+                  src={coverPreview}
+                  alt="Cover"
+                  className="h-24 w-full rounded-xl border border-gray-200 object-cover"
+                />
+              ) : (
+                <p className="text-sm text-gray-500">No cover image uploaded</p>
+              )}
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                TIN Number
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.tin_number || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                VAT Number
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.vat_registration_number || "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                FAN Number <span className="text-red-500">*</span>
+              </p>
+              <p
+                className={`font-mono text-sm font-semibold tracking-wider ${
+                  isFanValid ? "text-gray-900" : "text-red-500"
+                }`}
+              >
+                {formData.fan_number || "— (required 16 digits)"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Tax Type
+              </p>
+              <p className="text-sm font-semibold text-gray-900">No Tax</p>
+            </div>
+
+            {/* TAX COMMENT — COMMENTED OUT */}
+            {/* <div className="col-span-2">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Tax Comment
+              </p>
+              <p className="text-sm text-gray-700">
+                {formData.tax_comment || "—"}
+              </p>
+            </div> */}
+
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                License
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.license
+                  ? formData.license instanceof File
+                    ? formData.license.name
+                    : "Uploaded"
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                MOA Document
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.moa_file
+                  ? formData.moa_file instanceof File
+                    ? formData.moa_file.name
+                    : "Uploaded"
+                  : "—"}
               </p>
             </div>
           </div>
+        </div>
 
+        {/* ============================================================ */}
+        {/* THEME & STATUS — Theme colors removed                         */}
+        {/* ============================================================ */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
+              <Palette className="h-4 w-4 text-secondary" />
+              Status
+            </h4>
+          </div>
+          <div className="p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  formData.is_active
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border border-gray-200 bg-gray-50 text-gray-500"
+                }`}
+              >
+                {formData.is_active ? "Active" : "Inactive"}
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  formData.supports_table_service
+                    ? "border border-secondary/20 bg-secondary/10 text-secondary"
+                    : "border border-gray-200 bg-gray-50 text-gray-500"
+                }`}
+              >
+                {formData.supports_table_service
+                  ? "Table Service"
+                  : "No Table Service"}
+              </span>
+              {formData.supports_table_service && (
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    formData.show_order_queue
+                      ? "border border-purple-200 bg-purple-50 text-purple-700"
+                      : "border border-gray-200 bg-gray-50 text-gray-500"
+                  }`}
+                >
+                  {formData.show_order_queue
+                    ? "Queue Visible"
+                    : "Queue Hidden"}
+                </span>
+              )}
+              {formData.supports_table_service &&
+                activeCategories.length > 0 && (
+                  <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t border-gray-100 pt-2.5">
+                    <span className="text-xs font-semibold text-gray-500">
+                      Meal Periods:
+                    </span>
+                    {activeCategories.map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800"
+                      >
+                        <span>{c.icon || "🍽️"}</span>
+                        <span>{c.name}</span>
+                        {c.name_am && (
+                          <span className="text-gray-400">({c.name_am})</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        </div>
+
+        {/* Company Verification — super admin only */}
+        {showVerificationBlock && (
+          <div
+            className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
+              isCompanyVerified
+                ? "border-blue-200 bg-blue-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                  isCompanyVerified ? "bg-blue-100" : "bg-amber-100"
+                }`}
+              >
+                {isCompanyVerified ? (
+                  <ShieldCheck className="h-5 w-5 text-blue-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">
+                  Company Verification
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {isCompanyVerified
+                    ? "Verified. The active status can now be changed."
+                    : "Verify this company before activating it."}
+                </p>
+              </div>
+            </div>
+
+            <label
+              className={`relative inline-flex items-center ${
+                isEditingActive ? "cursor-pointer" : "cursor-not-allowed"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isCompanyVerified}
+                onChange={(e) => onVerificationChange?.(e.target.checked)}
+                disabled={!isEditingActive}
+              />
+              <div
+                className={`h-6 w-11 rounded-full after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full ${
+                  isCompanyVerified ? "bg-blue-500" : "bg-gray-300"
+                } ${!isEditingActive ? "opacity-60" : ""}`}
+              />
+            </label>
+          </div>
+        )}
+
+        {/* Terms Agreement */}
+        <div
+          className={`rounded-xl border p-4 transition-colors ${
+            agreedToTerms
+              ? "border-emerald-200 bg-emerald-50"
+              : "border-amber-200 bg-amber-50"
+          }`}
+        >
           <label
-            className={`relative inline-flex items-center ${
-              isEditingActive ? "cursor-pointer" : "cursor-not-allowed"
+            className={`flex cursor-pointer items-start gap-3 ${
+              !isEditingActive ? "cursor-not-allowed opacity-60" : ""
             }`}
           >
             <input
               type="checkbox"
-              className="sr-only peer"
-              checked={isCompanyVerified}
-              onChange={(e) => onVerificationChange?.(e.target.checked)}
+              checked={agreedToTerms}
+              onChange={(e) => onAgreedToTermsChange?.(e.target.checked)}
               disabled={!isEditingActive}
+              className="mt-0.5 h-5 w-5 flex-shrink-0 cursor-pointer rounded border-gray-300 text-secondary focus:ring-2 focus:ring-secondary/30"
             />
-            <div
-              className={`h-6 w-11 rounded-full after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full ${
-                isCompanyVerified ? "bg-blue-500" : "bg-gray-300"
-              } ${!isEditingActive ? "opacity-60" : ""}`}
-            />
+            <div>
+              <p className="text-sm font-bold text-gray-900">
+                I agree to the terms and conditions{" "}
+                <span className="text-red-500">*</span>
+              </p>
+              <p className="mt-1 text-xs text-gray-600">
+                I confirm that all the information provided above is accurate,
+                complete, and up to date. I understand that providing false or
+                misleading information may result in the rejection or
+                termination of this company account. I agree to comply with all
+                applicable laws, regulations, and platform policies.
+              </p>
+            </div>
           </label>
         </div>
-      )}
 
-      {/* Ready footer — reacts to verification status */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
-          blockedByVerification
-            ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50"
-            : "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className={`text-sm font-bold ${
-              blockedByVerification ? "text-amber-700" : "text-emerald-700"
-            }`}
-          >
-            {blockedByVerification
-              ? "⚠️ Verify the company before submitting"
-              : "✅ Ready to Submit"}
-          </span>
-          <span
-            className={`text-xs ${
-              blockedByVerification ? "text-amber-600" : "text-emerald-600"
-            }`}
-          >
-            {blockedByVerification
-              ? "Toggle Company Verification above"
-              : "All steps completed"}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-gray-600">
-            {formData.name ? "✅" : "❌"} Name
-          </span>
-          <span className="text-xs text-gray-600">
-            {formData.slug ? "✅" : "❌"} Slug
-          </span>
-          <span className="text-xs text-gray-600">
-            {isValidEthiopianPhone(formData.contact_phone) ? "✅" : "❌"} Phone
-          </span>
-          <span className="text-xs text-gray-600">
-            {formData.contact_email ? "✅" : "❌"} Email
-          </span>
-          {showVerificationBlock && (
-            <span className="text-xs text-gray-600">
-              {isCompanyVerified ? "✅" : "❌"} Verified
+        {/* Ready footer */}
+        <div
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
+            blockedByVerification || !agreedToTerms
+              ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50"
+              : "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-sm font-bold ${
+                blockedByVerification || !agreedToTerms
+                  ? "text-amber-700"
+                  : "text-emerald-700"
+              }`}
+            >
+              {blockedByVerification
+                ? "⚠️ Verify the company before submitting"
+                : !agreedToTerms
+                ? "⚠️ Please agree to the terms to submit"
+                : "✅ Ready to Submit"}
             </span>
-          )}
+            <span
+              className={`text-xs ${
+                blockedByVerification || !agreedToTerms
+                  ? "text-amber-600"
+                  : "text-emerald-600"
+              }`}
+            >
+              {blockedByVerification
+                ? "Toggle Company Verification above"
+                : !agreedToTerms
+                ? "Check the agreement box above"
+                : "All steps completed"}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-gray-600">
+              {formData.name ? "✅" : "❌"} Name
+            </span>
+            <span className="text-xs text-gray-600">
+              {formData.slug ? "✅" : "❌"} Slug
+            </span>
+            <span className="text-xs text-gray-600">
+              {isValidEthiopianPhone(formData.contact_phone) ? "✅" : "❌"}{" "}
+              Phone
+            </span>
+            <span className="text-xs text-gray-600">
+              {isFanValid ? "✅" : "❌"} FAN (16 digits)
+            </span>
+            <span className="text-xs text-gray-600">
+              {formData.contact_email ? "✅" : "❌"} Email
+            </span>
+            {showVerificationBlock && (
+              <span className="text-xs text-gray-600">
+                {isCompanyVerified ? "✅" : "❌"} Verified
+              </span>
+            )}
+            <span className="text-xs text-gray-600">
+              {agreedToTerms ? "✅" : "❌"} Terms
+            </span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   /* ======================================================================== */
   /*                               MAIN RENDER                                */

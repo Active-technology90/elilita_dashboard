@@ -12,8 +12,48 @@ import {
   Eye,
   EyeOff,
   Info,
+  Truck,
+  Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { CustomSelect } from "../../ui/CustomSelect";
+
+/* -------------------------------------------------------------------------- */
+/*                          VEHICLE TYPE CHOICES                              */
+/* -------------------------------------------------------------------------- */
+
+const VEHICLE_CHOICES = [
+  { value: "motorcycle", label: "Motorcycle" },
+  { value: "car", label: "Car" },
+  { value: "bicycle", label: "Bicycle" },
+  { value: "van", label: "Van" },
+  { value: "foot", label: "Foot" },
+] as const;
+
+export type VehicleType = (typeof VEHICLE_CHOICES)[number]["value"];
+
+const roleOptions = [
+  {
+    label: "Admin",
+    value: "admin",
+    icon: <Shield className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Dispatcher",
+    value: "staff",
+    icon: <Users className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Viewer",
+    value: "viewer",
+    icon: <Eye className="h-4 w-4 text-secondary" />,
+  },
+  {
+    label: "Delivery Person",
+    value: "delivery",
+    icon: <Truck className="h-4 w-4 text-secondary" />,
+  },
+];
 
 interface CreateCompanyUserModalProps {
   isOpen: boolean;
@@ -27,6 +67,7 @@ interface CreateCompanyUserModalProps {
     username: string;
     password: string;
     role: "admin" | "staff" | "viewer" | "delivery";
+    vehicle_type?: VehicleType; // Only for delivery role
   }) => void;
   /** Optional: pass backend field errors from parent, e.g. { username: ["Already exists"] } */
   serverErrors?: Record<string, string | string[]>;
@@ -40,6 +81,7 @@ type FormErrors = {
   username?: string;
   password?: string;
   confirm_password?: string;
+  vehicle_type?: string;
 };
 
 export function CreateCompanyUserModal({
@@ -58,6 +100,7 @@ export function CreateCompanyUserModal({
     password: "",
     confirm_password: "",
     role: "staff" as "admin" | "staff" | "viewer" | "delivery",
+    vehicle_type: "" as VehicleType | "",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -68,10 +111,17 @@ export function CreateCompanyUserModal({
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   // ✅ Ethiopian mobile: Ethio Telecom (09/+2519) OR Safaricom (07/+2517)
-  // Accepts: 09XXXXXXXX, 07XXXXXXXX, +2519XXXXXXXX, +2517XXXXXXXX
   const phoneRegex = /^(\+251|0)(9|7)\d{8}$/;
 
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+
+  // ✅ Reset vehicle_type when role changes away from "delivery"
+  useEffect(() => {
+    if (formData.role !== "delivery" && formData.vehicle_type) {
+      setFormData((prev) => ({ ...prev, vehicle_type: "" }));
+      setErrors((prev) => ({ ...prev, vehicle_type: undefined }));
+    }
+  }, [formData.role, formData.vehicle_type]);
 
   // Normalize backend errors into a flat map of field -> message
   const normalizedServerErrors = useMemo(() => {
@@ -81,7 +131,6 @@ export function CreateCompanyUserModal({
       const msg = Array.isArray(value) ? value[0] : value;
       if (msg) map[key] = String(msg);
     });
-    // catch-all bucket for non_field_errors / detail
     return map;
   }, [serverErrors]);
 
@@ -91,7 +140,6 @@ export function CreateCompanyUserModal({
     normalizedServerErrors["__all__"];
 
   const getFieldError = (field: keyof FormErrors): string | undefined => {
-    // Server error takes priority (it's the real truth)
     if (normalizedServerErrors[field]) return normalizedServerErrors[field];
     return errors[field];
   };
@@ -149,6 +197,12 @@ export function CreateCompanyUserModal({
       newErrors.confirm_password = "Passwords do not match";
     }
 
+    // ✅ Vehicle type required when role is "delivery"
+    if (formData.role === "delivery" && !formData.vehicle_type) {
+      newErrors.vehicle_type =
+        "Vehicle type is required for delivery personnel";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -191,10 +245,21 @@ export function CreateCompanyUserModal({
         phone_number: true,
         password: true,
         confirm_password: true,
+        vehicle_type: true,
       });
       return;
     }
-    onSubmit({
+
+    const payload: {
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone_number: string;
+      username: string;
+      password: string;
+      role: "admin" | "staff" | "viewer" | "delivery";
+      vehicle_type?: VehicleType;
+    } = {
       first_name: formData.first_name,
       last_name: formData.last_name,
       email: formData.email,
@@ -202,7 +267,14 @@ export function CreateCompanyUserModal({
       phone_number: formData.phone_number,
       password: formData.password,
       role: formData.role,
-    });
+    };
+
+    // ✅ Only attach vehicle_type when role is delivery
+    if (formData.role === "delivery" && formData.vehicle_type) {
+      payload.vehicle_type = formData.vehicle_type as VehicleType;
+    }
+
+    onSubmit(payload);
   };
 
   const inputClass = (field: keyof FormErrors) => {
@@ -402,19 +474,57 @@ export function CreateCompanyUserModal({
                 Role
               </label>
               <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
-                <select
+                <CustomSelect
                   value={formData.role}
-                  onChange={(e) => handleChange("role", e.target.value)}
-                  className="w-full appearance-none pl-8 sm:pl-10 pr-8 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-2xl border border-gray-200 bg-white focus:ring-4 focus:ring-secondary/10 focus:border-secondary outline-none transition"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="staff">Dispatcher</option>
-                  <option value="delivery">Delivery Personnel</option>
-                  <option value="viewer">Viewer</option>
-                </select>
+                  onChange={(value) => handleChange("role", value)}
+                  options={roleOptions}
+                  placeholder="Select Role"
+                  className="w-full"
+                />
               </div>
             </div>
+
+            {/* ============================================================ */}
+            {/* VEHICLE TYPE — only shown when role = "delivery"             */}
+            {/* ============================================================ */}
+            {formData.role === "delivery" && (
+              <div className="sm:col-span-2">
+                <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Truck className="h-3.5 w-3.5" />
+                    Vehicle Type <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                <CustomSelect
+                  value={formData.vehicle_type}
+                  onChange={(value) => {
+                    handleChange("vehicle_type", value);
+                    setTouched((prev) => ({ ...prev, vehicle_type: true }));
+                  }}
+                  options={[
+                    { value: "", label: "Select Vehicle Type" },
+                    ...VEHICLE_CHOICES.map((v) => ({
+                      value: v.value,
+                      label: v.label,
+                    })),
+                  ]}
+                  placeholder="Select Vehicle Type"
+                  className={
+                    getFieldError("vehicle_type") ? "border-red-500" : ""
+                  }
+                />
+                {getFieldError("vehicle_type") ? (
+                  <p className="mt-1.5 text-xs sm:text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />{" "}
+                    {getFieldError("vehicle_type")}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
+                    Select the type of vehicle this delivery person will use.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* PASSWORD */}
             <div>
@@ -558,3 +668,6 @@ export function CreateCompanyUserModal({
     </div>
   );
 }
+
+// ✅ Default export so `import CreateCompanyUserModal from "./CreateUserModal"` also works
+export default CreateCompanyUserModal;

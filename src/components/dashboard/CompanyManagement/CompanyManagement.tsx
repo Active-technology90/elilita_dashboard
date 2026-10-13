@@ -49,7 +49,6 @@ type PaginatedResponse<T> = {
   next: string | null;
 };
 
-
 /* ──────────────────────────────────────────────────────────────────
    Helpers
    ────────────────────────────────────────────────────────────────── */
@@ -242,7 +241,7 @@ const SkeletonDetailCard: React.FC = () => (
 );
 
 /* ──────────────────────────────────────────────────────────────────
-   Empty form
+   Empty form — theme colors & tax_comment removed/commented
    ────────────────────────────────────────────────────────────────── */
 
 const EMPTY_COMPANY_FORM: CompanyFormData = {
@@ -269,13 +268,16 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   logo: null,
   cover_image: null,
   chapa_sub_account_id: "",
-  theme_primary: "#674FA3",
-  theme_dark: "#6750A4",
-  theme_light: "#8B6BB5",
+  // theme_primary: "#674FA3",   // COMMENTED OUT
+  // theme_dark: "#6750A4",      // COMMENTED OUT
+  // theme_light: "#8B6BB5",     // COMMENTED OUT
   tin_number: "",
   vat_registration_number: "",
-  tax_type: "none",
+  fan_number: "",
+  tax_type: "none", // always No Tax
+  // tax_comment: "",            // COMMENTED OUT
   license: null,
+  moa_file: null,
   contact_phone: "",
   contact_email: "",
 };
@@ -348,7 +350,6 @@ export default function CompanyManagement() {
   const [businessTypeFilter, setBusinessTypeFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [subCategoryFilter, setSubCategoryFilter] = useState("all");
-  // ⬇️ NEW — recency filter
   const [createdAtFilter, setCreatedAtFilter] = useState<string>("all");
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -378,6 +379,9 @@ export default function CompanyManagement() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Terms agreement
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleLogoChange = useCallback(
     (file: File | null) => {
@@ -445,7 +449,7 @@ export default function CompanyManagement() {
   );
 
   /* ──────────────────────────────────────────────────────────────
-     Filtered companies — now includes created-at filter
+     Filtered companies
      ────────────────────────────────────────────────────────────── */
   const filteredCompanies = useMemo(() => {
     if (!isSuperAdmin && !isMarketing) return companies;
@@ -463,13 +467,9 @@ export default function CompanyManagement() {
       );
     }
 
-    // ⬇️ Recency filter
     if (createdAtFilter !== "all") {
       data = data.filter((comp) =>
-        matchesCreatedAtFilter(
-          (comp as any).created_at,
-          createdAtFilter,
-        ),
+        matchesCreatedAtFilter((comp as any).created_at, createdAtFilter),
       );
     }
 
@@ -558,7 +558,7 @@ export default function CompanyManagement() {
   ]);
 
   /* ──────────────────────────────────────────────────────────────
-     Table columns
+     Table columns — Tax Type shows "No Tax" always
      ────────────────────────────────────────────────────────────── */
   const columns: Column<CompanyListItem>[] = useMemo(
     () => [
@@ -636,15 +636,8 @@ export default function CompanyManagement() {
         key: "tax_type",
         header: "Tax Type",
         sortable: true,
-        render: (comp) => {
-          const taxLabels: Record<string, string> = {
-            vat: "VAT",
-            turnover_goods: "Turnover Goods",
-            turnover_services: "Turnover Services",
-            none: "None",
-          };
-          return taxLabels[comp.tax_type || "none"] || "-";
-        },
+        // Always show "No Tax"
+        render: () => "No Tax",
       },
       {
         key: "is_active",
@@ -725,19 +718,15 @@ export default function CompanyManagement() {
             (company as any).phone_number ||
             "",
           contact_email:
-            (company as any).contact_email ||
-            (company as any).email ||
-            "",
+            (company as any).contact_email || (company as any).email || "",
           tin_number: (company as any).tin_number || "",
           vat_registration_number:
             (company as any).vat_registration_number || "",
-          tax_type: (company as any).tax_type || "none",
+          fan_number: (company as any).fan_number || "",
+          tax_type: "none", // always No Tax
           license: (company as any).license || null,
+          moa_file: (company as any).moa_file || null,
           chapa_sub_account_id: (company as any).chapa_sub_account_id || "",
-          theme_primary: (company as any).theme_primary || "#674FA3",
-          theme_dark: (company as any).theme_dark || "#6750A4",
-          theme_light: (company as any).theme_light || "#8B6BB5",
-          // ⬇️ keep created_at around so the recency filter has data
           created_at: (company as any).created_at,
         };
 
@@ -770,15 +759,14 @@ export default function CompanyManagement() {
           contact_phone: companyListItem.contact_phone || "",
           contact_email: companyListItem.contact_email || "",
           license: (companyListItem as any).license || null,
+          moa_file: (companyListItem as any).moa_file || null,
           tin_number: companyListItem.tin_number || "",
           vat_registration_number:
             companyListItem.vat_registration_number || "",
-          tax_type: companyListItem.tax_type || "none",
+          fan_number: (companyListItem as any).fan_number || "",
+          tax_type: "none",
           chapa_sub_account_id:
             (companyListItem as any).chapa_sub_account_id || "",
-          theme_primary: (companyListItem as any).theme_primary || "#674FA3",
-          theme_dark: (companyListItem as any).theme_dark || "#6750A4",
-          theme_light: (companyListItem as any).theme_light || "#8B6BB5",
         };
 
         setFormData(newFormData);
@@ -836,16 +824,14 @@ export default function CompanyManagement() {
                   "vat_registration_number",
                   "vat",
                 ),
-                tax_type: pickString(detail, "tax_type") || "none",
+                fan_number: pickString(detail, "fan_number", "fan"),
+                tax_type: "none", // always No Tax
                 license: detail.license ?? null,
+                moa_file: detail.moa_file ?? null,
                 chapa_sub_account_id: pickString(
                   detail,
                   "chapa_sub_account_id",
                 ),
-                theme_primary:
-                  pickString(detail, "theme_primary") || "#674FA3",
-                theme_dark: pickString(detail, "theme_dark") || "#6750A4",
-                theme_light: pickString(detail, "theme_light") || "#8B6BB5",
                 delivery_fee_per_km:
                   pickString(detail, "delivery_fee_per_km") || "0.00",
                 address: pickString(detail, "address") || company.address,
@@ -861,10 +847,8 @@ export default function CompanyManagement() {
                 meal_periods: Array.isArray(detail.meal_periods)
                   ? detail.meal_periods
                   : (company as any).meal_periods || [],
-                // ⬇️ created_at — prefer detail, fall back to list
                 created_at:
-                  (detail as any).created_at ??
-                  (company as any).created_at,
+                  (detail as any).created_at ?? (company as any).created_at,
               } as CompanyListItem;
             } catch (err) {
               // eslint-disable-next-line no-console
@@ -908,13 +892,12 @@ export default function CompanyManagement() {
             contact_phone: first.contact_phone || "",
             contact_email: first.contact_email || "",
             license: (first as any).license || null,
+            moa_file: (first as any).moa_file || null,
             tin_number: first.tin_number || "",
             vat_registration_number: first.vat_registration_number || "",
-            tax_type: first.tax_type || "none",
+            fan_number: (first as any).fan_number || "",
+            tax_type: "none",
             chapa_sub_account_id: (first as any).chapa_sub_account_id || "",
-            theme_primary: (first as any).theme_primary || "#674FA3",
-            theme_dark: (first as any).theme_dark || "#6750A4",
-            theme_light: (first as any).theme_light || "#8B6BB5",
           };
           setFormData(newFormData);
           setOriginalFormData({
@@ -939,7 +922,7 @@ export default function CompanyManagement() {
       setSubcategories(subcategoriesRes.data);
       const headData = headCompaniesRes.data;
       setHeadCompanies(
-        Array.isArray(headData) ? headData : (headData.results ?? []),
+        Array.isArray(headData) ? headData : headData.results ?? [],
       );
     } catch (err: any) {
       // eslint-disable-next-line no-console
@@ -993,8 +976,12 @@ export default function CompanyManagement() {
   };
 
   const validateDocuments = () => {
-    setFormErrors({});
-    return true;
+    const errors: Record<string, string> = {};
+    if (!formData.fan_number || !/^\d{16}$/.test(formData.fan_number)) {
+      errors.fan_number = "FAN Number must be exactly 16 digits";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   /* ──────────────────────────────────────────────────────────────
@@ -1004,7 +991,26 @@ export default function CompanyManagement() {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!validateBasicInfo()) return;
+    if (!validateBasicInfo()) {
+      setCurrentStep(0);
+      return;
+    }
+    if (!validateLocation()) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!validateDocuments()) {
+      setCurrentStep(2);
+      return;
+    }
+
+    if (!agreedToTerms) {
+      showToast(
+        "error",
+        "You must agree to the terms and conditions before submitting.",
+      );
+      return;
+    }
 
     // ─── CHANGE DETECTION ───
     if (editingSlug && originalFormData) {
@@ -1116,28 +1122,13 @@ export default function CompanyManagement() {
         )
           return true;
         if (
-          cleanString(formData.tax_type) !==
-          cleanString(originalFormData.tax_type)
+          cleanString(formData.fan_number) !==
+          cleanString(originalFormData.fan_number)
         )
           return true;
         if (
           cleanString(formData.chapa_sub_account_id) !==
           cleanString(originalFormData.chapa_sub_account_id)
-        )
-          return true;
-        if (
-          cleanString(formData.theme_primary) !==
-          cleanString(originalFormData.theme_primary)
-        )
-          return true;
-        if (
-          cleanString(formData.theme_dark) !==
-          cleanString(originalFormData.theme_dark)
-        )
-          return true;
-        if (
-          cleanString(formData.theme_light) !==
-          cleanString(originalFormData.theme_light)
         )
           return true;
         if (
@@ -1153,6 +1144,9 @@ export default function CompanyManagement() {
 
         if (formData.license instanceof File) return true;
         if (formData.license === null && originalFormData.license) return true;
+        if (formData.moa_file instanceof File) return true;
+        if (formData.moa_file === null && originalFormData.moa_file)
+          return true;
         if (formData.logo instanceof File) return true;
         if (
           originalFormData.logo &&
@@ -1269,25 +1263,22 @@ export default function CompanyManagement() {
         "vat_registration_number",
         formData.vat_registration_number || "",
       );
-      formPayload.append("tax_type", formData.tax_type || "none");
+      formPayload.append("fan_number", formData.fan_number || "");
+      // Tax type — always "none" (No Tax)
+      formPayload.append("tax_type", "none");
       formPayload.append(
         "chapa_sub_account_id",
         formData.chapa_sub_account_id || "",
-      );
-      formPayload.append(
-        "theme_primary",
-        formData.theme_primary || "#674FA3",
-      );
-      formPayload.append("theme_dark", formData.theme_dark || "#6750A4");
-      formPayload.append(
-        "theme_light",
-        formData.theme_light || "#8B6BB5",
       );
       formPayload.append("contact_phone", formData.contact_phone || "");
       formPayload.append("contact_email", formData.contact_email || "");
 
       if (formData.license instanceof File) {
         formPayload.append("license", formData.license, formData.license.name);
+      }
+
+      if (formData.moa_file instanceof File) {
+        formPayload.append("moa_file", formData.moa_file, formData.moa_file.name);
       }
 
       if (formData.logo instanceof File) {
@@ -1426,6 +1417,8 @@ export default function CompanyManagement() {
               null
             }
             currentStep={0}
+            agreedToTerms={agreedToTerms}
+            onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -1458,6 +1451,8 @@ export default function CompanyManagement() {
               null
             }
             currentStep={1}
+            agreedToTerms={agreedToTerms}
+            onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -1490,6 +1485,8 @@ export default function CompanyManagement() {
               null
             }
             currentStep={2}
+            agreedToTerms={agreedToTerms}
+            onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -1522,6 +1519,8 @@ export default function CompanyManagement() {
               null
             }
             currentStep={3}
+            agreedToTerms={agreedToTerms}
+            onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={() => setModalOpen(false)}
           />
@@ -1544,6 +1543,7 @@ export default function CompanyManagement() {
       isSuperAdmin,
       verificationDraft,
       handleVerificationChange,
+      agreedToTerms,
     ],
   );
 
@@ -1556,6 +1556,7 @@ export default function CompanyManagement() {
     setFormErrors({});
     setVerificationDraft(false);
     setOriginalVerification(false);
+    setAgreedToTerms(false);
   };
 
   /* ──────────────────────────────────────────────────────────────
@@ -1579,6 +1580,7 @@ export default function CompanyManagement() {
 
       setEditingSlug(company.slug);
       setCurrentStep(0);
+      setAgreedToTerms(false);
 
       const newFormData: CompanyFormData = {
         name: detail.name ?? company.name ?? "",
@@ -1641,20 +1643,14 @@ export default function CompanyManagement() {
           detail.vat_registration_number ??
           company.vat_registration_number ??
           "",
-        tax_type: detail.tax_type ?? company.tax_type ?? "none",
+        fan_number: detail.fan_number ?? (company as any).fan_number ?? "",
+        tax_type: "none",
         license: detail.license ?? (company as any).license ?? null,
+        moa_file: detail.moa_file ?? (company as any).moa_file ?? null,
         chapa_sub_account_id:
           detail.chapa_sub_account_id ??
           (company as any).chapa_sub_account_id ??
           "",
-        theme_primary:
-          detail.theme_primary ??
-          (company as any).theme_primary ??
-          "#674FA3",
-        theme_dark:
-          detail.theme_dark ?? (company as any).theme_dark ?? "#6750A4",
-        theme_light:
-          detail.theme_light ?? (company as any).theme_light ?? "#8B6BB5",
       };
 
       setFormData(newFormData);
@@ -1689,6 +1685,7 @@ export default function CompanyManagement() {
   const closeInlineEdit = useCallback(() => {
     setEditingSlug(null);
     setIsEditingActive(false);
+    setAgreedToTerms(false);
   }, []);
 
   const handleDeleteClick = useCallback((company: CompanyListItem) => {
@@ -1701,7 +1698,7 @@ export default function CompanyManagement() {
     setBusinessTypeFilter("all");
     setCategoryFilter("all");
     setSubCategoryFilter("all");
-    setCreatedAtFilter("all"); // ⬅️ NEW
+    setCreatedAtFilter("all");
   }, []);
 
   const handleDelete = async () => {
@@ -1733,8 +1730,8 @@ export default function CompanyManagement() {
             isSuperAdmin
               ? "Manage company access, status, and operational settings."
               : isMarketing
-                ? "Manage company profiles and marketing information."
-                : "Manage your company details and settings."
+              ? "Manage company profiles and marketing information."
+              : "Manage your company details and settings."
           }
           icon={Building2}
           loading
@@ -1769,8 +1766,8 @@ export default function CompanyManagement() {
             isSuperAdmin
               ? "Manage company activation, access, and operational settings. Inactive companies remain visible in view-only mode."
               : isMarketing
-                ? "Manage company profiles and marketing information."
-                : "Manage your company details and settings."
+              ? "Manage company profiles and marketing information."
+              : "Manage your company details and settings."
           }
           icon={Building2}
           className={
@@ -1844,35 +1841,35 @@ export default function CompanyManagement() {
 
         {isSuperAdmin || isMarketing ? (
           <div>
-           <SuperAdminView
-  paginatedItems={paginatedItemsWithRowNumber}
-  allFilteredItems={filteredCompanies}   
-  columns={columns}
-  loading={loading}
-  sortField={sortField}
-  sortOrder={sortOrder}
-  onSort={handleSort}
-  currentPage={currentPage}
-  totalPages={totalPages}
-  onPageChange={goToPage}
-  onEdit={(company) => void openEdit(company)}
-  onDelete={canDeleteCompany ? handleDeleteClick : undefined}
-  inputValue={inputValue}
-  onInputChange={handleInputChange}
-  onSortChange={onSortChange}
-  businessTypeFilter={businessTypeFilter}
-  onBusinessTypeChange={setBusinessTypeFilter}
-  categoryFilter={categoryFilter}
-  onCategoryChange={setCategoryFilter}
-  subCategoryFilter={subCategoryFilter}
-  onSubCategoryChange={setSubCategoryFilter}
-  businessTypeOptions={businessTypeOptions}
-  categoryOptions={categoryOptions}
-  subCategoryOptions={subCategoryOptions}
-  onClearAll={clearAllFilters}
-  pageSize={pageSize}
-  onPageSizeChange={setPageSize}
-/>
+            <SuperAdminView
+              paginatedItems={paginatedItemsWithRowNumber}
+              allFilteredItems={filteredCompanies}
+              columns={columns}
+              loading={loading}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+              onEdit={(company) => void openEdit(company)}
+              onDelete={canDeleteCompany ? handleDeleteClick : undefined}
+              inputValue={inputValue}
+              onInputChange={handleInputChange}
+              onSortChange={onSortChange}
+              businessTypeFilter={businessTypeFilter}
+              onBusinessTypeChange={setBusinessTypeFilter}
+              categoryFilter={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+              subCategoryFilter={subCategoryFilter}
+              onSubCategoryChange={setSubCategoryFilter}
+              businessTypeOptions={businessTypeOptions}
+              categoryOptions={categoryOptions}
+              subCategoryOptions={subCategoryOptions}
+              onClearAll={clearAllFilters}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-sm">
@@ -1900,6 +1897,8 @@ export default function CompanyManagement() {
                 companies[0]?.head_company_detail?.name ??
                 null
               }
+              agreedToTerms={agreedToTerms}
+              onAgreedToTermsChange={setAgreedToTerms}
               onSubmit={handleSubmit}
               onCloseForm={closeInlineEdit}
             />
@@ -1914,6 +1913,7 @@ export default function CompanyManagement() {
           onStepChange={setCurrentStep}
           onSubmit={handleSubmit}
           submitting={submitting}
+          disableSubmit={!agreedToTerms}
           maxWidth="2xl"
         />
 

@@ -32,6 +32,7 @@ import {
   removeUserFromCompany,
   updateUser,
   updateUserCompanyRole,
+  registerUser,
 } from "../../../services/api";
 import type { User, UserRole, Membership } from "../../../types";
 import ReactDOM from "react-dom";
@@ -44,8 +45,10 @@ import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
-import CreateUserModal from "./CreateUserModal";
 import PageHeader from "../../ui/PageHeader";
+import { CreateCompanyUserModal } from "../companyUser/CreateCompanyUserModal";
+
+type VehicleType = "motorcycle" | "car" | "bicycle" | "van" | "foot";
 
 // ============================================================
 // Role display labels — backend stores "staff", UI shows "Dispatcher"
@@ -124,7 +127,7 @@ const roleOptions = [
     icon: <Shield className="h-4 w-4 text-secondary" />,
   },
   {
-    label: "Dispatcher", // backend: "staff"
+    label: "Dispatcher",
     value: "staff",
     icon: <Users className="h-4 w-4 text-secondary" />,
   },
@@ -896,6 +899,16 @@ const SuperAdminUsers: React.FC = () => {
   const [isRemovingMembership, setIsRemovingMembership] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  // ✅ NEW: state for create & edit flows
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createUserServerErrors, setCreateUserServerErrors] = useState<
+    Record<string, string | string[]>
+  >({});
+  const [updatingUser, setUpdatingUser] = useState(false);
+  const [updateUserServerErrors, setUpdateUserServerErrors] = useState<
+    Record<string, string | string[]>
+  >({});
+
   const fetchAllUsers = useCallback(async (): Promise<User[]> => {
     let page = 1;
     let all: User[] = [];
@@ -1029,18 +1042,98 @@ const SuperAdminUsers: React.FC = () => {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
+    setUpdateUserServerErrors({});
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = async (updatedData: Partial<User>) => {
+  // ✅ NEW: proper edit save with vehicle_type support
+  const handleSaveEdit = async (updatedData: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    role: string;
+    vehicle_type?: VehicleType;
+  }) => {
     if (!editingUser) return;
+    setUpdatingUser(true);
+    setUpdateUserServerErrors({});
+
     try {
-      await updateUser(editingUser.id, updatedData);
+      const payload: Record<string, any> = {
+        first_name: updatedData.first_name,
+        last_name: updatedData.last_name,
+        email: updatedData.email,
+        username: updatedData.username,
+        role: updatedData.role,
+      };
+
+      if (updatedData.role === "delivery" && updatedData.vehicle_type) {
+        payload.vehicle_type = updatedData.vehicle_type;
+      } else if (updatedData.role !== "delivery") {
+        payload.vehicle_type = null;
+      }
+
+      await updateUser(editingUser.id, payload);
       await refreshAllUsers();
       showToast("success", "User updated successfully");
       setIsEditModalOpen(false);
     } catch (err: any) {
-      showToast("error", err.message || "Failed to update user");
+      const backendErrors = err?.response?.data;
+      if (backendErrors && typeof backendErrors === "object") {
+        setUpdateUserServerErrors(backendErrors);
+      } else {
+        showToast("error", err.message || "Failed to update user");
+      }
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
+
+  // ✅ NEW: create user handler
+  const handleCreateUser = async (data: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+    username: string;
+    password: string;
+    role: "admin" | "staff" | "viewer" | "delivery";
+    vehicle_type?: VehicleType;
+  }) => {
+    setCreatingUser(true);
+    setCreateUserServerErrors({});
+
+    try {
+      const payload: Record<string, any> = {
+        first_name: data.first_name.trim(),
+        last_name: data.last_name.trim(),
+        email: data.email.trim(),
+        username: data.username.trim(),
+        password: data.password,
+        phone_number: data.phone_number.replace(/\D/g, ""),
+        role: data.role,
+      };
+
+      if (data.role === "delivery" && data.vehicle_type) {
+        payload.vehicle_type = data.vehicle_type;
+      }
+
+      await registerUser(payload);
+
+      showToast("success", "User created successfully");
+      setIsCreateModalOpen(false);
+      await refreshAllUsers();
+    } catch (err: any) {
+      const backendErrors = err?.response?.data;
+      if (backendErrors && typeof backendErrors === "object") {
+        setCreateUserServerErrors(backendErrors);
+      } else {
+        showToast("error", err?.message || "Failed to create user");
+      }
+    } finally {
+      setCreatingUser(false);
     }
   };
 
@@ -1185,7 +1278,7 @@ const SuperAdminUsers: React.FC = () => {
             icon={<Shield className="h-4 w-4" />}
           />
           <StatCard
-            title="Dispatchers" // backend: "staff"
+            title="Dispatchers"
             value={stats.totalStaff}
             icon={<UserCheck className="h-4 w-4" />}
           />
@@ -1269,9 +1362,14 @@ const SuperAdminUsers: React.FC = () => {
 
       <EditUserModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        user={editingUser}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setUpdateUserServerErrors({});
+        }}
+        user={editingUser as any}
         onSave={handleSaveEdit}
+        updating={updatingUser}
+        serverErrors={updateUserServerErrors}
       />
 
       <ConfirmDeleteModal
@@ -1286,14 +1384,18 @@ const SuperAdminUsers: React.FC = () => {
         message={`Are you sure you want to remove ${removeMembershipData?.companyName} from ${removeMembershipData?.userName}? This will revoke all access to that company.`}
         loading={isRemovingMembership}
       />
-      <CreateUserModal
+
+      <CreateCompanyUserModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSuccess={() => {
+        onClose={() => {
           setIsCreateModalOpen(false);
-          refreshAllUsers();
+          setCreateUserServerErrors({});
         }}
+        loading={creatingUser}
+        onSubmit={handleCreateUser}
+        serverErrors={createUserServerErrors}
       />
+
       <ManageMembershipsModal
         isOpen={isMembershipModalOpen}
         onClose={() => setIsMembershipModalOpen(false)}
