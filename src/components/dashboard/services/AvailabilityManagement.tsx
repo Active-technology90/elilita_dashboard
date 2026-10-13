@@ -910,10 +910,10 @@ export default function AvailabilityManagement() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Availability Management"
+          title={company?.name || undefined}
           description="Configure booking schedules, working hours, and closure dates."
           icon={Calendar}
-          eyebrow={company?.name || undefined}
+          eyebrow="Availability Management"
           actions={
             isSuperAdmin ? (
               <button

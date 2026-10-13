@@ -232,8 +232,8 @@ export function DeliveryManager({
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
                       {currentDelivery
-                        ? `Update driver for order #${orderId}`
-                        : `Assign a driver to order #${orderId}`}
+                        ? `Update Delivery person  for order #${orderId}`
+                        : `Assign a Delivery person  to order #${orderId}`}
                     </p>
                   </div>
                   <button
@@ -254,7 +254,7 @@ export function DeliveryManager({
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">
-                        Current driver
+                        Current Delivery person 
                       </p>
                       <p className="text-base font-medium text-gray-900 mt-0.5">
                         {currentDelivery.delivery_person_name || "Unassigned"}

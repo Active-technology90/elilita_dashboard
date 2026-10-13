@@ -513,10 +513,10 @@ export default function ServiceBookings() {
       <Toast toast={toast} />
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Service Bookings"
+          title={companyName || undefined}
           description="Review, manage, and track incoming customer appointments."
           icon={Calendar}
-          eyebrow={companyName || undefined}
+          eyebrow="Service Bookings"
           actions={
             isSuperAdmin ? (
               <button

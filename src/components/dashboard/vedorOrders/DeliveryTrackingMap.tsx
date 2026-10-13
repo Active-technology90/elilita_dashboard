@@ -29,9 +29,9 @@ import type { VendorOrder } from "../../../types";
 import { useToast } from "../../../hooks/useToast";
 
 /* ──────────────────────────────────────────────────────────────────
-   DEBUG HELPERS — set DEBUG = false to silence all map logs
+   DEBUG HELPERS
    ────────────────────────────────────────────────────────────────── */
-const DEBUG = false; // default off in production; enable with ?debugDeliveryRoute=1 or localStorage.deliveryRouteDebug=1
+const DEBUG = false;
 
 const routeDebugEnabled = () => {
   if (typeof window === "undefined") return DEBUG;
@@ -336,9 +336,6 @@ const getOrderDestination = (order: any): OrderDestination => {
   let lon: number | null = null;
   let source: OrderDestination["source"] = "unknown";
 
-  // IMPORTANT: keep this priority aligned with VendorOrderDetailModal.getCustomerLocation().
-  // Vendor-delivery destination coordinates are authoritative. Shipping/master fields are
-  // compatibility fallbacks for older payload shapes.
   if (isValidCoordinate(order.delivery?.customer_lat, order.delivery?.customer_lon)) {
     lat = Number(order.delivery.customer_lat);
     lon = Number(order.delivery.customer_lon);
@@ -411,21 +408,21 @@ const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } =>
   const masterStatus = order.status?.toLowerCase();
   const deliveryStatus = order.delivery?.status?.toLowerCase();
   const vendorOrders = order.vendor_orders || [];
-  
+
   const blockedStatuses = ['delivered', 'cancelled', 'rejected', 'refunded', 'completed'];
   if (blockedStatuses.includes(masterStatus)) {
-    return { canAssign: false, reason: `Order status is ${masterStatus}. Driver assignment is unavailable.` };
+    return { canAssign: false, reason: `Order status is ${masterStatus}. Delivery person assignment is unavailable.` };
   }
-  
+
   if (deliveryStatus && blockedStatuses.includes(deliveryStatus)) {
-    return { canAssign: false, reason: `Delivery status is ${deliveryStatus}. Driver assignment is unavailable.` };
+    return { canAssign: false, reason: `Delivery status is ${deliveryStatus}. Delivery person assignment is unavailable.` };
   }
 
   for (const vo of vendorOrders) {
     const voStatus = vo.status?.toLowerCase();
     const voDeliveryStatus = vo.delivery_status?.toLowerCase() || vo.delivery?.status?.toLowerCase();
-    
-    if (['cancelled', 'rejected', 'refunded'].includes(voStatus) || 
+
+    if (['cancelled', 'rejected', 'refunded'].includes(voStatus) ||
         (voDeliveryStatus && ['cancelled', 'rejected', 'refunded'].includes(voDeliveryStatus))) {
       return { canAssign: false, reason: "One or more vendor deliveries are cancelled or rejected." };
     }
@@ -437,15 +434,15 @@ const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } =>
 const normalizeOrder = (order: any): DispatchOrder => {
   const destination = getOrderDestination(order);
   const assignmentCheck = canAssignDriver(order);
-  
+
   const vendorOrder = order.vendor_orders?.[0];
   const company = order.company || vendorOrder?.company;
-  
+
   const pickupLat = company?.latitude != null ? Number(company.latitude) : null;
   const pickupLon = company?.longitude != null ? Number(company.longitude) : null;
-  
+
   const items = vendorOrder?.items || order.items || order.order_items || [];
-  
+
   return {
     id: order.id,
     status: order.status || "unknown",
@@ -667,7 +664,7 @@ const createDriverPopupForSelection = (
     <div style="font-family:Inter,system-ui,sans-serif;min-width:280px;max-width:340px;">
       ${isNearest ? `
         <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span style="font-size:12px;font-weight:800;color:#6750A4;">★ RECOMMENDED DRIVER</span>
+          <span style="font-size:12px;font-weight:800;color:#6750A4;">★ RECOMMENDED DELIVERY PERSON</span>
           <span style="font-size:10px;font-weight:700;color:#6D28D9;">Best pickup ETA</span>
         </div>
       ` : ""}
@@ -693,7 +690,7 @@ const createDriverPopupForSelection = (
           <div style="font-size:10px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Dispatch route</div>
           <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#374151;margin-bottom:7px;">
             <span style="width:20px;height:20px;border-radius:7px;background:${isNearest ? "#6750A4" : color};color:white;display:flex;align-items:center;justify-content:center;font-size:10px;">1</span>
-            <span style="flex:1;">Driver → Pickup</span>
+            <span style="flex:1;">Delivery Person  → Pickup</span>
             <strong>${formatDistance(driver.road_distance_to_pickup ?? driver.distance_to_pickup)}</strong>
             <span style="color:#9CA3AF;">${driver.road_eta_to_pickup != null ? formatDuration(driver.road_eta_to_pickup) : ""}</span>
           </div>
@@ -889,7 +886,7 @@ export default function DeliveryTrackingMap({
   const subscribedIds = useRef<Set<string>>(new Set());
   const initialFitDone = useRef(false);
   const tileLayerRef = useRef<Leaflet.TileLayer | null>(null);
-  
+
   const routeCache = useRef<Map<RouteCacheKey, RouteCacheEntry>>(new Map());
   const pendingRequests = useRef<Map<RouteCacheKey, Promise<RouteSummary | null>>>(new Map());
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -949,7 +946,7 @@ export default function DeliveryTrackingMap({
       const destination = getOrderDestination(order);
       const vendorOrder = order.vendor_orders?.[0];
       const deliveryData = vendorOrder?.delivery || order.delivery;
-      
+
       return {
         ...order,
         delivery: {
@@ -962,7 +959,7 @@ export default function DeliveryTrackingMap({
           delivery_person_phone: fb?.driver_phone ?? deliveryData?.delivery_person_phone ?? "",
           status: fb?.status ?? deliveryData?.status ?? order.delivery_status ?? vendorOrder?.delivery_status ?? "pending",
           logistics_company_name: deliveryData?.logistics_company_name,
-          is_in_house: !deliveryData?.logistics_company_name || 
+          is_in_house: !deliveryData?.logistics_company_name ||
                        deliveryData?.logistics_company_name === "" ||
                        deliveryData?.logistics_company_name === vendorOrder?.company?.name,
           customer_address: destination.address,
@@ -1031,36 +1028,33 @@ export default function DeliveryTrackingMap({
     );
   }, [combinedOrders, selectedOrderId, allOrders, initialOrder]);
 
- const liveDeliveries = useMemo(() => {
-  let filtered = combinedOrders.filter(order => {
-    const dest = getOrderDestination(order);
-    const isLiveTracking = order.delivery?.status === "out_for_delivery";
-    const isSelectionMode = mode === "driver_selection";
+  const liveDeliveries = useMemo(() => {
+    let filtered = combinedOrders.filter(order => {
+      const dest = getOrderDestination(order);
+      const isLiveTracking = order.delivery?.status === "out_for_delivery";
+      const isSelectionMode = mode === "driver_selection";
 
-    // In driver_selection mode, we want the selected order visible even if
-    // its status is not yet "out_for_delivery" (e.g. right after assignment).
-    if (!isSelectionMode && !isLiveTracking) return false;
-    if (dest.lat == null || dest.lon == null) return false;
-    if (!isSelectionMode && order.delivery.delivery_person_name === "Unassigned") {
-      return false;
+      if (!isSelectionMode && !isLiveTracking) return false;
+      if (dest.lat == null || dest.lon == null) return false;
+      if (!isSelectionMode && order.delivery.delivery_person_name === "Unassigned") {
+        return false;
+      }
+      return true;
+    });
+
+    if (mode === "driver_selection" && selectedOrderId) {
+      filtered = filtered.filter(o => o.id === selectedOrderId);
     }
-    return true;
-  });
 
-  if (mode === "driver_selection" && selectedOrderId) {
-    filtered = filtered.filter(o => o.id === selectedOrderId);
-  }
+    if (driverFilter === "in_house") {
+      filtered = filtered.filter(order => order.delivery.is_in_house === true);
+    } else if (driverFilter === "third_party") {
+      filtered = filtered.filter(order => order.delivery.is_in_house === false);
+    }
 
-  if (driverFilter === "in_house") {
-    filtered = filtered.filter(order => order.delivery.is_in_house === true);
-  } else if (driverFilter === "third_party") {
-    filtered = filtered.filter(order => order.delivery.is_in_house === false);
-  }
+    return filtered;
+  }, [combinedOrders, driverFilter, mode, selectedOrderId]);
 
-  return filtered;
-}, [combinedOrders, driverFilter, mode, selectedOrderId]);
-
-  /* ── Debug: log what the map sees for the selected order ── */
   useEffect(() => {
     if (mode !== "driver_selection" || !normalizedOrder) return;
 
@@ -1102,13 +1096,13 @@ export default function DeliveryTrackingMap({
       const fetchDrivers = async () => {
         setLoadingDrivers(true);
         try {
-          const companySlugResolved = 
-            selectedOrder?.vendor_orders?.[0]?.company?.slug || 
+          const companySlugResolved =
+            selectedOrder?.vendor_orders?.[0]?.company?.slug ||
             selectedOrder?.company?.slug ||
             initialOrder?.company?.slug ||
             initialOrder?.vendor_orders?.[0]?.company?.slug;
-          
-          mapDbg.group("fetching available drivers");
+
+          mapDbg.group("fetching available delivery personnel");
           mapDbg.log("companySlugResolved", companySlugResolved);
           mapDbg.log("selectedOrderId", selectedOrderId);
           mapDbg.log("initialOrder?.id", initialOrder?.id);
@@ -1119,15 +1113,15 @@ export default function DeliveryTrackingMap({
             setLoadingDrivers(false);
             return;
           }
-          
+
           const res = await getAvailableDeliveryDrivers(companySlugResolved, {
             vendor_order_id: selectedOrderId ?? initialOrder?.id,
           });
-          mapDbg.log("available drivers response", res.data);
+          mapDbg.log("available delivery personnel response", res.data);
           setAvailableDrivers(res.data || []);
         } catch (err) {
-          mapDbg.error("Failed to fetch available drivers", err);
-          showToast("error", "Failed to load available drivers");
+          mapDbg.error("Failed to fetch available delivery personnel", err);
+          showToast("error", "Failed to load available delivery personnel");
         } finally {
           setLoadingDrivers(false);
         }
@@ -1276,8 +1270,6 @@ export default function DeliveryTrackingMap({
           ? haversine(driverLoc.lat, driverLoc.lon, customer.lat, customer.lon)
           : null;
 
-      // routeDataByDriver is the road route from driver to the first required stop:
-      // pickup when present, otherwise directly to the customer.
       const driverToFirstStopRoute = routeDataByDriver[d.id] || null;
       const pickupToCustomerDistance = hasPickup
         ? (pickupCustomerRoute?.distanceKm ?? fallbackPickupToCustomer)
@@ -1451,7 +1443,7 @@ export default function DeliveryTrackingMap({
           : null;
 
     if (!target) {
-      mapDbg.warn("no pickup/customer coords — skipping driver road routes", {
+      mapDbg.warn("no pickup/customer coords — skipping delivery person road routes", {
         pickupLat: normalizedOrder.pickupLat,
         pickupLon: normalizedOrder.pickupLon,
         customerLat: normalizedOrder.customerLat,
@@ -1493,7 +1485,7 @@ export default function DeliveryTrackingMap({
           if (!routeSummary) {
             driverRoutePositionKeys.current.delete(driver.id);
           }
-          mapDbg.log("driver first-stop route", {
+          mapDbg.log("delivery person first-stop route", {
             driverId: driver.id,
             driver: from,
             targetType,
@@ -1546,13 +1538,13 @@ export default function DeliveryTrackingMap({
 
   const filteredAvailableDrivers = useMemo(() => {
     let filtered = [...enhancedDrivers];
-    
+
     if (driverFilter === "in_house") {
       filtered = filtered.filter(d => d.is_in_house === true);
     } else if (driverFilter === "third_party") {
       filtered = filtered.filter(d => d.is_in_house === false);
     }
-    
+
     if (searchTerm.trim()) {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(d =>
@@ -1563,7 +1555,7 @@ export default function DeliveryTrackingMap({
         d.vehicle_type?.toLowerCase().includes(search)
       );
     }
-    
+
     return filtered;
   }, [enhancedDrivers, driverFilter, searchTerm]);
 
@@ -1763,36 +1755,36 @@ export default function DeliveryTrackingMap({
     mapRef.current = map;
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
-    
-    tileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { 
-      attribution: "© OpenStreetMap contributors", 
+
+    tileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors",
       maxZoom: 19,
     }).addTo(map);
 
-    const cluster = L.markerClusterGroup({ 
-      maxClusterRadius: 60, 
-      spiderfyOnMaxZoom: true, 
-      showCoverageOnHover: false, 
-    }); 
-    map.addLayer(cluster); 
-    clusterGroup.current = cluster; 
- 
-    return () => { 
-      map.remove(); 
-      mapRef.current = null; 
-      clusterGroup.current = null; 
+    const cluster = L.markerClusterGroup({
+      maxClusterRadius: 60,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+    });
+    map.addLayer(cluster);
+    clusterGroup.current = cluster;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      clusterGroup.current = null;
       tileLayerRef.current = null;
-    }; 
+    };
   }, [leafletLoaded]);
 
   useEffect(() => {
     if (!mapRef.current || !tileLayerRef.current || !leafletLoaded) return;
     const L = (window as any).L;
-    
+
     if (tileLayerRef.current) {
       mapRef.current.removeLayer(tileLayerRef.current);
     }
-    
+
     if (mapStyle === "satellite") {
       tileLayerRef.current = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: "© Esri, Maxar, Earthstar Geographics, and the GIS User Community",
@@ -1806,66 +1798,66 @@ export default function DeliveryTrackingMap({
     }
   }, [mapStyle, leafletLoaded]);
 
-  useEffect(() => { 
-    if (liveDeliveries.length > 0) { 
-      initialFitDone.current = false; 
-    } 
-  }, [liveDeliveries.length]); 
- 
-  useEffect(() => { 
-    const L = (window as any).L; 
-    if (!mapRef.current || !clusterGroup.current || !L) return; 
- 
-    const cluster = clusterGroup.current; 
-    const currentCustomerKeys = new Set<string>(); 
-    const currentDriverKeys = new Set<string>(); 
- 
+  useEffect(() => {
+    if (liveDeliveries.length > 0) {
+      initialFitDone.current = false;
+    }
+  }, [liveDeliveries.length]);
+
+  useEffect(() => {
+    const L = (window as any).L;
+    if (!mapRef.current || !clusterGroup.current || !L) return;
+
+    const cluster = clusterGroup.current;
+    const currentCustomerKeys = new Set<string>();
+    const currentDriverKeys = new Set<string>();
+
     if (mode === "tracking" && showCustomerMarker) {
-      customerGroups.forEach((orders, key) => { 
-        const [latStr, lngStr] = key.split(","); 
-        const lat = parseFloat(latStr); 
-        const lng = parseFloat(lngStr); 
-        
+      customerGroups.forEach((orders, key) => {
+        const [latStr, lngStr] = key.split(",");
+        const lat = parseFloat(latStr);
+        const lng = parseFloat(lngStr);
+
         if (!isValidCoordinate(lat, lng)) {
           mapDbg.warn(`Invalid customer coordinates: ${lat}, ${lng}`, orders[0]?.id);
           return;
         }
-        
-        currentCustomerKeys.add(key); 
-   
-        let marker = customerMarkers.current.get(key); 
-        if (!marker) { 
-          const icon = makeCustomerIcon(orders); 
-          const newMarker = L.marker([lat, lng], { icon }).bindPopup( 
-            createCustomerPopup(orders), 
-            { maxWidth: 320 } 
-          ); 
-          newMarker.on("click", () => setActiveOrderId(orders[0].id)); 
-          cluster.addLayer(newMarker); 
-          customerMarkers.current.set(key, newMarker); 
-        } else { 
-          marker.setLatLng([lat, lng]); 
-          marker.setIcon(makeCustomerIcon(orders)); 
-          marker.setPopupContent(createCustomerPopup(orders)); 
-        } 
+
+        currentCustomerKeys.add(key);
+
+        let marker = customerMarkers.current.get(key);
+        if (!marker) {
+          const icon = makeCustomerIcon(orders);
+          const newMarker = L.marker([lat, lng], { icon }).bindPopup(
+            createCustomerPopup(orders),
+            { maxWidth: 320 }
+          );
+          newMarker.on("click", () => setActiveOrderId(orders[0].id));
+          cluster.addLayer(newMarker);
+          customerMarkers.current.set(key, newMarker);
+        } else {
+          marker.setLatLng([lat, lng]);
+          marker.setIcon(makeCustomerIcon(orders));
+          marker.setPopupContent(createCustomerPopup(orders));
+        }
       });
     }
 
-    customerMarkers.current.forEach((marker, key) => { 
-      if (!currentCustomerKeys.has(key)) { 
-        cluster.removeLayer(marker); 
-        customerMarkers.current.delete(key); 
-      } 
-    }); 
- 
-    if (mode === "driver_selection" && normalizedOrder) { 
-      const pickup = normalizedOrder.pickupLat != null && normalizedOrder.pickupLon != null 
-        ? { lat: normalizedOrder.pickupLat, lon: normalizedOrder.pickupLon } 
-        : null; 
-      const customer = normalizedOrder.customerLat != null && normalizedOrder.customerLon != null 
-        ? { lat: normalizedOrder.customerLat, lon: normalizedOrder.customerLon } 
-        : null; 
- 
+    customerMarkers.current.forEach((marker, key) => {
+      if (!currentCustomerKeys.has(key)) {
+        cluster.removeLayer(marker);
+        customerMarkers.current.delete(key);
+      }
+    });
+
+    if (mode === "driver_selection" && normalizedOrder) {
+      const pickup = normalizedOrder.pickupLat != null && normalizedOrder.pickupLon != null
+        ? { lat: normalizedOrder.pickupLat, lon: normalizedOrder.pickupLon }
+        : null;
+      const customer = normalizedOrder.customerLat != null && normalizedOrder.customerLon != null
+        ? { lat: normalizedOrder.customerLat, lon: normalizedOrder.customerLon }
+        : null;
+
       driverMarkers.current.forEach((marker, key) => {
         if (!key.startsWith("selection_")) {
           cluster.removeLayer(marker);
@@ -2052,19 +2044,19 @@ export default function DeliveryTrackingMap({
         }
       });
 
-      if (!initialFitDone.current && (pickup || customer)) { 
-        setTimeout(() => { 
-          const bounds = L.latLngBounds([]); 
-          if (pickup && showCompanyMarker) bounds.extend([pickup.lat, pickup.lon]); 
-          if (customer && showDeliveryMarker) bounds.extend([customer.lat, customer.lon]); 
-          driverMarkers.current.forEach(m => bounds.extend(m.getLatLng())); 
-          if (bounds.isValid() && mapRef.current) { 
-            mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false }); 
-          } 
-          initialFitDone.current = true; 
-        }, 500); 
-      } 
-    } else { 
+      if (!initialFitDone.current && (pickup || customer)) {
+        setTimeout(() => {
+          const bounds = L.latLngBounds([]);
+          if (pickup && showCompanyMarker) bounds.extend([pickup.lat, pickup.lon]);
+          if (customer && showDeliveryMarker) bounds.extend([customer.lat, customer.lon]);
+          driverMarkers.current.forEach(m => bounds.extend(m.getLatLng()));
+          if (bounds.isValid() && mapRef.current) {
+            mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15, animate: false });
+          }
+          initialFitDone.current = true;
+        }, 500);
+      }
+    } else {
       driverMarkers.current.forEach((marker, key) => {
         if (key.startsWith("selection_")) {
           cluster.removeLayer(marker);
@@ -2078,298 +2070,296 @@ export default function DeliveryTrackingMap({
         }
       });
 
-      driverGroups.forEach((orders, driverName) => { 
-        currentDriverKeys.add(driverName); 
-        const color = driverColorMap.get(driverName)!; 
-        const isInHouse = orders[0]?.delivery.is_in_house; 
-        const firstWithCoords = orders.find( 
-          o => o.delivery.current_lat != null && o.delivery.current_lng != null 
-        ); 
-        const driverLat = firstWithCoords?.delivery.current_lat; 
-        const driverLng = firstWithCoords?.delivery.current_lng; 
- 
-        if (driverLat != null && driverLng != null && isValidCoordinate(driverLat, driverLng)) { 
-          const existingMarker = driverMarkers.current.get(driverName); 
-          if (!existingMarker) { 
-            const icon = makeDriverIcon(driverName, orders.length, color, isInHouse); 
-            const newMarker: Leaflet.Marker = L.marker([driverLat, driverLng], { icon }).bindPopup( 
-              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone), 
-              { maxWidth: 320 } 
-            ); 
-            newMarker.on("click", () => setActiveOrderId(orders[0].id)); 
-            cluster.addLayer(newMarker); 
-            driverMarkers.current.set(driverName, newMarker); 
-          } else { 
-            animateMarkerTo(existingMarker, driverLat, driverLng); 
-            existingMarker.setIcon(makeDriverIcon(driverName, orders.length, color, isInHouse)); 
-            existingMarker.setPopupContent( 
-              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone) 
-            ); 
-          } 
- 
-          orders.forEach((order) => { 
+      driverGroups.forEach((orders, driverName) => {
+        currentDriverKeys.add(driverName);
+        const color = driverColorMap.get(driverName)!;
+        const isInHouse = orders[0]?.delivery.is_in_house;
+        const firstWithCoords = orders.find(
+          o => o.delivery.current_lat != null && o.delivery.current_lng != null
+        );
+        const driverLat = firstWithCoords?.delivery.current_lat;
+        const driverLng = firstWithCoords?.delivery.current_lng;
+
+        if (driverLat != null && driverLng != null && isValidCoordinate(driverLat, driverLng)) {
+          const existingMarker = driverMarkers.current.get(driverName);
+          if (!existingMarker) {
+            const icon = makeDriverIcon(driverName, orders.length, color, isInHouse);
+            const newMarker: Leaflet.Marker = L.marker([driverLat, driverLng], { icon }).bindPopup(
+              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone),
+              { maxWidth: 320 }
+            );
+            newMarker.on("click", () => setActiveOrderId(orders[0].id));
+            cluster.addLayer(newMarker);
+            driverMarkers.current.set(driverName, newMarker);
+          } else {
+            animateMarkerTo(existingMarker, driverLat, driverLng);
+            existingMarker.setIcon(makeDriverIcon(driverName, orders.length, color, isInHouse));
+            existingMarker.setPopupContent(
+              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone)
+            );
+          }
+
+          orders.forEach((order) => {
             const dest = getOrderDestination(order);
             if (dest.lat == null || dest.lon == null) return;
-            
-            const custLat = dest.lat; 
-            const custLng = dest.lon; 
-            const orderId = order.id; 
- 
-            const debounceKey = `route_${orderId}`; 
-            if (debounceTimers.current.has(debounceKey)) return; 
- 
-            debounceTimers.current.set( 
-              debounceKey, 
-              setTimeout(async () => { 
-                const routeSummary = await fetchOSRMRoute( 
-                  { lat: driverLat, lon: driverLng }, 
-                  { lat: custLat, lon: custLng } 
-                ); 
-                let line = routeLines.current.get(`${orderId}`); 
- 
-                if (routeSummary && routeSummary.coordinates.length > 0) { 
-                  if (!line) { 
-                    const newLine = L.polyline(routeSummary.coordinates, { 
-                      color, 
-                      weight: 3, 
-                      opacity: 0.8, 
-                    }); 
-                    newLine.addTo(mapRef.current!); 
-                    routeLines.current.set(`${orderId}`, newLine); 
-                  } else { 
-                    line.setLatLngs(routeSummary.coordinates); 
-                    line.setStyle({ color, weight: 3, opacity: 0.8, dashArray: undefined }); 
-                  } 
-                } else { 
-                  if (!line) { 
-                    const newLine = L.polyline( 
-                      [ 
-                        [driverLat, driverLng], 
-                        [custLat, custLng], 
-                      ], 
-                      { color, weight: 2, opacity: 0.7, dashArray: "8 6" } 
-                    ); 
-                    newLine.addTo(mapRef.current!); 
-                    routeLines.current.set(`${orderId}`, newLine); 
-                  } else { 
-                    line.setLatLngs([ 
-                      [driverLat, driverLng], 
-                      [custLat, custLng], 
-                    ]); 
-                    line.setStyle({ color, weight: 2, opacity: 0.7, dashArray: "8 6" }); 
-                  } 
-                } 
-                debounceTimers.current.delete(debounceKey); 
-              }, 1400) 
-            ); 
-          }); 
-        } else { 
-          const existingMarker = driverMarkers.current.get(driverName); 
-          if (existingMarker) { 
-            cluster.removeLayer(existingMarker); 
-            driverMarkers.current.delete(driverName); 
-            orders.forEach((order) => { 
-              const line = routeLines.current.get(`${order.id}`); 
-              if (line) { 
-                line.remove(); 
-                routeLines.current.delete(`${order.id}`); 
-              } 
-            }); 
-          } 
-        } 
-      }); 
- 
-      driverMarkers.current.forEach((marker, driverName) => { 
-        if (!currentDriverKeys.has(driverName)) { 
-          cluster.removeLayer(marker); 
-          driverMarkers.current.delete(driverName); 
-          const orders = driverGroups.get(driverName); 
-          if (orders) { 
-            orders.forEach((order) => { 
-              const line = routeLines.current.get(`${order.id}`); 
-              if (line) { 
-                line.remove(); 
-                routeLines.current.delete(`${order.id}`); 
-              } 
-            }); 
-          } 
-        } 
-      }); 
-    } 
- 
-    if (!initialFitDone.current) { 
-      setTimeout(() => { 
-        const bounds = L.latLngBounds([]); 
-        customerMarkers.current.forEach(m => bounds.extend(m.getLatLng())); 
-        driverMarkers.current.forEach(m => bounds.extend(m.getLatLng())); 
-        if (companyMarkerRef.current) bounds.extend(companyMarkerRef.current.getLatLng()); 
-        if (deliveryMarkerRef.current) bounds.extend(deliveryMarkerRef.current.getLatLng()); 
-        if (pickupMarkerRef.current) bounds.extend(pickupMarkerRef.current.getLatLng()); 
-        if (bounds.isValid() && mapRef.current) { 
-          mapRef.current.fitBounds(bounds, { 
-            padding: [60, 60], 
-            maxZoom: 15, 
-            animate: false, 
-          }); 
-        } 
-        initialFitDone.current = true; 
-      }, 500); 
-    } 
- 
-    if (followDriver && activeOrderId) { 
-      const order = liveDeliveries.find(o => o.id === activeOrderId); 
-      if (order?.delivery.current_lat && order.delivery.current_lng) { 
-        mapRef.current?.panTo( 
-          [order.delivery.current_lat, order.delivery.current_lng], 
-          { animate: true } 
-        ); 
-      } 
-    } 
-  }, [ 
-    customerGroups, driverGroups, driverColorMap, liveDeliveries, 
-    followDriver, activeOrderId, mode, normalizedOrder, 
-    filteredAvailableDrivers, pendingDriverId, selectedDriverId, 
-    fetchOSRMRoute, routeDataByDriver, pickupCustomerRoute, showCompanyMarker, showDeliveryMarker, showCustomerMarker, 
-  ]); 
- 
-  useEffect(() => { 
-    if (!activeOrderId || !mapRef.current) return; 
-    const order = liveDeliveries.find(o => o.id === activeOrderId); 
+
+            const custLat = dest.lat;
+            const custLng = dest.lon;
+            const orderId = order.id;
+
+            const debounceKey = `route_${orderId}`;
+            if (debounceTimers.current.has(debounceKey)) return;
+
+            debounceTimers.current.set(
+              debounceKey,
+              setTimeout(async () => {
+                const routeSummary = await fetchOSRMRoute(
+                  { lat: driverLat, lon: driverLng },
+                  { lat: custLat, lon: custLng }
+                );
+                let line = routeLines.current.get(`${orderId}`);
+
+                if (routeSummary && routeSummary.coordinates.length > 0) {
+                  if (!line) {
+                    const newLine = L.polyline(routeSummary.coordinates, {
+                      color,
+                      weight: 3,
+                      opacity: 0.8,
+                    });
+                    newLine.addTo(mapRef.current!);
+                    routeLines.current.set(`${orderId}`, newLine);
+                  } else {
+                    line.setLatLngs(routeSummary.coordinates);
+                    line.setStyle({ color, weight: 3, opacity: 0.8, dashArray: undefined });
+                  }
+                } else {
+                  if (!line) {
+                    const newLine = L.polyline(
+                      [
+                        [driverLat, driverLng],
+                        [custLat, custLng],
+                      ],
+                      { color, weight: 2, opacity: 0.7, dashArray: "8 6" }
+                    );
+                    newLine.addTo(mapRef.current!);
+                    routeLines.current.set(`${orderId}`, newLine);
+                  } else {
+                    line.setLatLngs([
+                      [driverLat, driverLng],
+                      [custLat, custLng],
+                    ]);
+                    line.setStyle({ color, weight: 2, opacity: 0.7, dashArray: "8 6" });
+                  }
+                }
+                debounceTimers.current.delete(debounceKey);
+              }, 1400)
+            );
+          });
+        } else {
+          const existingMarker = driverMarkers.current.get(driverName);
+          if (existingMarker) {
+            cluster.removeLayer(existingMarker);
+            driverMarkers.current.delete(driverName);
+            orders.forEach((order) => {
+              const line = routeLines.current.get(`${order.id}`);
+              if (line) {
+                line.remove();
+                routeLines.current.delete(`${order.id}`);
+              }
+            });
+          }
+        }
+      });
+
+      driverMarkers.current.forEach((marker, driverName) => {
+        if (!currentDriverKeys.has(driverName)) {
+          cluster.removeLayer(marker);
+          driverMarkers.current.delete(driverName);
+          const orders = driverGroups.get(driverName);
+          if (orders) {
+            orders.forEach((order) => {
+              const line = routeLines.current.get(`${order.id}`);
+              if (line) {
+                line.remove();
+                routeLines.current.delete(`${order.id}`);
+              }
+            });
+          }
+        }
+      });
+    }
+
+    if (!initialFitDone.current) {
+      setTimeout(() => {
+        const bounds = L.latLngBounds([]);
+        customerMarkers.current.forEach(m => bounds.extend(m.getLatLng()));
+        driverMarkers.current.forEach(m => bounds.extend(m.getLatLng()));
+        if (companyMarkerRef.current) bounds.extend(companyMarkerRef.current.getLatLng());
+        if (deliveryMarkerRef.current) bounds.extend(deliveryMarkerRef.current.getLatLng());
+        if (pickupMarkerRef.current) bounds.extend(pickupMarkerRef.current.getLatLng());
+        if (bounds.isValid() && mapRef.current) {
+          mapRef.current.fitBounds(bounds, {
+            padding: [60, 60],
+            maxZoom: 15,
+            animate: false,
+          });
+        }
+        initialFitDone.current = true;
+      }, 500);
+    }
+
+    if (followDriver && activeOrderId) {
+      const order = liveDeliveries.find(o => o.id === activeOrderId);
+      if (order?.delivery.current_lat && order.delivery.current_lng) {
+        mapRef.current?.panTo(
+          [order.delivery.current_lat, order.delivery.current_lng],
+          { animate: true }
+        );
+      }
+    }
+  }, [
+    customerGroups, driverGroups, driverColorMap, liveDeliveries,
+    followDriver, activeOrderId, mode, normalizedOrder,
+    filteredAvailableDrivers, pendingDriverId, selectedDriverId,
+    fetchOSRMRoute, routeDataByDriver, pickupCustomerRoute, showCompanyMarker, showDeliveryMarker, showCustomerMarker,
+  ]);
+
+  useEffect(() => {
+    if (!activeOrderId || !mapRef.current) return;
+    const order = liveDeliveries.find(o => o.id === activeOrderId);
     if (!order) return;
-    
+
     const dest = getOrderDestination(order);
-    const targetLat = order.delivery.current_lat ?? dest.lat; 
-    const targetLng = order.delivery.current_lng ?? dest.lon; 
-    if (targetLat && targetLng && isValidCoordinate(targetLat, targetLng)) { 
-      mapRef.current.flyTo([targetLat, targetLng], 15, { 
-        animate: true, 
-        duration: 1.2, 
-      }); 
-    } 
-  }, [activeOrderId, liveDeliveries]); 
- 
-  useEffect(() => { 
-    if (mapRef.current) { 
-      setTimeout(() => mapRef.current?.invalidateSize(), 350); 
-    } 
-  }, [isSidebarOpen]); 
- 
-  const fitAllMarkers = useCallback(() => { 
-    if (!mapRef.current) return; 
-    const L = (window as any).L; 
-    const bounds = L.latLngBounds([]); 
-    customerMarkers.current.forEach(m => bounds.extend(m.getLatLng())); 
-    driverMarkers.current.forEach(m => bounds.extend(m.getLatLng())); 
-    if (companyMarkerRef.current) bounds.extend(companyMarkerRef.current.getLatLng()); 
-    if (deliveryMarkerRef.current) bounds.extend(deliveryMarkerRef.current.getLatLng()); 
-    if (pickupMarkerRef.current) bounds.extend(pickupMarkerRef.current.getLatLng()); 
-    if (bounds.isValid()) { 
-      mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, animate: true }); 
-    } 
-  }, []); 
- 
-  const toggleFollow = useCallback(() => { 
-    setFollowDriver(prev => !prev); 
-  }, []); 
- 
-  const handleDriverMarkerClick = (driverId: number) => { 
-    const driver = enhancedDrivers.find(d => d.id === driverId); 
+    const targetLat = order.delivery.current_lat ?? dest.lat;
+    const targetLng = order.delivery.current_lng ?? dest.lon;
+    if (targetLat && targetLng && isValidCoordinate(targetLat, targetLng)) {
+      mapRef.current.flyTo([targetLat, targetLng], 15, {
+        animate: true,
+        duration: 1.2,
+      });
+    }
+  }, [activeOrderId, liveDeliveries]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => mapRef.current?.invalidateSize(), 350);
+    }
+  }, [isSidebarOpen]);
+
+  const fitAllMarkers = useCallback(() => {
+    if (!mapRef.current) return;
+    const L = (window as any).L;
+    const bounds = L.latLngBounds([]);
+    customerMarkers.current.forEach(m => bounds.extend(m.getLatLng()));
+    driverMarkers.current.forEach(m => bounds.extend(m.getLatLng()));
+    if (companyMarkerRef.current) bounds.extend(companyMarkerRef.current.getLatLng());
+    if (deliveryMarkerRef.current) bounds.extend(deliveryMarkerRef.current.getLatLng());
+    if (pickupMarkerRef.current) bounds.extend(pickupMarkerRef.current.getLatLng());
+    if (bounds.isValid()) {
+      mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 15, animate: true });
+    }
+  }, []);
+
+  const toggleFollow = useCallback(() => {
+    setFollowDriver(prev => !prev);
+  }, []);
+
+  const handleDriverMarkerClick = (driverId: number) => {
+    const driver = enhancedDrivers.find(d => d.id === driverId);
     if (!driver?.isLive) {
-      showToast("error", "This driver is not currently live. Please select a live driver.");
+      showToast("error", "This delivery person is not currently live. Please select a live delivery person.");
       return;
     }
-    
-    setPendingDriverId(driverId); 
-    setShowConfirmPanel(true); 
-     
-    if (driver && mapRef.current && driver.current_lat != null && driver.current_lng != null) { 
-      mapRef.current.flyTo([driver.current_lat, driver.current_lng], 15, { 
-        animate: true, 
-        duration: 1, 
-      }); 
-    } 
-  }; 
- 
-const handleConfirmAssignment = async () => { 
-  if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return; 
-  
-  if (!normalizedOrder.canAssign) { 
-    showToast("error", normalizedOrder.assignmentBlockedReason || "Unable to assign driver"); 
-    return; 
-  } 
-  
-  const driver = enhancedDrivers.find(d => d.id === pendingDriverId); 
-  if (!driver) { 
-    showToast("error", "Selected driver not found. Please refresh drivers."); 
-    return; 
-  } 
-  
-  if (!driver.isLive) {
-    showToast("error", "This driver is not currently live. Please select a live driver.");
-    return;
-  }
-  
-  setIsAssigning(true); 
-  try { 
-    await onDriverSelect(pendingDriverId); 
-    setSelectedDriverId(pendingDriverId); 
-    setShowConfirmPanel(false); 
-    setPendingDriverId(null); 
-    showToast("success", "Driver assigned successfully"); 
-    
-    // The parent modal (VendorOrderDetailModal) owns the close lifecycle.
-    // Do NOT call onClose() here — this prevents the double-close race.
-    if (onAssignmentComplete) { 
-      onAssignmentComplete(); 
-    } 
-  } catch (err) { 
-    showToast("error", "Failed to assign driver. They may no longer be available."); 
-  } finally { 
-    setIsAssigning(false); 
-  } 
-}; 
- 
-  const handleCancelSelection = () => { 
-    setPendingDriverId(null); 
-    setShowConfirmPanel(false); 
-  }; 
- 
-  useEffect(() => { 
-    const handler = (e: KeyboardEvent) => { 
-      if (e.key === "Escape") { 
-        if (showConfirmPanel) { 
-          handleCancelSelection(); 
-        } else if (isSidebarOpen && window.innerWidth < 1024) { 
-          toggleSidebar(); 
-        } else { 
-          onClose(); 
-        } 
-      } 
-    }; 
-    window.addEventListener("keydown", handler); 
-    return () => window.removeEventListener("keydown", handler); 
-  }, [isSidebarOpen, toggleSidebar, onClose, showConfirmPanel]); 
- 
-  useEffect(() => { 
-    return () => { 
-      debounceTimers.current.forEach(timer => clearTimeout(timer)); 
-      debounceTimers.current.clear(); 
-      pendingRequests.current.clear(); 
-      routeCache.current.clear(); 
-      if (companyMarkerRef.current) { 
-        companyMarkerRef.current.remove(); 
-        companyMarkerRef.current = null; 
-      } 
-      if (deliveryMarkerRef.current) { 
-        deliveryMarkerRef.current.remove(); 
-        deliveryMarkerRef.current = null; 
-      } 
+
+    setPendingDriverId(driverId);
+    setShowConfirmPanel(true);
+
+    if (driver && mapRef.current && driver.current_lat != null && driver.current_lng != null) {
+      mapRef.current.flyTo([driver.current_lat, driver.current_lng], 15, {
+        animate: true,
+        duration: 1,
+      });
+    }
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return;
+
+    if (!normalizedOrder.canAssign) {
+      showToast("error", normalizedOrder.assignmentBlockedReason || "Unable to assign delivery person");
+      return;
+    }
+
+    const driver = enhancedDrivers.find(d => d.id === pendingDriverId);
+    if (!driver) {
+      showToast("error", "Selected delivery person not found. Please refresh delivery personnel.");
+      return;
+    }
+
+    if (!driver.isLive) {
+      showToast("error", "This delivery person is not currently live. Please select a live delivery person.");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      await onDriverSelect(pendingDriverId);
+      setSelectedDriverId(pendingDriverId);
+      setShowConfirmPanel(false);
+      setPendingDriverId(null);
+      showToast("success", "Delivery person assigned successfully");
+
+      if (onAssignmentComplete) {
+        onAssignmentComplete();
+      }
+    } catch (err) {
+      showToast("error", "Failed to assign delivery person. They may no longer be available.");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleCancelSelection = () => {
+    setPendingDriverId(null);
+    setShowConfirmPanel(false);
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showConfirmPanel) {
+          handleCancelSelection();
+        } else if (isSidebarOpen && window.innerWidth < 1024) {
+          toggleSidebar();
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isSidebarOpen, toggleSidebar, onClose, showConfirmPanel]);
+
+  useEffect(() => {
+    return () => {
+      debounceTimers.current.forEach(timer => clearTimeout(timer));
+      debounceTimers.current.clear();
+      pendingRequests.current.clear();
+      routeCache.current.clear();
+      if (companyMarkerRef.current) {
+        companyMarkerRef.current.remove();
+        companyMarkerRef.current = null;
+      }
+      if (deliveryMarkerRef.current) {
+        deliveryMarkerRef.current.remove();
+        deliveryMarkerRef.current = null;
+      }
       if (tileLayerRef.current) {
         tileLayerRef.current = null;
       }
-    }; 
-  }, []); 
- 
+    };
+  }, []);
+
   const renderDriverSelectionSidebar = () => {
     if (!normalizedOrder) return null;
 
@@ -2421,7 +2411,7 @@ const handleConfirmAssignment = async () => {
                 type="button"
                 onClick={toggleSidebar}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
-                aria-label="Collapse driver assignment sidebar"
+                aria-label="Collapse delivery person assignment sidebar"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose className="h-4 w-4" />
@@ -2448,7 +2438,7 @@ const handleConfirmAssignment = async () => {
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 truncate text-[10px] font-semibold text-white/90">Driver → Company → Customer</p>
+                <p className="mt-0.5 truncate text-[10px] font-semibold text-white/90">Delivery Person → Company → Customer</p>
               </div>
               <ChevronDown
                 className={`h-3.5 w-3.5 shrink-0 text-white/55 transition-transform ${isOrderRouteExpanded ? "rotate-180" : ""}`}
@@ -2483,8 +2473,8 @@ const handleConfirmAssignment = async () => {
                   {[
                     {
                       step: "1",
-                      label: "Driver",
-                      title: bestDriver ? bestDriver.name : "Choose a live driver",
+                      label: "Delivery Person",
+                      title: bestDriver ? bestDriver.name : "Choose a live delivery person",
                       detail: bestDriver?.isLive ? "Realtime GPS" : "Live GPS required",
                     },
                     {
@@ -2535,7 +2525,7 @@ const handleConfirmAssignment = async () => {
           >
             <div className="flex min-w-0 items-center gap-2">
               <Search className="h-3.5 w-3.5 shrink-0 text-white/65" />
-              <span className="text-[10px] font-bold text-white">Find & filter drivers</span>
+              <span className="text-[10px] font-bold text-white">Find & filter delivery personnel</span>
               <span className="truncate text-[8px] text-white/50">
                 {filteredAvailableDrivers.length} total · {liveDriverCount} live · {viewOnlyDriverCount} view only
               </span>
@@ -2551,7 +2541,7 @@ const handleConfirmAssignment = async () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search driver, phone, vehicle..."
+                  placeholder="Search delivery person, phone, vehicle..."
                   className="w-full rounded-lg border border-white/15 bg-white/10 py-2 pl-8 pr-2.5 text-[11px] text-white outline-none transition placeholder:text-white/40 focus:border-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/10"
                 />
               </div>
@@ -2600,16 +2590,16 @@ const handleConfirmAssignment = async () => {
           {loadingDrivers && (
             <div className="flex items-center justify-center rounded-xl border border-white/15 bg-white/10 py-8">
               <Loader2 className="h-4 w-4 animate-spin text-white" />
-              <span className="ml-2 text-[10px] text-white/65">Comparing drivers...</span>
+              <span className="ml-2 text-[10px] text-white/65">Comparing delivery personnel...</span>
             </div>
           )}
 
           {!loadingDrivers && filteredAvailableDrivers.length === 0 && (
             <div className="rounded-xl border border-dashed border-white/20 bg-white/10 px-4 py-7 text-center">
               <Users className="mx-auto mb-2 h-6 w-6 text-white/35" />
-              <p className="text-[11px] font-bold text-white">No available drivers</p>
+              <p className="text-[11px] font-bold text-white">No available delivery personnel</p>
               <p className="mt-1 text-[9px] leading-4 text-white/50">
-                {normalizedOrder.canAssign ? "No drivers match the current filter." : "Assignment is blocked for this order."}
+                {normalizedOrder.canAssign ? "No delivery personnel match the current filter." : "Assignment is blocked for this order."}
               </p>
             </div>
           )}
@@ -2697,7 +2687,7 @@ const handleConfirmAssignment = async () => {
                       </span>
                     </div>
 
-                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]" title="Trip = driver → pickup → customer">
+                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]" title="Trip = Delivery Person → pickup → customer">
                       <span className="shrink-0 font-semibold text-white/55">Trip</span>
                       <strong className="truncate text-white">{compactDistance(driver.total_route_distance)}</strong>
                       <span className="text-white/25">•</span>
@@ -2710,7 +2700,7 @@ const handleConfirmAssignment = async () => {
 
                     <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
                       <p className="truncate text-[8px] text-white/40">
-                        {driver.phone || driver.username || `Driver #${index + 1}`}
+                        {driver.phone || driver.username || `Delivery Person #${index + 1}`}
                         {!driver.isLive ? " · realtime GPS required" : ""}
                       </p>
 
@@ -2727,7 +2717,7 @@ const handleConfirmAssignment = async () => {
                             if (canSelect) handleDriverMarkerClick(driver.id);
                           }}
                           disabled={!canSelect}
-                          title={!driver.isLive ? "Realtime GPS is required before this driver can be assigned" : undefined}
+                          title={!driver.isLive ? "Realtime GPS is required before this delivery person can be assigned" : undefined}
                           className="shrink-0 rounded-md bg-white px-2.5 py-1 text-[8px] font-extrabold text-[#6750A4] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
                         >
                           {canSelect ? (isBest ? "Assign best" : "Select") : "View only"}
@@ -2761,7 +2751,7 @@ const handleConfirmAssignment = async () => {
       </div>
       {mode === "driver_selection" && (
         <>
-          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-white/10 text-white" title={`${availableDrivers.length} available drivers`}>
+          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-white/10 text-white" title={`${availableDrivers.length} available delivery personnel`}>
             <Users className="h-3.5 w-3.5" />
             <span className="mt-0.5 text-[7px] font-extrabold">{availableDrivers.length}</span>
           </div>
@@ -2783,7 +2773,7 @@ const handleConfirmAssignment = async () => {
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">Dispatch center</p>
               <h3 className="mt-1 text-base font-bold text-white">Live delivery personnel</h3>
               <p className="mt-1 text-[11px] text-white/65">
-                {driverGroups.size} driver{driverGroups.size === 1 ? "" : "s"} · {liveDeliveries.length} active deliver{liveDeliveries.length === 1 ? "y" : "ies"}
+                {driverGroups.size} delivery {driverGroups.size === 1 ? "person" : "personnel"} · {liveDeliveries.length} active deliver{liveDeliveries.length === 1 ? "y" : "ies"}
               </p>
             </div>
             <div className="rounded-xl border border-white/15 bg-white/10 px-2.5 py-2 text-right">
@@ -2824,7 +2814,7 @@ const handleConfirmAssignment = async () => {
           {loading && !driverGroups.size && (
             <div className="flex items-center justify-center rounded-xl border border-white/15 bg-white/10 py-10">
               <Loader2 className="h-5 w-5 animate-spin text-white" />
-              <span className="ml-3 text-sm text-white/70">Loading live drivers...</span>
+              <span className="ml-3 text-sm text-white/70">Loading live delivery personnel...</span>
             </div>
           )}
 
@@ -2833,7 +2823,7 @@ const handleConfirmAssignment = async () => {
               <Navigation className="mx-auto mb-3 h-8 w-8 text-white/30" />
               <p className="text-sm font-semibold text-white">No active deliveries</p>
               <p className="mt-1 text-xs leading-5 text-white/55">
-                Drivers will appear here when a delivery moves into live tracking.
+                Delivery personnel will appear here when a delivery moves into live tracking.
               </p>
             </div>
           )}
@@ -2876,7 +2866,7 @@ const handleConfirmAssignment = async () => {
                     ? "border-white/60 bg-white shadow-lg"
                     : "border-white/15 bg-white/10 hover:border-white/25 hover:bg-white/15"
                 }`}
-                aria-label={`Driver ${driverName}, ${count} orders`}
+                aria-label={`Delivery Person ${driverName}, ${count} orders`}
               >
                 <div className="flex items-start gap-3">
                   <div className="relative shrink-0">
@@ -3000,7 +2990,7 @@ const handleConfirmAssignment = async () => {
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="truncate text-sm font-bold tracking-tight text-gray-900 sm:text-base lg:text-lg">
-                {mode === "driver_selection" ? "Driver Assignment Map" : "Live Delivery Map"}
+                {mode === "driver_selection" ? "Delivery Person Assignment Map" : "Live Delivery Map"}
               </h2>
               <span className={`hidden items-center gap-1.5 rounded-full px-2 py-1 text-[9px] font-bold sm:flex ${
                 realtimeHealthy ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
@@ -3092,14 +3082,14 @@ const handleConfirmAssignment = async () => {
                   <div>
                     <p className="text-[11px] font-bold text-gray-800">Dispatch map</p>
                     <p className="text-[9px] text-gray-400">
-                      {mode === "driver_selection" ? "Live driver availability" : "Realtime fleet positions"}
+                      {mode === "driver_selection" ? "Live delivery person availability" : "Realtime fleet positions"}
                     </p>
                   </div>
                 </div>
                 <div className="mt-2.5 flex items-center gap-3 border-t border-gray-100 pt-2 text-[9px] font-semibold text-gray-500">
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-secondary" /> Pickup</span>
                   <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border-2 border-amber-400 bg-white" /> Recipient</span>
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Live driver</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Live delivery person</span>
                 </div>
               </div>
             </div>
@@ -3114,7 +3104,7 @@ const handleConfirmAssignment = async () => {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Assignment route</p>
-                    <p className="text-xs font-bold text-gray-900">Driver → {normalizedOrder.pickupName} → {normalizedOrder.customerName}</p>
+                    <p className="text-xs font-bold text-gray-900">Delivery Person → {normalizedOrder.pickupName} → {normalizedOrder.customerName}</p>
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-start gap-2 border-t border-gray-100 pt-3">
@@ -3211,8 +3201,8 @@ const handleConfirmAssignment = async () => {
                   className={`mt-1 flex h-9 w-9 items-center justify-center rounded-xl transition ${
                     followDriver ? "bg-secondary text-white" : "text-gray-500 hover:bg-secondary/5 hover:text-secondary"
                   }`}
-                  aria-label="Follow selected driver"
-                  title={followDriver ? "Stop following driver" : "Follow selected driver"}
+                  aria-label="Follow selected delivery person"
+                  title={followDriver ? "Stop following delivery person" : "Follow selected delivery person"}
                 >
                   <Navigation className="h-4 w-4" />
                 </button>
@@ -3241,7 +3231,7 @@ const handleConfirmAssignment = async () => {
                 <p className="mt-3 text-sm font-semibold text-gray-800">
                   {mode === "driver_selection" ? "Loading delivery map" : "Connecting to live deliveries"}
                 </p>
-                <p className="mt-1 text-xs text-gray-400">Preparing map, drivers and route data...</p>
+                <p className="mt-1 text-xs text-gray-400">Preparing map, delivery personnel and route data...</p>
               </div>
             </div>
           )}
@@ -3269,7 +3259,7 @@ const handleConfirmAssignment = async () => {
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <div>
-                  <p className="text-xs font-bold text-red-700">Driver assignment unavailable</p>
+                  <p className="text-xs font-bold text-red-700">Delivery person assignment unavailable</p>
                   <p className="mt-0.5 text-[10px] text-red-600">{normalizedOrder.assignmentBlockedReason}</p>
                 </div>
               </div>
@@ -3363,7 +3353,7 @@ const handleConfirmAssignment = async () => {
                           className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                          {isAssigning ? "Assigning..." : "Assign driver"}
+                          {isAssigning ? "Assigning..." : "Assign delivery person"}
                         </button>
                       </div>
                     </div>

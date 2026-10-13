@@ -690,10 +690,10 @@ export default function ServiceSubscriptions() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Recurring Contracts"
+          title={companyName || undefined}
           description="Recurring service contracts are available only for service companies."
           icon={Repeat}
-          eyebrow={companyName || undefined}
+          eyebrow="Recurring Contracts"
           badge={
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
               Service company required
@@ -755,10 +755,10 @@ export default function ServiceSubscriptions() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Recurring Contracts"
+          title={companyName || undefined}
           description="Manage ongoing subscriptions, billing cycles, and contract status."
           icon={Repeat}
-          eyebrow={companyName || undefined}
+          eyebrow="Recurring Contracts"
           actions={
             <div className="flex items-center gap-2">
               {isSuperAdmin && (

@@ -114,10 +114,6 @@ const getFulfillmentKind = (order: any): FulfillmentKind => {
   return "unknown";
 };
 
-/**
- * Restaurant check — a company "supports table service" if the flag is true
- * on either the top-level company or the first vendor order's company.
- */
 const isRestaurant = (order: any): boolean =>
   order?.company?.supports_table_service === true ||
   order?.vendor_orders?.[0]?.company?.supports_table_service === true;
@@ -255,7 +251,7 @@ const buildOrderTimeline = (order: any) => {
       label: "In Transit",
       icon: "🚚",
       time: order.delivery.updated_at || order.delivery.created_at,
-      actor: order.delivery.delivery_person_name || "Driver",
+      actor: order.delivery.delivery_person_name || "Delivery Person",
       status: "completed",
     });
   }
@@ -682,9 +678,9 @@ const DeliveryCard = ({
           mode: "pickup_only" as const,
         };
         setRouteData((prev) => ({ ...prev, [driverId]: result }));
-        routeDebug("driver route resolved", {
+        routeDebug("delivery person route resolved", {
           driverId,
-          routeMode: "driver→pickup (customer unavailable)",
+          routeMode: "delivery person→pickup (customer unavailable)",
           driver,
           pickup,
           customer: null,
@@ -707,9 +703,9 @@ const DeliveryCard = ({
           mode: "direct_customer" as const,
         };
         setRouteData((prev) => ({ ...prev, [driverId]: result }));
-        routeDebug("driver route resolved", {
+        routeDebug("delivery person route resolved", {
           driverId,
-          routeMode: "driver→customer",
+          routeMode: "delivery person→customer",
           driver,
           customer,
           totalKm: result.distanceKm,
@@ -751,9 +747,9 @@ const DeliveryCard = ({
       };
 
       setRouteData((prev) => ({ ...prev, [driverId]: result }));
-      routeDebug("driver route resolved", {
+      routeDebug("delivery person route resolved", {
         driverId,
-        routeMode: "driver→pickup→customer",
+        routeMode: "delivery person→pickup→customer",
         driver,
         pickup,
         customer,
@@ -1143,8 +1139,8 @@ const DeliveryCard = ({
       });
       setUsernameMap(map);
     } catch (err) {
-      console.error("Failed to fetch available delivery drivers", err);
-      showToast("error", "Failed to load delivery drivers");
+      console.error("Failed to fetch available delivery personnel", err);
+      showToast("error", "Failed to load delivery personnel");
     } finally {
       setLoadingStaff(false);
     }
@@ -1175,9 +1171,9 @@ const DeliveryCard = ({
       await onUpdate();
       const selectedDriverObj = staffList.find((s) => s.id === Number(selectedUserId));
       if (selectedDriverObj?.is_en_route) {
-        showToast("success", "Offer sent to en-route driver (45s window to respond)");
+        showToast("success", "Offer sent to en-route delivery person (45s window to respond)");
       } else if (selectedDriverObj?.is_at_vendor) {
-        showToast("success", "Order batched with driver currently at store!");
+        showToast("success", "Order batched with delivery person currently at store!");
       } else {
         showToast("success", "Delivery person assigned successfully");
       }
@@ -1247,7 +1243,7 @@ const DeliveryCard = ({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
-                            Assigned driver
+                            Assigned delivery person
                           </p>
                           <p className="mt-0.5 text-xs text-gray-500">
                             Current delivery assignment and contact details
@@ -1370,7 +1366,7 @@ const DeliveryCard = ({
                               }`}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
-                              Reassign driver
+                              Reassign delivery person
                             </button>
                           )}
                         </div>
@@ -1428,7 +1424,7 @@ const DeliveryCard = ({
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="truncate text-xs font-semibold text-gray-800">
-                                    {att.driver_name || `Driver #${att.driver}`}
+                                    {att.driver_name || `Delivery Person #${att.driver}`}
                                   </p>
                                   {att.driver_phone && (
                                     <span className="text-[10px] text-gray-400 font-mono">
@@ -1480,12 +1476,12 @@ const DeliveryCard = ({
                   <h5 className="mt-3 text-sm font-semibold text-gray-900">
                     {delivery?.attempts && delivery.attempts.length > 0
                       ? "Order Needs Reassignment"
-                      : "No driver assigned"}
+                      : "No delivery person assigned"}
                   </h5>
                   <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-gray-500">
                     {delivery?.attempts && delivery.attempts.length > 0
-                      ? "Previous driver attempt was declined or expired. Choose an available driver to reassign this order."
-                      : "Choose an available in-house driver or logistics partner to continue this delivery."}
+                      ? "Previous delivery person attempt was declined or expired. Choose an available delivery person to reassign this order."
+                      : "Choose an available in-house delivery person or logistics partner to continue this delivery."}
                   </p>
 
                   <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
@@ -1496,7 +1492,7 @@ const DeliveryCard = ({
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light focus:outline-none focus:ring-2 focus:ring-secondary/25"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        {delivery?.attempts && delivery.attempts.length > 0 ? "Reassign driver" : "Assign driver"}
+                        {delivery?.attempts && delivery.attempts.length > 0 ? "Reassign delivery person" : "Assign delivery person"}
                       </button>
                     )}
 
@@ -1551,7 +1547,7 @@ const DeliveryCard = ({
                             <div key={att.id} className="p-3 flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-gray-800">
-                                  {att.driver_name || `Driver #${att.driver}`}
+                                  {att.driver_name || `Delivery Person #${att.driver}`}
                                 </p>
                                 {att.decline_reason && (
                                   <p className="text-[11px] text-gray-500 mt-0.5">
@@ -1593,8 +1589,8 @@ const DeliveryCard = ({
                     <div>
                       <h5 className="text-sm font-semibold text-gray-950">
                         {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
-                          ? "Reassign delivery driver"
-                          : "Assign delivery driver"}
+                          ? "Reassign delivery person"
+                          : "Assign delivery person"}
                       </h5>
                       <p className="mt-0.5 text-[11px] text-gray-500">
                         Compare availability, vehicle, rating and route before assigning.
@@ -1640,7 +1636,7 @@ const DeliveryCard = ({
                         Delivery route map
                       </h6>
                       <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-                        Open the full map to review the order location, live drivers and route context.
+                        Open the full map to review the order location, live delivery personnel and route context.
                       </p>
                       <button
                         type="button"
@@ -1661,7 +1657,7 @@ const DeliveryCard = ({
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search driver, phone, username or logistics company"
+                      placeholder="Search delivery person, phone, username or logistics company"
                       className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-4 focus:ring-secondary/10"
                     />
                   </div>
@@ -1669,7 +1665,7 @@ const DeliveryCard = ({
                   <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5">
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="w-20 flex-shrink-0 px-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Driver Type
+                        Delivery Person Type
                       </span>
                       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-width:thin]">
                         {[
@@ -1780,13 +1776,13 @@ const DeliveryCard = ({
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-semibold text-gray-900">
-                        Available drivers
+                        Available delivery personnel
                         <span className="ml-1.5 font-medium text-gray-400">
                           {filteredStaffList.length}
                         </span>
                       </p>
                       <p className="mt-0.5 text-[10px] text-gray-400">
-                        Select one driver, then confirm the assignment below.
+                        Select one delivery person, then confirm the assignment below.
                       </p>
                     </div>
 
@@ -1808,7 +1804,7 @@ const DeliveryCard = ({
                       <div className="text-center">
                         <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
                         <p className="mt-2 text-xs font-medium text-gray-500">
-                          Loading available drivers...
+                          Loading available delivery personnel...
                         </p>
                       </div>
                     </div>
@@ -1817,12 +1813,12 @@ const DeliveryCard = ({
                       <div>
                         <Users className="mx-auto h-8 w-8 text-gray-300" />
                         <p className="mt-2 text-sm font-semibold text-gray-800">
-                          No matching drivers
+                          No matching delivery personnel
                         </p>
                         <p className="mt-1 text-xs text-gray-500">
                           {searchTerm || filterType !== "all" || vehicleTypeFilter !== "all"
                             ? "Try changing the search or filters."
-                            : "There are no available drivers for this order right now."}
+                            : "There are no available delivery personnel for this order right now."}
                         </p>
                       </div>
                     </div>
@@ -1830,7 +1826,7 @@ const DeliveryCard = ({
                     <>
                       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
                         <div className="hidden grid-cols-[minmax(190px,1.8fr)_110px_120px_150px_84px] items-center gap-3 border-b border-gray-100 bg-gray-50/80 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 lg:grid">
-                          <span>Driver</span>
+                          <span>Delivery Person</span>
                           <span>Vehicle</span>
                           <span>Rating</span>
                           <span>Route</span>
@@ -1972,7 +1968,7 @@ const DeliveryCard = ({
                                       </div>
                                     ) : roadDistance != null ? (
                                       <div>
-                                        <p className="text-xs font-semibold text-gray-800" title={routeInfo?.mode === "direct_customer" ? "Driver → customer" : "Total trip: driver → pickup → customer"}>
+                                        <p className="text-xs font-semibold text-gray-800" title={routeInfo?.mode === "direct_customer" ? "Delivery Person → customer" : "Total trip: Delivery Person → pickup → customer"}>
                                           {formatDistance(roadDistance)}
                                         </p>
                                         <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-400">
@@ -2087,11 +2083,11 @@ const DeliveryCard = ({
                       <div className="min-w-0">
                         {selectedUserId ? (
                           <p className="truncate text-[11px] font-medium text-gray-500">
-                            Selected: <span className="font-semibold text-gray-800">{staffList.find((s) => s.id === selectedUserId)?.name || `Driver #${selectedUserId}`}</span>
+                            Selected: <span className="font-semibold text-gray-800">{staffList.find((s) => s.id === selectedUserId)?.name || `Delivery Person #${selectedUserId}`}</span>
                           </p>
                         ) : (
                           <p className="text-[11px] text-gray-400">
-                            Select a driver to enable assignment.
+                            Select a delivery person to enable assignment.
                           </p>
                         )}
                       </div>
@@ -2119,8 +2115,8 @@ const DeliveryCard = ({
                             <>
                               <CheckCircle className="h-3.5 w-3.5" />
                               {delivery?.delivery_person_name || (delivery?.attempts && delivery.attempts.length > 0)
-                                ? "Reassign driver"
-                                : "Assign driver"}
+                                ? "Reassign delivery person"
+                                : "Assign delivery person"}
                             </>
                           )}
                         </button>
@@ -2318,7 +2314,7 @@ const ReceiptReviewCard = ({
                       ? "Confirm physical collection of cash for this on-spot table order."
                       : isPickup
                         ? "Confirm physical collection of cash once the customer picks up the items."
-                        : "Confirm physical collection of cash once the driver delivers the items and returns with the cash."
+                        : "Confirm physical collection of cash once the delivery person delivers the items and returns with the cash."
                     : isInStoreOrder
                       ? "Payment collection is disabled until the order is Prepared."
                       : "Payment collection is disabled until the order is Delivered."}
@@ -2635,9 +2631,6 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
   const isCOD = order.payment_method === "cod";
   const isReplacement = status === "replacement_in_progress";
 
-  // ✅ Only orders paid THROUGH the platform (chapa, telebirr, etc.)
-  // can be refunded. COD and bank_transfer collect money outside the
-  // platform, so there's nothing for the superadmin to refund.
   const paymentMethod = String(order.payment_method || "").toLowerCase();
   const isRefundablePaymentMethod =
     paymentMethod !== "cod" &&
@@ -2691,7 +2684,6 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
   const canPrepare =
     status === "confirmed" || (isCOD && status === "pending") || isReplacement;
 
-  // ✅ Refund button now also requires a refundable payment method.
   const canRequestRefund =
     !readOnly &&
     isRefundablePaymentMethod &&
@@ -2939,7 +2931,7 @@ export function VendorOrderDetailModal({
         delivery_person_name:
           updatedDelivery?.delivery_person_name ??
           prev?.delivery_person_name ??
-          "Assigned driver",
+          "Assigned delivery person",
         delivery_person_phone:
           updatedDelivery?.delivery_person_phone ??
           prev?.delivery_person_phone ??
@@ -3105,7 +3097,6 @@ export function VendorOrderDetailModal({
                     const customerImage = resolveCustomerImage(effectiveOrder);
 
                     const restaurant = isRestaurant(effectiveOrder);
-
 
                     const isPickupLike =
                       fulfillmentKind === "pickup" || fulfillmentKind === "onspot";

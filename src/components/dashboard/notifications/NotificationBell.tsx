@@ -1,5 +1,6 @@
 // src/components/dashboard/notifications/NotificationBell.tsx
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCheck,
@@ -12,6 +13,10 @@ import {
   type AppNotification,
 } from "../../../context/NotificationsContext";
 import { getEventMeta, formatRelativeTime } from "./meta";
+import {
+  getNotificationRoute,
+  extractVendorOrderId,
+} from "../../../utils/notificationRouting";
 
 interface NotificationBellProps {
   onViewAll: () => void;
@@ -24,6 +29,7 @@ export default function NotificationBell({
 }: NotificationBellProps) {
   const { notifications, unread, markAllRead, markRead, refetch } =
     useNotifications();
+  const navigate = useNavigate(); // ✅ for routing
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -49,35 +55,34 @@ export default function NotificationBell({
 
   const recent = notifications.slice(0, 8);
 
-  const getVendorOrderId = (n: AppNotification): number | null => {
-    const data = (n.data || {}) as Record<string, unknown>;
-    const rawId =
-      data.vendor_order_id ??
-      data.order_id ??
-      (data.type === "vendor_order" ? data.id : null);
-    if (rawId != null && !isNaN(Number(rawId))) return Number(rawId);
+  // Use the shared helper so behavior matches everywhere
+  const getOrderId = (n: AppNotification): number | null =>
+    extractVendorOrderId(n);
 
-    const text = `${n.title || ""} ${n.body || ""}`;
-    const match = text.match(/#(\d+)/);
-    return match && match[1] ? Number(match[1]) : null;
-  };
-
+  /** Click on the card content → only marks as read. */
   const handleNotificationCardClick = (n: AppNotification) => {
-    // Clicking the notification card only marks an unread item as read
     if (!n.is_read) {
       markRead([n.id]);
     }
   };
 
+  /** Click on the arrow → mark read + route to correct detail page. */
   const handleNotificationRouteClick = (n: AppNotification) => {
-    // Clicking the arrow button marks as read, closes dropdown, and routes to order
     if (!n.is_read) {
       markRead([n.id]);
     }
     setOpen(false);
 
+    // If a parent passes onNotificationClick, respect it
     if (onNotificationClick) {
       onNotificationClick(n);
+      return;
+    }
+
+    // Otherwise use the central router
+    const route = getNotificationRoute(n.event, n);
+    if (route) {
+      navigate(route);
     } else {
       onViewAll();
     }
@@ -189,7 +194,7 @@ export default function NotificationBell({
               ) : (
                 recent.map((n) => {
                   const { Icon, color, bg } = getEventMeta(n.event);
-                  const orderId = getVendorOrderId(n);
+                  const orderId = getOrderId(n);
 
                   return (
                     <div
@@ -262,7 +267,7 @@ export default function NotificationBell({
                         </div>
                       </button>
 
-                      {/* Arrow Action Button: marks read, closes dropdown, and routes to order modal */}
+                      {/* Arrow Action Button: marks read, closes dropdown, routes to order detail */}
                       <button
                         type="button"
                         onClick={() => handleNotificationRouteClick(n)}
