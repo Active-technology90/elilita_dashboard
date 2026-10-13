@@ -35,7 +35,7 @@ import {
   ShieldCheck,
   UsersRound,
   HelpCircle,
-  // Images,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
@@ -77,7 +77,6 @@ import CalendarManagement from "../marketing/CalendarManagement";
 import CompanyServices from "./services/CompanyServices";
 import ServiceBookings from "./services/ServiceBookings";
 import ServiceSubscriptions from "./services/ServiceSubscriptions";
-// import PortfolioManagement from "./services/PortfolioManagement";
 import AvailabilityManagement from "./services/AvailabilityManagement";
 import StaffManagement from "./services/StaffManagement";
 
@@ -86,6 +85,7 @@ import {
   getCompanyVendorOrders,
 } from "../../services/api";
 import { VendorOrderDetailModal } from "./vedorOrders/VendorOrderDetailModal";
+
 type Tab =
   | "overview"
   | "leads"
@@ -124,8 +124,27 @@ type Tab =
 const ReadOnlyContext = createContext<boolean>(false);
 export const useReadOnly = () => useContext(ReadOnlyContext);
 
+// ─────────────────────────────────────────────────────────────
+// Tabs that are blocked when the company is inactive
+// ─────────────────────────────────────────────────────────────
+const MANAGEMENT_TABS: Tab[] = [
+  "products",
+  "masterOrders",
+  "companyOrders",
+  "payments",
+  "disputes",
+  "bankAccounts",
+  "serviceOfferings",
+  "serviceBookings",
+  "serviceSubscriptions",
+  "availability",
+  "serviceStaff",
+  "add advertisment",
+  "users",
+];
+
 // ════════════════════════════════════════════════════════════
-// OrdersMenu (unchanged)
+// OrdersMenu
 // ════════════════════════════════════════════════════════════
 function OrdersMenu({
   collapsed,
@@ -134,6 +153,7 @@ function OrdersMenu({
   showMasterOrders,
   ordersMenuOpen,
   onToggleOrdersMenu,
+  disabled,
 }: {
   collapsed: boolean;
   activeTab: Tab;
@@ -141,6 +161,7 @@ function OrdersMenu({
   showMasterOrders: boolean;
   ordersMenuOpen: boolean;
   onToggleOrdersMenu: () => void;
+  disabled?: boolean;
 }) {
   const [collapsedOrdersOpen, setCollapsedOrdersOpen] = useState(false);
   const ordersRef = useRef<HTMLDivElement>(null);
@@ -166,6 +187,43 @@ function OrdersMenu({
     return () =>
       document.removeEventListener("mousedown", handleClickOutside);
   }, [collapsedOrdersOpen]);
+
+  if (disabled) {
+    return (
+      <button
+        type="button"
+        disabled
+        title={collapsed ? "All Orders (Company inactive)" : undefined}
+        className={`
+          group
+          flex
+          h-9
+          w-full
+          cursor-not-allowed
+          items-center
+          rounded-lg
+          text-[12px]
+          font-medium
+          opacity-40
+          [&_svg]:h-4
+          [&_svg]:w-4
+
+          ${collapsed
+            ? "justify-center px-2"
+            : "gap-2.5 px-3"
+          }
+
+          text-white/40
+        `}
+      >
+        <ShoppingBag className="shrink-0" />
+
+        {!collapsed && (
+          <span className="truncate">All Orders</span>
+        )}
+      </button>
+    );
+  }
 
   if (!showMasterOrders) {
     return (
@@ -456,14 +514,18 @@ export default function AdminDashboard() {
   const [notificationOrder, setNotificationOrder] = useState<any>(null);
   const [notificationReceipt, setNotificationReceipt] = useState<any>(null);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
-  //  const mainContentRef = useRef<HTMLDivElement>(null);
+  const [showInactiveBanner, setShowInactiveBanner] = useState(true);
+
+  // ── NEW: dedicated active-status state for the current company ──
+  const [currentCompanyActive, setCurrentCompanyActive] = useState<
+    boolean | null
+  >(null);
+
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
-    // Our backend embeds "sub_tx_ref" in the return URL — this is our own tx_ref
     const txRef = queryParams.get("sub_tx_ref");
-    // If a Chapa payment redirect occurred, automatically switch to the billing tab
     if (txRef) {
       setActiveTab("billing");
     }
@@ -476,17 +538,123 @@ export default function AdminDashboard() {
   const isDispatcher =
     !isSuperAdmin && !isMarketing && company?.role === "staff";
 
-  // For viewers: show everything like super admin but read‑only
   const showPlatformAdmin = isSuperAdmin || isViewer;
   const showMasterOrders = isSuperAdmin;
-
-  // Hide "Company Users" only for staff (not for viewers)
-  // const hideUsersSidebar = !isSuperAdmin && company?.role === "staff";
-
 
   const currentCompanyMeta = companiesList.find(
     (c: any) => c.slug === company?.slug,
   );
+
+  // ── Fetch current company details directly (by slug) ────
+  // getCompanies() only returns companies the user can "see" as admin
+  // (often none for regular owners/dispatchers). So we fetch the
+  // current company directly to reliably read `is_active`.
+  useEffect(() => {
+    if (!company?.slug || isSuperAdmin || isMarketing) {
+      setCurrentCompanyActive(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchCurrentCompany = async () => {
+      try {
+        const api = await import("../../services/api");
+        const anyApi = api as any;
+
+        // Try a range of likely API function names so we don't break
+        // depending on your services/api.ts exports.
+        const candidates = [
+          "getCompanyBySlug",
+          "getCompanyDetail",
+          "getCompany",
+        ];
+
+        let res: any = null;
+        for (const name of candidates) {
+          if (typeof anyApi[name] === "function") {
+            try {
+              res = await anyApi[name](company.slug);
+              if (res) break;
+            } catch {
+              // try next
+            }
+          }
+        }
+
+        // Fallback: query the list endpoint with slug filter
+        if (!res && typeof anyApi.getCompanies === "function") {
+          try {
+            res = await anyApi.getCompanies({ slug: company.slug });
+          } catch {
+            // ignore
+          }
+        }
+
+        const payload =
+          res?.data?.company ??
+          res?.data?.data ??
+          res?.data ??
+          res ??
+          null;
+
+        // Look for is_active in a few common shapes
+        const active =
+          payload?.is_active ??
+          payload?.company?.is_active ??
+          payload?.data?.is_active;
+
+        if (!cancelled) {
+          if (typeof active === "boolean") {
+            setCurrentCompanyActive(active);
+          } else {
+            // Could not determine → assume active so we don't lock users out
+            setCurrentCompanyActive(true);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch current company active status:", err);
+        if (!cancelled) setCurrentCompanyActive(true);
+      }
+    };
+
+    fetchCurrentCompany();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [company?.slug, isSuperAdmin, isMarketing]);
+
+  // ── Company active check ───────────────────────────────
+  // Priority:
+  //   1. Dedicated fetch of the current company (most reliable)
+  //   2. is_active on the company object from context (if present)
+  //   3. Fallback from companiesList (super admin only in practice)
+  const companyIsActive =
+    currentCompanyActive ??
+    (company as any)?.is_active ??
+    currentCompanyMeta?.is_active ??
+    true;
+
+  const isCompanyInactive =
+    !isSuperAdmin &&
+    !isMarketing &&
+    !!company &&
+    companyIsActive === false;
+
+  // Reset banner dismiss when company changes or status flips
+  useEffect(() => {
+    if (isCompanyInactive) {
+      setShowInactiveBanner(true);
+    }
+  }, [company?.slug, isCompanyInactive]);
+
+  // Block navigation to management tabs if company is inactive
+  const isTabBlocked = (tab: Tab): boolean => {
+    if (!isCompanyInactive) return false;
+    return MANAGEMENT_TABS.includes(tab);
+  };
+
   const showServiceMenu =
     isSuperAdmin ||
     currentCompanyMeta?.business_type === "service" ||
@@ -496,11 +664,15 @@ export default function AdminDashboard() {
         companiesList.find((c: any) => c.slug === m.company_slug)
           ?.business_type === "service",
     );
-  console.log("user:", user);
-  console.log("company", company);
-  console.log("companiesList", companiesList);
-  console.log("currentCompanyMeta", currentCompanyMeta);
+
   const navigate = (tab: Tab) => {
+    if (isTabBlocked(tab)) {
+      toast.error(
+      "Your account is inactive. Please contact support to activate your account.",
+      { id: "inactive-company" },
+    );
+      return;
+    }
     setActiveTab(tab);
     setIsSidebarOpen(false);
     setProfileDropdownOpen(false);
@@ -539,14 +711,14 @@ export default function AdminDashboard() {
     }
   };
 
-  // Cold start: user clicked OS notification while browser was closed.
+  // Cold start
   useEffect(() => {
     const payload = readPushParamsFromUrl();
     if (payload) applyPushNavigation(payload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
-  // Warm start: dashboard already open, service worker sent postMessage.
+  // Warm start
   useEffect(() => {
     const handler = (event: Event) => {
       applyPushNavigation((event as CustomEvent<PushNavigationPayload>).detail);
@@ -556,7 +728,6 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
-  // Handle logout with confirmation
   const handleLogoutClick = () => {
     setProfileDropdownOpen(false);
     setShowLogoutConfirm(true);
@@ -566,13 +737,11 @@ export default function AdminDashboard() {
     setShowLogoutConfirm(false);
     logout();
   };
-  // Handle refresh data - refresh current tab only
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Increment refreshKey to force re-render of current component
       setRefreshKey((prev) => prev + 1);
-      // Small delay to show animation
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error("Refresh failed:", error);
@@ -581,7 +750,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch companies list to get company logo
+  // Fetch companies list (kept for super-admin tooling / service menu detection)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -598,10 +767,8 @@ export default function AdminDashboard() {
           });
 
           const data = response.data;
-
           allCompanies.push(...(data.results || []));
-
-          hasNext = !!data.next; // DRF pagination
+          hasNext = !!data.next;
           page++;
         }
 
@@ -614,7 +781,7 @@ export default function AdminDashboard() {
     fetchCompanies();
   }, []);
 
-  // Update company logo when company changes
+  // Update company logo
   useEffect(() => {
     if (!company?.slug || !companiesList.length) {
       setCompanyLogo(null);
@@ -626,7 +793,7 @@ export default function AdminDashboard() {
     setCompanyLogo(foundCompany?.logo || null);
   }, [company, companiesList]);
 
-  // Handle scroll event for header color change
+  // Handle scroll
   useEffect(() => {
     const scrollableElement = scrollableRef.current;
     if (!scrollableElement) return;
@@ -642,6 +809,7 @@ export default function AdminDashboard() {
     scrollableElement.addEventListener("scroll", handleScroll);
     return () => scrollableElement.removeEventListener("scroll", handleScroll);
   }, []);
+
   const fetchOrderById = async (orderId: number, companySlug?: string) => {
     const token = localStorage.getItem("access");
     if (!token) return null;
@@ -684,7 +852,9 @@ export default function AdminDashboard() {
         for (const comp of companiesList) {
           try {
             const res = await getCompanyVendorOrders(comp.slug, query);
-            const match = res.data.results?.find((o: any) => o.id === Number(orderId));
+            const match = res.data.results?.find(
+              (o: any) => o.id === Number(orderId),
+            );
             if (match) return match;
           } catch {
             // continue
@@ -727,10 +897,8 @@ export default function AdminDashboard() {
       return;
     }
 
-    // 1. Redirect to orders tab
     navigate(isSuperAdmin ? "masterOrders" : "companyOrders");
 
-    // 2. Fetch order and open VendorOrderDetailModal
     const toastId = toast.loading(`Opening order #${vendorOrderId}...`);
     try {
       const order = await fetchOrderById(vendorOrderId, companySlug);
@@ -755,12 +923,11 @@ export default function AdminDashboard() {
       setNotificationReceipt(freshOrder.receipt || null);
     }
   };
+
   const renderContent = () => {
     const companyKey = company?.slug || "super";
-    // Create a unique key that changes on refresh to force re-render
     const componentKey = `${companyKey}-${refreshKey}`;
 
-    // Wrap each content component with ReadOnlyContext provider
     const content = (() => {
       switch (activeTab) {
         case "overview":
@@ -827,8 +994,6 @@ export default function AdminDashboard() {
           return <ServiceBookings key={componentKey} />;
         case "serviceSubscriptions":
           return <ServiceSubscriptions key={componentKey} />;
-        // case "portfolio":
-        //   return <PortfolioManagement key={componentKey} />;
         case "availability":
           return <AvailabilityManagement key={componentKey} />;
         case "serviceStaff":
@@ -885,7 +1050,7 @@ export default function AdminDashboard() {
           }
         `}
       >
-        {/* Brand — matches the h-16 app header so the divider stays perfectly aligned */}
+        {/* Brand */}
         <div
           className={`
             flex
@@ -937,20 +1102,6 @@ export default function AdminDashboard() {
               >
                 Elilita
               </p>
-
-              {/* <p
-                className="
-                  mt-1.5
-                  text-[9px]
-                  font-semibold
-                  uppercase
-                  leading-none
-                  tracking-[0.11em]
-                  text-white/50
-                "
-              >
-                {brandRoleLabel}
-              </p> */}
             </div>
           )}
 
@@ -996,14 +1147,6 @@ export default function AdminDashboard() {
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("companies")}
               />
-              {/* Subscription hidden for marketers as requested */}
-              {/* <SidebarItem
-                icon={<CreditCard className="h-5 w-5" />}
-                label="Subscription"
-                active={activeTab === "billing"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("billing")}
-              /> */}
               <SidebarItem
                 icon={<Users className="h-5 w-5" />}
                 label="Leads"
@@ -1051,7 +1194,6 @@ export default function AdminDashboard() {
                 onClick={() => navigate("overview")}
               />
 
-              {/* Platform Admin section – shown for super admin AND viewer */}
               {showPlatformAdmin && (
                 <>
                   <div
@@ -1115,7 +1257,6 @@ export default function AdminDashboard() {
                   onClick={() => navigate("marketingAgents")}
                 />
               )}
-              {/* {showPlatformAdmin && ( */}
               {!isDispatcher && (
                 <SidebarItem
                   icon={<Target className="h-5 w-5" />}
@@ -1123,10 +1264,9 @@ export default function AdminDashboard() {
                   active={activeTab === "add advertisment"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("add advertisment")}
+                  disabled={isCompanyInactive}
                 />
               )}
-              {/* // )} */}
-              {/* Bank Accounts - Below Ads Management */}
               {!isDispatcher && (
                 <SidebarItem
                   icon={<Banknote className="h-5 w-5" />}
@@ -1134,6 +1274,7 @@ export default function AdminDashboard() {
                   active={activeTab === "bankAccounts"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("bankAccounts")}
+                  disabled={isCompanyInactive}
                 />
               )}
 
@@ -1150,6 +1291,7 @@ export default function AdminDashboard() {
                 active={activeTab === "products"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("products")}
+                disabled={isCompanyInactive}
               />
 
               <OrdersMenu
@@ -1159,6 +1301,7 @@ export default function AdminDashboard() {
                 showMasterOrders={showMasterOrders}
                 ordersMenuOpen={ordersMenuOpen}
                 onToggleOrdersMenu={() => setOrdersMenuOpen(!ordersMenuOpen)}
+                disabled={isCompanyInactive}
               />
 
               {!isDispatcher && (
@@ -1168,6 +1311,7 @@ export default function AdminDashboard() {
                   active={activeTab === "payments"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("payments")}
+                  disabled={isCompanyInactive}
                 />
               )}
 
@@ -1178,9 +1322,9 @@ export default function AdminDashboard() {
                   active={activeTab === "disputes"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("disputes")}
+                  disabled={isCompanyInactive}
                 />
               )}
-
 
               {showServiceMenu && (
                 <>
@@ -1195,6 +1339,7 @@ export default function AdminDashboard() {
                     active={activeTab === "serviceOfferings"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceOfferings")}
+                    disabled={isCompanyInactive}
                   />
                   <SidebarItem
                     icon={<CalendarDays className="h-5 w-5" />}
@@ -1202,6 +1347,7 @@ export default function AdminDashboard() {
                     active={activeTab === "serviceBookings"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceBookings")}
+                    disabled={isCompanyInactive}
                   />
                   <SidebarItem
                     icon={<Repeat className="h-5 w-5" />}
@@ -1209,20 +1355,15 @@ export default function AdminDashboard() {
                     active={activeTab === "serviceSubscriptions"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceSubscriptions")}
+                    disabled={isCompanyInactive}
                   />
-                  {/* <SidebarItem
-                icon={<Images className="h-5 w-5" />}
-                label="Portfolio"
-                active={activeTab === "portfolio"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("portfolio")}
-              /> */}
                   <SidebarItem
                     icon={<Clock className="h-5 w-5" />}
                     label="Availability"
                     active={activeTab === "availability"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("availability")}
+                    disabled={isCompanyInactive}
                   />
                   <SidebarItem
                     icon={<UserCog className="h-5 w-5" />}
@@ -1230,16 +1371,16 @@ export default function AdminDashboard() {
                     active={activeTab === "serviceStaff"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceStaff")}
+                    disabled={isCompanyInactive}
                   />
                 </>
               )}
-              {/* Only for super admin (not viewer) */}
+
               <div
                 className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""}`}
               >
                 Platform
               </div>
-              {/* {!hideUsersSidebar && ( */}
               {!isDispatcher && (
                 <SidebarItem
                   icon={<UsersRound className="h-5 w-5" />}
@@ -1247,9 +1388,9 @@ export default function AdminDashboard() {
                   active={activeTab === "users"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("users")}
+                  disabled={isCompanyInactive}
                 />
               )}
-              {/* )} */}
 
               <SidebarItem
                 icon={<Bell className="h-5 w-5" />}
@@ -1258,14 +1399,6 @@ export default function AdminDashboard() {
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("notifications")}
               />
-
-              {/* <SidebarItem
-                icon={<User className="h-5 w-5" />}
-                label="Profile"
-                active={activeTab === "profile"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("profile")}
-              /> */}
 
               {isSuperAdmin && (
                 <SidebarItem
@@ -1276,8 +1409,6 @@ export default function AdminDashboard() {
                   onClick={() => navigate("adminSubscriptions")}
                 />
               )}
-
-
 
               {!isSuperAdmin && !isDispatcher && (
                 <SidebarItem
@@ -1297,20 +1428,6 @@ export default function AdminDashboard() {
                   onClick={() => navigate("settings")}
                 />
               )}
-              {/* <div className={`mt-8 px-4 ${sidebarCollapsed ? "hidden" : ""}`}>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Account
-            </p>
-          </div>
-          <button
-            onClick={logout}
-            className={`flex items-center gap-3.5 w-full px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 group text-red-300 hover:bg-red-500/10 hover:text-red-200 ${
-              sidebarCollapsed ? "justify-center px-2" : ""
-            }`}
-          >
-            <LogOut className="h-5 w-5 text-red-300 group-hover:text-red-200" />
-            {!sidebarCollapsed && <span>Logout</span>}
-          </button> */}
             </>
           )}
         </nav>
@@ -1541,6 +1658,28 @@ export default function AdminDashboard() {
                           ? "Dispatcher"
                           : company.role}
                       </span>
+
+                      {isCompanyInactive && (
+                        <span
+                          className="
+                            shrink-0
+                            rounded-full
+                            border
+                            border-red-200
+                            bg-red-50
+                            px-1.5
+                            py-0.5
+                            text-[8px]
+                            font-bold
+                            uppercase
+                            leading-none
+                            tracking-[0.06em]
+                            text-red-600
+                          "
+                        >
+                          Inactive
+                        </span>
+                      )}
                     </div>
 
                     <p
@@ -1563,7 +1702,6 @@ export default function AdminDashboard() {
 
           {/* Right actions */}
           <div className="flex shrink-0 items-center gap-1">
-            {/* Help & Video Guides */}
             <button
               type="button"
               onClick={() => setHelpModalOpen(true)}
@@ -1790,9 +1928,82 @@ export default function AdminDashboard() {
             </div>
           </div>
         </header>
-        {/* add div and padding - scrollable content area */}
 
-        <div ref={scrollableRef} className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4">
+        <div
+          ref={scrollableRef}
+          className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4"
+        >
+          {/* Inactive Company Banner */}
+          {isCompanyInactive && showInactiveBanner && (
+            <div
+              className="
+                relative
+                mb-3
+                flex
+                items-start
+                gap-3
+                rounded-lg
+                border
+                border-amber-200
+                bg-amber-50
+                px-3.5
+                py-3
+                shadow-sm
+              "
+            >
+              <div
+                className="
+                  flex
+                  h-8
+                  w-8
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-lg
+                  bg-amber-100
+                "
+              >
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[12px] font-bold text-amber-900">
+                Your Account Is Inactive
+                </h3>
+
+                <p className="mt-1 text-[11px] leading-5 text-amber-800">
+                   Your account is inactive. Please contact support to activate
+        your account.
+                </p>
+
+                {/* <p className="mt-1.5 text-[10px] font-medium text-amber-700">
+                  Please contact support or your account administrator to
+                  reactivate your company.
+                </p> */}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowInactiveBanner(false)}
+                className="
+                  flex
+                  h-6
+                  w-6
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-md
+                  text-amber-600
+                  transition-colors
+                  hover:bg-amber-100
+                "
+                title="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
           {renderContent()}
         </div>
       </main>
@@ -1923,10 +2134,8 @@ export default function AdminDashboard() {
           }}
           onUpdate={handleNotificationOrderUpdate}
           readOnly={isViewer}
-          onOpenLiveTracking={() => {
-            // optionally open tracking map, e.g. setShowTrackingMap(true)
-          }}
-          allOrders={[]} // or pass existing orders if available
+          onOpenLiveTracking={() => {}}
+          allOrders={[]}
           onSelectOrder={(ord: any) => {
             setNotificationOrder(ord);
             setNotificationReceipt(ord.receipt || null);
@@ -1952,18 +2161,27 @@ function SidebarItem({
   active,
   collapsed,
   onClick,
+  disabled = false,
 }: {
   icon: React.ReactNode;
   label: string;
   active: boolean;
   collapsed: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
-      title={collapsed ? label : undefined}
-      onClick={onClick}
+      title={
+        collapsed
+          ? label
+          : disabled
+            ? `${label} (Company inactive)`
+            : undefined
+      }
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className={`
         group
         flex
@@ -1983,9 +2201,11 @@ function SidebarItem({
           : "gap-2.5 px-3"
         }
 
-        ${active
-          ? "bg-white text-secondary shadow-sm"
-          : "text-white/75 hover:bg-white/10 hover:text-white"
+        ${disabled
+          ? "cursor-not-allowed text-white/30"
+          : active
+            ? "bg-white text-secondary shadow-sm"
+            : "text-white/75 hover:bg-white/10 hover:text-white"
         }
       `}
     >
