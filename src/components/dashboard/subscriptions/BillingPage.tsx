@@ -38,9 +38,7 @@ interface SubscriptionPlan {
   name: string;
   description: string;
   price: string;
-  can_ad_company_detail: boolean;
-  can_ad_companies_list: boolean;
-  can_ad_home_page: boolean;
+  duration_days?: number;
   max_featured_products: number;
   max_products: number;
   max_staff_members?: number;
@@ -743,10 +741,10 @@ export default function BillingPage() {
                 </div>
                 <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
-                    Renewal
+                    {isFree ? "Trial / Period Ends" : "Renewal"}
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-secondary">
-                    {isFree ? "No renewal required" : formatDate(activeSub?.end_date)}
+                    {activeSub?.end_date ? formatDate(activeSub.end_date) : (isFree ? "No expiry set" : "—")}
                   </p>
                 </div>
               </div>
@@ -757,24 +755,24 @@ export default function BillingPage() {
               </div>
 
               {!isExpired &&
-                !isFree &&
                 daysRemaining !== null &&
                 daysRemaining !== undefined &&
                 daysRemaining <= 7 &&
                 daysRemaining > 0 && (
                   <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-xs leading-5 text-secondary">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                    Your plan expires in {daysRemaining} day
-                    {daysRemaining === 1 ? "" : "s"}. Renew or upgrade to keep
-                    paid capabilities available.
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    Your plan period expires in {daysRemaining} day
+                    {daysRemaining === 1 ? "" : "s"}. Upgrade or renew your plan to ensure your storefront stays active and accessible to customers.
                   </div>
                 )}
 
               {isExpired && (
-                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/20 bg-secondary/[0.05] px-4 py-3 text-xs leading-5 text-secondary">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  Your subscription has expired. Choose a plan below to restore
-                  paid capabilities.
+                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-3 text-xs leading-5 text-red-800">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <div>
+                    <span className="font-semibold">Your subscription has expired.</span>{" "}
+                    Your store and products are currently inactive on the shopping app. Choose a subscription plan below to reactivate your store automatically upon payment.
+                  </div>
                 </div>
               )}
             </div>
@@ -889,18 +887,6 @@ export default function BillingPage() {
                             ? "Unlimited staff members"
                             : `Up to ${formatLimit(plan.max_staff_members ?? 5)} staff members`,
                         enabled: true,
-                      },
-                      {
-                        label: "Ads on Company Detail Page",
-                        enabled: plan.can_ad_company_detail,
-                      },
-                      {
-                        label: "Ads on Companies List Page",
-                        enabled: plan.can_ad_companies_list,
-                      },
-                      {
-                        label: "Ads on Home Page",
-                        enabled: plan.can_ad_home_page,
                       },
                     ];
 

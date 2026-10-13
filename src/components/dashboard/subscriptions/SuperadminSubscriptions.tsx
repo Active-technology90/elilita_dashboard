@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles } from "lucide-react";
+import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles, Gift } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   getAdminSubscriptionPlans,
   getAdminCompanySubscriptions,
   createAdminSubscriptionPlan,
   updateAdminSubscriptionPlan,
+  updateAdminCompanySubscription,
 } from "../../../services/api";
 import { SearchInput } from "../../ui/SearchInput";
 import { TableControls } from "../../ui/TableControls";
@@ -161,13 +162,6 @@ const formatProductLimit = (plan: any): string => {
   return formatEtb(limit);
 };
 
-const hasAnyAdvertisingPlacement = (plan: any) =>
-  Boolean(
-    plan?.can_ad_company_detail ||
-      plan?.can_ad_companies_list ||
-      plan?.can_ad_home_page,
-  );
-
 const getDocumentIssues = (
   plan: any,
   baseline: DocumentPlanBaseline,
@@ -176,7 +170,6 @@ const getDocumentIssues = (
   const price = Number(plan?.price ?? 0);
   const featuredLimit = Number(plan?.max_featured_products ?? 0);
   const productLimit = Number(plan?.max_products ?? 0);
-  const hasAds = hasAnyAdvertisingPlacement(plan);
 
   if (price !== baseline.monthlyPrice) {
     issues.push(
@@ -202,22 +195,18 @@ const getDocumentIssues = (
 
   if (baseline.tier === "free") {
     if (featuredLimit !== 0) issues.push("Free does not include featured products");
-    if (hasAds) issues.push("Free does not include advertising opportunities");
   }
 
   if (baseline.tier === "basic") {
     if (featuredLimit !== 0) issues.push("Basic does not include featured products");
-    if (!hasAds) issues.push("Basic should allow paid advertising opportunities");
   }
 
   if (baseline.tier === "advanced") {
     if (featuredLimit <= 0) issues.push("Advanced includes featured products");
-    if (!hasAds) issues.push("Advanced includes advertising opportunities");
   }
 
   if (baseline.tier === "premium") {
     if (featuredLimit <= 0) issues.push("Premium includes priority featured products");
-    if (!hasAds) issues.push("Premium includes priority advertising opportunities");
   }
 
   return issues;
@@ -286,14 +275,55 @@ export default function SuperadminSubscriptions() {
     name: "",
     description: "",
     price: 0,
-    can_ad_company_detail: false,
-    can_ad_companies_list: false,
-    can_ad_home_page: false,
+    duration_days: 30,
     max_featured_products: 0,
     max_products: 0,
     max_staff_members: 5,
     is_active: true,
   });
+
+  // Company Deal Modal State
+  const [dealModalOpen, setDealModalOpen] = useState(false);
+  const [selectedSub, setSelectedSub] = useState<any>(null);
+  const [dealFormData, setDealFormData] = useState({
+    plan_id: "",
+    additional_free_days: 0,
+    set_company_active: true,
+  });
+  const [isSavingDeal, setIsSavingDeal] = useState(false);
+  const [dealError, setDealError] = useState("");
+
+  const handleOpenDealModal = (sub: any) => {
+    setSelectedSub(sub);
+    setDealFormData({
+      plan_id: sub.plan?.id ? String(sub.plan.id) : "",
+      additional_free_days: Number(sub.additional_free_days || 0),
+      set_company_active: sub.company_is_active !== undefined ? Boolean(sub.company_is_active) : true,
+    });
+    setDealError("");
+    setDealModalOpen(true);
+  };
+
+  const handleSaveDeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSub) return;
+    setIsSavingDeal(true);
+    setDealError("");
+    try {
+      await updateAdminCompanySubscription(selectedSub.id, {
+        plan_id: dealFormData.plan_id ? Number(dealFormData.plan_id) : undefined,
+        additional_free_days: Number(dealFormData.additional_free_days) || 0,
+        set_company_active: dealFormData.set_company_active,
+      });
+      setDealModalOpen(false);
+      await fetchData();
+    } catch (err: any) {
+      console.error("Error updating company subscription deal", err);
+      setDealError(err?.response?.data?.detail || "Could not update company subscription.");
+    } finally {
+      setIsSavingDeal(false);
+    }
+  };
 
   const selectedDocumentBaseline = useMemo(
     () =>
@@ -381,9 +411,7 @@ export default function SuperadminSubscriptions() {
       name: plan.name,
       description: plan.description,
       price: parseFloat(plan.price),
-      can_ad_company_detail: plan.can_ad_company_detail,
-      can_ad_companies_list: plan.can_ad_companies_list,
-      can_ad_home_page: plan.can_ad_home_page,
+      duration_days: plan.duration_days ?? 30,
       max_featured_products: plan.max_featured_products,
       max_products: getProductLimitForPlan(plan) ?? 0,
       max_staff_members: plan.max_staff_members ?? 5,
@@ -399,9 +427,7 @@ export default function SuperadminSubscriptions() {
       name: "",
       description: "",
       price: 0,
-      can_ad_company_detail: false,
-      can_ad_companies_list: false,
-      can_ad_home_page: false,
+      duration_days: 30,
       max_featured_products: 0,
       max_products: 0,
       max_staff_members: 5,
@@ -438,9 +464,6 @@ export default function SuperadminSubscriptions() {
       "Price",
       "Public Products Limit",
       "Featured Limit",
-      "Detail Ad",
-      "List Ad",
-      "Home Ad",
       "Status",
       "Subscribers",
     ];
@@ -450,9 +473,6 @@ export default function SuperadminSubscriptions() {
       plan.price,
       formatProductLimit(plan),
       plan.max_featured_products === -1 ? "Unlimited" : plan.max_featured_products,
-      plan.can_ad_company_detail ? "Yes" : "No",
-      plan.can_ad_companies_list ? "Yes" : "No",
-      plan.can_ad_home_page ? "Yes" : "No",
       plan.is_active ? "Active" : "Inactive",
       companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length,
     ]);
@@ -679,10 +699,10 @@ export default function SuperadminSubscriptions() {
                 <tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   <th className="px-5 py-3.5">Plan</th>
                   <th className="px-4 py-3.5">Price</th>
+                  <th className="px-4 py-3.5">Period</th>
                   <th className="px-4 py-3.5">Products</th>
                   <th className="px-4 py-3.5">Featured</th>
                   <th className="px-4 py-3.5">Staff</th>
-                  <th className="px-4 py-3.5">Ads</th>
                   <th className="px-4 py-3.5">Subscribers</th>
                   <th className="px-4 py-3.5">Status</th>
                   <th className="px-5 py-3.5 text-right">Action</th>
@@ -705,11 +725,6 @@ export default function SuperadminSubscriptions() {
                   </tr>
                 ) : (
                   plans.map((plan) => {
-                    const adsCount = [
-                      plan.can_ad_company_detail,
-                      plan.can_ad_companies_list,
-                      plan.can_ad_home_page,
-                    ].filter(Boolean).length;
                     const subscribers = companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length;
 
                     return (
@@ -725,6 +740,9 @@ export default function SuperadminSubscriptions() {
                             {Number(plan.price || 0) === 0 ? "Free" : `ETB ${formatEtb(Number(plan.price || 0))}`}
                           </span>
                         </td>
+                        <td className="px-4 py-4 font-semibold text-secondary">
+                          {plan.duration_days ?? 30} days
+                        </td>
                         <td className="px-4 py-4 font-medium text-gray-700">
                           {formatProductLimit(plan)}
                         </td>
@@ -733,11 +751,6 @@ export default function SuperadminSubscriptions() {
                         </td>
                         <td className="px-4 py-4 font-medium text-gray-700">
                           {(plan.max_staff_members ?? 5) === -1 ? "Unlimited" : (plan.max_staff_members ?? 5)}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                            {adsCount}/3
-                          </span>
                         </td>
                         <td className="px-4 py-4">
                           <span className="inline-flex items-center gap-1.5 text-gray-700">
@@ -834,8 +847,12 @@ export default function SuperadminSubscriptions() {
                   <th className="px-5 py-3.5">Company</th>
                   <th className="px-4 py-3.5">Plan</th>
                   <th className="px-4 py-3.5">Started</th>
-                  <th className="px-4 py-3.5">Ends</th>
-                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-4 py-3.5">Extra Free</th>
+                  <th className="px-4 py-3.5">Expires</th>
+                  <th className="px-4 py-3.5">Days Left</th>
+                  <th className="px-4 py-3.5">Sub Status</th>
+                  <th className="px-4 py-3.5">Store Access</th>
+                  <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -843,7 +860,7 @@ export default function SuperadminSubscriptions() {
                   Array.from({ length: 5 }).map((_, index) => <SkeletonSubscriptionRow key={index} />)
                 ) : paginatedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-16 text-center">
+                    <td colSpan={9} className="px-5 py-16 text-center">
                       <div className="mx-auto flex max-w-xs flex-col items-center">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
                           <Building2 className="h-6 w-6 text-gray-400" />
@@ -858,6 +875,8 @@ export default function SuperadminSubscriptions() {
                 ) : (
                   paginatedItems.map((sub) => {
                     const isSubscriptionActive = sub.is_active && !sub.is_expired;
+                    const isStoreActive = sub.company_is_active;
+
                     return (
                       <tr key={sub.id} className="group text-sm text-gray-700 transition hover:bg-gray-50/70">
                         <td className="px-5 py-4">
@@ -876,10 +895,35 @@ export default function SuperadminSubscriptions() {
                         <td className="px-4 py-4 text-gray-500">
                           {new Date(sub.start_date).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-4 text-gray-500">
-                          {sub.end_date ? new Date(sub.end_date).toLocaleDateString() : "Lifetime"}
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-secondary/[0.05] px-2 py-0.5 text-xs font-semibold text-secondary">
+                            <Gift className="h-3 w-3" />
+                            {sub.additional_free_days > 0 ? `+${sub.additional_free_days}d` : "0d"}
+                          </span>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-4 py-4 font-medium text-gray-600">
+                          {sub.effective_end_date
+                            ? new Date(sub.effective_end_date).toLocaleDateString()
+                            : sub.end_date
+                            ? new Date(sub.end_date).toLocaleDateString()
+                            : "Lifetime"}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`font-semibold ${
+                              sub.days_remaining > 5
+                                ? "text-emerald-700"
+                                : sub.days_remaining > 0
+                                ? "text-amber-700"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {sub.days_remaining !== undefined && sub.days_remaining !== null
+                              ? `${sub.days_remaining}d`
+                              : "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
                               isSubscriptionActive
@@ -890,6 +934,28 @@ export default function SuperadminSubscriptions() {
                             <span className={`h-1.5 w-1.5 rounded-full ${isSubscriptionActive ? "bg-emerald-500" : "bg-gray-400"}`} />
                             {isSubscriptionActive ? "Active" : "Expired"}
                           </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
+                              isStoreActive
+                                ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                                : "bg-rose-50 text-rose-700 ring-rose-600/20"
+                            }`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${isStoreActive ? "bg-emerald-500" : "bg-rose-500"}`} />
+                            {isStoreActive ? "Live" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDealModal(sub)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/20 bg-secondary/[0.04] px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-secondary/10"
+                          >
+                            <Gift className="h-3.5 w-3.5" />
+                            <span>Deal / Free Days</span>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -951,7 +1017,7 @@ export default function SuperadminSubscriptions() {
                   </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-gray-700">Plan name</label>
                     <input
@@ -983,6 +1049,18 @@ export default function SuperadminSubscriptions() {
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                       className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">Period (Days)</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={formData.duration_days}
+                      onChange={(e) => setFormData({ ...formData, duration_days: parseInt(e.target.value, 10) || 30 })}
+                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      placeholder="30"
                     />
                   </div>
                 </div>
@@ -1077,30 +1155,6 @@ export default function SuperadminSubscriptions() {
                     />
                   </div>
                 </div>
-
-                <div>
-                  <p className="mb-2 text-xs font-semibold text-gray-700">Advertising</p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {[
-                      ["Company page", "can_ad_company_detail"],
-                      ["Company list", "can_ad_companies_list"],
-                      ["Home page", "can_ad_home_page"],
-                    ].map(([label, key]) => (
-                      <label
-                        key={key}
-                        className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3.5 py-2.5 text-xs font-medium text-gray-700 transition hover:border-secondary/30 hover:bg-secondary/[0.03]"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={Boolean(formData[key as keyof typeof formData])}
-                          onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                          className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </form>
             </div>
 
@@ -1122,6 +1176,190 @@ export default function SuperadminSubscriptions() {
                 {isSaving ? "Saving…" : "Save"}
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ========== COMPANY SUBSCRIPTION DEAL & FREE DAYS MODAL ========== */}
+      {dealModalOpen && selectedSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+            onClick={() => !isSavingDeal && setDealModalOpen(false)}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/[0.08] text-secondary">
+                  <Gift className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Subscription Deal & Free Days</h3>
+                  <p className="text-xs text-gray-500">{selectedSub.company_name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDealModalOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDeal} className="space-y-4 px-6 py-5">
+              {dealError && (
+                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  {dealError}
+                </div>
+              )}
+
+              {/* Current Status Overview */}
+              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 text-xs text-gray-600 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Current Plan:</span>
+                  <span className="font-semibold text-gray-800">{selectedSub.plan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Started:</span>
+                  <span className="font-semibold text-gray-800">{new Date(selectedSub.start_date).toLocaleDateString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Store Status:</span>
+                  <span className={`font-semibold ${selectedSub.company_is_active ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {selectedSub.company_is_active ? 'Active (Live on App)' : 'Inactive (Hidden on App)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Plan Selector */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">Assign Subscription Plan</label>
+                <select
+                  value={dealFormData.plan_id}
+                  onChange={(e) => setDealFormData({ ...dealFormData, plan_id: e.target.value })}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                >
+                  {plans.map((p) => (
+                    <option key={p.id} value={String(p.id)}>
+                      {p.name} ({Number(p.price) === 0 ? "Free" : `ETB ${p.price}`} · {p.duration_days ?? 30} days)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Additional Free Days Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-gray-700">Extra Free Days Granted</label>
+                  <span className="text-[11px] text-gray-400">Negotiated bonus duration</span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={dealFormData.additional_free_days}
+                  onChange={(e) =>
+                    setDealFormData({
+                      ...dealFormData,
+                      additional_free_days: Math.max(0, parseInt(e.target.value, 10) || 0),
+                    })
+                  }
+                  className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                />
+
+                {/* Quick Preset Buttons */}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[7, 14, 30, 45, 60].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() =>
+                        setDealFormData({
+                          ...dealFormData,
+                          additional_free_days: (Number(dealFormData.additional_free_days) || 0) + days,
+                        })
+                      }
+                      className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-secondary/10 hover:text-secondary"
+                    >
+                      +{days}d
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDealFormData({ ...dealFormData, additional_free_days: 0 })}
+                    className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100"
+                  >
+                    Reset to 0
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Expiration Preview */}
+              {(() => {
+                const planObj = plans.find((p) => String(p.id) === dealFormData.plan_id) || selectedSub.plan;
+                const pDays = planObj?.duration_days ?? 30;
+                const totalD = pDays + (Number(dealFormData.additional_free_days) || 0);
+                const startD = new Date(selectedSub.start_date);
+                const previewEndD = new Date(startD.getTime() + totalD * 24 * 60 * 60 * 1000);
+                const remainingD = Math.max(0, Math.ceil((previewEndD.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+
+                return (
+                  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-3.5 text-xs">
+                    <div className="flex items-center gap-2 text-secondary font-bold mb-1">
+                      <Sparkles className="h-4 w-4" />
+                      <span>Calculated Expiration Preview</span>
+                    </div>
+                    <p className="text-gray-700">
+                      Total Period: <strong>{totalD} days</strong> ({pDays}d plan + {dealFormData.additional_free_days}d bonus)
+                    </p>
+                    <p className="mt-1 text-gray-700">
+                      New Expiry Date: <strong>{previewEndD.toLocaleDateString()}</strong> ({remainingD} days from now)
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Company Store Active Toggle */}
+              <div className="rounded-xl border border-gray-200 p-3.5">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-900 block">Company Store Active</span>
+                    <span className="text-[11px] text-gray-500">When enabled, store and products are visible on Qine Superapp.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={dealFormData.set_company_active}
+                    onChange={(e) => setDealFormData({ ...dealFormData, set_company_active: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setDealModalOpen(false)}
+                  disabled={isSavingDeal}
+                  className="h-10 rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDeal}
+                  className="h-10 rounded-xl bg-secondary px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 disabled:opacity-60"
+                >
+                  {isSavingDeal ? "Applying Deal…" : "Apply Deal & Save"}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

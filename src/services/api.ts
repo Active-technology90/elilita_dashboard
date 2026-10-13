@@ -906,6 +906,10 @@ export const updateAd = async (id: number, data: FormData) => {
 
 export const deleteAd = async (id: number) => api.delete(`/ads/admin/${id}/`);
 
+export const getAdminAdPageSettings = () => api.get("/ads/admin/page-settings/");
+export const updateAdminAdPageSetting = (id: number, data: any) =>
+  api.patch(`/ads/admin/page-settings/${id}/`, data);
+
 export const prepareVendorOrder = async (companySlug: string, orderId: number) =>
   api.post(`/orders/company/${companySlug}/${orderId}/prepare/`);
 
@@ -958,6 +962,8 @@ export const updateAdminSubscriptionPlan = (id: number, data: any) => api.patch(
 export const deleteAdminSubscriptionPlan = (id: number) => api.delete(`/subscriptions/admin/plans/${id}/`);
 
 export const getAdminCompanySubscriptions = () => api.get("/subscriptions/admin/company-subscriptions/");
+export const updateAdminCompanySubscription = (id: number, data: any) =>
+  api.patch(`/subscriptions/admin/company-subscriptions/${id}/`, data);
 
 // ========== MARKETING PERFORMANCE ==========
 export const getMarketingPerformance = () =>

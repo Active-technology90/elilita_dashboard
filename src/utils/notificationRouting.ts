@@ -3,7 +3,6 @@
 // Used by: NotificationBell, NotificationsPage, foreground FCM toast,
 //          service worker click handler.
 
-import type { AppNotification } from "../context/NotificationsContext";
 
 // ---------------------------------------------------------------------------
 // Helpers

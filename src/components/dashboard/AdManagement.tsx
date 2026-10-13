@@ -24,6 +24,7 @@ import {
   Ruler,
   FileImage,
   HardDrive,
+  Sliders,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -32,11 +33,12 @@ import {
   createAd,
   updateAd,
   deleteAd,
-  getMySubscription,
   getCompanyAds,
   createCompanyAd,
   updateCompanyAd,
   deleteCompanyAd,
+  getAdminAdPageSettings,
+  updateAdminAdPageSetting,
 } from "../../services/api";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
 import PageHeader from "../ui/PageHeader";
@@ -80,17 +82,6 @@ const AD_IMAGE_SPEC = {
   maxSizeMB: 2,
   formats: ["image/jpeg", "image/png", "image/webp"],
   formatLabel: "JPG, PNG, or WebP",
-} as const;
-
-// ----------------------------------------------------------------------
-// Stable default subscription object
-// ----------------------------------------------------------------------
-const DEFAULT_ADS_SUB = {
-  plan: {
-    can_ad_home_page: true,
-    can_ad_companies_list: true,
-    can_ad_company_detail: true,
-  },
 } as const;
 
 // ----------------------------------------------------------------------
@@ -1102,7 +1093,6 @@ export default function AdManagement() {
   const { user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
   const { company } = useCurrentCompany();
-  const [activeSub, setActiveSub] = useState<any>(null);
   const [ads, setAds] = useState<Ad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1130,10 +1120,42 @@ export default function AdManagement() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
 
+  // Ad Slot Limits state (SuperAdmin)
+  const [slotsModalOpen, setSlotsModalOpen] = useState(false);
+  const [pageSettings, setPageSettings] = useState<any[]>([]);
+  const [savingSlotId, setSavingSlotId] = useState<number | null>(null);
+
   // ------------------------------------------------------------
   // Role / permission determination
   // ------------------------------------------------------------
   const isSuperAdmin = !user?.memberships?.length;
+
+  const fetchPageSettings = useCallback(async () => {
+    if (!isSuperAdmin) return;
+    try {
+      const res = await getAdminAdPageSettings();
+      setPageSettings(res.data?.results || res.data || []);
+    } catch (err) {
+      console.error("Failed to load ad page settings", err);
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    fetchPageSettings();
+  }, [fetchPageSettings]);
+
+  const handleUpdateSlotLimit = async (settingId: number, max_slots: number) => {
+    setSavingSlotId(settingId);
+    try {
+      await updateAdminAdPageSetting(settingId, { max_slots });
+      showToast("success", "Slot limit updated successfully");
+      await fetchPageSettings();
+    } catch (err: any) {
+      showToast("error", "Failed to update slot limit");
+    } finally {
+      setSavingSlotId(null);
+    }
+  };
 
   const companyRole = (() => {
     if (!user || !company?.slug) return "";
@@ -1190,16 +1212,6 @@ export default function AdManagement() {
   // ------------------------------------------------------------
   // Effects
   // ------------------------------------------------------------
-  useEffect(() => {
-    if (!isSuperAdmin && companySlug) {
-      getMySubscription(companySlug)
-        .then((res) => setActiveSub(res.data))
-        .catch(console.error);
-    } else {
-      setActiveSub((prev) => (prev === DEFAULT_ADS_SUB ? prev : DEFAULT_ADS_SUB));
-    }
-  }, [companySlug, isSuperAdmin]);
-
   useEffect(() => {
     fetchAds();
   }, [fetchAds]);
@@ -1390,28 +1402,54 @@ export default function AdManagement() {
             ) : undefined
           }
           actions={
-            !isReadOnly ? (
-              <Button
-                onClick={openCreateModal}
-                size="md"
-                className="w-full shadow-sm sm:w-auto"
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span>New Ad</span>
-              </Button>
-            ) : undefined
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <Button
+                  onClick={() => setSlotsModalOpen(true)}
+                  size="md"
+                  variant="outline"
+                  className="w-full shadow-sm sm:w-auto"
+                >
+                  <Sliders className="h-4 w-4 shrink-0" />
+                  <span>Slot Limits</span>
+                </Button>
+              )}
+              {!isReadOnly && (
+                <Button
+                  onClick={openCreateModal}
+                  size="md"
+                  className="w-full shadow-sm sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>New Ad</span>
+                </Button>
+              )}
+            </div>
           }
           actionMobile={
-            !isReadOnly ? (
-              <Button
-                onClick={openCreateModal}
-                size="md"
-                className="w-full shadow-sm sm:w-auto"
-              >
-                <Plus className="h-3 w-3 shrink-0" />
-                <span>New</span>
-              </Button>
-            ) : undefined
+            <div className="flex items-center gap-2">
+              {isSuperAdmin && (
+                <Button
+                  onClick={() => setSlotsModalOpen(true)}
+                  size="md"
+                  variant="outline"
+                  className="w-full shadow-sm sm:w-auto"
+                >
+                  <Sliders className="h-3 w-3 shrink-0" />
+                  <span>Slots</span>
+                </Button>
+              )}
+              {!isReadOnly && (
+                <Button
+                  onClick={openCreateModal}
+                  size="md"
+                  className="w-full shadow-sm sm:w-auto"
+                >
+                  <Plus className="h-3 w-3 shrink-0" />
+                  <span>New</span>
+                </Button>
+              )}
+            </div>
           }
         />
 
@@ -1523,12 +1561,11 @@ export default function AdManagement() {
             <label className="block text-sm font-medium text-gray-700">
               Ad Placements
             </label>
+            <p className="text-xs text-gray-500">
+              Placements rotate fairly across page slots configured by Superadmin.
+            </p>
             <div className="space-y-2">
-              <label
-                className={`flex items-center gap-2 ${
-                  !activeSub?.plan?.can_ad_home_page ? "opacity-50" : ""
-                }`}
-              >
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={targetPages.includes("home")}
@@ -1538,22 +1575,15 @@ export default function AdManagement() {
                     else
                       setTargetPages(targetPages.filter((p) => p !== "home"));
                   }}
-                  disabled={!activeSub?.plan?.can_ad_home_page}
                   className="w-4 h-4 text-secondary rounded border-gray-300"
                 />
-                <span className="text-sm">Home Page</span>
-                {!activeSub?.plan?.can_ad_home_page && (
-                  <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full ml-2">
-                    Requires Pro+
-                  </span>
-                )}
+                <span className="text-sm font-medium text-gray-800">Home Page</span>
+                <span className="text-[11px] text-gray-500">
+                  (Main home banner carousel)
+                </span>
               </label>
 
-              <label
-                className={`flex items-center gap-2 ${
-                  !activeSub?.plan?.can_ad_companies_list ? "opacity-50" : ""
-                }`}
-              >
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={targetPages.includes("companies_list")}
@@ -1565,22 +1595,15 @@ export default function AdManagement() {
                         targetPages.filter((p) => p !== "companies_list"),
                       );
                   }}
-                  disabled={!activeSub?.plan?.can_ad_companies_list}
                   className="w-4 h-4 text-secondary rounded border-gray-300"
                 />
-                <span className="text-sm">Companies List Page</span>
-                {!activeSub?.plan?.can_ad_companies_list && (
-                  <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full ml-2">
-                    Requires Basic+
-                  </span>
-                )}
+                <span className="text-sm font-medium text-gray-800">Companies List Page</span>
+                <span className="text-[11px] text-gray-500">
+                  (Company directory page)
+                </span>
               </label>
 
-              <label
-                className={`flex items-center gap-2 ${
-                  !activeSub?.plan?.can_ad_company_detail ? "opacity-50" : ""
-                }`}
-              >
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={targetPages.includes("company_detail")}
@@ -1592,10 +1615,12 @@ export default function AdManagement() {
                         targetPages.filter((p) => p !== "company_detail"),
                       );
                   }}
-                  disabled={!activeSub?.plan?.can_ad_company_detail}
                   className="w-4 h-4 text-secondary rounded border-gray-300"
                 />
-                <span className="text-sm">Company Detail Page</span>
+                <span className="text-sm font-medium text-gray-800">Company Detail Page</span>
+                <span className="text-[11px] text-gray-500">
+                  (Individual store pages)
+                </span>
               </label>
             </div>
           </div>
@@ -1609,6 +1634,106 @@ export default function AdManagement() {
             error={formErrors.image}
           />
         </FormModal>
+
+        {/* Superadmin Ad Page Slot Limits Modal */}
+        <AnimatePresence>
+          {slotsModalOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+                onClick={() => setSlotsModalOpen(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-2xl shadow-2xl z-50 p-6"
+              >
+                <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <Sliders className="h-5 w-5 text-secondary" />
+                      Page Ad Slot Limits
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Configure maximum active ads displayed per page. If more ads are active, they rotate randomly on page loads.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSlotsModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  {pageSettings.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-gray-500">
+                      No placement settings found. Ensure database settings are initialized.
+                    </div>
+                  ) : (
+                    pageSettings.map((setting) => (
+                      <div
+                        key={setting.id}
+                        className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/70 flex items-center justify-between gap-4"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {setting.page_name_display || setting.page_name}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono mt-0.5">
+                            Key: {setting.page_name}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-medium text-gray-600">
+                            Slots:
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            defaultValue={setting.max_slots}
+                            id={`slot-input-${setting.id}`}
+                            className="w-16 px-2.5 py-1.5 text-center text-sm font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
+                          />
+                          <Button
+                            size="sm"
+                            isLoading={savingSlotId === setting.id}
+                            onClick={() => {
+                              const inputEl = document.getElementById(
+                                `slot-input-${setting.id}`
+                              ) as HTMLInputElement;
+                              if (inputEl) {
+                                const val = parseInt(inputEl.value, 10);
+                                if (!isNaN(val) && val >= 1) {
+                                  handleUpdateSlotLimit(setting.id, val);
+                                }
+                              }
+                            }}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <Button variant="outline" onClick={() => setSlotsModalOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
       <Toast toast={toast} onHide={hideToast} />
     </div>
