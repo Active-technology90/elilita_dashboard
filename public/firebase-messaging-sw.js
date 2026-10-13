@@ -11,12 +11,12 @@ importScripts(
 );
 
 firebase.initializeApp({
-  apiKey: "AIzaSyAc8UsHWnN6ejpP9GYShExcp50Z-iKNoeE",
-  authDomain: "qine-delivery-tracking.firebaseapp.com",
-  projectId: "qine-delivery-tracking",
-  storageBucket: "qine-delivery-tracking.firebasestorage.app",
-  messagingSenderId: "860762669004",
-  appId: "1:860762669004:web:bb7434ed3fea7d150d6769",
+  apiKey: "AIzaSyAHeRy_mH0EUlXvZp0_0tDv-pRswk8Op0A",
+  authDomain: "elilita-app.firebaseapp.com",
+  projectId: "elilita-app",
+  storageBucket: "elilita-app.firebasestorage.app",
+  messagingSenderId: "644577897885",
+  appId: "1:644577897885:web:772dd26f8409e54ae79374",
 });
 
 const messaging = firebase.messaging();
