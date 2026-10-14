@@ -1,4 +1,10 @@
-import { useState, useRef, useEffect, createContext, useContext } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  createContext,
+  useContext,
+} from "react";
 import { RefreshButton } from "../ui/RefreshButton";
 import {
   LayoutDashboard,
@@ -143,6 +149,21 @@ const MANAGEMENT_TABS: Tab[] = [
   "users",
 ];
 
+// ─────────────────────────────────────────────────────────────
+// Tabs that are blocked for SERVICE-type companies
+// (order-related sections are irrelevant to service businesses)
+//
+// NOTE: "payments" is intentionally NOT in this list —
+//       service companies still need to view their payments.
+// ─────────────────────────────────────────────────────────────
+const SERVICE_BLOCKED_TABS: Tab[] = [
+  "products",
+  "masterOrders",
+  "companyOrders",
+  "disputes",
+  "add advertisment",
+];
+
 // ════════════════════════════════════════════════════════════
 // OrdersMenu
 // ════════════════════════════════════════════════════════════
@@ -167,8 +188,7 @@ function OrdersMenu({
   const ordersRef = useRef<HTMLDivElement>(null);
 
   const isActive =
-    activeTab === "masterOrders" ||
-    activeTab === "companyOrders";
+    activeTab === "masterOrders" || activeTab === "companyOrders";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -208,19 +228,14 @@ function OrdersMenu({
           [&_svg]:h-4
           [&_svg]:w-4
 
-          ${collapsed
-            ? "justify-center px-2"
-            : "gap-2.5 px-3"
-          }
+          ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
 
           text-white/40
         `}
       >
         <ShoppingBag className="shrink-0" />
 
-        {!collapsed && (
-          <span className="truncate">All Orders</span>
-        )}
+        {!collapsed && <span className="truncate">All Orders</span>}
       </button>
     );
   }
@@ -245,22 +260,18 @@ function OrdersMenu({
           [&_svg]:h-4
           [&_svg]:w-4
 
-          ${collapsed
-            ? "justify-center px-2"
-            : "gap-2.5 px-3"
-          }
+          ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
 
-          ${activeTab === "companyOrders"
-            ? "bg-white text-secondary shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white"
+          ${
+            activeTab === "companyOrders"
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
           }
         `}
       >
         <ShoppingBag className="shrink-0" />
 
-        {!collapsed && (
-          <span className="truncate">All Orders</span>
-        )}
+        {!collapsed && <span className="truncate">All Orders</span>}
       </button>
     );
   }
@@ -287,9 +298,10 @@ function OrdersMenu({
             [&_svg]:h-4
             [&_svg]:w-4
 
-            ${isActive
-              ? "bg-white text-secondary shadow-sm"
-              : "text-white/75 hover:bg-white/10 hover:text-white"
+            ${
+              isActive
+                ? "bg-white text-secondary shadow-sm"
+                : "text-white/75 hover:bg-white/10 hover:text-white"
             }
           `}
         >
@@ -335,9 +347,10 @@ function OrdersMenu({
                   [&_svg]:h-3.5
                   [&_svg]:w-3.5
 
-                  ${activeTab === "masterOrders"
-                    ? "bg-white/15 font-semibold text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                  ${
+                    activeTab === "masterOrders"
+                      ? "bg-white/15 font-semibold text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   }
                 `}
               >
@@ -364,9 +377,10 @@ function OrdersMenu({
                 [&_svg]:h-3.5
                 [&_svg]:w-3.5
 
-                ${activeTab === "companyOrders"
-                  ? "bg-white/15 font-semibold text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
+                ${
+                  activeTab === "companyOrders"
+                    ? "bg-white/15 font-semibold text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
                 }
               `}
             >
@@ -384,9 +398,7 @@ function OrdersMenu({
       <button
         type="button"
         title="Orders"
-        onClick={() =>
-          setCollapsedOrdersOpen(!collapsedOrdersOpen)
-        }
+        onClick={() => setCollapsedOrdersOpen(!collapsedOrdersOpen)}
         className={`
           flex
           h-9
@@ -400,9 +412,10 @@ function OrdersMenu({
           [&_svg]:h-4
           [&_svg]:w-4
 
-          ${isActive
-            ? "bg-white text-secondary shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white"
+          ${
+            isActive
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
           }
         `}
       >
@@ -448,9 +461,10 @@ function OrdersMenu({
                 [&_svg]:h-3.5
                 [&_svg]:w-3.5
 
-                ${activeTab === "masterOrders"
-                  ? "bg-secondary/[0.08] font-semibold text-secondary"
-                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+                ${
+                  activeTab === "masterOrders"
+                    ? "bg-secondary/[0.08] font-semibold text-secondary"
+                    : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
                 }
               `}
             >
@@ -479,9 +493,10 @@ function OrdersMenu({
               [&_svg]:h-3.5
               [&_svg]:w-3.5
 
-              ${activeTab === "companyOrders"
-                ? "bg-secondary/[0.08] font-semibold text-secondary"
-                : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+              ${
+                activeTab === "companyOrders"
+                  ? "bg-secondary/[0.08] font-semibold text-secondary"
+                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
               }
             `}
           >
@@ -516,7 +531,7 @@ export default function AdminDashboard() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [showInactiveBanner, setShowInactiveBanner] = useState(true);
 
-  // ── NEW: dedicated active-status state for the current company ──
+  // ── Active-status state for the current company ──
   const [currentCompanyActive, setCurrentCompanyActive] = useState<
     boolean | null
   >(null);
@@ -539,16 +554,29 @@ export default function AdminDashboard() {
     !isSuperAdmin && !isMarketing && company?.role === "staff";
 
   const showPlatformAdmin = isSuperAdmin || isViewer;
-  const showMasterOrders = isSuperAdmin;
 
+  // ── Is the CURRENT company a service-type business? ────
   const currentCompanyMeta = companiesList.find(
     (c: any) => c.slug === company?.slug,
   );
 
+  const isServiceCompany =
+    !isSuperAdmin &&
+    !isMarketing &&
+    (currentCompanyMeta?.business_type === "service" ||
+      user?.memberships?.some(
+        (m: any) =>
+          m.company_slug === company?.slug &&
+          companiesList.find((c: any) => c.slug === m.company_slug)
+            ?.business_type === "service",
+      ));
+
+  // Master Orders is only shown to super admins on non-service companies
+  const showMasterOrders = isSuperAdmin && !isServiceCompany;
+
+  const showServiceMenu = isSuperAdmin || isServiceCompany;
+
   // ── Fetch current company details directly (by slug) ────
-  // getCompanies() only returns companies the user can "see" as admin
-  // (often none for regular owners/dispatchers). So we fetch the
-  // current company directly to reliably read `is_active`.
   useEffect(() => {
     if (!company?.slug || isSuperAdmin || isMarketing) {
       setCurrentCompanyActive(null);
@@ -562,8 +590,6 @@ export default function AdminDashboard() {
         const api = await import("../../services/api");
         const anyApi = api as any;
 
-        // Try a range of likely API function names so we don't break
-        // depending on your services/api.ts exports.
         const candidates = [
           "getCompanyBySlug",
           "getCompanyDetail",
@@ -582,7 +608,6 @@ export default function AdminDashboard() {
           }
         }
 
-        // Fallback: query the list endpoint with slug filter
         if (!res && typeof anyApi.getCompanies === "function") {
           try {
             res = await anyApi.getCompanies({ slug: company.slug });
@@ -598,7 +623,6 @@ export default function AdminDashboard() {
           res ??
           null;
 
-        // Look for is_active in a few common shapes
         const active =
           payload?.is_active ??
           payload?.company?.is_active ??
@@ -608,7 +632,6 @@ export default function AdminDashboard() {
           if (typeof active === "boolean") {
             setCurrentCompanyActive(active);
           } else {
-            // Could not determine → assume active so we don't lock users out
             setCurrentCompanyActive(true);
           }
         }
@@ -626,10 +649,6 @@ export default function AdminDashboard() {
   }, [company?.slug, isSuperAdmin, isMarketing]);
 
   // ── Company active check ───────────────────────────────
-  // Priority:
-  //   1. Dedicated fetch of the current company (most reliable)
-  //   2. is_active on the company object from context (if present)
-  //   3. Fallback from companiesList (super admin only in practice)
   const companyIsActive =
     currentCompanyActive ??
     (company as any)?.is_active ??
@@ -642,35 +661,31 @@ export default function AdminDashboard() {
     !!company &&
     companyIsActive === false;
 
-  // Reset banner dismiss when company changes or status flips
   useEffect(() => {
     if (isCompanyInactive) {
       setShowInactiveBanner(true);
     }
   }, [company?.slug, isCompanyInactive]);
 
-  // Block navigation to management tabs if company is inactive
+  // ── Tab blocking logic (both inactive AND service company) ──
   const isTabBlocked = (tab: Tab): boolean => {
-    if (!isCompanyInactive) return false;
-    return MANAGEMENT_TABS.includes(tab);
+    if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) return true;
+    if (isServiceCompany && SERVICE_BLOCKED_TABS.includes(tab)) return true;
+    return false;
   };
 
-  const showServiceMenu =
-    isSuperAdmin ||
-    currentCompanyMeta?.business_type === "service" ||
-    user?.memberships?.some(
-      (m: any) =>
-        m.company_slug === company?.slug &&
-        companiesList.find((c: any) => c.slug === m.company_slug)
-          ?.business_type === "service",
-    );
-
   const navigate = (tab: Tab) => {
-    if (isTabBlocked(tab)) {
+    if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) {
       toast.error(
-      "Your account is inactive. Please contact support to activate your account.",
-      { id: "inactive-company" },
-    );
+        "Your account is inactive. Please contact support to activate your account.",
+        { id: "inactive-company" },
+      );
+      return;
+    }
+    if (isServiceCompany && SERVICE_BLOCKED_TABS.includes(tab)) {
+      toast.error("This section isn't available for service businesses.", {
+        id: "service-company-blocked",
+      });
       return;
     }
     setActiveTab(tab);
@@ -750,7 +765,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch companies list (kept for super-admin tooling / service menu detection)
+  // Fetch companies list
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -894,6 +909,15 @@ export default function AdminDashboard() {
 
     if (!vendorOrderId) {
       navigate("notifications");
+      return;
+    }
+
+    // Service companies don't have order pages — send to notifications
+    if (isServiceCompany) {
+      navigate("notifications");
+      toast.error("Order details aren't available for service businesses.", {
+        id: "service-company-order-blocked",
+      });
       return;
     }
 
@@ -1044,9 +1068,10 @@ export default function AdminDashboard() {
 
           ${sidebarCollapsed ? "w-14" : "w-[232px]"}
 
-          ${isSidebarOpen
-            ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0"
+          ${
+            isSidebarOpen
+              ? "translate-x-0"
+              : "-translate-x-full lg:translate-x-0"
           }
         `}
       >
@@ -1061,10 +1086,7 @@ export default function AdminDashboard() {
             border-white/15
             px-2.5
 
-            ${sidebarCollapsed
-              ? "justify-center"
-              : "gap-2.5"
-            }
+            ${sidebarCollapsed ? "justify-center" : "gap-2.5"}
           `}
         >
           <div
@@ -1197,8 +1219,9 @@ export default function AdminDashboard() {
               {showPlatformAdmin && (
                 <>
                   <div
-                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""
-                      }`}
+                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${
+                      sidebarCollapsed ? "hidden" : ""
+                    }`}
                   >
                     Platform Admin
                   </div>
@@ -1257,7 +1280,9 @@ export default function AdminDashboard() {
                   onClick={() => navigate("marketingAgents")}
                 />
               )}
-              {!isDispatcher && (
+
+              {/* Ads Management — hidden for service companies */}
+              {!isDispatcher && !isServiceCompany && (
                 <SidebarItem
                   icon={<Target className="h-5 w-5" />}
                   label="Ads Management"
@@ -1267,6 +1292,7 @@ export default function AdminDashboard() {
                   disabled={isCompanyInactive}
                 />
               )}
+
               {!isDispatcher && (
                 <SidebarItem
                   icon={<Banknote className="h-5 w-5" />}
@@ -1279,31 +1305,39 @@ export default function AdminDashboard() {
               )}
 
               <div
-                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""
-                  }`}
+                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${
+                  sidebarCollapsed ? "hidden" : ""
+                }`}
               >
                 Management
               </div>
 
-              <SidebarItem
-                icon={<Package className="h-5 w-5" />}
-                label="All Products"
-                active={activeTab === "products"}
-                collapsed={sidebarCollapsed}
-                onClick={() => navigate("products")}
-                disabled={isCompanyInactive}
-              />
+              {/* All Products — hidden for service companies */}
+              {!isServiceCompany && (
+                <SidebarItem
+                  icon={<Package className="h-5 w-5" />}
+                  label="All Products"
+                  active={activeTab === "products"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("products")}
+                  disabled={isCompanyInactive}
+                />
+              )}
 
-              <OrdersMenu
-                collapsed={sidebarCollapsed}
-                activeTab={activeTab}
-                onNavigate={navigate}
-                showMasterOrders={showMasterOrders}
-                ordersMenuOpen={ordersMenuOpen}
-                onToggleOrdersMenu={() => setOrdersMenuOpen(!ordersMenuOpen)}
-                disabled={isCompanyInactive}
-              />
+              {/* Orders Menu — hidden for service companies */}
+              {!isServiceCompany && (
+                <OrdersMenu
+                  collapsed={sidebarCollapsed}
+                  activeTab={activeTab}
+                  onNavigate={navigate}
+                  showMasterOrders={showMasterOrders}
+                  ordersMenuOpen={ordersMenuOpen}
+                  onToggleOrdersMenu={() => setOrdersMenuOpen(!ordersMenuOpen)}
+                  disabled={isCompanyInactive}
+                />
+              )}
 
+              {/* Payments — VISIBLE for service companies (as requested) */}
               {!isDispatcher && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
@@ -1315,7 +1349,8 @@ export default function AdminDashboard() {
                 />
               )}
 
-              {showPlatformAdmin && (
+              {/* Disputes — hidden for service companies */}
+              {showPlatformAdmin && !isServiceCompany && (
                 <SidebarItem
                   icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
                   label="Disputes & Refunds"
@@ -1329,7 +1364,9 @@ export default function AdminDashboard() {
               {showServiceMenu && (
                 <>
                   <div
-                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""}`}
+                    className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${
+                      sidebarCollapsed ? "hidden" : ""
+                    }`}
                   >
                     Services
                   </div>
@@ -1377,7 +1414,9 @@ export default function AdminDashboard() {
               )}
 
               <div
-                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${sidebarCollapsed ? "hidden" : ""}`}
+                className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${
+                  sidebarCollapsed ? "hidden" : ""
+                }`}
               >
                 Platform
               </div>
@@ -1442,10 +1481,7 @@ export default function AdminDashboard() {
             border-white/15
             pt-2
 
-            ${sidebarCollapsed
-              ? "justify-center"
-              : "justify-end"
-            }
+            ${sidebarCollapsed ? "justify-center" : "justify-end"}
           `}
         >
           <button
@@ -1483,19 +1519,14 @@ export default function AdminDashboard() {
             sm:px-3
             lg:px-4
 
-            ${isScrolled
-              ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-              : ""
-            }
+            ${isScrolled ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : ""}
           `}
         >
           {/* Left context */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <button
               type="button"
-              onClick={() =>
-                setIsSidebarOpen((prev) => !prev)
-              }
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
               className="
                 flex
                 h-8
@@ -1582,122 +1613,118 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {company &&
-              !isSuperAdmin &&
-              !isMarketing && (
+            {company && !isSuperAdmin && !isMarketing && (
+              <div
+                className="
+                  hidden
+                  min-w-0
+                  items-center
+                  gap-2
+                  sm:flex
+                "
+              >
                 <div
                   className="
-                    hidden
-                    min-w-0
+                    flex
+                    h-8
+                    w-8
+                    shrink-0
                     items-center
-                    gap-2
-                    sm:flex
+                    justify-center
+                    overflow-hidden
+                    rounded-lg
+                    border
+                    border-secondary/10
+                    bg-secondary/[0.05]
                   "
                 >
-                  <div
-                    className="
-                      flex
-                      h-8
-                      w-8
-                      shrink-0
-                      items-center
-                      justify-center
-                      overflow-hidden
-                      rounded-lg
-                      border
-                      border-secondary/10
-                      bg-secondary/[0.05]
-                    "
-                  >
-                    {companyLogo ? (
-                      <img
-                        src={companyLogo}
-                        alt={company.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Building2 className="h-4 w-4 text-secondary" />
-                    )}
-                  </div>
+                  {companyLogo ? (
+                    <img
+                      src={companyLogo}
+                      alt={company.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Building2 className="h-4 w-4 text-secondary" />
+                  )}
+                </div>
 
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <p
-                        className="
-                          max-w-[130px]
-                          truncate
-                          text-[11px]
-                          font-bold
-                          leading-none
-                          text-gray-900
-                          md:max-w-[200px]
-                          lg:max-w-[280px]
-                        "
-                        title={company.name}
-                      >
-                        {company.name}
-                      </p>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p
+                      className="
+                        max-w-[130px]
+                        truncate
+                        text-[11px]
+                        font-bold
+                        leading-none
+                        text-gray-900
+                        md:max-w-[200px]
+                        lg:max-w-[280px]
+                      "
+                      title={company.name}
+                    >
+                      {company.name}
+                    </p>
 
+                    <span
+                      className="
+                        shrink-0
+                        rounded-full
+                        border
+                        border-secondary/10
+                        bg-secondary/[0.035]
+                        px-1.5
+                        py-0.5
+                        text-[8px]
+                        font-semibold
+                        capitalize
+                        leading-none
+                        text-secondary
+                      "
+                    >
+                      {company.role === "staff" ? "Dispatcher" : company.role}
+                    </span>
+
+                    {isCompanyInactive && (
                       <span
                         className="
                           shrink-0
                           rounded-full
                           border
-                          border-secondary/10
-                          bg-secondary/[0.035]
+                          border-red-200
+                          bg-red-50
                           px-1.5
                           py-0.5
                           text-[8px]
-                          font-semibold
-                          capitalize
+                          font-bold
+                          uppercase
                           leading-none
-                          text-secondary
+                          tracking-[0.06em]
+                          text-red-600
                         "
                       >
-                        {company.role === "staff"
-                          ? "Dispatcher"
-                          : company.role}
+                        Inactive
                       </span>
-
-                      {isCompanyInactive && (
-                        <span
-                          className="
-                            shrink-0
-                            rounded-full
-                            border
-                            border-red-200
-                            bg-red-50
-                            px-1.5
-                            py-0.5
-                            text-[8px]
-                            font-bold
-                            uppercase
-                            leading-none
-                            tracking-[0.06em]
-                            text-red-600
-                          "
-                        >
-                          Inactive
-                        </span>
-                      )}
-                    </div>
-
-                    <p
-                      className="
-                        mt-1
-                        text-[8px]
-                        font-medium
-                        uppercase
-                        leading-none
-                        tracking-[0.08em]
-                        text-gray-400
-                      "
-                    >
-                      Active company
-                    </p>
+                    )}
                   </div>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[8px]
+                      font-medium
+                      uppercase
+                      leading-none
+                      tracking-[0.08em]
+                      text-gray-400
+                    "
+                  >
+                    Active company
+                  </p>
                 </div>
-              )}
+              </div>
+            )}
           </div>
 
           {/* Right actions */}
@@ -1726,25 +1753,16 @@ export default function AdminDashboard() {
             </button>
 
             <NotificationBell
-              onViewAll={() =>
-                navigate("notifications")
-              }
+              onViewAll={() => navigate("notifications")}
               onNotificationClick={handleNotificationClick}
             />
 
-            <RefreshButton
-              onRefresh={handleRefresh}
-              isLoading={isRefreshing}
-            />
+            <RefreshButton onRefresh={handleRefresh} isLoading={isRefreshing} />
 
             <div className="relative">
               <button
                 type="button"
-                onClick={() =>
-                  setProfileDropdownOpen(
-                    !profileDropdownOpen,
-                  )
-                }
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className={`
                   flex
                   h-8
@@ -1756,9 +1774,10 @@ export default function AdminDashboard() {
                   transition-colors
                   duration-150
 
-                  ${profileDropdownOpen
-                    ? "border-secondary/20 bg-secondary/[0.04]"
-                    : "border-transparent hover:border-secondary/10 hover:bg-secondary/[0.025]"
+                  ${
+                    profileDropdownOpen
+                      ? "border-secondary/20 bg-secondary/[0.04]"
+                      : "border-transparent hover:border-secondary/10 hover:bg-secondary/[0.025]"
                   }
                 `}
               >
@@ -1773,9 +1792,7 @@ export default function AdminDashboard() {
                       text-gray-800
                     "
                   >
-                    {user?.username ||
-                      user?.email?.split("@")[0] ||
-                      "User"}
+                    {user?.username || user?.email?.split("@")[0] || "User"}
                   </p>
                 </div>
 
@@ -1802,9 +1819,7 @@ export default function AdminDashboard() {
                     />
                   ) : (
                     <span className="text-[10px] font-bold uppercase text-white">
-                      {user?.username?.[0] ||
-                        user?.first_name?.[0] ||
-                        "A"}
+                      {user?.username?.[0] || user?.first_name?.[0] || "A"}
                     </span>
                   )}
                 </div>
@@ -1814,9 +1829,7 @@ export default function AdminDashboard() {
                 <>
                   <div
                     className="fixed inset-0 z-[60]"
-                    onClick={() =>
-                      setProfileDropdownOpen(false)
-                    }
+                    onClick={() => setProfileDropdownOpen(false)}
                   />
 
                   <div
@@ -1864,9 +1877,7 @@ export default function AdminDashboard() {
                             text-secondary
                           "
                         >
-                          {company.role === "staff"
-                            ? "Dispatcher"
-                            : company.role}
+                          {company.role === "staff" ? "Dispatcher" : company.role}
                         </p>
                       )}
                     </div>
@@ -1968,18 +1979,13 @@ export default function AdminDashboard() {
 
               <div className="min-w-0 flex-1">
                 <h3 className="text-[12px] font-bold text-amber-900">
-                Your Account Is Inactive
+                  Your Account Is Inactive
                 </h3>
 
                 <p className="mt-1 text-[11px] leading-5 text-amber-800">
-                   Your account is inactive. Please contact support to activate
-        your account.
+                  Your account is inactive. Please contact support to activate
+                  your account.
                 </p>
-
-                {/* <p className="mt-1.5 text-[10px] font-medium text-amber-700">
-                  Please contact support or your account administrator to
-                  reactivate your company.
-                </p> */}
               </div>
 
               <button
@@ -2053,9 +2059,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Sign out
-                  </h3>
+                  <h3 className="text-sm font-bold text-gray-900">Sign out</h3>
 
                   <p className="mt-1 text-[10px] leading-4 text-gray-500">
                     Are you sure you want to sign out of your account?
@@ -2078,9 +2082,7 @@ export default function AdminDashboard() {
             >
               <button
                 type="button"
-                onClick={() =>
-                  setShowLogoutConfirm(false)
-                }
+                onClick={() => setShowLogoutConfirm(false)}
                 className="
                   h-8
                   rounded-md
@@ -2196,28 +2198,20 @@ function SidebarItem({
         [&_svg]:h-4
         [&_svg]:w-4
 
-        ${collapsed
-          ? "justify-center px-2"
-          : "gap-2.5 px-3"
-        }
+        ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
 
-        ${disabled
-          ? "cursor-not-allowed text-white/30"
-          : active
-            ? "bg-white text-secondary shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white"
+        ${
+          disabled
+            ? "cursor-not-allowed text-white/30"
+            : active
+              ? "bg-white text-secondary shadow-sm"
+              : "text-white/75 hover:bg-white/10 hover:text-white"
         }
       `}
     >
-      <span className="shrink-0">
-        {icon}
-      </span>
+      <span className="shrink-0">{icon}</span>
 
-      {!collapsed && (
-        <span className="truncate">
-          {label}
-        </span>
-      )}
+      {!collapsed && <span className="truncate">{label}</span>}
     </button>
   );
 }

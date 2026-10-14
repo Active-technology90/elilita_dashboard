@@ -1,5 +1,11 @@
 // VendorOrderDetailModal.tsx - Complete rewrite with View on Map
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -45,6 +51,7 @@ import { ConfirmationModal } from "../../ui/confimationModal";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
+import { CustomSelect } from "../../ui/CustomSelect";
 
 // ---------- Animation Variants ----------
 const containerVariants = {
@@ -331,7 +338,12 @@ const getStatusBadge = (status: string) => {
     return base + "bg-amber-50 text-amber-700 border-amber-200";
   if (s === "declined")
     return base + "bg-rose-50 text-rose-700 border-rose-200";
-  if (s === "rejected" || s === "cancelled" || s === "failed" || s === "refunded")
+  if (
+    s === "rejected" ||
+    s === "cancelled" ||
+    s === "failed" ||
+    s === "refunded"
+  )
     return base + "bg-rose-50 text-rose-700 border-rose-200";
   return base + "bg-gray-50 text-gray-600 border-gray-200";
 };
@@ -424,7 +436,6 @@ const CopyButton = ({ text }: { text?: string | null }) => {
   );
 };
 
-
 /* ─── Filter Type Card (Delivery Person Type option) ─── */
 // ─── DELIVERY CARD WITH VIEW ON MAP ──────────────────────────────
 
@@ -480,10 +491,7 @@ const FilterDropdown = ({
     blue: "bg-blue-100 text-blue-700",
   } as const;
 
-  const renderIcon = (
-    opt: (typeof options)[number],
-    isSelected: boolean,
-  ) => {
+  const renderIcon = (opt: (typeof options)[number], isSelected: boolean) => {
     if (variant === "vehicle") {
       return (
         <span
@@ -692,7 +700,10 @@ const DeliveryCard = ({
   const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
   const routeCacheRef = useRef<
-    Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>
+    Map<
+      string,
+      { distanceKm: number; durationMinutes: number; timestamp: number }
+    >
   >(new Map());
   const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -709,7 +720,10 @@ const DeliveryCard = ({
     const handleClickOutside = (e: MouseEvent) => {
       // Skip on mobile — backdrop handles closing
       if (isMobile()) return;
-      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
+      if (
+        filtersRef.current &&
+        !filtersRef.current.contains(e.target as Node)
+      ) {
         setShowFilters(false);
       }
     };
@@ -763,7 +777,10 @@ const DeliveryCard = ({
   const getCustomerLocation = () => {
     const candidates = [
       {
-        value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon),
+        value: parseCoordinatePair(
+          delivery?.customer_lat,
+          delivery?.customer_lon,
+        ),
       },
       { value: parseCoordinatePair(order?.shipping_lat, order?.shipping_lon) },
       { value: parseCoordinatePair(order?.customer_lat, order?.customer_lon) },
@@ -1164,7 +1181,8 @@ const DeliveryCard = ({
     }
     if (vehicleTypeFilter !== "all") {
       filtered = filtered.filter(
-        (s) => s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase(),
+        (s) =>
+          s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase(),
       );
     }
     if (searchTerm.trim()) {
@@ -1359,7 +1377,8 @@ const DeliveryCard = ({
       setRatingMap(rMap);
       const uMap = new Map();
       mapped.forEach((staff: any) => {
-        if (staff.phone && staff.username) uMap.set(staff.phone, staff.username);
+        if (staff.phone && staff.username)
+          uMap.set(staff.phone, staff.username);
       });
       setUsernameMap(uMap);
     } catch {
@@ -1443,7 +1462,10 @@ const DeliveryCard = ({
     )
       return null;
     const first = filteredStaffList[0];
-    if (first && (first.live_lat != null || first.calculated_distance != null)) {
+    if (
+      first &&
+      (first.live_lat != null || first.calculated_distance != null)
+    ) {
       return first;
     }
     return null;
@@ -1459,7 +1481,9 @@ const DeliveryCard = ({
 
   // Stats for header
   const inHouseCount = staffWithDistance.filter((s) => s.is_in_house).length;
-  const thirdPartyCount = staffWithDistance.filter((s) => !s.is_in_house).length;
+  const thirdPartyCount = staffWithDistance.filter(
+    (s) => !s.is_in_house,
+  ).length;
 
   // Filter counts (based on unfiltered staff list)
   const allCount = staffWithDistance.length;
@@ -1585,7 +1609,7 @@ const DeliveryCard = ({
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
                               <span className="inline-flex items-center gap-1.5">
-                                <PhoneCall className="h-3.5 w-3.5 text-gray-400" />
+                                {/* <PhoneCall className="h-3.5 w-3.5 text-gray-400" /> */}
                                 <span className="font-medium">
                                   {delivery.delivery_person_phone || "No phone"}
                                 </span>
@@ -1593,7 +1617,9 @@ const DeliveryCard = ({
                                   text={delivery.delivery_person_phone}
                                 />
                               </span>
-                              {ratingMap.has(delivery.delivery_person_phone) && (
+                              {ratingMap.has(
+                                delivery.delivery_person_phone,
+                              ) && (
                                 <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
                                   {renderRating(
                                     ratingMap.get(
@@ -1637,7 +1663,7 @@ const DeliveryCard = ({
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
-                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
+                              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2 text-xs font-semibold transition ${
                                 delivery?.status === "declined" ||
                                 delivery?.status === "expired"
                                   ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
@@ -1645,7 +1671,7 @@ const DeliveryCard = ({
                               }`}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
-                              Reassign delivery person
+                              Change
                             </button>
                           )}
                         </div>
@@ -1735,14 +1761,18 @@ const DeliveryCard = ({
                                 <span
                                   className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
                                 >
-                                  {s === "expired" ? "Expired (Timeout)" : att.status}
+                                  {s === "expired"
+                                    ? "Expired (Timeout)"
+                                    : att.status}
                                 </span>
                                 {att.assigned_at && (
                                   <span className="hidden text-[10px] text-gray-400 sm:inline">
-                                    {new Date(att.assigned_at).toLocaleTimeString(
-                                      [],
-                                      { hour: "2-digit", minute: "2-digit" },
-                                    )}
+                                    {new Date(
+                                      att.assigned_at,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
                                   </span>
                                 )}
                               </div>
@@ -2029,169 +2059,181 @@ const DeliveryCard = ({
                               </div>
 
                               {/* STICKY HEADER */}
-                            {/* HEADER */}
-<div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
-  <div className="flex items-center gap-2">
-    <Filter className="h-3.5 w-3.5 text-secondary" />
-    <h3 className="text-xs font-bold text-gray-900">Filter drivers</h3>
-    <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
-      {filteredStaffList.length}
-    </span>
-  </div>
-  <div className="flex flex-shrink-0 items-center gap-0.5">
-    {activeFilterCount > 0 && (
-      <button
-        type="button"
-        onClick={() => {
-          setFilterType("all");
-          setVehicleTypeFilter("all");
-          setSelectedUserId("");
-        }}
-        className="rounded-md px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary/10"
-      >
-        Clear
-      </button>
-    )}
-    <button
-      type="button"
-      onClick={() => setShowFilters(false)}
-      aria-label="Close filters"
-      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-    >
-      <X className="h-3.5 w-3.5" />
-    </button>
-  </div>
-</div>
+                              {/* HEADER */}
+                              <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <Filter className="h-3.5 w-3.5 text-secondary" />
+                                  <h3 className="text-xs font-bold text-gray-900">
+                                    Filter drivers
+                                  </h3>
+                                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                                    {filteredStaffList.length}
+                                  </span>
+                                </div>
+                                <div className="flex flex-shrink-0 items-center gap-0.5">
+                                  {activeFilterCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setFilterType("all");
+                                        setVehicleTypeFilter("all");
+                                        setSelectedUserId("");
+                                      }}
+                                      className="rounded-md px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary/10"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFilters(false)}
+                                    aria-label="Close filters"
+                                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
 
                               {/* SCROLLABLE BODY */}
-                            {/* SCROLLABLE BODY */}
-<div className="flex-1 overflow-y-auto px-4 py-3">
-  {/* ═══ Delivery Person Type ═══ */}
-  <div className="mb-2.5">
-    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-      Delivery Person Type
-    </label>
+                              {/* SCROLLABLE BODY */}
+                              <div className="flex-1 overflow-y-auto px-4 py-3">
+                                {/* ═══ Delivery Person Type ═══ */}
+                                <div className="mb-2.5">
+                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    Delivery Person Type
+                                  </label>
 
-    <FilterDropdown
-      variant="type"
-      value={filterType}
-      onChange={(v) => {
-        setFilterType(v as "all" | "in_house" | "third_party");
-        setSelectedUserId("");
-      }}
-      ariaLabel="Delivery person type"
-      options={[
-        {
-          value: "all",
-          label: "All drivers",
-          description: "Every available driver",
-          count: allCount,
-          accent: "secondary",
-          icon: <Users className="h-3 w-3" />,
-        },
-        {
-          value: "in_house",
-          label: "In-house",
-          description: "Your company drivers",
-          count: inHouseFilterCount,
-          accent: "emerald",
-          icon: <Truck className="h-3 w-3" />,
-        },
-        {
-          value: "third_party",
-          label: "3PL Partners",
-          description: "Third-party logistics",
-          count: thirdPartyFilterCount,
-          accent: "blue",
-          icon: <Building2 className="h-3 w-3" />,
-        },
-      ]}
-    />
-  </div>
+                                  <FilterDropdown
+                                    variant="type"
+                                    value={filterType}
+                                    onChange={(v) => {
+                                      setFilterType(
+                                        v as "all" | "in_house" | "third_party",
+                                      );
+                                      setSelectedUserId("");
+                                    }}
+                                    ariaLabel="Delivery person type"
+                                    options={[
+                                      {
+                                        value: "all",
+                                        label: "All drivers",
+                                        description: "Every available driver",
+                                        count: allCount,
+                                        accent: "secondary",
+                                        icon: <Users className="h-3 w-3" />,
+                                      },
+                                      {
+                                        value: "in_house",
+                                        label: "In-house",
+                                        description: "Your company drivers",
+                                        count: inHouseFilterCount,
+                                        accent: "emerald",
+                                        icon: <Truck className="h-3 w-3" />,
+                                      },
+                                      {
+                                        value: "third_party",
+                                        label: "3PL Partners",
+                                        description: "Third-party logistics",
+                                        count: thirdPartyFilterCount,
+                                        accent: "blue",
+                                        icon: <Building2 className="h-3 w-3" />,
+                                      },
+                                    ]}
+                                  />
+                                </div>
 
-  {/* ═══ Vehicle Type ═══ */}
-  <div>
-    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-      Vehicle Type
-    </label>
+                                {/* ═══ Vehicle Type ═══ */}
+                                <div>
+                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    Vehicle Type
+                                  </label>
 
-    <FilterDropdown
-      variant="vehicle"
-      value={vehicleTypeFilter}
-      onChange={(v) => {
-        setVehicleTypeFilter(
-          v as "all" | "motorcycle" | "car" | "bicycle" | "van" | "foot",
-        );
-        setSelectedUserId("");
-      }}
-      ariaLabel="Vehicle type"
-      options={[
-        {
-          value: "all",
-          emoji: "🚚",
-          label: "All vehicles",
-          count: vehicleCounts.all,
-        },
-        {
-          value: "motorcycle",
-          emoji: "🏍️",
-          label: "Motorcycle",
-          count: vehicleCounts.motorcycle,
-        },
-        {
-          value: "car",
-          emoji: "🚗",
-          label: "Car",
-          count: vehicleCounts.car,
-        },
-        {
-          value: "bicycle",
-          emoji: "🚲",
-          label: "Bicycle",
-          count: vehicleCounts.bicycle,
-        },
-        {
-          value: "van",
-          emoji: "🚐",
-          label: "Van",
-          count: vehicleCounts.van,
-        },
-        {
-          value: "foot",
-          emoji: "🚶",
-          label: "On Foot",
-          count: vehicleCounts.foot,
-        },
-      ]}
-    />
-  </div>
-</div>
+                                  <FilterDropdown
+                                    variant="vehicle"
+                                    value={vehicleTypeFilter}
+                                    onChange={(v) => {
+                                      setVehicleTypeFilter(
+                                        v as
+                                          | "all"
+                                          | "motorcycle"
+                                          | "car"
+                                          | "bicycle"
+                                          | "van"
+                                          | "foot",
+                                      );
+                                      setSelectedUserId("");
+                                    }}
+                                    ariaLabel="Vehicle type"
+                                    options={[
+                                      {
+                                        value: "all",
+                                        emoji: "🚚",
+                                        label: "All vehicles",
+                                        count: vehicleCounts.all,
+                                      },
+                                      {
+                                        value: "motorcycle",
+                                        emoji: "🏍️",
+                                        label: "Motorcycle",
+                                        count: vehicleCounts.motorcycle,
+                                      },
+                                      {
+                                        value: "car",
+                                        emoji: "🚗",
+                                        label: "Car",
+                                        count: vehicleCounts.car,
+                                      },
+                                      {
+                                        value: "bicycle",
+                                        emoji: "🚲",
+                                        label: "Bicycle",
+                                        count: vehicleCounts.bicycle,
+                                      },
+                                      {
+                                        value: "van",
+                                        emoji: "🚐",
+                                        label: "Van",
+                                        count: vehicleCounts.van,
+                                      },
+                                      {
+                                        value: "foot",
+                                        emoji: "🚶",
+                                        label: "On Foot",
+                                        count: vehicleCounts.foot,
+                                      },
+                                    ]}
+                                  />
+                                </div>
+                              </div>
                               {/* STICKY FOOTER */}
-                             {/* FOOTER */}
-<div className="border-t border-gray-100 bg-white px-4 py-2.5 sm:rounded-b-xl">
-  <div className="flex gap-2">
-    <button
-      type="button"
-      disabled={activeFilterCount === 0}
-      onClick={() => {
-        setFilterType("all");
-        setVehicleTypeFilter("all");
-        setSelectedUserId("");
-      }}
-      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      Reset
-    </button>
-    <button
-      type="button"
-      onClick={() => setShowFilters(false)}
-      className="flex-1 rounded-lg bg-secondary px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light"
-    >
-      Show {filteredStaffList.length}{" "}
-      {filteredStaffList.length === 1 ? "driver" : "drivers"}
-    </button>
-  </div>
-</div>
+                              {/* FOOTER */}
+                              <div className="border-t border-gray-100 bg-white px-4 py-2.5 sm:rounded-b-xl">
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={activeFilterCount === 0}
+                                    onClick={() => {
+                                      setFilterType("all");
+                                      setVehicleTypeFilter("all");
+                                      setSelectedUserId("");
+                                    }}
+                                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    Reset
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFilters(false)}
+                                    className="flex-1 rounded-lg bg-secondary px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light"
+                                  >
+                                    Show {filteredStaffList.length}{" "}
+                                    {filteredStaffList.length === 1
+                                      ? "driver"
+                                      : "drivers"}
+                                  </button>
+                                </div>
+                              </div>
                             </motion.div>
                           </>
                         )}
@@ -2200,7 +2242,7 @@ const DeliveryCard = ({
 
                     {/* Sort button (icon-style dropdown) */}
                     <div className="relative flex-shrink-0">
-                      <select
+                      {/* <select
                         value={`${sortBy}|${sortOrder}`}
                         onChange={(e) => {
                           const [field, order] = e.target.value.split("|");
@@ -2217,8 +2259,41 @@ const DeliveryCard = ({
                         <option value="rating|asc">Rating · Lowest</option>
                         <option value="name|asc">Name · A → Z</option>
                         <option value="name|desc">Name · Z → A</option>
-                      </select>
-                      <span
+                      </select> */}
+                   <CustomSelect
+  value={`${sortBy}|${sortOrder}`}
+  onChange={(value: string) => {           // ← plain string, NOT an event
+    const [field, order] = value.split("|");
+    setSortBy(field as "distance" | "rating" | "name");
+    setSortOrder(order as "asc" | "desc");
+  }}
+  ariaLabel="Sort"
+                        options={[
+                          {
+                            value: "distance|asc",
+                            label: "Distance · Nearest",
+                          },
+                          {
+                            value: "distance|desc",
+                            label: "Distance · Farthest",
+                          },
+                          {
+                            value: "rating|desc",
+                            label: "Rating · Highest",
+                          },
+
+                          {
+                            value: "name|asc",
+                            label: "Name · A → Z",
+                          },
+                          {
+                            value: "name|desc",
+                            label: "Name · Z → A",
+                          },
+                        ]}
+                      />
+
+                      {/* <span
                         aria-hidden="true"
                         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
                       >
@@ -2236,7 +2311,7 @@ const DeliveryCard = ({
                           <line x1="4" y1="12" x2="14" y2="12" />
                           <line x1="4" y1="18" x2="8" y2="18" />
                         </svg>
-                      </span>
+                      </span> */}
                     </div>
                   </div>
 
@@ -2315,8 +2390,7 @@ const DeliveryCard = ({
                       <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
                         {paginatedStaffList.map((staff, index) => {
                           const isSelected = selectedUserId === staff.id;
-                          const hasLocation =
-                            staff.calculated_distance != null;
+                          const hasLocation = staff.calculated_distance != null;
                           const globalIndex =
                             (currentPage - 1) * itemsPerPage + index;
                           const isNearest =
@@ -2729,11 +2803,11 @@ const ReceiptReviewCard = ({
 
   const displayHistory = receiptHistory
     ? receiptHistory.filter((h: any) => {
-      if (h.id === receipt?.id && receipt?.status === "pending") {
-        return false;
-      }
-      return true;
-    })
+        if (h.id === receipt?.id && receipt?.status === "pending") {
+          return false;
+        }
+        return true;
+      })
     : [];
 
   const handleConfirmCOD = async () => {
@@ -2748,8 +2822,8 @@ const ReceiptReviewCard = ({
       showToast(
         "error",
         err.response?.data?.detail ||
-        err.message ||
-        "Failed to confirm COD payment",
+          err.message ||
+          "Failed to confirm COD payment",
       );
     } finally {
       setCodConfirming(false);
@@ -2790,7 +2864,11 @@ const ReceiptReviewCard = ({
               <ShieldCheck className="h-5 w-5 md:h-8 md:w-8 text-indigo-600" />
             </div>
             <p className="text-sm font-semibold text-gray-700">Verified by</p>
-            <img src="/telebirr.png" alt="Telebirr" className="h-8 object-contain" />
+            <img
+              src="/telebirr.png"
+              alt="Telebirr"
+              className="h-8 object-contain"
+            />
           </div>
         </div>
       </Card>
@@ -3164,7 +3242,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
       await onUpdate();
       showToast(
         "success",
-        isReplacement ? "Replacement marked as Prepared!" : "Order marked as Prepared!",
+        isReplacement
+          ? "Replacement marked as Prepared!"
+          : "Order marked as Prepared!",
       );
     } catch (err: any) {
       showToast(
@@ -3220,9 +3300,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         title={isReplacement ? "Replacement Preparation" : "Order Preparation"}
         icon={Package}
         status={status}
-        className={
-          canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""
-        }
+        className={canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""}
       >
         <div className="flex flex-col items-center text-center py-4 space-y-3">
           {canPrepare && !readOnly && (
@@ -3296,8 +3374,8 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
               </div>
               <p className="text-xs text-gray-500 mb-4">
                 If items are unavailable or cannot be replaced, submit a refund
-                request. A Superadmin will review and disburse funds back to
-                the customer.
+                request. A Superadmin will review and disburse funds back to the
+                customer.
               </p>
 
               <div className="space-y-3 mb-5">
@@ -3381,7 +3459,9 @@ export function VendorOrderDetailModal({
   if (!order) return null;
   const [refreshing, setRefreshing] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">("tracking");
+  const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">(
+    "tracking",
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>();
 
   const [localDeliveryOverride, setLocalDeliveryOverride] = useState<any>(null);
@@ -3426,46 +3506,49 @@ export function VendorOrderDetailModal({
     setIsMapOpen(true);
   }, []);
 
-  const handleDriverSelect = useCallback(async (driverId: number) => {
-    try {
-      let updatedDelivery: any = null;
+  const handleDriverSelect = useCallback(
+    async (driverId: number) => {
+      try {
+        let updatedDelivery: any = null;
 
-      if (effectiveOrder.delivery) {
-        const res = await updateDeliveryPerson(
-          effectiveOrder.delivery.id.toString(),
-          driverId
-        );
-        updatedDelivery = res?.data ?? null;
-      } else {
-        const res = await assignDelivery({
-          vendor_order: effectiveOrder.id,
-          delivery_person: driverId,
-        });
-        updatedDelivery = res?.data ?? null;
+        if (effectiveOrder.delivery) {
+          const res = await updateDeliveryPerson(
+            effectiveOrder.delivery.id.toString(),
+            driverId,
+          );
+          updatedDelivery = res?.data ?? null;
+        } else {
+          const res = await assignDelivery({
+            vendor_order: effectiveOrder.id,
+            delivery_person: driverId,
+          });
+          updatedDelivery = res?.data ?? null;
+        }
+
+        setLocalDeliveryOverride((prev: any) => ({
+          ...(prev || {}),
+          ...(updatedDelivery || {}),
+          delivery_person_name:
+            updatedDelivery?.delivery_person_name ??
+            prev?.delivery_person_name ??
+            "Assigned delivery person",
+          delivery_person_phone:
+            updatedDelivery?.delivery_person_phone ??
+            prev?.delivery_person_phone ??
+            "",
+          status: updatedDelivery?.status ?? prev?.status ?? "pending",
+        }));
+
+        await onUpdate();
+
+        return updatedDelivery;
+      } catch (err) {
+        setLocalDeliveryOverride(null);
+        throw err;
       }
-
-      setLocalDeliveryOverride((prev: any) => ({
-        ...(prev || {}),
-        ...(updatedDelivery || {}),
-        delivery_person_name:
-          updatedDelivery?.delivery_person_name ??
-          prev?.delivery_person_name ??
-          "Assigned delivery person",
-        delivery_person_phone:
-          updatedDelivery?.delivery_person_phone ??
-          prev?.delivery_person_phone ??
-          "",
-        status: updatedDelivery?.status ?? prev?.status ?? "pending",
-      }));
-
-      await onUpdate();
-
-      return updatedDelivery;
-    } catch (err) {
-      setLocalDeliveryOverride(null);
-      throw err;
-    }
-  }, [effectiveOrder, onUpdate]);
+    },
+    [effectiveOrder, onUpdate],
+  );
 
   const handleAssignmentComplete = useCallback(() => {
     setSelectedOrderId(undefined);
@@ -3522,7 +3605,8 @@ export function VendorOrderDetailModal({
                 <div className="mt-1.5">
                   <div className="flex flex-wrap items-center gap-1 sm:gap-3 mb-0.5 sm:mb-1">
                     <h2 className="text-base sm:text-2xl font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent tracking-tight break-words">
-                      Order #{effectiveOrder.id}-{effectiveOrder.master_order_id}
+                      Order #{effectiveOrder.id}-
+                      {effectiveOrder.master_order_id}
                     </h2>
                     <StatusBadge
                       status={effectiveOrder.status}
@@ -3535,17 +3619,23 @@ export function VendorOrderDetailModal({
                     <span className="flex items-center gap-1 sm:gap-2 bg-secondary/10 px-1.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full border border-secondary/20 shadow-sm">
                       <Calendar className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-secondary" />
                       <span className="font-mono text-[8px] sm:text-[12px] font-semibold text-gray-700 tracking-tight">
-                        {new Date(effectiveOrder.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}{" "}
+                        {new Date(effectiveOrder.created_at).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}{" "}
                         <span className="text-secondary mx-0.5">•</span>{" "}
-                        {new Date(effectiveOrder.created_at).toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
+                        {new Date(effectiveOrder.created_at).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          },
+                        )}
                       </span>
                     </span>
                     <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600">
@@ -3584,13 +3674,19 @@ export function VendorOrderDetailModal({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-              {effectiveOrder.status?.toLowerCase() === "replacement_in_progress" && (
+              {effectiveOrder.status?.toLowerCase() ===
+                "replacement_in_progress" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
-                    <div className="font-bold text-purple-900">Replacement In Progress</div>
+                    <div className="font-bold text-purple-900">
+                      Replacement In Progress
+                    </div>
                     <p className="mt-0.5 text-purple-700 text-xs">
-                      The customer rejected delivery due to an issue and requested redelivery. Please prepare the replacement items. Vendor payout remains held in escrow until redelivery is fulfilled.
+                      The customer rejected delivery due to an issue and
+                      requested redelivery. Please prepare the replacement
+                      items. Vendor payout remains held in escrow until
+                      redelivery is fulfilled.
                     </p>
                   </div>
                 </div>
@@ -3599,9 +3695,12 @@ export function VendorOrderDetailModal({
                 <div className="mb-4 sm:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
-                    <div className="font-bold text-amber-900">Order Under Dispute Review</div>
+                    <div className="font-bold text-amber-900">
+                      Order Under Dispute Review
+                    </div>
                     <p className="mt-0.5 text-amber-700 text-xs">
-                      An issue was reported for this order and is under review by Superadmin. Escrow payout is currently frozen.
+                      An issue was reported for this order and is under review
+                      by Superadmin. Escrow payout is currently frozen.
                     </p>
                   </div>
                 </div>
@@ -3618,7 +3717,8 @@ export function VendorOrderDetailModal({
                     const restaurant = isRestaurant(effectiveOrder);
 
                     const isPickupLike =
-                      fulfillmentKind === "pickup" || fulfillmentKind === "onspot";
+                      fulfillmentKind === "pickup" ||
+                      fulfillmentKind === "onspot";
 
                     const locationTitle = isPickupLike
                       ? fulfillmentKind === "onspot"
@@ -3695,7 +3795,8 @@ export function VendorOrderDetailModal({
                                 )}
 
                                 {fulfillmentKind === "onspot" &&
-                                  (effectiveOrder.onspot_order_mode === "order_ahead" ? (
+                                  (effectiveOrder.onspot_order_mode ===
+                                  "order_ahead" ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
                                       <Clock className="h-3 w-3 text-purple-600" />
                                       Pre-order
@@ -3716,7 +3817,10 @@ export function VendorOrderDetailModal({
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
                                       Onspot
                                       {effectiveOrder.table_number && (
-                                        <> · Table {effectiveOrder.table_number}</>
+                                        <>
+                                          {" "}
+                                          · Table {effectiveOrder.table_number}
+                                        </>
                                       )}
                                     </span>
                                   ))}
@@ -3754,7 +3858,9 @@ export function VendorOrderDetailModal({
 
                               {effectiveOrder.created_at && (
                                 <p className="text-[10px] text-gray-400 font-mono">
-                                  {new Date(effectiveOrder.created_at).toLocaleString("en-US", {
+                                  {new Date(
+                                    effectiveOrder.created_at,
+                                  ).toLocaleString("en-US", {
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
@@ -3772,23 +3878,31 @@ export function VendorOrderDetailModal({
                             <div className="space-y-3">
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                                  {isPickupLike ? "Customer:" : "Recipient Name:"}
+                                  {isPickupLike
+                                    ? "Customer:"
+                                    : "Recipient Name:"}
                                 </span>
-                                <span className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}>
+                                <span
+                                  className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}
+                                >
                                   {customerName}
                                 </span>
                               </div>
 
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                                  {isPickupLike ? "Contact:" : "Recipient Phone:"}
+                                  {isPickupLike
+                                    ? "Contact:"
+                                    : "Recipient Phone:"}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <PhoneCall className="h-3.5 w-3.5 text-green-600" />
                                   <span className="text-sm font-mono font-bold text-green-700 tracking-tight">
                                     {customerPhone || "Not provided"}
                                   </span>
-                                  {customerPhone && <CopyButton text={customerPhone} />}
+                                  {customerPhone && (
+                                    <CopyButton text={customerPhone} />
+                                  )}
                                 </div>
                               </div>
 
@@ -3796,7 +3910,8 @@ export function VendorOrderDetailModal({
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
-                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                      ? effectiveOrder.onspot_order_mode ===
+                                        "order_ahead"
                                         ? "Pre-order At:"
                                         : "Onspot At:"
                                       : restaurant
@@ -3807,7 +3922,8 @@ export function VendorOrderDetailModal({
                                 <span className="text-sm font-bold text-secondary">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
-                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                      ? effectiveOrder.onspot_order_mode ===
+                                        "order_ahead"
                                         ? `${storeName} — Pre-ordered${
                                             effectiveOrder.estimated_arrival_time
                                               ? ` for ${new Date(
@@ -3824,8 +3940,9 @@ export function VendorOrderDetailModal({
                                               : ""
                                           }`
                                       : storeName
-                                    : formatAddress(effectiveOrder.shipping_address_text) ||
-                                      "No address provided."}
+                                    : formatAddress(
+                                        effectiveOrder.shipping_address_text,
+                                      ) || "No address provided."}
                                 </span>
                               </div>
 
@@ -3909,12 +4026,12 @@ export function VendorOrderDetailModal({
                                 const roundNum = Number(roundKey);
                                 const roundTime = roundItems[0]?.created_at
                                   ? new Date(
-                                    roundItems[0].created_at,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
+                                      roundItems[0].created_at,
+                                    ).toLocaleTimeString("en-US", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    })
                                   : "";
 
                                 return (
@@ -4165,19 +4282,24 @@ export function VendorOrderDetailModal({
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Subtotal</span>
                           <span>
-                            {Number(effectiveOrder.subtotal).toLocaleString()} ETB
+                            {Number(effectiveOrder.subtotal).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">VAT</span>
                           <span>
-                            {Number(effectiveOrder.tax_amount).toLocaleString()} ETB
+                            {Number(effectiveOrder.tax_amount).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Delivery Fee</span>
                           <span>
-                            {Number(effectiveOrder.delivery_fee || 0).toLocaleString()} ETB
+                            {Number(
+                              effectiveOrder.delivery_fee || 0,
+                            ).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
@@ -4200,19 +4322,21 @@ export function VendorOrderDetailModal({
                     receiptHistory={effectiveOrder.receipt_history}
                     fulfillmentType={
                       effectiveOrder.fulfillment_type ||
-                      (effectiveOrder.shipping_address_text ? "delivery" : "pickup")
+                      (effectiveOrder.shipping_address_text
+                        ? "delivery"
+                        : "pickup")
                     }
                   />
 
                   {(effectiveOrder.status === "confirmed" ||
                     (effectiveOrder.payment_method === "cod" &&
                       effectiveOrder.status === "pending")) && (
-                      <PreparationCard
-                        order={effectiveOrder}
-                        onUpdate={onUpdate}
-                        readOnly={readOnly}
-                      />
-                    )}
+                    <PreparationCard
+                      order={effectiveOrder}
+                      onUpdate={onUpdate}
+                      readOnly={readOnly}
+                    />
+                  )}
 
                   {getFulfillmentKind(effectiveOrder) === "delivery" &&
                     effectiveOrder.shipping_address_text && (

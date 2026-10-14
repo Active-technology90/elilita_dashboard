@@ -38,6 +38,7 @@ import { CreateCompanyUserModal } from "./CreateCompanyUserModal";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
+import toast from "react-hot-toast";
 
 /* ──────────────────────────────────────────────────────────────────
    Role helpers
@@ -116,6 +117,29 @@ const membershipMatchesCompany = (
   return false;
 };
 
+/**
+ * Resolve the *real* user PK that the backend expects.
+ * Same priority as EditUserModal's `resolveUserId`.
+ */
+function resolveUserIdFromRow(row: any): string {
+  if (!row) return "";
+  const candidates = [
+    row.user_id,
+    row.user?.id,
+    row.user?.user_id,
+    row.id,
+    row.uuid,
+    row.pk,
+    row.username,
+  ];
+  for (const c of candidates) {
+    if (c === undefined || c === null) continue;
+    const s = String(c).trim();
+    if (s && s !== "undefined" && s !== "null") return s;
+  }
+  return "";
+}
+
 /* ──────────────────────────────────────────────────────────────────
    Skeletons
    ────────────────────────────────────────────────────────────────── */
@@ -192,7 +216,6 @@ export default function CompanyUsers() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
-  // Server-side field errors returned by the backend for user creation
   const [createServerErrors, setCreateServerErrors] = useState<
     Record<string, string | string[]>
   >({});
@@ -213,6 +236,9 @@ export default function CompanyUsers() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [updating, setUpdating] = useState(false);
+  const [editServerErrors, setEditServerErrors] = useState<
+    Record<string, string | string[]>
+  >({});
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -453,20 +479,12 @@ export default function CompanyUsers() {
     }
   };
 
-  /**
-   * Extract field-level errors from a backend response.
-   * Handles DRF's typical shapes:
-   *   { "username": ["already exists"] }
-   *   { "detail": "..." }
-   *   { "non_field_errors": ["..."] }
-   */
   const extractServerErrors = (
     err: any,
   ): Record<string, string | string[]> => {
     const data = err?.response?.data;
 
     if (data && typeof data === "object" && !Array.isArray(data)) {
-      // Flat map of field -> string[] | string
       const result: Record<string, string | string[]> = {};
       let hasFieldError = false;
 
@@ -479,7 +497,6 @@ export default function CompanyUsers() {
           result[key] = value;
           hasFieldError = true;
         } else if (typeof value === "object") {
-          // Nested serializer errors — flatten one level
           Object.entries(value as Record<string, any>).forEach(
             ([nestedKey, nestedValue]) => {
               if (nestedValue == null) return;
@@ -495,7 +512,6 @@ export default function CompanyUsers() {
       if (hasFieldError) return result;
     }
 
-    // Fallback: generic message
     const fallback =
       err?.response?.data?.detail ||
       err?.message ||
@@ -515,15 +531,28 @@ export default function CompanyUsers() {
       setShowCreateModal(false);
       setCreateServerErrors({});
       await refetch();
+      toast.success("User created successfully");
     } catch (err: any) {
       console.error("Create user error:", err);
       const parsed = extractServerErrors(err);
       setCreateServerErrors(parsed);
+
+      // Surface the first error message as a toast too
+      const firstMsg =
+        Object.values(parsed)
+          .flat()
+          .map(String)
+          .find(Boolean) || "Failed to create user";
+      toast.error(firstMsg);
     } finally {
       setCreatingUser(false);
     }
   };
 
+  /**
+   * handleEditUser — receives `updatedUser` from the modal.
+   * The `id` here is already the resolved backend PK (from EditUserModal.resolveUserId).
+   */
   const handleEditUser = async (updatedUser: {
     id: string;
     first_name: string;
@@ -531,32 +560,102 @@ export default function CompanyUsers() {
     email: string;
     username: string;
     role: string;
+    vehicle_type?: string;
   }) => {
-    if (!canManageUsers || !companySlug) return;
+    console.group("📤 [CompanyUsers] handleEditUser");
+    console.log("Payload from modal:", updatedUser);
+
+    if (!canManageUsers || !companySlug) {
+      console.warn("❌ Cannot save: missing permission or companySlug");
+      console.groupEnd();
+      return;
+    }
+
+    // ── Find the original row being edited to double-check IDs ──
+    const originalRow =
+      (users || []).find(
+        (u: any) =>
+          String(u.id) === String(editingUser?.id) ||
+          String(u.user_id) === String(editingUser?.user_id),
+      ) || editingUser;
+
+    console.log("📋 Original row from users list:", originalRow);
+    console.log("🆔 originalRow.id         →", originalRow?.id);
+    console.log("🆔 originalRow.user_id    →", originalRow?.user_id);
+    console.log("🆔 originalRow.user?.id   →", originalRow?.user?.id);
+    console.log("🆔 payload.id (from modal)→", updatedUser.id);
+
+    // ── Resolve the real backend user PK ──
+    // Priority:
+    //   1. payload.id  (modal already resolved it — trust this)
+    //   2. originalRow.user_id
+    //   3. originalRow.user?.id
+    //   4. originalRow.id
+    const resolvedUserId =
+      resolveUserIdFromRow({
+        user_id: updatedUser.id,       // modal-resolved value takes top priority
+        id: originalRow?.user_id,      // fall back to original row's user_id
+        user: originalRow?.user,       // then nested user
+      }) || String(updatedUser.id);
+
+    console.log("✅ resolvedUserId (for API) →", resolvedUserId);
+
+    if (!resolvedUserId) {
+      console.error("❌ No valid user ID — aborting save");
+      toast.error("Cannot save: missing user ID.");
+      console.groupEnd();
+      return;
+    }
+
+    const url = `/users/admin/companies/${companySlug}/staff/${resolvedUserId}/profile/`;
+    console.log("🌐 PUT endpoint →", url);
+    console.log("📦 Body →", {
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      email: updatedUser.email,
+      username: updatedUser.username,
+      role: updatedUser.role,
+      ...(updatedUser.role === "delivery" && updatedUser.vehicle_type
+        ? { vehicle_type: updatedUser.vehicle_type }
+        : {}),
+    });
 
     setUpdating(true);
+    setEditServerErrors({});
 
     try {
-      const userId = editingUser?.user_id || Number(updatedUser.id);
-
       await updateUserCompanyRole(
         companySlug,
-        userId,
+        Number(resolvedUserId),
         updatedUser.role as UserRole,
       );
+
+      console.log("✅ [CompanyUsers] Role updated successfully");
+      toast.success("User role updated successfully");
 
       setEditingUser(null);
       await refetch();
     } catch (error: any) {
-      console.error("Role update error:", error);
+      console.group("❌ [CompanyUsers] Update failed");
+      console.log("Status:", error?.response?.status);
+      console.log("URL:", error?.config?.url);
+      console.log("Method:", error?.config?.method);
+      console.log("Payload sent:", error?.config?.data);
+      console.log("Response:", error?.response?.data);
+      console.groupEnd();
+
       const message =
-        error.response?.data?.detail ||
-        error.response?.data?.user_role?.[0] ||
-        error.response?.data?.role?.[0] ||
-        "Failed to update role.";
-      window.alert(message);
+        error?.response?.data?.detail ||
+        error?.response?.data?.user_role?.[0] ||
+        error?.response?.data?.role?.[0] ||
+        error?.message ||
+        "Failed to update user.";
+
+      toast.error(String(message));
+      setEditServerErrors(error?.response?.data ?? {});
     } finally {
       setUpdating(false);
+      console.groupEnd();
     }
   };
 
@@ -566,11 +665,19 @@ export default function CompanyUsers() {
     setDeleting(true);
 
     try {
-      await removeUserFromCompany(companySlug, deletingUser.user_id);
+      const resolvedUserId =
+        resolveUserIdFromRow(deletingUser) || deletingUser.user_id;
+      console.log("🗑️ [CompanyUsers] Deleting user id →", resolvedUserId);
+
+      await removeUserFromCompany(companySlug, resolvedUserId);
+      toast.success("User removed successfully");
       setDeletingUser(null);
       await refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      toast.error(
+        error?.response?.data?.detail || "Failed to remove user.",
+      );
     } finally {
       setDeleting(false);
     }
@@ -912,9 +1019,32 @@ export default function CompanyUsers() {
               currentUserRole={currentUserRole}
               canEdit={canManageUsers}
               canDelete={canManageUsers}
-              onEdit={(member) =>
-                setEditingUser({ ...member, user_id: member.id })
-              }
+              onEdit={(member) => {
+                // ✅ Enrich the member with all possible user-id fields so
+                //    the modal's resolveUserId() can pick the correct one.
+                console.group("✏️ [CompanyUsers] Opening edit modal");
+                console.log("Raw member from table:", member);
+                console.log("member.id        →", (member as any)?.id);
+                console.log("member.user_id   →", (member as any)?.user_id);
+                console.log("member.user?.id  →", (member as any)?.user?.id);
+
+                const enriched = {
+                  ...member,
+                  // Ensure `id` reflects the real PK
+                  id:
+                    (member as any)?.user_id ??
+                    (member as any)?.user?.id ??
+                    (member as any)?.id,
+                  // Preserve nested user object if present
+                  user: (member as any)?.user ?? null,
+                };
+
+                console.log("✅ Enriched member for modal:", enriched);
+                console.groupEnd();
+
+                setEditingUser(enriched);
+                setEditServerErrors({});
+              }}
               onDelete={setDeletingUser}
             />
           </div>
@@ -1073,7 +1203,11 @@ export default function CompanyUsers() {
         isOpen={!!editingUser}
         user={editingUser}
         updating={updating}
-        onClose={() => setEditingUser(null)}
+        serverErrors={editServerErrors}
+        onClose={() => {
+          setEditingUser(null);
+          setEditServerErrors({});
+        }}
         onSave={handleEditUser}
       />
 

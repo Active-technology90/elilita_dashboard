@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 
 /* -------------------------------------------------------------------------- */
@@ -49,7 +50,6 @@ const ROLE_OPTIONS = [
   },
 ];
 
-// Reusable Avatar component – kept consistent with AddUserModal
 const UserAvatar = ({
   user,
   size = "md",
@@ -63,7 +63,7 @@ const UserAvatar = ({
     lg: "w-16 h-16 text-2xl",
   };
   const initial =
-    user.first_name?.[0] || user.email[0]?.toUpperCase() || "?";
+    user.first_name?.[0] || user.email?.[0]?.toUpperCase() || "?";
 
   return (
     <div
@@ -86,10 +86,10 @@ const getRoleLabel = (role?: string) =>
   role === "staff"
     ? "Dispatcher"
     : role === "delivery"
-    ? "Delivery"
-    : role
-    ? role.charAt(0).toUpperCase() + role.slice(1)
-    : "—";
+      ? "Delivery"
+      : role
+        ? role.charAt(0).toUpperCase() + role.slice(1)
+        : "—";
 
 const getVehicleLabel = (vehicle?: string) => {
   if (!vehicle) return "—";
@@ -97,10 +97,43 @@ const getVehicleLabel = (vehicle?: string) => {
   return found?.label ?? vehicle;
 };
 
+/**
+ * Resolve the best user identifier for backend calls.
+ *
+ * Priority (first non-empty, non-"undefined"/"null" wins):
+ *   1. user.user_id   → the real CustomUser PK (preferred)
+ *   2. user.user?.id  → nested user object PK
+ *   3. user.id        → fallback if it's a real PK
+ *   4. user.uuid      → some backends use UUIDs
+ *   5. user.pk        → Django-style PK
+ *   6. user.username  → last resort
+ */
+function resolveUserId(user: any): string {
+  if (!user) return "";
+  const candidates = [
+    user.user_id,
+    user.user?.id,
+    user.id,
+    user.uuid,
+    user.pk,
+    user.username,
+  ];
+  for (const c of candidates) {
+    if (c === undefined || c === null) continue;
+    const s = String(c).trim();
+    if (s && s !== "undefined" && s !== "null") return s;
+  }
+  return "";
+}
+
 interface EditUserModalProps {
   isOpen: boolean;
   user: {
     id: string;
+    user_id?: string | number;
+    uuid?: string;
+    pk?: string | number;
+    user?: { id?: string | number } | null;
     first_name: string;
     last_name: string;
     email: string;
@@ -111,6 +144,10 @@ interface EditUserModalProps {
     vehicle_type?: VehicleType | "";
   };
   onClose: () => void;
+  /**
+   * onSave receives the fully-resolved payload including `id`.
+   * The `id` here is already the *backend-ready* user PK.
+   */
   onSave: (updatedUser: {
     id: string;
     first_name: string;
@@ -133,6 +170,37 @@ export function EditUserModal({
   updating,
   serverErrors,
 }: EditUserModalProps) {
+  /* ─── Debug: log everything when the modal opens ──────── */
+  useEffect(() => {
+    if (!isOpen || !user) return;
+
+    console.group("🔍 [EditUserModal] Opened");
+    console.log("👤 Raw user prop:", user);
+    console.log("🆔 user.id        →", user?.id);
+    console.log("🆔 user.user_id   →", (user as any)?.user_id);
+    console.log("🆔 user.user?.id  →", (user as any)?.user?.id);
+    console.log("🆔 user.uuid      →", (user as any)?.uuid);
+    console.log("🆔 user.pk        →", (user as any)?.pk);
+    console.log("🆔 user.username  →", user?.username);
+    console.log(
+      "✅ Resolved ID    →",
+      resolveUserId(user),
+      "(this will be sent to backend)",
+    );
+    console.groupEnd();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user?.id, (user as any)?.user_id]);
+
+  /* ─── Debug: log server errors when they change ───────── */
+  useEffect(() => {
+    if (!isOpen) return;
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      console.group("⚠️ [EditUserModal] Server errors received");
+      console.table(serverErrors);
+      console.groupEnd();
+    }
+  }, [serverErrors, isOpen]);
+
   const [formData, setFormData] = useState({
     first_name: user?.first_name || "",
     last_name: user?.last_name || "",
@@ -154,7 +222,7 @@ export function EditUserModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  /* -------------------- Normalize backend errors -------------------- */
+  /* ─── Normalize backend errors ─── */
   const normalizedServerErrors = useMemo(() => {
     const map: Record<string, string> = {};
     if (!serverErrors) return map;
@@ -162,6 +230,11 @@ export function EditUserModal({
       const msg = Array.isArray(value) ? value[0] : value;
       if (msg) map[key] = String(msg);
     });
+
+    if (Object.keys(map).length > 0) {
+      console.log("🧩 [EditUserModal] Normalized server errors:", map);
+    }
+
     return map;
   }, [serverErrors]);
 
@@ -171,9 +244,20 @@ export function EditUserModal({
     return normalizedServerErrors[field] || localErrors[field];
   };
 
-  /* -------------------- Sync form data when user changes -------------------- */
+  /* ─── Sync form data when user changes ─── */
   useEffect(() => {
     if (user) {
+      console.log("🔄 [EditUserModal] Syncing form data for user:", {
+        id: user.id,
+        user_id: (user as any).user_id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        vehicle_type: user.vehicle_type,
+      });
+
       setFormData({
         first_name: user.first_name,
         last_name: user.last_name,
@@ -187,15 +271,18 @@ export function EditUserModal({
     }
   }, [user]);
 
-  /* -------------------- Reset vehicle_type when role changes away -------------------- */
+  /* ─── Reset vehicle_type when role changes away ─── */
   useEffect(() => {
     if (formData.role !== "delivery" && formData.vehicle_type) {
+      console.log(
+        "🧹 [EditUserModal] Role changed away from delivery — clearing vehicle_type",
+      );
       setFormData((prev) => ({ ...prev, vehicle_type: "" }));
       setLocalErrors((prev) => ({ ...prev, vehicle_type: undefined }));
     }
   }, [formData.role, formData.vehicle_type]);
 
-  /* -------------------- Focus management -------------------- */
+  /* ─── Focus management ─── */
   useEffect(() => {
     if (isOpen && modalRef.current) {
       const focusable = modalRef.current.querySelectorAll(
@@ -205,7 +292,7 @@ export function EditUserModal({
     }
   }, [isOpen]);
 
-  /* -------------------- Close on Escape -------------------- */
+  /* ─── Close on Escape ─── */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -216,8 +303,9 @@ export function EditUserModal({
 
   if (!isOpen || !user) return null;
 
-  /* -------------------- Handlers -------------------- */
+  /* ─── Handlers ─── */
   const handleInputChange = (field: string, value: string) => {
+    console.log(`✏️ [EditUserModal] Changed "${field}" →`, value);
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (localErrors[field as keyof typeof localErrors]) {
       setLocalErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -250,12 +338,25 @@ export function EditUserModal({
         "Vehicle type is required for delivery personnel";
     }
 
+    console.group("🧪 [EditUserModal] Validation");
+    console.log("📝 formData:", formData);
+    console.log("❌ Errors:", errors);
+    console.log(
+      "✅ Valid?",
+      Object.keys(errors).length === 0 ? "YES" : "NO",
+    );
+    console.groupEnd();
+
     setLocalErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = () => {
+    console.group("🚀 [EditUserModal] Submit clicked");
+
+    // 1. Validate
     if (!validate()) {
+      console.warn("❌ Validation failed — aborting submit");
       setTouched({
         first_name: true,
         last_name: true,
@@ -263,9 +364,34 @@ export function EditUserModal({
         username: true,
         vehicle_type: true,
       });
+      console.groupEnd();
       return;
     }
 
+    // 2. Resolve the correct user ID
+    const resolvedId = resolveUserId(user);
+    console.log("🆔 Resolved user ID for API:", resolvedId);
+
+    if (!resolvedId) {
+      console.error(
+        "❌ [EditUserModal] Cannot submit — no valid user ID found on the user object.",
+        {
+          user_id: (user as any)?.user_id,
+          user_user_id: (user as any)?.user?.id,
+          id: user?.id,
+          uuid: (user as any)?.uuid,
+          pk: (user as any)?.pk,
+          username: user?.username,
+        },
+      );
+      toast.error(
+        "Cannot save: missing user ID. Please refresh the page and try again.",
+      );
+      console.groupEnd();
+      return;
+    }
+
+    // 3. Build payload
     const payload: {
       id: string;
       first_name: string;
@@ -275,23 +401,30 @@ export function EditUserModal({
       role: string;
       vehicle_type?: VehicleType;
     } = {
-      id: user.id,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      username: formData.username,
+      id: resolvedId,
+      first_name: formData.first_name.trim(),
+      last_name: formData.last_name.trim(),
+      email: formData.email.trim(),
+      username: formData.username.trim(),
       role: formData.role,
     };
 
-    // ✅ Only attach vehicle_type when role is delivery
     if (formData.role === "delivery" && formData.vehicle_type) {
       payload.vehicle_type = formData.vehicle_type as VehicleType;
     }
 
+    console.log("📦 [EditUserModal] Payload sent to parent:", payload);
+    console.log(
+      "🌐 [EditUserModal] Parent will call API with id =",
+      payload.id,
+    );
+    console.groupEnd();
+
+    // 4. Hand off to parent
     onSave(payload);
   };
 
-  /* -------------------- Input class helper -------------------- */
+  /* ─── Input class helper ─── */
   const inputClass = (
     field: "first_name" | "last_name" | "email" | "username",
   ) => {
@@ -336,6 +469,32 @@ export function EditUserModal({
 
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
+          {/* Debug strip — remove in production */}
+          {import.meta.env.DEV && (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-[10px] font-mono text-gray-600">
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                <span>
+                  <strong>user.id:</strong> {String(user.id ?? "—")}
+                </span>
+                <span>
+                  <strong>user.user_id:</strong>{" "}
+                  {String((user as any).user_id ?? "—")}
+                </span>
+                <span>
+                  <strong>user.user?.id:</strong>{" "}
+                  {String((user as any).user?.id ?? "—")}
+                </span>
+                <span>
+                  <strong>username:</strong> {user.username || "—"}
+                </span>
+                <span className="text-emerald-700">
+                  <strong>→ will send:</strong>{" "}
+                  {resolveUserId(user) || "❌ NONE"}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* User Info Card */}
           <div className="bg-gradient-to-r from-indigo-50/50 to-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 border border-indigo-100 shadow-sm">
             <UserAvatar user={user} size="lg" />
@@ -468,7 +627,7 @@ export function EditUserModal({
               )}
             </div>
 
-            {/* Phone Number – DISABLED & RESTRICTED */}
+            {/* Phone Number – DISABLED */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
                 Phone Number{" "}
@@ -505,9 +664,7 @@ export function EditUserModal({
               />
             </div>
 
-            {/* ============================================================ */}
-            {/* VEHICLE TYPE — only shown when role = "delivery"             */}
-            {/* ============================================================ */}
+            {/* VEHICLE TYPE — only when role = "delivery" */}
             {formData.role === "delivery" && (
               <div className="sm:col-span-2">
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
