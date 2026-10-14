@@ -37,7 +37,7 @@ import {
 import type { User, UserRole, Membership } from "../../../types";
 import ReactDOM from "react-dom";
 import { Pagination } from "../../ui/Pagination";
-import EditUserModal from "./EditUserModal";
+import { EditUserModal, type VehicleType } from "../companyUser/EditUserModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import ManageMembershipsModal from "./ManageMembershipsModal";
 import ViewUserModal from "./ViewUserModal";
@@ -47,8 +47,6 @@ import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
 import PageHeader from "../../ui/PageHeader";
 import { CreateCompanyUserModal } from "../companyUser/CreateCompanyUserModal";
-
-type VehicleType = "motorcycle" | "car" | "bicycle" | "van" | "foot";
 
 // ============================================================
 // Role display labels — backend stores "staff", UI shows "Dispatcher"
@@ -1120,7 +1118,7 @@ const SuperAdminUsers: React.FC = () => {
         payload.vehicle_type = data.vehicle_type;
       }
 
-      await registerUser(payload);
+      await registerUser(payload as any);
 
       showToast("success", "User created successfully");
       setIsCreateModalOpen(false);

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 export interface PageHeaderProps {
-  title: string;
+  title?: string;
   description?: ReactNode;
   eyebrow?: string;
   icon?: LucideIcon;
@@ -15,7 +15,7 @@ export interface PageHeaderProps {
 }
 
 export function PageHeader({
-  title,
+  title = "",
   description,
   eyebrow,
   icon: Icon,

@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
-import { AlertCircle, LogOut, ShieldOff } from "lucide-react";
+import { LogOut, ShieldOff } from "lucide-react";
 
 interface DashboardGuardProps {
   children: React.ReactNode;
@@ -15,7 +15,7 @@ interface DashboardGuardProps {
  *   - and have no active company memberships
  */
 export default function DashboardGuard({ children }: DashboardGuardProps) {
-  const { isLoading, isAuthenticated, isRestricted, logout, user } = useAuth();
+  const { isLoading, isAuthenticated, isRestricted, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {

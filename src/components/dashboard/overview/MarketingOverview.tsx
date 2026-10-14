@@ -28,7 +28,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import api, {
+import {
   getMarketingPerformance,
   getAdminMarketingAgentPerformance,
 } from "../../../services/api";
@@ -298,7 +298,6 @@ export default function MarketingOverview({
   initialAgent?: any;
 }) {
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState<PerformanceData | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -315,8 +314,7 @@ export default function MarketingOverview({
     );
 
     try {
-      if (showRefresh) setRefreshing(true);
-      else setLoading(true);
+      setLoading(true);
       setError("");
 
       if (agentId) {
@@ -445,7 +443,6 @@ export default function MarketingOverview({
       );
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 

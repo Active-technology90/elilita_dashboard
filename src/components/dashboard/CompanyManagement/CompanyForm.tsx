@@ -1561,7 +1561,7 @@ export default function CompanyForm({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-800">
-                    Existing MOA document
+                    Existing MOU document
                   </p>
                   <a
                     href={formData.moa_file}
@@ -1918,7 +1918,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                MOA Document
+                MOU Document
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.moa_file

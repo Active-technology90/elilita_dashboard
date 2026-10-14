@@ -45,7 +45,6 @@ import { ConfirmationModal } from "../../ui/confimationModal";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
-import { CustomSelect } from "../../ui/CustomSelect";
 
 // ---------- Animation Variants ----------
 const containerVariants = {
@@ -642,7 +641,7 @@ const DeliveryCard = ({
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "name">(
     "distance",
   );

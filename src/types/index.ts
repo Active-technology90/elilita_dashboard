@@ -186,8 +186,10 @@ export interface CompanyListItem {
   contact_email: string;
   tin_number?: string;
   vat_registration_number?: string;
+  fan_number?: string;
   tax_type?: string;
   license?: string | null;
+  moa_file?: string | null;
   registered_by?: number;
   registered_by_username?: string;
   chapa_sub_account_id?: string | number;

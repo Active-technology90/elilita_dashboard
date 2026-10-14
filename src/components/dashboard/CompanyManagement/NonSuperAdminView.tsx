@@ -83,6 +83,8 @@ interface NonSuperAdminViewProps {
   onSubmit: (e: React.FormEvent) => void;
   onCloseForm: () => void;
   headCompanies?: HeadCompany[];
+  agreedToTerms?: boolean;
+  onAgreedToTermsChange?: (agreed: boolean) => void;
 }
 
 export default function NonSuperAdminView({
@@ -105,6 +107,8 @@ export default function NonSuperAdminView({
   submitting,
   editingSlug,
   headCompanyName,
+  agreedToTerms,
+  onAgreedToTermsChange,
   onSubmit,
   onCloseForm,
 }: NonSuperAdminViewProps) {
@@ -513,6 +517,8 @@ export default function NonSuperAdminView({
                   editingSlug={editingSlug}
                   headCompanyName={headCompanyName}
                   currentStep={currentStep}
+                  agreedToTerms={agreedToTerms}
+                  onAgreedToTermsChange={onAgreedToTermsChange}
                   onSubmit={onSubmit}
                   onClose={onCloseForm}
                     />

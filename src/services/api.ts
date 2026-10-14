@@ -201,6 +201,9 @@ export const registerUser = async (data: {
   phone_number?: string;
   first_name?: string;
   last_name?: string;
+  role?: string;
+  vehicle_type?: string | null;
+  [key: string]: any;
 }) => api.post("/auth/users/", data);
 
 export const refreshToken = async (refresh: string) =>
