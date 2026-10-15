@@ -392,66 +392,77 @@ const StatCard: React.FC<{
 // Image Spec Info Panel
 // ----------------------------------------------------------------------
 const ImageSpecInfo: React.FC = () => (
-  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-4">
+  <div className="rounded-2xl border border-secondary/15 bg-gradient-to-br from-secondary/[0.04] via-white to-secondary/[0.02] p-4 sm:p-5">
+    {/* Header */}
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10">
-        <ImageIcon className="h-4 w-4 text-secondary" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/20">
+        <ImageIcon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-gray-900">
+        <h3 className="text-sm font-bold text-gray-900 sm:text-base">
           Required image specifications
-        </p>
-        <p className="mt-0.5 text-xs text-gray-500">
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-500 sm:text-[13px]">
           Your ad image must match these specifications exactly to be uploaded.
-        </p>
-
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <Ruler className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Dimensions
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <FileImage className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Ratio & Format
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <HardDrive className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Max File Size
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.maxSizeMB} MB
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-3 flex items-start gap-1.5 text-[11px] text-gray-500">
-          <Info className="mt-0.5 h-3 w-3 shrink-0" />
-          <span>
-            Keep text and logos in the <strong>center area</strong> of the image
-            for best results on all screen sizes.
-          </span>
         </p>
       </div>
     </div>
+
+    {/* Spec grid */}
+    <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+      {/* Dimensions */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <Ruler className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Dimensions
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+          </p>
+        </div>
+      </div>
+
+      {/* Ratio & Format */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <FileImage className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Ratio & Format
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
+          </p>
+        </div>
+      </div>
+
+      {/* Max File Size */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <HardDrive className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Max File Size
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.maxSizeMB} MB
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Optional tip — uncomment if needed */}
+    {/* <div className="mt-4 flex items-start gap-2 rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3 py-2.5">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
+      <p className="text-[11px] leading-relaxed text-gray-600 sm:text-xs">
+        Keep text and logos in the <strong className="text-gray-900">center area</strong> of the image for best results on all screen sizes.
+      </p>
+    </div> */}
   </div>
 );
 
@@ -907,7 +918,7 @@ const FormModal: React.FC<{
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
+          className="fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
         >
           <form onSubmit={onSubmit}>
             <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">

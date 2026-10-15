@@ -1893,830 +1893,776 @@ const DeliveryCard = ({
             /* ═══════════════════════════════════════════════════════
                ASSIGNMENT VIEW — PREMIUM DISPATCH UI
                ═══════════════════════════════════════════════════════ */
-            <motion.div
-              key="driver-assignment"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              className="space-y-4"
+           <motion.div
+  key="driver-assignment"
+  initial={{ opacity: 0, y: 4 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: -4 }}
+  className="space-y-4"
+>
+  {/* ═══ HEADER: title + subtitle ═══ */}
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
+      <Truck className="h-5 w-5" />
+    </div>
+    <div className="min-w-0">
+      <h5 className="text-sm font-bold text-gray-950">
+        {delivery?.delivery_person_name ||
+        (delivery?.attempts && delivery.attempts.length > 0)
+          ? "Reassign delivery person"
+          : "Assign delivery person"}
+      </h5>
+      <p className="mt-0.5 text-[11px] text-gray-500">
+        Choose the best available driver for this order
+      </p>
+    </div>
+  </div>
+
+  {showMapPreview ? (
+    /* ═══ MAP PREVIEW ═══ */
+    <>
+      {/* Row 1 (Map): just the toggle, aligned left */}
+      <div className="flex items-center">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(false)}
+            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(true)}
+            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+          >
+            Map
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+        <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
+          <div>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+              <MapPin className="h-5 w-5 text-secondary" />
+            </div>
+            <h6 className="mt-3 text-sm font-semibold text-gray-900">
+              Delivery route map
+            </h6>
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
+              Open the full map to review the order location, live delivery
+              personnel and route context.
+            </p>
+            <button
+              type="button"
+              onClick={handleViewOnMap}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
             >
-              {/* ═══ HEADER: title + subtitle + List/Map toggle ═══ */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
-                    <Truck className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h5 className="text-sm font-bold text-gray-950">
-                      {delivery?.delivery_person_name ||
-                      (delivery?.attempts && delivery.attempts.length > 0)
-                        ? "Reassign delivery person"
-                        : "Assign delivery person"}
-                    </h5>
-                    <p className="mt-0.5 text-[11px] text-gray-500">
-                      Choose the best available driver for this order
-                    </p>
-                  </div>
-                </div>
+              <Navigation className="h-3.5 w-3.5" />
+              Open full map
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  ) : (
+    /* ═══ LIST VIEW ═══ */
+    <>
+      {/* ═══ ROW 1: List/Map toggle (left) + Sort (right) ═══ */}
+      <div className="flex items-center justify-between gap-2">
+        {/* List / Map toggle */}
+        <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(false)}
+            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(true)}
+            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+          >
+            Map
+          </button>
+        </div>
 
-                <div className="inline-flex self-start rounded-lg border border-gray-200 bg-gray-50 p-0.5 sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => setShowMapPreview(false)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      !showMapPreview
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-800"
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowMapPreview(true)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      showMapPreview
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-800"
-                    }`}
-                  >
-                    Map
-                  </button>
-                </div>
-              </div>
+        {/* Sort dropdown */}
+        <div className="relative z-30 min-w-0 flex-shrink-0 sm:min-w-[180px]">
+          <CustomSelect
+            value={`${sortBy}|${sortOrder}`}
+            onChange={(value: string) => {
+              const [field, order] = value.split("|");
+              setSortBy(field as "distance" | "rating" | "name");
+              setSortOrder(order as "asc" | "desc");
+            }}
+            ariaLabel="Sort"
+            options={[
+              { value: "distance|asc", label: "Distance · Nearest" },
+              { value: "distance|desc", label: "Distance · Farthest" },
+              { value: "rating|desc", label: "Rating · Highest" },
+              { value: "name|asc", label: "Name · A → Z" },
+              { value: "name|desc", label: "Name · Z → A" },
+            ]}
+          />
+        </div>
+      </div>
 
-              {showMapPreview ? (
-                /* ═══ MAP PREVIEW ═══ */
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                  <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
-                    <div>
-                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <MapPin className="h-5 w-5 text-secondary" />
-                      </div>
-                      <h6 className="mt-3 text-sm font-semibold text-gray-900">
-                        Delivery route map
-                      </h6>
-                      <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-                        Open the full map to review the order location, live
-                        delivery personnel and route context.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleViewOnMap}
-                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
-                      >
-                        <Navigation className="h-3.5 w-3.5" />
-                        Open full map
-                      </button>
+      {/* ═══ ROW 2: Search (left) + Filters button (right) ═══ */}
+      <div className="flex items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search drivers…"
+            aria-label="Search delivery personnel"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
+          />
+        </div>
+
+        {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
+        <div className="relative shrink-0" ref={filtersRef}>
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-haspopup="dialog"
+            aria-expanded={showFilters}
+            className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
+              activeFilterCount > 0
+                ? "border-secondary bg-secondary/5 text-secondary"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showFilters && (
+              <>
+                {/* ── BACKDROP (mobile only) ── */}
+                <motion.div
+                  key="filter-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
+                  onClick={() => setShowFilters(false)}
+                  aria-hidden="true"
+                />
+
+                {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
+               
+<motion.div
+  key="filter-panel"
+  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+  animate={{ opacity: 1, y: 0, scale: 1 }}
+  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+  transition={{ duration: 0.16, ease: "easeOut" }}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Filter delivery personnel"
+  className={[
+    // Base
+    "z-50 flex flex-col overflow-hidden",
+    "border border-gray-200/90 bg-white",
+    "shadow-xl shadow-gray-900/10",
+
+    // Mobile: compact bottom sheet
+    "fixed inset-x-0 bottom-0",
+    "max-h-[min(55vh,420px)] rounded-t-2xl",
+
+    // Desktop: compact anchored popover
+    "sm:absolute sm:inset-x-auto sm:bottom-auto",
+    "sm:right-0 sm:top-12",
+    "sm:max-h-[min(70vh,420px)]",
+    "sm:w-[300px] sm:max-w-[calc(100vw-24px)]",
+    "sm:rounded-xl",
+  ].join(" ")}
+  style={{
+    paddingBottom: "env(safe-area-inset-bottom)",
+  }}
+>
+  {/* Mobile drag handle */}
+  <div className="flex shrink-0 justify-center pt-2 sm:hidden">
+    <span
+      className="h-1 w-8 rounded-full bg-gray-300"
+      aria-hidden="true"
+    />
+  </div>
+
+  {/* Compact header */}
+  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3.5 py-2.5">
+    <div className="flex min-w-0 items-center gap-2">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+        <Filter className="h-3.5 w-3.5" />
+      </div>
+
+      <div className="min-w-0">
+        <h3 className="text-xs font-bold text-gray-900">
+          Filter drivers
+        </h3>
+        <p className="text-[10px] text-gray-500">
+          Refine available drivers
+        </p>
+      </div>
+
+      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold text-gray-600">
+        {filteredStaffList.length}
+      </span>
+    </div>
+
+    <div className="flex shrink-0 items-center gap-1">
+      {activeFilterCount > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setFilterType("all");
+            setVehicleTypeFilter("all");
+            setSelectedUserId("");
+          }}
+          className="rounded-md px-2 py-1.5 text-[10px] font-semibold text-secondary hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+        >
+          Clear all
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowFilters(false)}
+        aria-label="Close filters"
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  </div>
+
+  {/* Compact scrollable filters */}
+  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 py-3">
+    <section>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        Delivery person
+      </label>
+
+      <FilterDropdown
+        variant="type"
+        value={filterType}
+        onChange={(v) => {
+          setFilterType(
+            v as "all" | "in_house" | "third_party",
+          );
+          setSelectedUserId("");
+        }}
+        ariaLabel="Delivery person type"
+        options={[
+          {
+            value: "all",
+            label: "All drivers",
+            description: "Every available driver",
+            count: allCount,
+            accent: "secondary",
+            icon: <Users className="h-3 w-3" />,
+          },
+          {
+            value: "in_house",
+            label: "In-house",
+            description: "Your company drivers",
+            count: inHouseFilterCount,
+            accent: "emerald",
+            icon: <Truck className="h-3 w-3" />,
+          },
+          {
+            value: "third_party",
+            label: "3PL Partners",
+            description: "Third-party logistics",
+            count: thirdPartyFilterCount,
+            accent: "blue",
+            icon: <Building2 className="h-3 w-3" />,
+          },
+        ]}
+      />
+    </section>
+
+    <section>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        Vehicle type
+      </label>
+
+      <FilterDropdown
+        variant="vehicle"
+        value={vehicleTypeFilter}
+        onChange={(v) => {
+          setVehicleTypeFilter(
+            v as
+              | "all"
+              | "motorcycle"
+              | "car"
+              | "bicycle"
+              | "van"
+              | "foot",
+          );
+          setSelectedUserId("");
+        }}
+        ariaLabel="Vehicle type"
+        options={[
+          {
+            value: "all",
+            emoji: "🚚",
+            label: "All vehicles",
+            count: vehicleCounts.all,
+          },
+          {
+            value: "motorcycle",
+            emoji: "🏍️",
+            label: "Motorcycle",
+            count: vehicleCounts.motorcycle,
+          },
+          {
+            value: "car",
+            emoji: "🚗",
+            label: "Car",
+            count: vehicleCounts.car,
+          },
+          {
+            value: "bicycle",
+            emoji: "🚲",
+            label: "Bicycle",
+            count: vehicleCounts.bicycle,
+          },
+          {
+            value: "van",
+            emoji: "🚐",
+            label: "Van",
+            count: vehicleCounts.van,
+          },
+          {
+            value: "foot",
+            emoji: "🚶",
+            label: "On Foot",
+            count: vehicleCounts.foot,
+          },
+        ]}
+      />
+    </section>
+  </div>
+
+  {/* Compact sticky footer */}
+  <div className="shrink-0 border-t border-gray-100 bg-white px-3.5 py-2.5">
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={activeFilterCount === 0}
+        onClick={() => {
+          setFilterType("all");
+          setVehicleTypeFilter("all");
+          setSelectedUserId("");
+        }}
+        className="h-9 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+      >
+        Reset
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setShowFilters(false)}
+        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
+      >
+        Show {filteredStaffList.length}{" "}
+        {filteredStaffList.length === 1 ? "driver" : "drivers"}
+        <Check className="h-3.5 w-3.5 shrink-0" />
+      </button>
+    </div>
+  </div>
+</motion.div>
+
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+        <h6 className="text-sm font-bold text-gray-900">Available drivers</h6>
+        <p className="text-[11px] text-gray-500">
+          {inHouseCount} in-house · {thirdPartyCount} third-party
+        </p>
+      </div>
+
+      {/* ─── ACTIVE FILTER CHIPS ─── */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {filterType !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+              {filterType === "in_house" ? "In-house" : "3PL"}
+              <button
+                type="button"
+                onClick={() => setFilterType("all")}
+                aria-label="Remove type filter"
+                className="rounded-full p-0.5 transition hover:bg-secondary/15"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+          {vehicleTypeFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+              <span>{getVehicleIcon(vehicleTypeFilter)}</span>
+              {getVehicleName(vehicleTypeFilter)}
+              <button
+                type="button"
+                onClick={() => setVehicleTypeFilter("all")}
+                aria-label="Remove vehicle filter"
+                className="rounded-full p-0.5 transition hover:bg-secondary/15"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ─── DRIVER LIST ─── */}
+      {loadingStaff ? (
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
+            <p className="mt-2 text-xs font-medium text-gray-500">
+              Loading drivers…
+            </p>
+          </div>
+        </div>
+      ) : filteredStaffList.length === 0 ? (
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
+          <div>
+            <Users className="mx-auto h-7 w-7 text-gray-300" />
+            <p className="mt-2 text-sm font-semibold text-gray-800">
+              No drivers found
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {searchTerm ||
+              filterType !== "all" ||
+              vehicleTypeFilter !== "all"
+                ? "Try changing the search or filters."
+                : "There are no available drivers right now."}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Driver list */}
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {paginatedStaffList.map((staff, index) => {
+              const isSelected = selectedUserId === staff.id;
+              const hasLocation = staff.calculated_distance != null;
+              const globalIndex = (currentPage - 1) * itemsPerPage + index;
+              const isNearest =
+                globalIndex === 0 &&
+                sortBy === "distance" &&
+                sortOrder === "asc" &&
+                hasLocation;
+              const routeInfo = routeData[staff.id];
+              const roadDistance = routeInfo?.distanceKm;
+              const roadDuration = routeInfo?.durationMinutes;
+              const isRouteLoading = routeInfo?.loading;
+              const isBestMatch = bestMatchDriver?.id === staff.id;
+
+              return (
+                <button
+                  key={staff.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(staff.id)}
+                  aria-pressed={isSelected}
+                  aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
+                  className={`group relative block w-full px-4 py-4 text-left transition ${
+                    isSelected
+                      ? "bg-secondary/[0.04]"
+                      : "bg-white hover:bg-gray-50/70"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Avatar tile */}
+                    <div
+                      className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
+                        isSelected
+                          ? "border-secondary/30 bg-secondary/10 text-secondary"
+                          : "border-gray-200 bg-gray-50 text-gray-600"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {getInitials(staff.name)}
                     </div>
-                  </div>
-                </div>
-              ) : (
-                /* ═══ LIST VIEW ═══ */
-                <>
-                  {/* ─── TOOLBAR: search + Filters + sort icon ─── */}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {/* Search */}
-                    <div className="relative min-w-0 flex-1">
-                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search drivers…"
-                        aria-label="Search delivery personnel"
-                        className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
-                      />
-                    </div>
 
-                    {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
-                    <div className="relative" ref={filtersRef}>
-                      <button
-                        type="button"
-                        onClick={() => setShowFilters((v) => !v)}
-                        aria-haspopup="dialog"
-                        aria-expanded={showFilters}
-                        className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
-                          activeFilterCount > 0
-                            ? "border-secondary bg-secondary/5 text-secondary"
-                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        <Filter className="h-3.5 w-3.5" />
-                        Filters
-                        {activeFilterCount > 0 && (
-                          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
-                            {activeFilterCount}
+                    {/* Center: name + meta */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <p className="truncate text-sm font-bold text-gray-900">
+                          {staff.name}
+                        </p>
+                        {(isBestMatch || isNearest) && (
+                          <span
+                            title="Closest available match"
+                            className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                          >
+                            Best match
                           </span>
                         )}
-                      </button>
+                      </div>
 
-                      <AnimatePresence>
-                        {showFilters && (
-                          <>
-                            {/* ── BACKDROP (mobile only) ── */}
-                            <motion.div
-                              key="filter-backdrop"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.15 }}
-                              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
-                              onClick={() => setShowFilters(false)}
-                              aria-hidden="true"
-                            />
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                        <span className="font-medium">
+                          {staff.is_in_house
+                            ? "In-house"
+                            : staff.company_name || "3PL partner"}
+                        </span>
+                        <span className="text-gray-300" aria-hidden="true">
+                          ·
+                        </span>
+                        <span>{getVehicleName(staff.vehicle_type)}</span>
+                      </div>
 
-                            {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
-                            <motion.div
-                              key="filter-panel"
-                              initial={{ opacity: 0, y: 40, scale: 0.98 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 40, scale: 0.98 }}
-                              transition={{
-                                type: "spring",
-                                damping: 26,
-                                stiffness: 320,
-                              }}
-                              role="dialog"
-                              aria-modal="true"
-                              aria-label="Filter delivery personnel"
-                              className={[
-                                "z-50 flex flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl",
-                                "fixed inset-x-0 bottom-0 max-h-[88vh] rounded-t-3xl",
-                                "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-12",
-                                "sm:max-h-[80vh] sm:w-[420px] sm:max-w-[420px] sm:rounded-2xl",
-                              ].join(" ")}
-                              style={{
-                                paddingBottom: "env(safe-area-inset-bottom)",
-                              }}
-                            >
-                              {/* Drag handle (mobile only) */}
-                              <div className="flex justify-center pt-3 sm:hidden">
-                                <span
-                                  className="h-1 w-10 rounded-full bg-gray-300"
-                                  aria-hidden="true"
-                                />
-                              </div>
-
-                              {/* STICKY HEADER */}
-                              {/* HEADER */}
-                              <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <Filter className="h-3.5 w-3.5 text-secondary" />
-                                  <h3 className="text-xs font-bold text-gray-900">
-                                    Filter drivers
-                                  </h3>
-                                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
-                                    {filteredStaffList.length}
-                                  </span>
-                                </div>
-                                <div className="flex flex-shrink-0 items-center gap-0.5">
-                                  {activeFilterCount > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setFilterType("all");
-                                        setVehicleTypeFilter("all");
-                                        setSelectedUserId("");
-                                      }}
-                                      className="rounded-md px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary/10"
-                                    >
-                                      Clear
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowFilters(false)}
-                                    aria-label="Close filters"
-                                    className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                                  >
-                                    <X className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* SCROLLABLE BODY */}
-                              {/* SCROLLABLE BODY */}
-                              <div className="flex-1 overflow-y-auto px-4 py-3">
-                                {/* ═══ Delivery Person Type ═══ */}
-                                <div className="mb-2.5">
-                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                                    Delivery Person Type
-                                  </label>
-
-                                  <FilterDropdown
-                                    variant="type"
-                                    value={filterType}
-                                    onChange={(v) => {
-                                      setFilterType(
-                                        v as "all" | "in_house" | "third_party",
-                                      );
-                                      setSelectedUserId("");
-                                    }}
-                                    ariaLabel="Delivery person type"
-                                    options={[
-                                      {
-                                        value: "all",
-                                        label: "All drivers",
-                                        description: "Every available driver",
-                                        count: allCount,
-                                        accent: "secondary",
-                                        icon: <Users className="h-3 w-3" />,
-                                      },
-                                      {
-                                        value: "in_house",
-                                        label: "In-house",
-                                        description: "Your company drivers",
-                                        count: inHouseFilterCount,
-                                        accent: "emerald",
-                                        icon: <Truck className="h-3 w-3" />,
-                                      },
-                                      {
-                                        value: "third_party",
-                                        label: "3PL Partners",
-                                        description: "Third-party logistics",
-                                        count: thirdPartyFilterCount,
-                                        accent: "blue",
-                                        icon: <Building2 className="h-3 w-3" />,
-                                      },
-                                    ]}
-                                  />
-                                </div>
-
-                                {/* ═══ Vehicle Type ═══ */}
-                                <div>
-                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                                    Vehicle Type
-                                  </label>
-
-                                  <FilterDropdown
-                                    variant="vehicle"
-                                    value={vehicleTypeFilter}
-                                    onChange={(v) => {
-                                      setVehicleTypeFilter(
-                                        v as
-                                          | "all"
-                                          | "motorcycle"
-                                          | "car"
-                                          | "bicycle"
-                                          | "van"
-                                          | "foot",
-                                      );
-                                      setSelectedUserId("");
-                                    }}
-                                    ariaLabel="Vehicle type"
-                                    options={[
-                                      {
-                                        value: "all",
-                                        emoji: "🚚",
-                                        label: "All vehicles",
-                                        count: vehicleCounts.all,
-                                      },
-                                      {
-                                        value: "motorcycle",
-                                        emoji: "🏍️",
-                                        label: "Motorcycle",
-                                        count: vehicleCounts.motorcycle,
-                                      },
-                                      {
-                                        value: "car",
-                                        emoji: "🚗",
-                                        label: "Car",
-                                        count: vehicleCounts.car,
-                                      },
-                                      {
-                                        value: "bicycle",
-                                        emoji: "🚲",
-                                        label: "Bicycle",
-                                        count: vehicleCounts.bicycle,
-                                      },
-                                      {
-                                        value: "van",
-                                        emoji: "🚐",
-                                        label: "Van",
-                                        count: vehicleCounts.van,
-                                      },
-                                      {
-                                        value: "foot",
-                                        emoji: "🚶",
-                                        label: "On Foot",
-                                        count: vehicleCounts.foot,
-                                      },
-                                    ]}
-                                  />
-                                </div>
-                              </div>
-                              {/* STICKY FOOTER */}
-                              {/* FOOTER */}
-                              <div className="border-t border-gray-100 bg-white px-4 py-2.5 sm:rounded-b-xl">
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={activeFilterCount === 0}
-                                    onClick={() => {
-                                      setFilterType("all");
-                                      setVehicleTypeFilter("all");
-                                      setSelectedUserId("");
-                                    }}
-                                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                  >
-                                    Reset
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowFilters(false)}
-                                    className="flex-1 rounded-lg bg-secondary px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light"
-                                  >
-                                    Show {filteredStaffList.length}{" "}
-                                    {filteredStaffList.length === 1
-                                      ? "driver"
-                                      : "drivers"}
-                                  </button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          </>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                        {staff.location_source === "live" && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                            Live
+                          </span>
                         )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Sort button (icon-style dropdown) */}
-                    <div className="relative flex-shrink-0">
-                      {/* <select
-                        value={`${sortBy}|${sortOrder}`}
-                        onChange={(e) => {
-                          const [field, order] = e.target.value.split("|");
-                          setSortBy(field as any);
-                          setSortOrder(order as "asc" | "desc");
-                        }}
-                        aria-label="Sort"
-                        className="h-10 appearance-none rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs font-semibold text-gray-700 outline-none transition hover:border-gray-300 focus:border-secondary/50"
-                        style={{ paddingLeft: "2.25rem" }}
-                      >
-                        <option value="distance|asc">Distance · Nearest</option>
-                        <option value="distance|desc">Distance · Farthest</option>
-                        <option value="rating|desc">Rating · Highest</option>
-                        <option value="rating|asc">Rating · Lowest</option>
-                        <option value="name|asc">Name · A → Z</option>
-                        <option value="name|desc">Name · Z → A</option>
-                      </select> */}
-                   <CustomSelect
-  value={`${sortBy}|${sortOrder}`}
-  onChange={(value: string) => {           // ← plain string, NOT an event
-    const [field, order] = value.split("|");
-    setSortBy(field as "distance" | "rating" | "name");
-    setSortOrder(order as "asc" | "desc");
-  }}
-  ariaLabel="Sort"
-                        options={[
-                          {
-                            value: "distance|asc",
-                            label: "Distance · Nearest",
-                          },
-                          {
-                            value: "distance|desc",
-                            label: "Distance · Farthest",
-                          },
-                          {
-                            value: "rating|desc",
-                            label: "Rating · Highest",
-                          },
-
-                          {
-                            value: "name|asc",
-                            label: "Name · A → Z",
-                          },
-                          {
-                            value: "name|desc",
-                            label: "Name · Z → A",
-                          },
-                        ]}
-                      />
-
-                      {/* <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
-                      >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="4" y1="6" x2="20" y2="6" />
-                          <line x1="4" y1="12" x2="14" y2="12" />
-                          <line x1="4" y1="18" x2="8" y2="18" />
-                        </svg>
-                      </span> */}
-                    </div>
-                  </div>
-
-                  {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
-                    <h6 className="text-sm font-bold text-gray-900">
-                      Available drivers
-                    </h6>
-                    <p className="text-[11px] text-gray-500">
-                      {inHouseCount} in-house · {thirdPartyCount} third-party
-                    </p>
-                  </div>
-
-                  {/* ─── ACTIVE FILTER CHIPS ─── */}
-                  {activeFilterCount > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {filterType !== "all" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-                          {filterType === "in_house" ? "In-house" : "3PL"}
-                          <button
-                            type="button"
-                            onClick={() => setFilterType("all")}
-                            aria-label="Remove type filter"
-                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
-                      )}
-                      {vehicleTypeFilter !== "all" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-                          <span>{getVehicleIcon(vehicleTypeFilter)}</span>
-                          {getVehicleName(vehicleTypeFilter)}
-                          <button
-                            type="button"
-                            onClick={() => setVehicleTypeFilter("all")}
-                            aria-label="Remove vehicle filter"
-                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ─── DRIVER LIST ─── */}
-                  {loadingStaff ? (
-                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
-                      <div className="text-center">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
-                        <p className="mt-2 text-xs font-medium text-gray-500">
-                          Loading drivers…
-                        </p>
-                      </div>
-                    </div>
-                  ) : filteredStaffList.length === 0 ? (
-                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
-                      <div>
-                        <Users className="mx-auto h-7 w-7 text-gray-300" />
-                        <p className="mt-2 text-sm font-semibold text-gray-800">
-                          No drivers found
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {searchTerm ||
-                          filterType !== "all" ||
-                          vehicleTypeFilter !== "all"
-                            ? "Try changing the search or filters."
-                            : "There are no available drivers right now."}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Driver list */}
-                      <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                        {paginatedStaffList.map((staff, index) => {
-                          const isSelected = selectedUserId === staff.id;
-                          const hasLocation = staff.calculated_distance != null;
-                          const globalIndex =
-                            (currentPage - 1) * itemsPerPage + index;
-                          const isNearest =
-                            globalIndex === 0 &&
-                            sortBy === "distance" &&
-                            sortOrder === "asc" &&
-                            hasLocation;
-                          const routeInfo = routeData[staff.id];
-                          const roadDistance = routeInfo?.distanceKm;
-                          const roadDuration = routeInfo?.durationMinutes;
-                          const isRouteLoading = routeInfo?.loading;
-                          const isBestMatch = bestMatchDriver?.id === staff.id;
-
-                          return (
-                            <button
-                              key={staff.id}
-                              type="button"
-                              onClick={() => setSelectedUserId(staff.id)}
-                              aria-pressed={isSelected}
-                              aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
-                              className={`group relative block w-full px-4 py-4 text-left transition ${
-                                isSelected
-                                  ? "bg-secondary/[0.04]"
-                                  : "bg-white hover:bg-gray-50/70"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                {/* Avatar tile */}
-                                <div
-                                  className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
-                                    isSelected
-                                      ? "border-secondary/30 bg-secondary/10 text-secondary"
-                                      : "border-gray-200 bg-gray-50 text-gray-600"
-                                  }`}
-                                  aria-hidden="true"
-                                >
-                                  {getInitials(staff.name)}
-                                </div>
-
-                                {/* Center: name + meta */}
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                    <p className="truncate text-sm font-bold text-gray-900">
-                                      {staff.name}
-                                    </p>
-                                    {(isBestMatch || isNearest) && (
-                                      <span
-                                        title="Closest available match"
-                                        className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-                                      >
-                                        Best match
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-                                    <span className="font-medium">
-                                      {staff.is_in_house
-                                        ? "In-house"
-                                        : staff.company_name || "3PL partner"}
-                                    </span>
-                                    <span
-                                      className="text-gray-300"
-                                      aria-hidden="true"
-                                    >
-                                      ·
-                                    </span>
-                                    <span>
-                                      {getVehicleName(staff.vehicle_type)}
-                                    </span>
-                                  </div>
-
-                                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                                    {staff.location_source === "live" && (
-                                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                                        Live
-                                      </span>
-                                    )}
-                                    {staff.is_at_vendor ? (
-                                      <span className="font-semibold text-amber-700">
-                                        🏬 At Store
-                                      </span>
-                                    ) : staff.is_en_route ? (
-                                      <span className="font-semibold text-indigo-700">
-                                        🚗 En Route
-                                      </span>
-                                    ) : staff.active_orders_count === 0 ? (
-                                      <span className="font-semibold text-emerald-700">
-                                        ● Available
-                                      </span>
-                                    ) : (
-                                      <span className="font-semibold text-gray-500">
-                                        {staff.active_orders_count} active
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Right: rating + distance + radio */}
-                                <div className="flex flex-shrink-0 items-center gap-3 self-center">
-                                  <div className="hidden text-right sm:block">
-                                    {staff.average_rating &&
-                                    staff.average_rating !== "0.00" ? (
-                                      <p className="text-xs font-bold text-gray-800">
-                                        ⭐{" "}
-                                        {parseFloat(
-                                          staff.average_rating,
-                                        ).toFixed(1)}
-                                        {staff.total_reviews && (
-                                          <span className="ml-1 text-[10px] font-medium text-gray-400">
-                                            ({staff.total_reviews})
-                                          </span>
-                                        )}
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs font-medium text-gray-400">
-                                        No reviews
-                                      </p>
-                                    )}
-
-                                    <div className="mt-1 text-[10px] text-gray-500">
-                                      {isRouteLoading ? (
-                                        <span className="inline-flex items-center gap-1">
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                          Calculating…
-                                        </span>
-                                      ) : roadDistance != null ? (
-                                        <span>
-                                          {formatDistance(roadDistance)}
-                                          {roadDuration != null && (
-                                            <>
-                                              {" · "}
-                                              {formatDuration(roadDuration)}
-                                            </>
-                                          )}
-                                        </span>
-                                      ) : hasLocation ? (
-                                        <span>
-                                          ~
-                                          {formatDistance(
-                                            staff.calculated_distance,
-                                          )}
-                                        </span>
-                                      ) : (
-                                        <span>Distance unavailable</span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    aria-hidden="true"
-                                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
-                                      isSelected
-                                        ? "border-secondary bg-secondary text-white"
-                                        : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
-                                    }`}
-                                  >
-                                    <Check className="h-3.5 w-3.5" />
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Mobile rating / distance line */}
-                              <div className="mt-2 flex items-center justify-between sm:hidden">
-                                <span className="text-[10px] text-gray-500">
-                                  {staff.average_rating &&
-                                  staff.average_rating !== "0.00"
-                                    ? `⭐ ${parseFloat(
-                                        staff.average_rating,
-                                      ).toFixed(1)} (${staff.total_reviews})`
-                                    : "No reviews"}
-                                </span>
-                                <span className="text-[10px] text-gray-500">
-                                  {isRouteLoading
-                                    ? "Calculating…"
-                                    : roadDistance != null
-                                      ? formatDistance(roadDistance)
-                                      : hasLocation
-                                        ? `~${formatDistance(
-                                            staff.calculated_distance,
-                                          )}`
-                                        : "Distance unavailable"}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Pagination */}
-                      {totalPages > 1 && (
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-[10px] font-medium text-gray-400">
-                            Page {currentPage} of {totalPages}
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentPage((prev) => Math.max(1, prev - 1))
-                              }
-                              disabled={currentPage === 1}
-                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Previous
-                            </button>
-                            {Array.from(
-                              { length: Math.min(5, totalPages) },
-                              (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) pageNum = i + 1;
-                                else if (currentPage <= 3) pageNum = i + 1;
-                                else if (currentPage >= totalPages - 2)
-                                  pageNum = totalPages - 4 + i;
-                                else pageNum = currentPage - 2 + i;
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    type="button"
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    aria-current={
-                                      currentPage === pageNum
-                                        ? "page"
-                                        : undefined
-                                    }
-                                    className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
-                                      currentPage === pageNum
-                                        ? "bg-secondary text-white"
-                                        : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              },
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentPage((prev) =>
-                                  Math.min(totalPages, prev + 1),
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ═══ STICKY ACTION BAR ═══ */}
-                  <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        {selectedDriver ? (
-                          <div className="flex items-center gap-3">
-                            <span
-                              aria-hidden="true"
-                              className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
-                            >
-                              <Check className="h-4 w-4" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-bold text-gray-900">
-                                {selectedDriver.name} selected
-                              </p>
-                              <p className="truncate text-[10px] text-gray-500">
-                                {selectedDriver.is_in_house
-                                  ? "In-house"
-                                  : selectedDriver.company_name ||
-                                    "3PL partner"}
-                                {selectedDriver.vehicle_type &&
-                                  ` · ${getVehicleName(
-                                    selectedDriver.vehicle_type,
-                                  )}`}
-                              </p>
-                            </div>
-                          </div>
+                        {staff.is_at_vendor ? (
+                          <span className="font-semibold text-amber-700">
+                            🏬 At Store
+                          </span>
+                        ) : staff.is_en_route ? (
+                          <span className="font-semibold text-indigo-700">
+                            🚗 En Route
+                          </span>
+                        ) : staff.active_orders_count === 0 ? (
+                          <span className="font-semibold text-emerald-700">
+                            ● Available
+                          </span>
                         ) : (
-                          <p className="text-[11px] text-gray-400">
-                            Select a driver to continue.
-                          </p>
+                          <span className="font-semibold text-gray-500">
+                            {staff.active_orders_count} active
+                          </span>
                         )}
                       </div>
+                    </div>
 
-                      <div className="flex gap-2 sm:flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setShowAssignForm(false)}
-                          className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAssign}
-                          disabled={assigning || !selectedUserId}
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
-                        >
-                          {assigning ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Assigning…
-                            </>
+                    {/* Right: rating + distance + radio */}
+                    <div className="flex flex-shrink-0 items-center gap-3 self-center">
+                      <div className="hidden text-right sm:block">
+                        {staff.average_rating &&
+                        staff.average_rating !== "0.00" ? (
+                          <p className="text-xs font-bold text-gray-800">
+                            ⭐ {parseFloat(staff.average_rating).toFixed(1)}
+                            {staff.total_reviews && (
+                              <span className="ml-1 text-[10px] font-medium text-gray-400">
+                                ({staff.total_reviews})
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-medium text-gray-400">
+                            No reviews
+                          </p>
+                        )}
+
+                        <div className="mt-1 text-[10px] text-gray-500">
+                          {isRouteLoading ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Calculating…
+                            </span>
+                          ) : roadDistance != null ? (
+                            <span>
+                              {formatDistance(roadDistance)}
+                              {roadDuration != null && (
+                                <> · {formatDuration(roadDuration)}</>
+                              )}
+                            </span>
+                          ) : hasLocation ? (
+                            <span>
+                              ~{formatDistance(staff.calculated_distance)}
+                            </span>
                           ) : (
-                            <>
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              {delivery?.delivery_person_name ||
-                              (delivery?.attempts &&
-                                delivery.attempts.length > 0)
-                                ? "Reassign driver"
-                                : "Assign driver"}
-                            </>
+                            <span>Distance unavailable</span>
                           )}
-                        </button>
+                        </div>
                       </div>
+
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
+                          isSelected
+                            ? "border-secondary bg-secondary text-white"
+                            : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
+                        }`}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </span>
                     </div>
                   </div>
+
+                  {/* Mobile rating / distance line */}
+                  <div className="mt-2 flex items-center justify-between sm:hidden">
+                    <span className="text-[10px] text-gray-500">
+                      {staff.average_rating &&
+                      staff.average_rating !== "0.00"
+                        ? `⭐ ${parseFloat(staff.average_rating).toFixed(1)} (${staff.total_reviews})`
+                        : "No reviews"}
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      {isRouteLoading
+                        ? "Calculating…"
+                        : roadDistance != null
+                          ? formatDistance(roadDistance)
+                          : hasLocation
+                            ? `~${formatDistance(staff.calculated_distance)}`
+                            : "Distance unavailable"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] font-medium text-gray-400">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
+                    pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      aria-current={currentPage === pageNum ? "page" : undefined}
+                      className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
+                        currentPage === pageNum
+                          ? "bg-secondary text-white"
+                          : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ═══ STICKY ACTION BAR ═══ */}
+      <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            {selectedDriver ? (
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
+                >
+                  <Check className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-gray-900">
+                    {selectedDriver.name} selected
+                  </p>
+                  <p className="truncate text-[10px] text-gray-500">
+                    {selectedDriver.is_in_house
+                      ? "In-house"
+                      : selectedDriver.company_name || "3PL partner"}
+                    {selectedDriver.vehicle_type &&
+                      ` · ${getVehicleName(selectedDriver.vehicle_type)}`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400">
+                Select a driver to continue.
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-2 sm:flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAssignForm(false)}
+              className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAssign}
+              disabled={assigning || !selectedUserId}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
+            >
+              {assigning ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Assigning…
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  {delivery?.delivery_person_name ||
+                  (delivery?.attempts && delivery.attempts.length > 0)
+                    ? "Reassign driver"
+                    : "Assign driver"}
                 </>
               )}
-            </motion.div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )}
+</motion.div>
+
+              
           )}
         </AnimatePresence>
       </Card>

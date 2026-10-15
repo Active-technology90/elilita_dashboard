@@ -305,7 +305,7 @@ function KpiCard({
   iconClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -811,7 +811,7 @@ export default function ServiceSubscriptions() {
         />
 
         {/* KPI cards */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {kpiCards.map((card) => (
             <KpiCard
               key={card.label}
@@ -848,7 +848,7 @@ export default function ServiceSubscriptions() {
                 })}
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-row gap-2 sm:items-center">
                 <div className="relative w-full sm:w-72">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
 
@@ -858,7 +858,7 @@ export default function ServiceSubscriptions() {
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search contract, customer, service, staff..."
                     aria-label="Search subscriptions"
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-secondary focus:ring-2 focus:ring-secondary/10"
+                    className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-secondary focus:ring-2 focus:ring-secondary/10"
                   />
 
                   {search && (

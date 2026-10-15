@@ -1,6 +1,6 @@
 // src/components/dashboard/HeadCompanyManagement/HeadCompanyManagement.tsx
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Plus, Building2, ImageIcon } from "lucide-react";
+import { Plus, Building2, ImageIcon, Edit, Trash2 } from "lucide-react";
 import {
   getHeadCompanies,
   createHeadCompany,
@@ -17,6 +17,7 @@ import { DragDropImageUpload } from "../../ui/DragDropImageUpload";
 import PageHeader from "../../ui/PageHeader";
 import { SearchInput } from "../../ui/SearchInput";
 import { DataTable, type Column } from "../../ui/DataTable";
+import MobileCardSkeleton from "../../ui/MobileCardSkeleton";
 
 interface HeadCompanyFormData {
   name: string;
@@ -173,7 +174,6 @@ export default function HeadCompanyManagement() {
 
   if (error) return <ErrorView error={error} onRetry={fetchHeadCompanies} />;
 
-
   const columns = useMemo<Column<HeadCompany>[]>(
     () => [
       {
@@ -259,13 +259,6 @@ export default function HeadCompanyManagement() {
         title="Head Companies"
         description="Manage parent companies and the organizations grouped under them."
         icon={Building2}
-        // badge={
-        //   !loading ? (
-        //     <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary sm:text-xs">
-        //       {filtered.length}
-        //     </span>
-        //   ) : undefined
-        // }
         actions={
           <button
             type="button"
@@ -299,24 +292,128 @@ export default function HeadCompanyManagement() {
             onChange={handleInputChange}
             debounceMs={0}
             loading={loading}
-            showClearButton={true}
+            showClearButton={false}
             placeholder="Search head companies..."
             className="w-full"
           />
         </div>
       </div>
 
-      {/* Shared responsive table */}
-      <DataTable
-        data={filtered}
-        columns={columns}
-        loading={loading}
-        loadingRows={5}
-        emptyMessage="No head companies found"
-        onEdit={openEdit}
-        onDelete={(head) => setDeleteTarget(head)}
-        stickyColumns={3}
-      />
+      {/* Mobile card view (below md) */}
+      <div className="block md:hidden">
+        {loading ? (
+          <MobileCardSkeleton count={3} metaLinePairs={2} showActions={true} />
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-2">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <ImageIcon className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              No head companies found
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              {searchTerm.trim()
+                ? "Try adjusting your search."
+                : "Create a new head company to get started."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 px-2 pb-24">
+            {filtered.map((head) => (
+              <div
+                key={head.slug}
+                className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3"
+              >
+                {/* Header row */}
+                <div className="flex items-center gap-3">
+                  {head.logo ? (
+                    <img
+                      src={head.logo}
+                      alt={head.name}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+                      <ImageIcon size={18} className="text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm truncate">
+                      {head.name}
+                    </h3>
+                    {head.name_am && (
+                      <p className="text-xs text-gray-500 truncate">
+                        {head.name_am}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] xs:text-xs font-medium rounded-full ${
+                      head.is_active
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        head.is_active ? "bg-emerald-500" : "bg-red-500"
+                      }`}
+                    ></span>
+                    {head.is_active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                {/* Meta grid */}
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>
+                    <span className="font-medium">Slug:</span>{" "}
+                    <span className="font-mono">{head.slug}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Branches:</span>{" "}
+                    <span className="inline-flex items-center gap-1">
+                      <Building2 className="h-3 w-3 text-secondary" />
+                      {head.branch_count ?? 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => openEdit(head)}
+                    className="flex-1 bg-secondary/10 text-secondary text-xs font-medium p-1 rounded-xl hover:bg-secondary/20 min-h-[32px]"
+                  >
+                    <Edit size={14} className="inline-block mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(head)}
+                    className="flex-1 bg-red-50 text-red-600 text-xs font-medium p-1 rounded-xl hover:bg-red-100 min-h-[32px]"
+                  >
+                    <Trash2 size={14} className="inline-block mr-1" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden w-full md:block">
+        <DataTable
+          data={filtered}
+          columns={columns}
+          loading={loading}
+          loadingRows={5}
+          emptyMessage="No head companies found"
+          onEdit={openEdit}
+          onDelete={(head) => setDeleteTarget(head)}
+          stickyColumns={3}
+        />
+      </div>
 
       {/* Create / Edit modal */}
       <FormModal
