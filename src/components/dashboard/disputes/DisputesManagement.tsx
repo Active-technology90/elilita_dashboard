@@ -558,7 +558,7 @@ export default function DisputesManagement() {
       />
 
       {/* Metric cards */}
-      <section className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <section className="mb-6 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {metricCards.map(({ label, value, note, icon: Icon }) => (
           <div
             key={label}
@@ -991,34 +991,36 @@ export default function DisputesManagement() {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-              <button
+              {/* <button
                 type="button"
                 onClick={closeReviewModal}
                 className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 sm:w-auto"
               >
                 Close
-              </button>
+              </button> */}
 
               {selectedDispute.status !== "refunded" &&
                 selectedDispute.status !== "resolved" && (
-                  <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                  <div className="flex w-full flex-wrap items-center justify-end gap-2">
                     {selectedDispute.requested_resolution === "redelivery" && (
                       <>
                         <button
                           type="button"
                           onClick={handleApproveRedelivery}
                           disabled={actionLoading}
-                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <RotateCcw className="h-3.5 w-3.5" />
+                          <RotateCcw className="h-3.5 w-3.5 shrink-0" />
                           Approve redelivery
                         </button>
+
                         <button
                           type="button"
                           onClick={handleConvertToRefund}
                           disabled={actionLoading}
-                          className="h-9 rounded-lg border border-secondary/30 bg-secondary/10 px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/15 disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-secondary/25 bg-secondary/5 px-3 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 disabled:cursor-not-allowed disabled:opacity-50"
                         >
+                          <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                           Convert to refund
                         </button>
                       </>
@@ -1028,9 +1030,9 @@ export default function DisputesManagement() {
                       type="button"
                       onClick={handleReject}
                       disabled={actionLoading}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-red-200 bg-white px-3 text-xs font-semibold text-red-600 transition-colors hover:border-red-300 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <XCircle className="h-3.5 w-3.5" />
+                      <XCircle className="h-3.5 w-3.5 shrink-0" />
                       Reject
                     </button>
 
@@ -1038,14 +1040,14 @@ export default function DisputesManagement() {
                       type="button"
                       onClick={() => handleApproveRefund()}
                       disabled={actionLoading}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-xs font-semibold text-white transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-secondary px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {actionLoading ? (
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
                       ) : (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                       )}
-                      Approve refund
+                      {actionLoading ? "Processing..." : "Approve refund"}
                     </button>
                   </div>
                 )}

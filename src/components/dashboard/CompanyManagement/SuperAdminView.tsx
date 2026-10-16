@@ -362,9 +362,9 @@ export default function SuperAdminView({
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-xl border border-secondary/10 bg-secondary/[0.02] p-2.5"
+                        className="rounded-xl  p-2.5"
                       >
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/50">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/80">
                           {item.label}
                         </p>
                         <p className="mt-1 truncate text-xs font-semibold text-gray-800">

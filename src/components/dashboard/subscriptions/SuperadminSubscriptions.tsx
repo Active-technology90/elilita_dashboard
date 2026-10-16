@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles, Gift } from "lucide-react";
-import { motion } from "framer-motion";
+import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles, Gift, SlidersHorizontal, Filter } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   getAdminSubscriptionPlans,
   getAdminCompanySubscriptions,
@@ -11,7 +11,6 @@ import {
 import { SearchInput } from "../../ui/SearchInput";
 import { TableControls } from "../../ui/TableControls";
 import { Pagination } from "../../ui/Pagination";
-import { CustomSelect } from "../../ui/CustomSelect";
 import { usePagination } from "../../../hooks/usePagination";
 import { useSorting } from "../../../hooks/useSorting";
 import PageHeader from "../../ui/PageHeader";
@@ -33,11 +32,15 @@ const SkeletonRow = () => (
 
 const SkeletonSubscriptionRow = () => (
   <tr className="animate-pulse">
-    <td className="px-5 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-24" /></td>
-    <td className="px-4 py-3.5"><div className="h-5 bg-secondary/[0.08] rounded w-16" /></td>
-    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-20" /></td>
-    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-20" /></td>
-    <td className="px-5 py-3.5"><div className="h-5 w-16 bg-secondary/[0.08] rounded-full" /></td>
+    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-24" /></td>
+    <td className="px-4 py-3.5"><div className="h-5 bg-secondary/[0.08] rounded w-14" /></td>
+    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-16" /></td>
+    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-12" /></td>
+    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-16" /></td>
+    <td className="px-4 py-3.5"><div className="h-4 bg-secondary/[0.08] rounded w-10" /></td>
+    <td className="px-4 py-3.5"><div className="h-5 bg-secondary/[0.08] rounded-full w-14" /></td>
+    <td className="px-4 py-3.5"><div className="h-5 bg-secondary/[0.08] rounded-full w-12" /></td>
+    <td className="px-4 py-3.5"><div className="h-6 bg-secondary/[0.08] rounded w-20 ml-auto" /></td>
   </tr>
 );
 
@@ -173,10 +176,9 @@ const getDocumentIssues = (
 
   if (price !== baseline.monthlyPrice) {
     issues.push(
-      `Price should be ${
-        baseline.monthlyPrice === 0
-          ? "ETB 0"
-          : `ETB ${formatEtb(baseline.monthlyPrice)}`
+      `Price should be ${baseline.monthlyPrice === 0
+        ? "ETB 0"
+        : `ETB ${formatEtb(baseline.monthlyPrice)}`
       }`,
     );
   }
@@ -225,12 +227,20 @@ export default function SuperadminSubscriptions() {
   const [searchTerm, setSearchTerm] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filterRef = useRef<HTMLDivElement | null>(null);
 
   // ========== CHECK IF ANY FILTERS ARE ACTIVE ==========
   const hasActiveFilters = useMemo(() => {
     return inputValue.trim() !== "" || planFilter !== "all";
   }, [inputValue, planFilter]);
+
+  const activePlanLabel = useMemo(() => {
+    if (planFilter === "all") return "All plans";
+    const found = plans.find((p) => String(p.id) === planFilter);
+    return found?.name || "All plans";
+  }, [planFilter, plans]);
 
   // ========== CLEAR ALL FILTERS ==========
   const clearAllFilters = () => {
@@ -238,6 +248,19 @@ export default function SuperadminSubscriptions() {
     setSearchTerm("");
     setPlanFilter("all");
   };
+
+  // ========== CLOSE FILTER DROPDOWN ON OUTSIDE CLICK ==========
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    };
+    if (isFilterOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isFilterOpen]);
 
   const documentAlignment = useMemo(() => {
     return DOCUMENT_PLAN_BASELINES.map((baseline) => {
@@ -494,7 +517,7 @@ export default function SuperadminSubscriptions() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-      <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-[1600px] space-y-4 p-3 sm:space-y-6 sm:p-6 lg:p-8">
         <PageHeader
           title="Subscriptions"
           description="Manage subscription plans and company subscriptions."
@@ -531,10 +554,31 @@ export default function SuperadminSubscriptions() {
               </button>
             </div>
           }
+          actionMobile={
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <button
+                type="button"
+                onClick={exportPlans}
+                disabled={isLoading || plans.length === 0}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateClick}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md sm:flex-none sm:text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add Plan
+              </button>
+            </div>
+          }
           className="mb-0"
         />
 
-        {/* ✅ Page error — refined alert */}
+        {/* ✅ Page error */}
         {pageError && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -556,10 +600,10 @@ export default function SuperadminSubscriptions() {
         )}
 
         {/* ========== STATS CARDS ========== */}
-        <section className="grid gap-4 sm:grid-cols-3">
+        <section className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
           {[
             { label: "Active plans", value: isLoading ? "—" : activePlans, icon: CreditCard },
-            { label: "Active subscriptions", value: isLoading ? "—" : activeSubscriptions, icon: Building2 },
+            { label: "Active subs", value: isLoading ? "—" : activeSubscriptions, icon: Building2 },
             { label: "V1.0 aligned", value: isLoading ? "—" : `${documentMatchCount}/4`, icon: Sparkles },
           ].map((stat, idx) => (
             <motion.div
@@ -567,16 +611,18 @@ export default function SuperadminSubscriptions() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.06 }}
-              className="group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md"
+              className="group relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3.5 shadow-sm transition hover:border-gray-300 hover:shadow-md sm:p-5"
             >
               <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-secondary/[0.04] transition group-hover:bg-secondary/[0.06]" />
-              <div className="relative flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{stat.label}</p>
-                  <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">{stat.value}</p>
+              <div className="relative flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-medium text-gray-500 sm:text-xs">{stat.label}</p>
+                  <p className="mt-1.5 text-2xl font-bold tracking-tight text-gray-900 sm:mt-2 sm:text-3xl">
+                    {stat.value}
+                  </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
-                  <stat.icon className="h-5 w-5" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-10 sm:w-10">
+                  <stat.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
               </div>
             </motion.div>
@@ -585,24 +631,26 @@ export default function SuperadminSubscriptions() {
 
         {/* ========== PLAN STANDARDS ========== */}
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
                 <Sparkles className="h-4 w-4" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Plan standards</h2>
-                <p className="mt-0.5 text-xs text-gray-500">Vendor Subscription Plan V1.0</p>
+                <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">Vendor Subscription Plan V1.0</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-gray-200">
+              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200 sm:w-24">
                 <div
                   className="h-full rounded-full bg-secondary transition-all duration-500"
                   style={{ width: `${(documentMatchCount / 4) * 100}%` }}
                 />
               </div>
-              <span className="text-xs font-semibold text-gray-700">{documentMatchCount}/4 aligned</span>
+              <span className="text-[11px] font-semibold text-gray-700 sm:text-xs">
+                {documentMatchCount}/4 aligned
+              </span>
             </div>
           </div>
 
@@ -614,27 +662,26 @@ export default function SuperadminSubscriptions() {
               return (
                 <article
                   key={item.tier}
-                  className="group relative bg-white p-5 transition hover:bg-gray-50/60"
+                  className="group relative bg-white p-4 transition hover:bg-gray-50/60 sm:p-5"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <h3 className="text-base font-bold text-gray-900">{item.name}</h3>
-                        <span className="text-xs font-semibold text-gray-500">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <h3 className="text-sm font-bold text-gray-900 sm:text-base">{item.name}</h3>
+                        <span className="text-[11px] font-semibold text-gray-500 sm:text-xs">
                           {item.monthlyPrice === 0 ? "Free" : `ETB ${formatEtb(item.monthlyPrice)}/mo`}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">{item.positioning}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">{item.positioning}</p>
                     </div>
 
                     <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ring-inset ${
-                        isMatch
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset sm:px-2.5 sm:py-1 ${isMatch
                           ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
                           : isMissing
                             ? "bg-gray-50 text-gray-500 ring-gray-300"
                             : "bg-amber-50 text-amber-700 ring-amber-600/20"
-                      }`}
+                        }`}
                     >
                       {isMatch ? (
                         <>
@@ -649,14 +696,16 @@ export default function SuperadminSubscriptions() {
                     </span>
                   </div>
 
-                  <dl className="mt-5 space-y-2.5 text-xs">
+                  <dl className="mt-4 space-y-2 text-[11px] sm:text-xs">
                     {[
                       ["Products", item.productListing],
                       ["Staff", item.staff],
                       ["Featured", item.featuredProducts],
-                      ["Ads", item.advertising],
                     ].map(([label, value]) => (
-                      <div key={label} className="flex items-start justify-between gap-3 border-b border-dashed border-gray-100 pb-2.5 last:border-0 last:pb-0">
+                      <div
+                        key={label}
+                        className="flex items-start justify-between gap-3 border-b border-dashed border-gray-100 pb-2 last:border-0 last:pb-0"
+                      >
                         <dt className="shrink-0 text-gray-400">{label}</dt>
                         <dd className="text-right font-semibold text-gray-700">{value}</dd>
                       </div>
@@ -664,10 +713,10 @@ export default function SuperadminSubscriptions() {
                   </dl>
 
                   {item.status === "review" && item.issues.length > 0 && (
-                    <div className="mt-4 rounded-xl border border-amber-200/70 bg-amber-50/60 px-3 py-2.5">
+                    <div className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50/60 px-2.5 py-2 sm:px-3 sm:py-2.5">
                       <div className="flex items-start gap-2">
                         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-                        <p className="text-[11px] leading-relaxed text-amber-800">
+                        <p className="text-[10.5px] leading-relaxed text-amber-800 sm:text-[11px]">
                           {item.issues.join(" · ")}
                         </p>
                       </div>
@@ -679,21 +728,109 @@ export default function SuperadminSubscriptions() {
           </div>
         </section>
 
-        {/* ========== PLANS TABLE ========== */}
+        {/* ========== PLANS ========== */}
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
+          {/* Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
                 <CreditCard className="h-4 w-4" />
               </div>
               <h2 className="text-sm font-bold text-gray-900">Plans</h2>
             </div>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 sm:px-3 sm:py-1 sm:text-xs">
               {plans.length} total
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* MOBILE: cards */}
+          <div className="divide-y divide-gray-100 md:hidden">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="animate-pulse space-y-2 p-4">
+                  <div className="h-4 w-32 rounded bg-secondary/[0.08]" />
+                  <div className="h-3 w-48 rounded bg-secondary/[0.08]" />
+                  <div className="h-3 w-40 rounded bg-secondary/[0.08]" />
+                </div>
+              ))
+            ) : plans.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
+                  <CreditCard className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="mt-3 text-sm font-medium text-gray-900">No plans yet</p>
+                <p className="mt-1 text-xs text-gray-500">Create your first subscription plan.</p>
+              </div>
+            ) : (
+              plans.map((plan) => {
+                const subscribers = companySubscriptions.filter((sub) => sub.plan?.id === plan.id).length;
+                return (
+                  <article key={plan.id} className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-secondary/40 ring-4 ring-secondary/[0.06]" />
+                        <h3 className="truncate text-sm font-semibold text-gray-900">{plan.name}</h3>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${plan.is_active
+                            ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                            : "bg-gray-50 text-gray-500 ring-gray-300"
+                          }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${plan.is_active ? "bg-emerald-500" : "bg-gray-400"}`} />
+                        {plan.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-base font-bold text-gray-900">
+                      {Number(plan.price || 0) === 0 ? "Free" : `ETB ${formatEtb(Number(plan.price || 0))}`}
+                      <span className="ml-1 text-[11px] font-medium text-gray-400">
+                        / {plan.duration_days ?? 30}d
+                      </span>
+                    </p>
+
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                      <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
+                        <dt className="text-gray-400">Products</dt>
+                        <dd className="font-semibold text-gray-700">{formatProductLimit(plan)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
+                        <dt className="text-gray-400">Featured</dt>
+                        <dd className="font-semibold text-gray-700">
+                          {plan.max_featured_products === -1 ? "Unlimited" : plan.max_featured_products}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-gray-400">Staff</dt>
+                        <dd className="font-semibold text-gray-700">
+                          {(plan.max_staff_members ?? 5) === -1 ? "Unlimited" : (plan.max_staff_members ?? 5)}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-gray-400">Subscribers</dt>
+                        <dd className="inline-flex items-center gap-1 font-semibold text-gray-700">
+                          <Building2 className="h-3 w-3 text-gray-400" />
+                          {subscribers}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(plan)}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                      Edit plan
+                    </button>
+                  </article>
+                );
+              })
+            )}
+          </div>
+
+          {/* DESKTOP: table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
@@ -760,11 +897,10 @@ export default function SuperadminSubscriptions() {
                         </td>
                         <td className="px-4 py-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
-                              plan.is_active
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${plan.is_active
                                 ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
                                 : "bg-gray-50 text-gray-500 ring-gray-300"
-                            }`}
+                              }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${plan.is_active ? "bg-emerald-500" : "bg-gray-400"}`} />
                             {plan.is_active ? "Active" : "Inactive"}
@@ -791,21 +927,23 @@ export default function SuperadminSubscriptions() {
 
         {/* ========== COMPANY SUBSCRIPTIONS ========== */}
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
+          {/* Header */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
                 <Building2 className="h-4 w-4" />
               </div>
               <h2 className="text-sm font-bold text-gray-900">Company subscriptions</h2>
             </div>
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 sm:px-3 sm:py-1 sm:text-xs">
               {companySubscriptions.length} total
             </span>
           </div>
 
-          <div className="border-b border-gray-100 bg-gray-50/40 px-5 py-3.5 sm:px-6">
+          {/* Filters — search + filter icon + page size in a single row */}
+          <div className="border-b border-gray-100 bg-gray-50/40 px-4 py-3 sm:px-6 sm:py-3.5">
             <TableControls pageSize={pageSize} onPageSizeChange={setPageSize}>
-              <div className="flex w-full flex-col gap-2.5 sm:flex-row">
+              <div className="flex w-full items-center gap-2">
                 <div className="min-w-0 flex-1">
                   <SearchInput
                     value={inputValue}
@@ -816,48 +954,117 @@ export default function SuperadminSubscriptions() {
                     placeholder="Search company"
                   />
                 </div>
-                <div className="w-full sm:w-52">
-                  <CustomSelect
-                    value={planFilter}
-                    onChange={setPlanFilter}
-                    placeholder="Plan"
-                    options={[
-                      { value: "all", label: "All plans" },
-                      ...plans.map((plan) => ({ value: String(plan.id), label: plan.name })),
-                    ]}
-                  />
-                </div>
-                {hasActiveFilters && (
+
+                {/* Filter icon dropdown */}
+                <div className="relative shrink-0" ref={filterRef}>
                   <button
                     type="button"
-                    onClick={clearAllFilters}
-                    className="inline-flex h-[42px] items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                    onClick={() => setIsFilterOpen((v) => !v)}
+                    aria-label="Filter by plan"
+                    className={`inline-flex h-[32px] items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition text-secondary sm:px-3.5 sm:text-sm ${planFilter !== "all"
+                        ? "border-secondary/30 bg-secondary/[0.08] text-secondary"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                      }`}
                   >
-                    Clear
+                    <Filter className="h-4 w-4 " />
+                    <span className="hidden max-w-[100px] truncate sm:inline">
+                      {activePlanLabel}
+                    </span>
+                    {planFilter !== "all" && (
+                      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-secondary" />
+                    )}
                   </button>
-                )}
+
+                  <AnimatePresence>
+                    {isFilterOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-900/5"
+                      >
+                        <div className="max-h-64 overflow-y-auto py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlanFilter("all");
+                              setIsFilterOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-sm transition ${planFilter === "all"
+                                ? "bg-secondary/[0.06] font-semibold text-secondary"
+                                : "text-gray-700 hover:bg-gray-50"
+                              }`}
+                          >
+                            <span>All plans</span>
+                            {planFilter === "all" && <Check className="h-4 w-4" />}
+                          </button>
+                          {plans.map((plan) => {
+                            const value = String(plan.id);
+                            const active = planFilter === value;
+                            return (
+                              <button
+                                key={plan.id}
+                                type="button"
+                                onClick={() => {
+                                  setPlanFilter(value);
+                                  setIsFilterOpen(false);
+                                }}
+                                className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-sm transition ${active
+                                    ? "bg-secondary/[0.06] font-semibold text-secondary"
+                                    : "text-gray-700 hover:bg-gray-50"
+                                  }`}
+                              >
+                                <span className="truncate">{plan.name}</span>
+                                {active && <Check className="h-4 w-4 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {hasActiveFilters && (
+                          <div className="border-t border-gray-100 p-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                clearAllFilters();
+                                setIsFilterOpen(false);
+                              }}
+                              className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-gray-500 hover:bg-gray-50"
+                            >
+                              Clear all filters
+                            </button>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </TableControls>
           </div>
 
+          {/* TABLE — same on mobile & desktop, scrolls horizontally on small screens */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
+            <table className="w-full min-w-[820px] text-left">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                  <th className="px-5 py-3.5">Company</th>
-                  <th className="px-4 py-3.5">Plan</th>
-                  <th className="px-4 py-3.5">Started</th>
-                  <th className="px-4 py-3.5">Extra Free</th>
-                  <th className="px-4 py-3.5">Expires</th>
-                  <th className="px-4 py-3.5">Days Left</th>
-                  <th className="px-4 py-3.5">Sub Status</th>
-                  <th className="px-4 py-3.5">Store Access</th>
-                  <th className="px-5 py-3.5 text-right">Actions</th>
+                  <th className="px-4 py-3 sm:px-5 sm:py-3.5">Company</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Plan</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Started</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Extra Free</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Expires</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Days Left</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Sub Status</th>
+                  <th className="px-3 py-3 sm:px-4 sm:py-3.5">Store Access</th>
+                  <th className="px-4 py-3 text-right sm:px-5 sm:py-3.5">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => <SkeletonSubscriptionRow key={index} />)
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <SkeletonSubscriptionRow key={index} />
+                  ))
                 ) : paginatedItems.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-5 py-16 text-center">
@@ -879,82 +1086,80 @@ export default function SuperadminSubscriptions() {
 
                     return (
                       <tr key={sub.id} className="group text-sm text-gray-700 transition hover:bg-gray-50/70">
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/[0.06] text-xs font-bold text-secondary">
+                        <td className="px-4 py-3.5 sm:px-5 sm:py-4">
+                          <div className="flex items-center gap-2.5 sm:gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.06] text-xs font-bold text-secondary">
                               {sub.company_name?.charAt(0)?.toUpperCase() || "?"}
                             </div>
                             <span className="font-semibold text-gray-900">{sub.company_name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold ${getPlanColor(sub.plan?.name)}`}>
+                        <td className="px-3 py-3.5 sm:px-4 sm:py-4">
+                          <span className={`inline-flex rounded-lg border px-2 py-1 text-[11px] font-semibold sm:px-2.5 sm:text-xs ${getPlanColor(sub.plan?.name)}`}>
                             {sub.plan?.name || "Unknown"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-gray-500">
+                        <td className="px-3 py-3.5 text-xs text-gray-500 sm:px-4 sm:py-4 sm:text-sm">
                           {new Date(sub.start_date).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-4">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-secondary/[0.05] px-2 py-0.5 text-xs font-semibold text-secondary">
+                        <td className="px-3 py-3.5 sm:px-4 sm:py-4">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-secondary/[0.05] px-2 py-0.5 text-[11px] font-semibold text-secondary sm:text-xs">
                             <Gift className="h-3 w-3" />
                             {sub.additional_free_days > 0 ? `+${sub.additional_free_days}d` : "0d"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 font-medium text-gray-600">
+                        <td className="px-3 py-3.5 text-xs font-medium text-gray-600 sm:px-4 sm:py-4 sm:text-sm">
                           {sub.effective_end_date
                             ? new Date(sub.effective_end_date).toLocaleDateString()
                             : sub.end_date
-                            ? new Date(sub.end_date).toLocaleDateString()
-                            : "Lifetime"}
+                              ? new Date(sub.end_date).toLocaleDateString()
+                              : "Lifetime"}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3.5 sm:px-4 sm:py-4">
                           <span
-                            className={`font-semibold ${
-                              sub.days_remaining > 5
+                            className={`text-xs font-semibold sm:text-sm ${sub.days_remaining > 5
                                 ? "text-emerald-700"
                                 : sub.days_remaining > 0
-                                ? "text-amber-700"
-                                : "text-red-600"
-                            }`}
+                                  ? "text-amber-700"
+                                  : "text-red-600"
+                              }`}
                           >
                             {sub.days_remaining !== undefined && sub.days_remaining !== null
                               ? `${sub.days_remaining}d`
                               : "—"}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3.5 sm:px-4 sm:py-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
-                              isSubscriptionActive
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset sm:px-2.5 sm:py-1 sm:text-[11px] ${isSubscriptionActive
                                 ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
                                 : "bg-gray-50 text-gray-500 ring-gray-300"
-                            }`}
+                              }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${isSubscriptionActive ? "bg-emerald-500" : "bg-gray-400"}`} />
                             {isSubscriptionActive ? "Active" : "Expired"}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3.5 sm:px-4 sm:py-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${
-                              isStoreActive
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset sm:px-2.5 sm:py-1 sm:text-[11px] ${isStoreActive
                                 ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
                                 : "bg-rose-50 text-rose-700 ring-rose-600/20"
-                            }`}
+                              }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${isStoreActive ? "bg-emerald-500" : "bg-rose-500"}`} />
                             {isStoreActive ? "Live" : "Inactive"}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-right">
+                        <td className="px-4 py-3.5 text-right sm:px-5 sm:py-4">
                           <button
                             type="button"
                             onClick={() => handleOpenDealModal(sub)}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/20 bg-secondary/[0.04] px-3 py-1.5 text-xs font-semibold text-secondary transition hover:bg-secondary/10"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/20 bg-secondary/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-secondary transition hover:bg-secondary/10 sm:px-3 sm:text-xs"
                           >
                             <Gift className="h-3.5 w-3.5" />
-                            <span>Deal / Free Days</span>
+                            <span className="hidden sm:inline">Deal / Free Days</span>
+                            <span className="sm:hidden">Deal</span>
                           </button>
                         </td>
                       </tr>
@@ -966,7 +1171,7 @@ export default function SuperadminSubscriptions() {
           </div>
 
           {!isLoading && totalPages > 1 && (
-            <div className="border-t border-gray-100 bg-gray-50/40 px-5 py-3.5 sm:px-6">
+            <div className="border-t border-gray-100 bg-gray-50/40 px-4 py-3 sm:px-6 sm:py-3.5">
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -979,20 +1184,20 @@ export default function SuperadminSubscriptions() {
 
       {/* ========== MODAL ========== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-gray-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-gray-900/5"
+            className="flex max-h-[95vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 sm:max-h-[90vh] sm:rounded-2xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-6 sm:py-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-base font-bold text-gray-900 sm:text-lg">
                   {editingPlan ? "Edit plan" : "New plan"}
                 </h3>
                 {selectedDocumentBaseline && (
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
                     {selectedDocumentBaseline.name} · {selectedDocumentBaseline.positioning}
                   </p>
                 )}
@@ -1007,9 +1212,8 @@ export default function SuperadminSubscriptions() {
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-5">
-              <form id="plan-form" onSubmit={handleSubmit} className="space-y-5">
-                {/* ✅ Save error */}
+            <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              <form id="plan-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                 {saveError && (
                   <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
                     <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
@@ -1017,7 +1221,7 @@ export default function SuperadminSubscriptions() {
                   </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-gray-700">Plan name</label>
                     <input
@@ -1031,12 +1235,12 @@ export default function SuperadminSubscriptions() {
                           ...current,
                           name,
                           ...(baseline?.expectedProductLimit !== null &&
-                          baseline?.expectedProductLimit !== undefined
+                            baseline?.expectedProductLimit !== undefined
                             ? { max_products: baseline.expectedProductLimit }
                             : {}),
                         }));
                       }}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                       placeholder="Advanced"
                     />
                   </div>
@@ -1048,7 +1252,7 @@ export default function SuperadminSubscriptions() {
                       required
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                     />
                   </div>
                   <div>
@@ -1059,7 +1263,7 @@ export default function SuperadminSubscriptions() {
                       min="1"
                       value={formData.duration_days}
                       onChange={(e) => setFormData({ ...formData, duration_days: parseInt(e.target.value, 10) || 30 })}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                       placeholder="30"
                     />
                   </div>
@@ -1097,7 +1301,7 @@ export default function SuperadminSubscriptions() {
                   </div>
                 )}
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-gray-700">Product limit</label>
                     <input
@@ -1105,7 +1309,7 @@ export default function SuperadminSubscriptions() {
                       required
                       value={formData.max_products}
                       onChange={(e) => setFormData({ ...formData, max_products: parseInt(e.target.value, 10) || 0 })}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                     />
                     <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
                       {selectedDocumentBaseline?.expectedProductLimit === -1
@@ -1124,7 +1328,7 @@ export default function SuperadminSubscriptions() {
                       required
                       value={formData.max_featured_products}
                       onChange={(e) => setFormData({ ...formData, max_featured_products: parseInt(e.target.value, 10) || 0 })}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                     />
                     <p className="mt-1.5 text-[11px] text-gray-400">0 = none · -1 = unlimited</p>
                   </div>
@@ -1135,7 +1339,7 @@ export default function SuperadminSubscriptions() {
                       required
                       value={formData.max_staff_members}
                       onChange={(e) => setFormData({ ...formData, max_staff_members: parseInt(e.target.value, 10) || 0 })}
-                      className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                     />
                     <p className="mt-1.5 text-[11px] text-gray-400">-1 = unlimited</p>
                   </div>
@@ -1158,7 +1362,7 @@ export default function SuperadminSubscriptions() {
               </form>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-gray-100 bg-gray-50/60 px-6 py-4">
+            <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3.5 backdrop-blur sm:static sm:px-6 sm:py-4">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -1182,7 +1386,7 @@ export default function SuperadminSubscriptions() {
 
       {/* ========== COMPANY SUBSCRIPTION DEAL & FREE DAYS MODAL ========== */}
       {dealModalOpen && selectedSub && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
             onClick={() => !isSavingDeal && setDealModalOpen(false)}
@@ -1191,163 +1395,171 @@ export default function SuperadminSubscriptions() {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="relative z-10 flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl"
           >
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/[0.08] text-secondary">
-                  <Gift className="h-5 w-5" />
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/[0.08] text-secondary sm:h-10 sm:w-10">
+                  <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-gray-900">Subscription Deal & Free Days</h3>
-                  <p className="text-xs text-gray-500">{selectedSub.company_name}</p>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-gray-900 sm:text-base">
+                    Subscription Deal & Free Days
+                  </h3>
+                  <p className="truncate text-[11px] text-gray-500 sm:text-xs">{selectedSub.company_name}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setDealModalOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveDeal} className="space-y-4 px-6 py-5">
-              {dealError && (
-                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                  {dealError}
-                </div>
-              )}
-
-              {/* Current Status Overview */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 text-xs text-gray-600 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Current Plan:</span>
-                  <span className="font-semibold text-gray-800">{selectedSub.plan?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Started:</span>
-                  <span className="font-semibold text-gray-800">{new Date(selectedSub.start_date).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Store Status:</span>
-                  <span className={`font-semibold ${selectedSub.company_is_active ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {selectedSub.company_is_active ? 'Active (Live on App)' : 'Inactive (Hidden on App)'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Plan Selector */}
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-gray-700">Assign Subscription Plan</label>
-                <select
-                  value={dealFormData.plan_id}
-                  onChange={(e) => setDealFormData({ ...dealFormData, plan_id: e.target.value })}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
-                >
-                  {plans.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {p.name} ({Number(p.price) === 0 ? "Free" : `ETB ${p.price}`} · {p.duration_days ?? 30} days)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Additional Free Days Input */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-gray-700">Extra Free Days Granted</label>
-                  <span className="text-[11px] text-gray-400">Negotiated bonus duration</span>
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  required
-                  value={dealFormData.additional_free_days}
-                  onChange={(e) =>
-                    setDealFormData({
-                      ...dealFormData,
-                      additional_free_days: Math.max(0, parseInt(e.target.value, 10) || 0),
-                    })
-                  }
-                  className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
-                />
-
-                {/* Quick Preset Buttons */}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[7, 14, 30, 45, 60].map((days) => (
-                    <button
-                      key={days}
-                      type="button"
-                      onClick={() =>
-                        setDealFormData({
-                          ...dealFormData,
-                          additional_free_days: (Number(dealFormData.additional_free_days) || 0) + days,
-                        })
-                      }
-                      className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-secondary/10 hover:text-secondary"
-                    >
-                      +{days}d
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setDealFormData({ ...dealFormData, additional_free_days: 0 })}
-                    className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100"
-                  >
-                    Reset to 0
-                  </button>
-                </div>
-              </div>
-
-              {/* Live Expiration Preview */}
-              {(() => {
-                const planObj = plans.find((p) => String(p.id) === dealFormData.plan_id) || selectedSub.plan;
-                const pDays = planObj?.duration_days ?? 30;
-                const totalD = pDays + (Number(dealFormData.additional_free_days) || 0);
-                const startD = new Date(selectedSub.start_date);
-                const previewEndD = new Date(startD.getTime() + totalD * 24 * 60 * 60 * 1000);
-                const remainingD = Math.max(0, Math.ceil((previewEndD.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
-
-                return (
-                  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-3.5 text-xs">
-                    <div className="flex items-center gap-2 text-secondary font-bold mb-1">
-                      <Sparkles className="h-4 w-4" />
-                      <span>Calculated Expiration Preview</span>
-                    </div>
-                    <p className="text-gray-700">
-                      Total Period: <strong>{totalD} days</strong> ({pDays}d plan + {dealFormData.additional_free_days}d bonus)
-                    </p>
-                    <p className="mt-1 text-gray-700">
-                      New Expiry Date: <strong>{previewEndD.toLocaleDateString()}</strong> ({remainingD} days from now)
-                    </p>
+            <form onSubmit={handleSaveDeal} className="flex-1 overflow-y-auto">
+              <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+                {dealError && (
+                  <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                    {dealError}
                   </div>
-                );
-              })()}
+                )}
 
-              {/* Company Store Active Toggle */}
-              <div className="rounded-xl border border-gray-200 p-3.5">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div>
-                    <span className="text-xs font-semibold text-gray-900 block">Company Store Active</span>
-                    <span className="text-[11px] text-gray-500">When enabled, store and products are visible on Elilita Superapp.</span>
+                <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 text-xs text-gray-600 sm:p-4">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400">Current Plan:</span>
+                    <span className="font-semibold text-gray-800">{selectedSub.plan?.name}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400">Started:</span>
+                    <span className="font-semibold text-gray-800">
+                      {new Date(selectedSub.start_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-gray-400">Store Status:</span>
+                    <span className={`font-semibold ${selectedSub.company_is_active ? "text-emerald-700" : "text-red-600"}`}>
+                      {selectedSub.company_is_active ? "Active (Live on App)" : "Inactive (Hidden on App)"}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">Assign Subscription Plan</label>
+                  <select
+                    value={dealFormData.plan_id}
+                    onChange={(e) => setDealFormData({ ...dealFormData, plan_id: e.target.value })}
+                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
+                  >
+                    {plans.map((p) => (
+                      <option key={p.id} value={String(p.id)}>
+                        {p.name} ({Number(p.price) === 0 ? "Free" : `ETB ${p.price}`} · {p.duration_days ?? 30} days)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <label className="text-xs font-semibold text-gray-700">Extra Free Days Granted</label>
+                    <span className="text-[11px] text-gray-400">Negotiated bonus duration</span>
+
                   </div>
                   <input
-                    type="checkbox"
-                    checked={dealFormData.set_company_active}
-                    onChange={(e) => setDealFormData({ ...dealFormData, set_company_active: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                    type="number"
+                    min="0"
+                    required
+                    value={dealFormData.additional_free_days}
+                    onChange={(e) =>
+                      setDealFormData({
+                        ...dealFormData,
+                        additional_free_days: Math.max(0, parseInt(e.target.value, 10) || 0),
+                      })
+                    }
+                    className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                   />
-                </label>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {[7, 14, 30, 45, 60].map((days) => (
+                      <button
+                        key={days}
+                        type="button"
+                        onClick={() =>
+                          setDealFormData({
+                            ...dealFormData,
+                            additional_free_days: (Number(dealFormData.additional_free_days) || 0) + days,
+                          })
+                        }
+                        className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-secondary/10 hover:text-secondary"
+                      >
+                        +{days}d
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setDealFormData({ ...dealFormData, additional_free_days: 0 })}
+                      className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100"
+                    >
+                      Reset to 0
+                    </button>
+                  </div>
+                </div>
+
+                {(() => {
+                  const planObj = plans.find((p) => String(p.id) === dealFormData.plan_id) || selectedSub.plan;
+                  const pDays = planObj?.duration_days ?? 30;
+                  const totalD = pDays + (Number(dealFormData.additional_free_days) || 0);
+                  const startD = new Date(selectedSub.start_date);
+                  const previewEndD = new Date(startD.getTime() + totalD * 24 * 60 * 60 * 1000);
+                  const remainingD = Math.max(
+                    0,
+                    Math.ceil((previewEndD.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+                  );
+
+                  return (
+                    <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-3.5 text-xs">
+                      <div className="mb-1 flex items-center gap-2 font-bold text-secondary">
+                        <Sparkles className="h-4 w-4" />
+                        <span>Calculated Expiration Preview</span>
+                      </div>
+                      <p className="text-gray-700">
+                        Total Period: <strong>{totalD} days</strong> ({pDays}d plan +{" "}
+                        {dealFormData.additional_free_days}d bonus)
+                      </p>
+                      <p className="mt-1 text-gray-700">
+                        New Expiry Date: <strong>{previewEndD.toLocaleDateString()}</strong> ({remainingD} days
+                        from now)
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                <div className="rounded-xl border border-gray-200 p-3.5">
+                  <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block text-xs font-semibold text-gray-900">Company Store Active</span>
+                      <span className="text-[11px] text-gray-500">
+                        When enabled, store and products are visible on Qine Superapp.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={dealFormData.set_company_active}
+                      onChange={(e) => setDealFormData({ ...dealFormData, set_company_active: e.target.checked })}
+                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-secondary focus:ring-secondary"
+                    />
+                  </label>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+              <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3.5 backdrop-blur sm:static sm:px-6 sm:py-4">
                 <button
                   type="button"
                   onClick={() => setDealModalOpen(false)}
                   disabled={isSavingDeal}
-                  className="h-10 rounded-xl border border-gray-200 px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+                  className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>

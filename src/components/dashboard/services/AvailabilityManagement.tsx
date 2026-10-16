@@ -32,6 +32,7 @@ import { extractErrorMessage } from "../../../utils/extractErrorMessage";
 import type { AvailabilitySlot } from "../../../types";
 import { validateAvailabilitySlot } from "../../../utils/availabilityValidator";
 import { validateBlackout } from "../../../utils/blackoutValidator";
+import { CustomSelect } from "../../ui/CustomSelect";
 // import type { ValidationResult } from "../../../types/validation";
 
 // ---------------------------------------------------------------------------
@@ -72,11 +73,15 @@ const StatCard = ({
   value: string | number;
   color?: string;
 }) => (
-  <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+  <div className="rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-sm">
     <div className="flex items-center justify-between gap-3">
       <div>
-        <p className="text-xs font-medium text-gray-500">{label}</p>
-        <p className="mt-1 text-xl font-semibold text-gray-900">{value}</p>
+        <p className="text-[10px] sm:text-xs font-medium text-gray-500">
+          {label}
+        </p>
+        <p className="mt-1 text-sm sm:text-xl font-semibold text-gray-900">
+          {value}
+        </p>
       </div>
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
         <Icon className="h-4 w-4" />
@@ -125,8 +130,9 @@ const DayCard = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`bg-white rounded-2xl border shadow-sm p-5 transition-shadow hover:shadow-md flex flex-col ${hasSlots ? "border-gray-100" : "border-gray-200 opacity-70"
-        }`}
+      className={`bg-white rounded-2xl border shadow-sm p-5 transition-shadow hover:shadow-md flex flex-col ${
+        hasSlots ? "border-gray-100" : "border-gray-200 opacity-70"
+      }`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -138,14 +144,16 @@ const DayCard = ({
           </h4>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${hasSlots
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+            hasSlots
               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
               : "bg-gray-50 text-gray-500 border-gray-200"
-            }`}
+          }`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${hasSlots ? "bg-emerald-500" : "bg-gray-400"
-              }`}
+            className={`w-1.5 h-1.5 rounded-full ${
+              hasSlots ? "bg-emerald-500" : "bg-gray-400"
+            }`}
           />
           {hasSlots ? "Open" : "Closed"}
         </span>
@@ -349,7 +357,7 @@ const SlotFormModal = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Day
             </label>
-            <select
+            {/* <select
               value={form.day_of_week}
               onChange={(e) =>
                 handleChange("day_of_week", Number(e.target.value))
@@ -364,7 +372,22 @@ const SlotFormModal = ({
                   {d.label}
                 </option>
               ))}
-            </select>
+            </select> */}
+            <CustomSelect
+              value={String(form.day_of_week)}
+              onChange={(value) => handleChange("day_of_week", Number(value))}
+              options={DAYS.map((day) => ({
+                value: String(day.value),
+                label: day.label,
+              }))}
+              placeholder="Select day"
+              className={`w-full ${
+                fieldErrors.day_of_week
+                  ? "border-red-500 focus:border-red-500"
+                  : "border-gray-300 focus:border-secondary"
+              }`}
+            />
+
             {fieldErrors.day_of_week && (
               <p className="text-red-600 text-xs mt-1">
                 {fieldErrors.day_of_week}
@@ -381,10 +404,11 @@ const SlotFormModal = ({
                 type="time"
                 value={form.start_time}
                 onChange={(e) => handleChange("start_time", e.target.value)}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${fieldErrors.start_time
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${
+                  fieldErrors.start_time
                     ? "border-red-500 focus:border-red-500"
                     : "border-gray-300 focus:border-secondary"
-                  }`}
+                }`}
               />
               {fieldErrors.start_time && (
                 <p className="text-red-600 text-xs mt-1">
@@ -400,10 +424,11 @@ const SlotFormModal = ({
                 type="time"
                 value={form.end_time}
                 onChange={(e) => handleChange("end_time", e.target.value)}
-                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${fieldErrors.end_time
+                className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${
+                  fieldErrors.end_time
                     ? "border-red-500 focus:border-red-500"
                     : "border-gray-300 focus:border-secondary"
-                  }`}
+                }`}
               />
               {fieldErrors.end_time && (
                 <p className="text-red-600 text-xs mt-1">
@@ -424,10 +449,11 @@ const SlotFormModal = ({
               onChange={(e) =>
                 handleChange("max_bookings", Number(e.target.value))
               }
-              className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${fieldErrors.max_bookings
+              className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${
+                fieldErrors.max_bookings
                   ? "border-red-500 focus:border-red-500"
                   : "border-gray-300 focus:border-secondary"
-                }`}
+              }`}
             />
             {fieldErrors.max_bookings && (
               <p className="text-red-600 text-xs mt-1">
@@ -671,12 +697,15 @@ export default function AvailabilityManagement() {
 
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900">
-                {company?.name || "The selected company"} is not a service company
+                {company?.name || "The selected company"} is not a service
+                company
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-600">
-                Service offerings, staff schedules, availability, and bookings are
-                disabled for this company. Select a company whose business type is
-                <span className="font-medium text-gray-800"> service</span> to continue.
+                Service offerings, staff schedules, availability, and bookings
+                are disabled for this company. Select a company whose business
+                type is
+                <span className="font-medium text-gray-800"> service</span> to
+                continue.
               </p>
               {isSuperAdmin && (
                 <button
@@ -934,7 +963,6 @@ export default function AvailabilityManagement() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-
               </button>
             ) : undefined
           }
@@ -942,7 +970,7 @@ export default function AvailabilityManagement() {
         />
 
         {/* Summary Cards */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard
             icon={Calendar}
             label="Working Days"
@@ -1104,10 +1132,11 @@ export default function AvailabilityManagement() {
                   onChange={(e) =>
                     handleBlackoutFormChange("title", e.target.value)
                   }
-                  className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:ring-2 ${blackoutErrors.title
+                  className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:ring-2 ${
+                    blackoutErrors.title
                       ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                       : "border-gray-200 focus:border-secondary focus:ring-secondary/10"
-                    }`}
+                  }`}
                   aria-invalid={!!blackoutErrors.title}
                 />
 
@@ -1130,10 +1159,11 @@ export default function AvailabilityManagement() {
                   onChange={(e) =>
                     handleBlackoutFormChange("date", e.target.value)
                   }
-                  className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition-all focus:ring-2 ${blackoutErrors.date
+                  className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition-all focus:ring-2 ${
+                    blackoutErrors.date
                       ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                       : "border-gray-200 focus:border-secondary focus:ring-secondary/10"
-                    }`}
+                  }`}
                   aria-invalid={!!blackoutErrors.date}
                 />
 
@@ -1156,10 +1186,11 @@ export default function AvailabilityManagement() {
                     onClick={() =>
                       handleBlackoutFormChange("is_full_day", true)
                     }
-                    className={`h-8 rounded-lg px-3 text-xs font-medium transition-all ${blackoutForm.is_full_day
+                    className={`h-8 rounded-lg px-3 text-xs font-medium transition-all ${
+                      blackoutForm.is_full_day
                         ? "bg-amber-100 text-amber-800 shadow-sm"
                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                      }`}
+                    }`}
                   >
                     Full day
                   </button>
@@ -1169,10 +1200,11 @@ export default function AvailabilityManagement() {
                     onClick={() =>
                       handleBlackoutFormChange("is_full_day", false)
                     }
-                    className={`h-8 rounded-lg px-3 text-xs font-medium transition-all ${!blackoutForm.is_full_day
+                    className={`h-8 rounded-lg px-3 text-xs font-medium transition-all ${
+                      !blackoutForm.is_full_day
                         ? "bg-blue-100 text-blue-700 shadow-sm"
                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                      }`}
+                    }`}
                   >
                     Partial hours
                   </button>
@@ -1193,10 +1225,11 @@ export default function AvailabilityManagement() {
                       onChange={(e) =>
                         handleBlackoutFormChange("start_time", e.target.value)
                       }
-                      className={`h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none transition-all focus:ring-2 ${blackoutErrors.start_time
+                      className={`h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none transition-all focus:ring-2 ${
+                        blackoutErrors.start_time
                           ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                           : "border-gray-200 focus:border-secondary focus:ring-secondary/10"
-                        }`}
+                      }`}
                     />
 
                     {blackoutErrors.start_time && (
@@ -1217,10 +1250,11 @@ export default function AvailabilityManagement() {
                       onChange={(e) =>
                         handleBlackoutFormChange("end_time", e.target.value)
                       }
-                      className={`h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none transition-all focus:ring-2 ${blackoutErrors.end_time
+                      className={`h-10 w-full rounded-xl border bg-white px-3 text-sm outline-none transition-all focus:ring-2 ${
+                        blackoutErrors.end_time
                           ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
                           : "border-gray-200 focus:border-secondary focus:ring-secondary/10"
-                        }`}
+                      }`}
                     />
 
                     {blackoutErrors.end_time && (
@@ -1234,8 +1268,9 @@ export default function AvailabilityManagement() {
 
               {/* Submit */}
               <div
-                className={`flex items-end gap-2 ${blackoutForm.is_full_day ? "lg:col-span-5" : "lg:col-span-6"
-                  }`}
+                className={`flex items-end gap-2 ${
+                  blackoutForm.is_full_day ? "lg:col-span-5" : "lg:col-span-6"
+                }`}
               >
                 <button
                   type="submit"
@@ -1328,22 +1363,25 @@ export default function AvailabilityManagement() {
                 {blackouts.map((b) => (
                   <div
                     key={b.id}
-                    className={`group rounded-xl border bg-white transition-all ${editingBlackoutId === b.id
+                    className={`group rounded-xl border bg-white transition-all ${
+                      editingBlackoutId === b.id
                         ? "border-blue-200 bg-blue-50/30 shadow-sm"
                         : "border-gray-200 hover:border-amber-200 hover:shadow-sm"
-                      }`}
+                    }`}
                   >
                     <div className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between">
                       {/* Left */}
                       <div className="flex min-w-0 items-center gap-3">
                         {/* Icon */}
                         <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${b.is_full_day ? "bg-amber-50" : "bg-blue-50"
-                            }`}
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                            b.is_full_day ? "bg-amber-50" : "bg-blue-50"
+                          }`}
                         >
                           <CalendarOff
-                            className={`h-4.5 w-4.5 ${b.is_full_day ? "text-secondary" : "text-blue-600"
-                              }`}
+                            className={`h-4.5 w-4.5 ${
+                              b.is_full_day ? "text-secondary" : "text-blue-600"
+                            }`}
                           />
                         </div>
 
@@ -1355,10 +1393,11 @@ export default function AvailabilityManagement() {
                             </p>
 
                             <span
-                              className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${b.is_full_day
+                              className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                b.is_full_day
                                   ? "bg-amber-50 text-secondary"
                                   : "bg-blue-50 text-blue-700"
-                                }`}
+                              }`}
                             >
                               {b.is_full_day ? "Full day" : "Partial"}
                             </span>
@@ -1375,8 +1414,8 @@ export default function AvailabilityManagement() {
                               {b.is_full_day
                                 ? "Unavailable all day"
                                 : `${formatTime(
-                                  b.start_time || "",
-                                )} – ${formatTime(b.end_time || "")}`}
+                                    b.start_time || "",
+                                  )} – ${formatTime(b.end_time || "")}`}
                             </span>
                           </div>
                         </div>

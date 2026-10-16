@@ -76,7 +76,7 @@ function resolveAdImageUrl(path?: string | null): string {
 }
 
 // ----------------------------------------------------------------------
-// Recommended ad image spec
+// Recommended ad image spec — now REQUIRED
 // ----------------------------------------------------------------------
 const AD_IMAGE_SPEC = {
   width: 1200,
@@ -88,10 +88,10 @@ const AD_IMAGE_SPEC = {
 } as const;
 
 // ----------------------------------------------------------------------
-// Image dimension checker
+// Image dimension checker — now strict
 // ----------------------------------------------------------------------
 const TARGET_ASPECT = AD_IMAGE_SPEC.width / AD_IMAGE_SPEC.height; // 3.0
-const ASPECT_TOLERANCE = 0.15; // ±15% → 2.55 : 3.45
+const ASPECT_TOLERANCE = 0.05; // ±5% → 2.85 : 3.15 — strict requirement
 
 interface ImageDimensionCheck {
   ok: boolean;
@@ -127,8 +127,8 @@ async function checkImageDimensions(
         width: w,
         height: h,
         aspect,
-        severity: "warning",
-        reason: `Your image is ${w}×${h} px and looks ${direction} than the recommended ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px. It will still display, but with empty space around it.`,
+        severity: "error",
+        reason: `Your image is ${w}×${h} px and is ${direction} than the required ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px (${AD_IMAGE_SPEC.ratio}). Please resize your image to exactly ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px before uploading.`,
       });
     };
 
@@ -402,71 +402,82 @@ const StatCard: React.FC<{
 // Image Spec Info Panel
 // ----------------------------------------------------------------------
 const ImageSpecInfo: React.FC = () => (
-  <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-4">
+  <div className="rounded-2xl border border-secondary/15 bg-gradient-to-br from-secondary/[0.04] via-white to-secondary/[0.02] p-4 sm:p-5">
+    {/* Header */}
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10">
-        <ImageIcon className="h-4 w-4 text-secondary" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/20">
+        <ImageIcon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-gray-900">
-          Recommended image specifications
-        </p>
-        <p className="mt-0.5 text-xs text-gray-500">
-          Following these ensures your ad looks clear and sharp on all screens.
-        </p>
-
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <Ruler className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Dimensions
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <FileImage className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Ratio & Format
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 border border-gray-100">
-            <HardDrive className="h-3.5 w-3.5 shrink-0 text-secondary" />
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                Max File Size
-              </p>
-              <p className="text-xs font-semibold text-gray-800">
-                {AD_IMAGE_SPEC.maxSizeMB} MB
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-3 flex items-start gap-1.5 text-[11px] text-gray-500">
-          <Info className="mt-0.5 h-3 w-3 shrink-0" />
-          <span>
-            Keep text and logos in the <strong>center area</strong> of the image
-            for best results on all screen sizes.
-          </span>
+        <h3 className="text-sm font-bold text-gray-900 sm:text-base">
+          Required image specifications
+        </h3>
+        <p className="mt-0.5 text-xs text-gray-500 sm:text-[13px]">
+          Your ad image must match these specifications exactly to be uploaded.
         </p>
       </div>
     </div>
+
+    {/* Spec grid */}
+    <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+      {/* Dimensions */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <Ruler className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Dimensions
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+          </p>
+        </div>
+      </div>
+
+      {/* Ratio & Format */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <FileImage className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Ratio & Format
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
+          </p>
+        </div>
+      </div>
+
+      {/* Max File Size */}
+      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+          <HardDrive className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+            Max File Size
+          </p>
+          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+            {AD_IMAGE_SPEC.maxSizeMB} MB
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Optional tip — uncomment if needed */}
+    {/* <div className="mt-4 flex items-start gap-2 rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3 py-2.5">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
+      <p className="text-[11px] leading-relaxed text-gray-600 sm:text-xs">
+        Keep text and logos in the <strong className="text-gray-900">center area</strong> of the image for best results on all screen sizes.
+      </p>
+    </div> */}
   </div>
 );
 
 // ----------------------------------------------------------------------
-// Image Uploader — with dimension validation & feedback
+// Image Uploader — with strict dimension validation
 // ----------------------------------------------------------------------
 const ImageUploader: React.FC<{
   onFileChange: (file: File | null) => void;
@@ -514,8 +525,24 @@ const ImageUploader: React.FC<{
       setFileError(err);
       setDimCheck(null);
       setPendingFile(null);
+      setPreview(null);
+      onFileChange(null);
       return;
     }
+
+    // Check dimensions BEFORE showing preview or accepting the file
+    const check = await checkImageDimensions(file);
+    setDimCheck(check);
+
+    if (check.severity === "error" || !check.ok) {
+      setFileError(check.reason || "Invalid image dimensions.");
+      setPendingFile(null);
+      setPreview(null);
+      onFileChange(null);
+      return;
+    }
+
+    // Dimensions are OK — show preview and accept the file
     setFileError(null);
     setImageFailed(false);
 
@@ -523,17 +550,6 @@ const ImageUploader: React.FC<{
     reader.onloadend = () => setPreview(reader.result as string);
     reader.readAsDataURL(file);
 
-    const check = await checkImageDimensions(file);
-    setDimCheck(check);
-
-    if (check.severity === "error") {
-      // Don't send broken files to the parent
-      setFileError(check.reason || "Invalid image file.");
-      setPendingFile(null);
-      return;
-    }
-
-    // Accept the file (even if the ratio is a warning — user can still save)
     setPendingFile(file);
     onFileChange(file);
   };
@@ -569,7 +585,7 @@ const ImageUploader: React.FC<{
           Advertisement Image <span className="text-red-500">*</span>
         </label>
         <p className="mt-0.5 text-xs text-gray-500">
-          Recommended: {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px (
+          Required: {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px (
           {AD_IMAGE_SPEC.ratio}) · {AD_IMAGE_SPEC.formatLabel} · Max{" "}
           {AD_IMAGE_SPEC.maxSizeMB} MB
         </p>
@@ -620,7 +636,7 @@ const ImageUploader: React.FC<{
               >
                 <div className="flex h-full items-center justify-center">
                   <span className="text-[10px] font-medium text-secondary/60">
-                    Preview area · {AD_IMAGE_SPEC.ratio}
+                    Required area · {AD_IMAGE_SPEC.ratio}
                   </span>
                 </div>
               </div>
@@ -671,54 +687,18 @@ const ImageUploader: React.FC<{
         )}
       </div>
 
-      {/* Dimension feedback */}
-      {dimCheck && preview && pendingFile && (
-        <div
-          className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${
-            dimCheck.severity === "ok"
-              ? "border-emerald-200 bg-emerald-50"
-              : "border-amber-200 bg-amber-50"
-          }`}
-        >
-          {dimCheck.severity === "ok" ? (
-            <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-          ) : (
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-          )}
-
+      {/* Dimension feedback — now only shows success or error */}
+      {dimCheck && preview && pendingFile && dimCheck.ok && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3">
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="min-w-0 flex-1">
-            {dimCheck.severity === "ok" ? (
-              <>
-                <p className="text-xs font-semibold text-emerald-900">
-                  Perfect size · {dimCheck.width} × {dimCheck.height} px
-                </p>
-                <p className="mt-0.5 text-[11px] text-emerald-700">
-                  Matches the recommended {AD_IMAGE_SPEC.ratio} aspect ratio.
-                  Displays edge-to-edge on all screens.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs font-semibold text-amber-900">
-                  Size mismatch · {dimCheck.width} × {dimCheck.height} px
-                  {dimCheck.aspect > 0 && (
-                    <span className="ml-1.5 font-normal text-amber-700">
-                      (aspect {dimCheck.aspect.toFixed(2)}:1)
-                    </span>
-                  )}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-5 text-amber-800">
-                  {dimCheck.reason}
-                </p>
-                <p className="mt-1.5 text-[11px] font-medium text-amber-900">
-                  💡 Resize your image to{" "}
-                  <span className="font-bold">
-                    {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
-                  </span>{" "}
-                  for the best result.
-                </p>
-              </>
-            )}
+            <p className="text-xs font-semibold text-emerald-900">
+              Perfect size · {dimCheck.width} × {dimCheck.height} px
+            </p>
+            <p className="mt-0.5 text-[11px] text-emerald-700">
+              Matches the required {AD_IMAGE_SPEC.ratio} aspect ratio. Displays
+              edge-to-edge on all screens.
+            </p>
           </div>
         </div>
       )}
@@ -747,8 +727,26 @@ const ImageUploader: React.FC<{
         </div>
       )}
 
+      {/* Error message — this is now critical */}
       {(fileError || error) && (
-        <p className="text-xs text-red-500">{fileError || error}</p>
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-red-900">
+              Image upload blocked
+            </p>
+            <p className="mt-0.5 text-[11px] leading-5 text-red-800">
+              {fileError || error}
+            </p>
+            <p className="mt-1.5 text-[11px] font-medium text-red-900">
+              💡 Please resize your image to{" "}
+              <span className="font-bold">
+                {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+              </span>{" "}
+              before uploading.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -989,7 +987,7 @@ const FormModal: React.FC<{
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
+          className="fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
         >
           <form onSubmit={onSubmit}>
             <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">
@@ -1417,7 +1415,7 @@ export default function AdManagement() {
     const errors: { title?: string; image?: string } = {};
     if (!title.trim()) errors.title = "Advertisement title is required";
     if (!editingId && !imageFile)
-      errors.image = "Please select an image for new Advertisement";
+      errors.image = "Please select a valid image for the new Advertisement. Required size: 1200×400 px (3:1).";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [title, editingId, imageFile]);

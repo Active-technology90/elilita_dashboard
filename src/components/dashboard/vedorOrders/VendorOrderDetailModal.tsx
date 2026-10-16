@@ -1,5 +1,11 @@
 // VendorOrderDetailModal.tsx - Complete rewrite with View on Map
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -45,6 +51,7 @@ import { ConfirmationModal } from "../../ui/confimationModal";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
+import { CustomSelect } from "../../ui/CustomSelect";
 
 // ---------- Animation Variants ----------
 const containerVariants = {
@@ -331,7 +338,12 @@ const getStatusBadge = (status: string) => {
     return base + "bg-amber-50 text-amber-700 border-amber-200";
   if (s === "declined")
     return base + "bg-rose-50 text-rose-700 border-rose-200";
-  if (s === "rejected" || s === "cancelled" || s === "failed" || s === "refunded")
+  if (
+    s === "rejected" ||
+    s === "cancelled" ||
+    s === "failed" ||
+    s === "refunded"
+  )
     return base + "bg-rose-50 text-rose-700 border-rose-200";
   return base + "bg-gray-50 text-gray-600 border-gray-200";
 };
@@ -424,7 +436,6 @@ const CopyButton = ({ text }: { text?: string | null }) => {
   );
 };
 
-
 /* ─── Filter Type Card (Delivery Person Type option) ─── */
 // ─── DELIVERY CARD WITH VIEW ON MAP ──────────────────────────────
 
@@ -480,10 +491,7 @@ const FilterDropdown = ({
     blue: "bg-blue-100 text-blue-700",
   } as const;
 
-  const renderIcon = (
-    opt: (typeof options)[number],
-    isSelected: boolean,
-  ) => {
+  const renderIcon = (opt: (typeof options)[number], isSelected: boolean) => {
     if (variant === "vehicle") {
       return (
         <span
@@ -692,7 +700,10 @@ const DeliveryCard = ({
   const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
   const routeCacheRef = useRef<
-    Map<string, { distanceKm: number; durationMinutes: number; timestamp: number }>
+    Map<
+      string,
+      { distanceKm: number; durationMinutes: number; timestamp: number }
+    >
   >(new Map());
   const routeRequestTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -709,7 +720,10 @@ const DeliveryCard = ({
     const handleClickOutside = (e: MouseEvent) => {
       // Skip on mobile — backdrop handles closing
       if (isMobile()) return;
-      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
+      if (
+        filtersRef.current &&
+        !filtersRef.current.contains(e.target as Node)
+      ) {
         setShowFilters(false);
       }
     };
@@ -763,7 +777,10 @@ const DeliveryCard = ({
   const getCustomerLocation = () => {
     const candidates = [
       {
-        value: parseCoordinatePair(delivery?.customer_lat, delivery?.customer_lon),
+        value: parseCoordinatePair(
+          delivery?.customer_lat,
+          delivery?.customer_lon,
+        ),
       },
       { value: parseCoordinatePair(order?.shipping_lat, order?.shipping_lon) },
       { value: parseCoordinatePair(order?.customer_lat, order?.customer_lon) },
@@ -1164,7 +1181,8 @@ const DeliveryCard = ({
     }
     if (vehicleTypeFilter !== "all") {
       filtered = filtered.filter(
-        (s) => s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase(),
+        (s) =>
+          s.vehicle_type?.toLowerCase() === vehicleTypeFilter.toLowerCase(),
       );
     }
     if (searchTerm.trim()) {
@@ -1359,7 +1377,8 @@ const DeliveryCard = ({
       setRatingMap(rMap);
       const uMap = new Map();
       mapped.forEach((staff: any) => {
-        if (staff.phone && staff.username) uMap.set(staff.phone, staff.username);
+        if (staff.phone && staff.username)
+          uMap.set(staff.phone, staff.username);
       });
       setUsernameMap(uMap);
     } catch {
@@ -1443,7 +1462,10 @@ const DeliveryCard = ({
     )
       return null;
     const first = filteredStaffList[0];
-    if (first && (first.live_lat != null || first.calculated_distance != null)) {
+    if (
+      first &&
+      (first.live_lat != null || first.calculated_distance != null)
+    ) {
       return first;
     }
     return null;
@@ -1459,7 +1481,9 @@ const DeliveryCard = ({
 
   // Stats for header
   const inHouseCount = staffWithDistance.filter((s) => s.is_in_house).length;
-  const thirdPartyCount = staffWithDistance.filter((s) => !s.is_in_house).length;
+  const thirdPartyCount = staffWithDistance.filter(
+    (s) => !s.is_in_house,
+  ).length;
 
   // Filter counts (based on unfiltered staff list)
   const allCount = staffWithDistance.length;
@@ -1585,7 +1609,7 @@ const DeliveryCard = ({
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
                               <span className="inline-flex items-center gap-1.5">
-                                <PhoneCall className="h-3.5 w-3.5 text-gray-400" />
+                                {/* <PhoneCall className="h-3.5 w-3.5 text-gray-400" /> */}
                                 <span className="font-medium">
                                   {delivery.delivery_person_phone || "No phone"}
                                 </span>
@@ -1593,7 +1617,9 @@ const DeliveryCard = ({
                                   text={delivery.delivery_person_phone}
                                 />
                               </span>
-                              {ratingMap.has(delivery.delivery_person_phone) && (
+                              {ratingMap.has(
+                                delivery.delivery_person_phone,
+                              ) && (
                                 <span className="inline-flex items-center gap-1.5 font-medium text-gray-600">
                                   {renderRating(
                                     ratingMap.get(
@@ -1637,7 +1663,7 @@ const DeliveryCard = ({
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
-                              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
+                              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2 text-xs font-semibold transition ${
                                 delivery?.status === "declined" ||
                                 delivery?.status === "expired"
                                   ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
@@ -1645,7 +1671,7 @@ const DeliveryCard = ({
                               }`}
                             >
                               <RefreshCw className="h-3.5 w-3.5" />
-                              Reassign delivery person
+                              Change
                             </button>
                           )}
                         </div>
@@ -1735,14 +1761,18 @@ const DeliveryCard = ({
                                 <span
                                   className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
                                 >
-                                  {s === "expired" ? "Expired (Timeout)" : att.status}
+                                  {s === "expired"
+                                    ? "Expired (Timeout)"
+                                    : att.status}
                                 </span>
                                 {att.assigned_at && (
                                   <span className="hidden text-[10px] text-gray-400 sm:inline">
-                                    {new Date(att.assigned_at).toLocaleTimeString(
-                                      [],
-                                      { hour: "2-digit", minute: "2-digit" },
-                                    )}
+                                    {new Date(
+                                      att.assigned_at,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
                                   </span>
                                 )}
                               </div>
@@ -1863,786 +1893,776 @@ const DeliveryCard = ({
             /* ═══════════════════════════════════════════════════════
                ASSIGNMENT VIEW — PREMIUM DISPATCH UI
                ═══════════════════════════════════════════════════════ */
-            <motion.div
-              key="driver-assignment"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              className="space-y-4"
-            >
-              {/* ═══ HEADER: title + subtitle + List/Map toggle ═══ */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
-                    <Truck className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h5 className="text-sm font-bold text-gray-950">
-                      {delivery?.delivery_person_name ||
-                      (delivery?.attempts && delivery.attempts.length > 0)
-                        ? "Reassign delivery person"
-                        : "Assign delivery person"}
-                    </h5>
-                    <p className="mt-0.5 text-[11px] text-gray-500">
-                      Choose the best available driver for this order
-                    </p>
-                  </div>
-                </div>
-
-                <div className="inline-flex self-start rounded-lg border border-gray-200 bg-gray-50 p-0.5 sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => setShowMapPreview(false)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      !showMapPreview
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-800"
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowMapPreview(true)}
-                    className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition ${
-                      showMapPreview
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-800"
-                    }`}
-                  >
-                    Map
-                  </button>
-                </div>
-              </div>
-
-              {showMapPreview ? (
-                /* ═══ MAP PREVIEW ═══ */
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                  <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
-                    <div>
-                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
-                        <MapPin className="h-5 w-5 text-secondary" />
-                      </div>
-                      <h6 className="mt-3 text-sm font-semibold text-gray-900">
-                        Delivery route map
-                      </h6>
-                      <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-                        Open the full map to review the order location, live
-                        delivery personnel and route context.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleViewOnMap}
-                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
-                      >
-                        <Navigation className="h-3.5 w-3.5" />
-                        Open full map
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* ═══ LIST VIEW ═══ */
-                <>
-                  {/* ─── TOOLBAR: search + Filters + sort icon ─── */}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    {/* Search */}
-                    <div className="relative min-w-0 flex-1">
-                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search drivers…"
-                        aria-label="Search delivery personnel"
-                        className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
-                      />
-                    </div>
-
-                    {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
-                    <div className="relative" ref={filtersRef}>
-                      <button
-                        type="button"
-                        onClick={() => setShowFilters((v) => !v)}
-                        aria-haspopup="dialog"
-                        aria-expanded={showFilters}
-                        className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
-                          activeFilterCount > 0
-                            ? "border-secondary bg-secondary/5 text-secondary"
-                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        <Filter className="h-3.5 w-3.5" />
-                        Filters
-                        {activeFilterCount > 0 && (
-                          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
-                            {activeFilterCount}
-                          </span>
-                        )}
-                      </button>
-
-                      <AnimatePresence>
-                        {showFilters && (
-                          <>
-                            {/* ── BACKDROP (mobile only) ── */}
-                            <motion.div
-                              key="filter-backdrop"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.15 }}
-                              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
-                              onClick={() => setShowFilters(false)}
-                              aria-hidden="true"
-                            />
-
-                            {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
-                            <motion.div
-                              key="filter-panel"
-                              initial={{ opacity: 0, y: 40, scale: 0.98 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 40, scale: 0.98 }}
-                              transition={{
-                                type: "spring",
-                                damping: 26,
-                                stiffness: 320,
-                              }}
-                              role="dialog"
-                              aria-modal="true"
-                              aria-label="Filter delivery personnel"
-                              className={[
-                                "z-50 flex flex-col overflow-hidden border border-gray-200 bg-white shadow-2xl",
-                                "fixed inset-x-0 bottom-0 max-h-[88vh] rounded-t-3xl",
-                                "sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-12",
-                                "sm:max-h-[80vh] sm:w-[420px] sm:max-w-[420px] sm:rounded-2xl",
-                              ].join(" ")}
-                              style={{
-                                paddingBottom: "env(safe-area-inset-bottom)",
-                              }}
-                            >
-                              {/* Drag handle (mobile only) */}
-                              <div className="flex justify-center pt-3 sm:hidden">
-                                <span
-                                  className="h-1 w-10 rounded-full bg-gray-300"
-                                  aria-hidden="true"
-                                />
-                              </div>
-
-                              {/* STICKY HEADER */}
-                            {/* HEADER */}
-<div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-2.5">
-  <div className="flex items-center gap-2">
-    <Filter className="h-3.5 w-3.5 text-secondary" />
-    <h3 className="text-xs font-bold text-gray-900">Filter drivers</h3>
-    <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
-      {filteredStaffList.length}
-    </span>
+           <motion.div
+  key="driver-assignment"
+  initial={{ opacity: 0, y: 4 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: -4 }}
+  className="space-y-4"
+>
+  {/* ═══ HEADER: title + subtitle ═══ */}
+  <div className="flex items-center gap-3">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
+      <Truck className="h-5 w-5" />
+    </div>
+    <div className="min-w-0">
+      <h5 className="text-sm font-bold text-gray-950">
+        {delivery?.delivery_person_name ||
+        (delivery?.attempts && delivery.attempts.length > 0)
+          ? "Reassign delivery person"
+          : "Assign delivery person"}
+      </h5>
+      <p className="mt-0.5 text-[11px] text-gray-500">
+        Choose the best available driver for this order
+      </p>
+    </div>
   </div>
-  <div className="flex flex-shrink-0 items-center gap-0.5">
-    {activeFilterCount > 0 && (
+
+  {showMapPreview ? (
+    /* ═══ MAP PREVIEW ═══ */
+    <>
+      {/* Row 1 (Map): just the toggle, aligned left */}
+      <div className="flex items-center">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(false)}
+            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(true)}
+            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+          >
+            Map
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+        <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
+          <div>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+              <MapPin className="h-5 w-5 text-secondary" />
+            </div>
+            <h6 className="mt-3 text-sm font-semibold text-gray-900">
+              Delivery route map
+            </h6>
+            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
+              Open the full map to review the order location, live delivery
+              personnel and route context.
+            </p>
+            <button
+              type="button"
+              onClick={handleViewOnMap}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              Open full map
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  ) : (
+    /* ═══ LIST VIEW ═══ */
+    <>
+      {/* ═══ ROW 1: List/Map toggle (left) + Sort (right) ═══ */}
+      <div className="flex items-center justify-between gap-2">
+        {/* List / Map toggle */}
+        <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(false)}
+            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMapPreview(true)}
+            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+          >
+            Map
+          </button>
+        </div>
+
+        {/* Sort dropdown */}
+        <div className="relative z-30 min-w-0 flex-shrink-0 sm:min-w-[180px]">
+          <CustomSelect
+            value={`${sortBy}|${sortOrder}`}
+            onChange={(value: string) => {
+              const [field, order] = value.split("|");
+              setSortBy(field as "distance" | "rating" | "name");
+              setSortOrder(order as "asc" | "desc");
+            }}
+            ariaLabel="Sort"
+            options={[
+              { value: "distance|asc", label: "Distance · Nearest" },
+              { value: "distance|desc", label: "Distance · Farthest" },
+              { value: "rating|desc", label: "Rating · Highest" },
+              { value: "name|asc", label: "Name · A → Z" },
+              { value: "name|desc", label: "Name · Z → A" },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* ═══ ROW 2: Search (left) + Filters button (right) ═══ */}
+      <div className="flex items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search drivers…"
+            aria-label="Search delivery personnel"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
+          />
+        </div>
+
+        {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
+        <div className="relative shrink-0" ref={filtersRef}>
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-haspopup="dialog"
+            aria-expanded={showFilters}
+            className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
+              activeFilterCount > 0
+                ? "border-secondary bg-secondary/5 text-secondary"
+                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showFilters && (
+              <>
+                {/* ── BACKDROP (mobile only) ── */}
+                <motion.div
+                  key="filter-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
+                  onClick={() => setShowFilters(false)}
+                  aria-hidden="true"
+                />
+
+                {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
+               
+<motion.div
+  key="filter-panel"
+  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+  animate={{ opacity: 1, y: 0, scale: 1 }}
+  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+  transition={{ duration: 0.16, ease: "easeOut" }}
+  role="dialog"
+  aria-modal="true"
+  aria-label="Filter delivery personnel"
+  className={[
+    // Base
+    "z-50 flex flex-col overflow-hidden",
+    "border border-gray-200/90 bg-white",
+    "shadow-xl shadow-gray-900/10",
+
+    // Mobile: compact bottom sheet
+    "fixed inset-x-0 bottom-0",
+    "max-h-[min(55vh,420px)] rounded-t-2xl",
+
+    // Desktop: compact anchored popover
+    "sm:absolute sm:inset-x-auto sm:bottom-auto",
+    "sm:right-0 sm:top-12",
+    "sm:max-h-[min(70vh,420px)]",
+    "sm:w-[300px] sm:max-w-[calc(100vw-24px)]",
+    "sm:rounded-xl",
+  ].join(" ")}
+  style={{
+    paddingBottom: "env(safe-area-inset-bottom)",
+  }}
+>
+  {/* Mobile drag handle */}
+  <div className="flex shrink-0 justify-center pt-2 sm:hidden">
+    <span
+      className="h-1 w-8 rounded-full bg-gray-300"
+      aria-hidden="true"
+    />
+  </div>
+
+  {/* Compact header */}
+  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3.5 py-2.5">
+    <div className="flex min-w-0 items-center gap-2">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+        <Filter className="h-3.5 w-3.5" />
+      </div>
+
+      <div className="min-w-0">
+        <h3 className="text-xs font-bold text-gray-900">
+          Filter drivers
+        </h3>
+        <p className="text-[10px] text-gray-500">
+          Refine available drivers
+        </p>
+      </div>
+
+      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold text-gray-600">
+        {filteredStaffList.length}
+      </span>
+    </div>
+
+    <div className="flex shrink-0 items-center gap-1">
+      {activeFilterCount > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setFilterType("all");
+            setVehicleTypeFilter("all");
+            setSelectedUserId("");
+          }}
+          className="rounded-md px-2 py-1.5 text-[10px] font-semibold text-secondary hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+        >
+          Clear all
+        </button>
+      )}
+
       <button
         type="button"
+        onClick={() => setShowFilters(false)}
+        aria-label="Close filters"
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  </div>
+
+  {/* Compact scrollable filters */}
+  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 py-3">
+    <section>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        Delivery person
+      </label>
+
+      <FilterDropdown
+        variant="type"
+        value={filterType}
+        onChange={(v) => {
+          setFilterType(
+            v as "all" | "in_house" | "third_party",
+          );
+          setSelectedUserId("");
+        }}
+        ariaLabel="Delivery person type"
+        options={[
+          {
+            value: "all",
+            label: "All drivers",
+            description: "Every available driver",
+            count: allCount,
+            accent: "secondary",
+            icon: <Users className="h-3 w-3" />,
+          },
+          {
+            value: "in_house",
+            label: "In-house",
+            description: "Your company drivers",
+            count: inHouseFilterCount,
+            accent: "emerald",
+            icon: <Truck className="h-3 w-3" />,
+          },
+          {
+            value: "third_party",
+            label: "3PL Partners",
+            description: "Third-party logistics",
+            count: thirdPartyFilterCount,
+            accent: "blue",
+            icon: <Building2 className="h-3 w-3" />,
+          },
+        ]}
+      />
+    </section>
+
+    <section>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        Vehicle type
+      </label>
+
+      <FilterDropdown
+        variant="vehicle"
+        value={vehicleTypeFilter}
+        onChange={(v) => {
+          setVehicleTypeFilter(
+            v as
+              | "all"
+              | "motorcycle"
+              | "car"
+              | "bicycle"
+              | "van"
+              | "foot",
+          );
+          setSelectedUserId("");
+        }}
+        ariaLabel="Vehicle type"
+        options={[
+          {
+            value: "all",
+            emoji: "🚚",
+            label: "All vehicles",
+            count: vehicleCounts.all,
+          },
+          {
+            value: "motorcycle",
+            emoji: "🏍️",
+            label: "Motorcycle",
+            count: vehicleCounts.motorcycle,
+          },
+          {
+            value: "car",
+            emoji: "🚗",
+            label: "Car",
+            count: vehicleCounts.car,
+          },
+          {
+            value: "bicycle",
+            emoji: "🚲",
+            label: "Bicycle",
+            count: vehicleCounts.bicycle,
+          },
+          {
+            value: "van",
+            emoji: "🚐",
+            label: "Van",
+            count: vehicleCounts.van,
+          },
+          {
+            value: "foot",
+            emoji: "🚶",
+            label: "On Foot",
+            count: vehicleCounts.foot,
+          },
+        ]}
+      />
+    </section>
+  </div>
+
+  {/* Compact sticky footer */}
+  <div className="shrink-0 border-t border-gray-100 bg-white px-3.5 py-2.5">
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={activeFilterCount === 0}
         onClick={() => {
           setFilterType("all");
           setVehicleTypeFilter("all");
           setSelectedUserId("");
         }}
-        className="rounded-md px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary/10"
+        className="h-9 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
       >
-        Clear
+        Reset
       </button>
-    )}
-    <button
-      type="button"
-      onClick={() => setShowFilters(false)}
-      aria-label="Close filters"
-      className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-    >
-      <X className="h-3.5 w-3.5" />
-    </button>
-  </div>
-</div>
 
-                              {/* SCROLLABLE BODY */}
-                            {/* SCROLLABLE BODY */}
-<div className="flex-1 overflow-y-auto px-4 py-3">
-  {/* ═══ Delivery Person Type ═══ */}
-  <div className="mb-2.5">
-    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-      Delivery Person Type
-    </label>
-
-    <FilterDropdown
-      variant="type"
-      value={filterType}
-      onChange={(v) => {
-        setFilterType(v as "all" | "in_house" | "third_party");
-        setSelectedUserId("");
-      }}
-      ariaLabel="Delivery person type"
-      options={[
-        {
-          value: "all",
-          label: "All drivers",
-          description: "Every available driver",
-          count: allCount,
-          accent: "secondary",
-          icon: <Users className="h-3 w-3" />,
-        },
-        {
-          value: "in_house",
-          label: "In-house",
-          description: "Your company drivers",
-          count: inHouseFilterCount,
-          accent: "emerald",
-          icon: <Truck className="h-3 w-3" />,
-        },
-        {
-          value: "third_party",
-          label: "3PL Partners",
-          description: "Third-party logistics",
-          count: thirdPartyFilterCount,
-          accent: "blue",
-          icon: <Building2 className="h-3 w-3" />,
-        },
-      ]}
-    />
+      <button
+        type="button"
+        onClick={() => setShowFilters(false)}
+        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
+      >
+        Show {filteredStaffList.length}{" "}
+        {filteredStaffList.length === 1 ? "driver" : "drivers"}
+        <Check className="h-3.5 w-3.5 shrink-0" />
+      </button>
+    </div>
   </div>
+</motion.div>
 
-  {/* ═══ Vehicle Type ═══ */}
-  <div>
-    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-      Vehicle Type
-    </label>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
 
-    <FilterDropdown
-      variant="vehicle"
-      value={vehicleTypeFilter}
-      onChange={(v) => {
-        setVehicleTypeFilter(
-          v as "all" | "motorcycle" | "car" | "bicycle" | "van" | "foot",
-        );
-        setSelectedUserId("");
-      }}
-      ariaLabel="Vehicle type"
-      options={[
-        {
-          value: "all",
-          emoji: "🚚",
-          label: "All vehicles",
-          count: vehicleCounts.all,
-        },
-        {
-          value: "motorcycle",
-          emoji: "🏍️",
-          label: "Motorcycle",
-          count: vehicleCounts.motorcycle,
-        },
-        {
-          value: "car",
-          emoji: "🚗",
-          label: "Car",
-          count: vehicleCounts.car,
-        },
-        {
-          value: "bicycle",
-          emoji: "🚲",
-          label: "Bicycle",
-          count: vehicleCounts.bicycle,
-        },
-        {
-          value: "van",
-          emoji: "🚐",
-          label: "Van",
-          count: vehicleCounts.van,
-        },
-        {
-          value: "foot",
-          emoji: "🚶",
-          label: "On Foot",
-          count: vehicleCounts.foot,
-        },
-      ]}
-    />
-  </div>
-</div>
-                              {/* STICKY FOOTER */}
-                             {/* FOOTER */}
-<div className="border-t border-gray-100 bg-white px-4 py-2.5 sm:rounded-b-xl">
-  <div className="flex gap-2">
-    <button
-      type="button"
-      disabled={activeFilterCount === 0}
-      onClick={() => {
-        setFilterType("all");
-        setVehicleTypeFilter("all");
-        setSelectedUserId("");
-      }}
-      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-    >
-      Reset
-    </button>
-    <button
-      type="button"
-      onClick={() => setShowFilters(false)}
-      className="flex-1 rounded-lg bg-secondary px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light"
-    >
-      Show {filteredStaffList.length}{" "}
-      {filteredStaffList.length === 1 ? "driver" : "drivers"}
-    </button>
-  </div>
-</div>
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
+      {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
+      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+        <h6 className="text-sm font-bold text-gray-900">Available drivers</h6>
+        <p className="text-[11px] text-gray-500">
+          {inHouseCount} in-house · {thirdPartyCount} third-party
+        </p>
+      </div>
+
+      {/* ─── ACTIVE FILTER CHIPS ─── */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {filterType !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+              {filterType === "in_house" ? "In-house" : "3PL"}
+              <button
+                type="button"
+                onClick={() => setFilterType("all")}
+                aria-label="Remove type filter"
+                className="rounded-full p-0.5 transition hover:bg-secondary/15"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+          {vehicleTypeFilter !== "all" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+              <span>{getVehicleIcon(vehicleTypeFilter)}</span>
+              {getVehicleName(vehicleTypeFilter)}
+              <button
+                type="button"
+                onClick={() => setVehicleTypeFilter("all")}
+                aria-label="Remove vehicle filter"
+                className="rounded-full p-0.5 transition hover:bg-secondary/15"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ─── DRIVER LIST ─── */}
+      {loadingStaff ? (
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
+            <p className="mt-2 text-xs font-medium text-gray-500">
+              Loading drivers…
+            </p>
+          </div>
+        </div>
+      ) : filteredStaffList.length === 0 ? (
+        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
+          <div>
+            <Users className="mx-auto h-7 w-7 text-gray-300" />
+            <p className="mt-2 text-sm font-semibold text-gray-800">
+              No drivers found
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {searchTerm ||
+              filterType !== "all" ||
+              vehicleTypeFilter !== "all"
+                ? "Try changing the search or filters."
+                : "There are no available drivers right now."}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Driver list */}
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {paginatedStaffList.map((staff, index) => {
+              const isSelected = selectedUserId === staff.id;
+              const hasLocation = staff.calculated_distance != null;
+              const globalIndex = (currentPage - 1) * itemsPerPage + index;
+              const isNearest =
+                globalIndex === 0 &&
+                sortBy === "distance" &&
+                sortOrder === "asc" &&
+                hasLocation;
+              const routeInfo = routeData[staff.id];
+              const roadDistance = routeInfo?.distanceKm;
+              const roadDuration = routeInfo?.durationMinutes;
+              const isRouteLoading = routeInfo?.loading;
+              const isBestMatch = bestMatchDriver?.id === staff.id;
+
+              return (
+                <button
+                  key={staff.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(staff.id)}
+                  aria-pressed={isSelected}
+                  aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
+                  className={`group relative block w-full px-4 py-4 text-left transition ${
+                    isSelected
+                      ? "bg-secondary/[0.04]"
+                      : "bg-white hover:bg-gray-50/70"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Avatar tile */}
+                    <div
+                      className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
+                        isSelected
+                          ? "border-secondary/30 bg-secondary/10 text-secondary"
+                          : "border-gray-200 bg-gray-50 text-gray-600"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {getInitials(staff.name)}
                     </div>
 
-                    {/* Sort button (icon-style dropdown) */}
-                    <div className="relative flex-shrink-0">
-                      <select
-                        value={`${sortBy}|${sortOrder}`}
-                        onChange={(e) => {
-                          const [field, order] = e.target.value.split("|");
-                          setSortBy(field as any);
-                          setSortOrder(order as "asc" | "desc");
-                        }}
-                        aria-label="Sort"
-                        className="h-10 appearance-none rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs font-semibold text-gray-700 outline-none transition hover:border-gray-300 focus:border-secondary/50"
-                        style={{ paddingLeft: "2.25rem" }}
-                      >
-                        <option value="distance|asc">Distance · Nearest</option>
-                        <option value="distance|desc">Distance · Farthest</option>
-                        <option value="rating|desc">Rating · Highest</option>
-                        <option value="rating|asc">Rating · Lowest</option>
-                        <option value="name|asc">Name · A → Z</option>
-                        <option value="name|desc">Name · Z → A</option>
-                      </select>
+                    {/* Center: name + meta */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <p className="truncate text-sm font-bold text-gray-900">
+                          {staff.name}
+                        </p>
+                        {(isBestMatch || isNearest) && (
+                          <span
+                            title="Closest available match"
+                            className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                          >
+                            Best match
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                        <span className="font-medium">
+                          {staff.is_in_house
+                            ? "In-house"
+                            : staff.company_name || "3PL partner"}
+                        </span>
+                        <span className="text-gray-300" aria-hidden="true">
+                          ·
+                        </span>
+                        <span>{getVehicleName(staff.vehicle_type)}</span>
+                      </div>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                        {staff.location_source === "live" && (
+                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                            Live
+                          </span>
+                        )}
+                        {staff.is_at_vendor ? (
+                          <span className="font-semibold text-amber-700">
+                            🏬 At Store
+                          </span>
+                        ) : staff.is_en_route ? (
+                          <span className="font-semibold text-indigo-700">
+                            🚗 En Route
+                          </span>
+                        ) : staff.active_orders_count === 0 ? (
+                          <span className="font-semibold text-emerald-700">
+                            ● Available
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-gray-500">
+                            {staff.active_orders_count} active
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: rating + distance + radio */}
+                    <div className="flex flex-shrink-0 items-center gap-3 self-center">
+                      <div className="hidden text-right sm:block">
+                        {staff.average_rating &&
+                        staff.average_rating !== "0.00" ? (
+                          <p className="text-xs font-bold text-gray-800">
+                            ⭐ {parseFloat(staff.average_rating).toFixed(1)}
+                            {staff.total_reviews && (
+                              <span className="ml-1 text-[10px] font-medium text-gray-400">
+                                ({staff.total_reviews})
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-xs font-medium text-gray-400">
+                            No reviews
+                          </p>
+                        )}
+
+                        <div className="mt-1 text-[10px] text-gray-500">
+                          {isRouteLoading ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Calculating…
+                            </span>
+                          ) : roadDistance != null ? (
+                            <span>
+                              {formatDistance(roadDistance)}
+                              {roadDuration != null && (
+                                <> · {formatDuration(roadDuration)}</>
+                              )}
+                            </span>
+                          ) : hasLocation ? (
+                            <span>
+                              ~{formatDistance(staff.calculated_distance)}
+                            </span>
+                          ) : (
+                            <span>Distance unavailable</span>
+                          )}
+                        </div>
+                      </div>
+
                       <span
                         aria-hidden="true"
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
+                          isSelected
+                            ? "border-secondary bg-secondary text-white"
+                            : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
+                        }`}
                       >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="4" y1="6" x2="20" y2="6" />
-                          <line x1="4" y1="12" x2="14" y2="12" />
-                          <line x1="4" y1="18" x2="8" y2="18" />
-                        </svg>
+                        <Check className="h-3.5 w-3.5" />
                       </span>
                     </div>
                   </div>
 
-                  {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
-                    <h6 className="text-sm font-bold text-gray-900">
-                      Available drivers
-                    </h6>
-                    <p className="text-[11px] text-gray-500">
-                      {inHouseCount} in-house · {thirdPartyCount} third-party
-                    </p>
+                  {/* Mobile rating / distance line */}
+                  <div className="mt-2 flex items-center justify-between sm:hidden">
+                    <span className="text-[10px] text-gray-500">
+                      {staff.average_rating &&
+                      staff.average_rating !== "0.00"
+                        ? `⭐ ${parseFloat(staff.average_rating).toFixed(1)} (${staff.total_reviews})`
+                        : "No reviews"}
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      {isRouteLoading
+                        ? "Calculating…"
+                        : roadDistance != null
+                          ? formatDistance(roadDistance)
+                          : hasLocation
+                            ? `~${formatDistance(staff.calculated_distance)}`
+                            : "Distance unavailable"}
+                    </span>
                   </div>
+                </button>
+              );
+            })}
+          </div>
 
-                  {/* ─── ACTIVE FILTER CHIPS ─── */}
-                  {activeFilterCount > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {filterType !== "all" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-                          {filterType === "in_house" ? "In-house" : "3PL"}
-                          <button
-                            type="button"
-                            onClick={() => setFilterType("all")}
-                            aria-label="Remove type filter"
-                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
-                      )}
-                      {vehicleTypeFilter !== "all" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-                          <span>{getVehicleIcon(vehicleTypeFilter)}</span>
-                          {getVehicleName(vehicleTypeFilter)}
-                          <button
-                            type="button"
-                            onClick={() => setVehicleTypeFilter("all")}
-                            aria-label="Remove vehicle filter"
-                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] font-medium text-gray-400">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
+                    pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setCurrentPage(pageNum)}
+                      aria-current={currentPage === pageNum ? "page" : undefined}
+                      className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
+                        currentPage === pageNum
+                          ? "bg-secondary text-white"
+                          : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
-                  {/* ─── DRIVER LIST ─── */}
-                  {loadingStaff ? (
-                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
-                      <div className="text-center">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
-                        <p className="mt-2 text-xs font-medium text-gray-500">
-                          Loading drivers…
-                        </p>
-                      </div>
-                    </div>
-                  ) : filteredStaffList.length === 0 ? (
-                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
-                      <div>
-                        <Users className="mx-auto h-7 w-7 text-gray-300" />
-                        <p className="mt-2 text-sm font-semibold text-gray-800">
-                          No drivers found
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          {searchTerm ||
-                          filterType !== "all" ||
-                          vehicleTypeFilter !== "all"
-                            ? "Try changing the search or filters."
-                            : "There are no available drivers right now."}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Driver list */}
-                      <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-                        {paginatedStaffList.map((staff, index) => {
-                          const isSelected = selectedUserId === staff.id;
-                          const hasLocation =
-                            staff.calculated_distance != null;
-                          const globalIndex =
-                            (currentPage - 1) * itemsPerPage + index;
-                          const isNearest =
-                            globalIndex === 0 &&
-                            sortBy === "distance" &&
-                            sortOrder === "asc" &&
-                            hasLocation;
-                          const routeInfo = routeData[staff.id];
-                          const roadDistance = routeInfo?.distanceKm;
-                          const roadDuration = routeInfo?.durationMinutes;
-                          const isRouteLoading = routeInfo?.loading;
-                          const isBestMatch = bestMatchDriver?.id === staff.id;
+      {/* ═══ STICKY ACTION BAR ═══ */}
+      <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            {selectedDriver ? (
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
+                >
+                  <Check className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-gray-900">
+                    {selectedDriver.name} selected
+                  </p>
+                  <p className="truncate text-[10px] text-gray-500">
+                    {selectedDriver.is_in_house
+                      ? "In-house"
+                      : selectedDriver.company_name || "3PL partner"}
+                    {selectedDriver.vehicle_type &&
+                      ` · ${getVehicleName(selectedDriver.vehicle_type)}`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-gray-400">
+                Select a driver to continue.
+              </p>
+            )}
+          </div>
 
-                          return (
-                            <button
-                              key={staff.id}
-                              type="button"
-                              onClick={() => setSelectedUserId(staff.id)}
-                              aria-pressed={isSelected}
-                              aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
-                              className={`group relative block w-full px-4 py-4 text-left transition ${
-                                isSelected
-                                  ? "bg-secondary/[0.04]"
-                                  : "bg-white hover:bg-gray-50/70"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                {/* Avatar tile */}
-                                <div
-                                  className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
-                                    isSelected
-                                      ? "border-secondary/30 bg-secondary/10 text-secondary"
-                                      : "border-gray-200 bg-gray-50 text-gray-600"
-                                  }`}
-                                  aria-hidden="true"
-                                >
-                                  {getInitials(staff.name)}
-                                </div>
-
-                                {/* Center: name + meta */}
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                                    <p className="truncate text-sm font-bold text-gray-900">
-                                      {staff.name}
-                                    </p>
-                                    {(isBestMatch || isNearest) && (
-                                      <span
-                                        title="Closest available match"
-                                        className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-                                      >
-                                        Best match
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-                                    <span className="font-medium">
-                                      {staff.is_in_house
-                                        ? "In-house"
-                                        : staff.company_name || "3PL partner"}
-                                    </span>
-                                    <span
-                                      className="text-gray-300"
-                                      aria-hidden="true"
-                                    >
-                                      ·
-                                    </span>
-                                    <span>
-                                      {getVehicleName(staff.vehicle_type)}
-                                    </span>
-                                  </div>
-
-                                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                                    {staff.location_source === "live" && (
-                                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                                        Live
-                                      </span>
-                                    )}
-                                    {staff.is_at_vendor ? (
-                                      <span className="font-semibold text-amber-700">
-                                        🏬 At Store
-                                      </span>
-                                    ) : staff.is_en_route ? (
-                                      <span className="font-semibold text-indigo-700">
-                                        🚗 En Route
-                                      </span>
-                                    ) : staff.active_orders_count === 0 ? (
-                                      <span className="font-semibold text-emerald-700">
-                                        ● Available
-                                      </span>
-                                    ) : (
-                                      <span className="font-semibold text-gray-500">
-                                        {staff.active_orders_count} active
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Right: rating + distance + radio */}
-                                <div className="flex flex-shrink-0 items-center gap-3 self-center">
-                                  <div className="hidden text-right sm:block">
-                                    {staff.average_rating &&
-                                    staff.average_rating !== "0.00" ? (
-                                      <p className="text-xs font-bold text-gray-800">
-                                        ⭐{" "}
-                                        {parseFloat(
-                                          staff.average_rating,
-                                        ).toFixed(1)}
-                                        {staff.total_reviews && (
-                                          <span className="ml-1 text-[10px] font-medium text-gray-400">
-                                            ({staff.total_reviews})
-                                          </span>
-                                        )}
-                                      </p>
-                                    ) : (
-                                      <p className="text-xs font-medium text-gray-400">
-                                        No reviews
-                                      </p>
-                                    )}
-
-                                    <div className="mt-1 text-[10px] text-gray-500">
-                                      {isRouteLoading ? (
-                                        <span className="inline-flex items-center gap-1">
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                          Calculating…
-                                        </span>
-                                      ) : roadDistance != null ? (
-                                        <span>
-                                          {formatDistance(roadDistance)}
-                                          {roadDuration != null && (
-                                            <>
-                                              {" · "}
-                                              {formatDuration(roadDuration)}
-                                            </>
-                                          )}
-                                        </span>
-                                      ) : hasLocation ? (
-                                        <span>
-                                          ~
-                                          {formatDistance(
-                                            staff.calculated_distance,
-                                          )}
-                                        </span>
-                                      ) : (
-                                        <span>Distance unavailable</span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <span
-                                    aria-hidden="true"
-                                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
-                                      isSelected
-                                        ? "border-secondary bg-secondary text-white"
-                                        : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
-                                    }`}
-                                  >
-                                    <Check className="h-3.5 w-3.5" />
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Mobile rating / distance line */}
-                              <div className="mt-2 flex items-center justify-between sm:hidden">
-                                <span className="text-[10px] text-gray-500">
-                                  {staff.average_rating &&
-                                  staff.average_rating !== "0.00"
-                                    ? `⭐ ${parseFloat(
-                                        staff.average_rating,
-                                      ).toFixed(1)} (${staff.total_reviews})`
-                                    : "No reviews"}
-                                </span>
-                                <span className="text-[10px] text-gray-500">
-                                  {isRouteLoading
-                                    ? "Calculating…"
-                                    : roadDistance != null
-                                      ? formatDistance(roadDistance)
-                                      : hasLocation
-                                        ? `~${formatDistance(
-                                            staff.calculated_distance,
-                                          )}`
-                                        : "Distance unavailable"}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Pagination */}
-                      {totalPages > 1 && (
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-[10px] font-medium text-gray-400">
-                            Page {currentPage} of {totalPages}
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentPage((prev) => Math.max(1, prev - 1))
-                              }
-                              disabled={currentPage === 1}
-                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Previous
-                            </button>
-                            {Array.from(
-                              { length: Math.min(5, totalPages) },
-                              (_, i) => {
-                                let pageNum;
-                                if (totalPages <= 5) pageNum = i + 1;
-                                else if (currentPage <= 3) pageNum = i + 1;
-                                else if (currentPage >= totalPages - 2)
-                                  pageNum = totalPages - 4 + i;
-                                else pageNum = currentPage - 2 + i;
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    type="button"
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    aria-current={
-                                      currentPage === pageNum
-                                        ? "page"
-                                        : undefined
-                                    }
-                                    className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
-                                      currentPage === pageNum
-                                        ? "bg-secondary text-white"
-                                        : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                                    }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              },
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentPage((prev) =>
-                                  Math.min(totalPages, prev + 1),
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ═══ STICKY ACTION BAR ═══ */}
-                  <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        {selectedDriver ? (
-                          <div className="flex items-center gap-3">
-                            <span
-                              aria-hidden="true"
-                              className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
-                            >
-                              <Check className="h-4 w-4" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-bold text-gray-900">
-                                {selectedDriver.name} selected
-                              </p>
-                              <p className="truncate text-[10px] text-gray-500">
-                                {selectedDriver.is_in_house
-                                  ? "In-house"
-                                  : selectedDriver.company_name ||
-                                    "3PL partner"}
-                                {selectedDriver.vehicle_type &&
-                                  ` · ${getVehicleName(
-                                    selectedDriver.vehicle_type,
-                                  )}`}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-[11px] text-gray-400">
-                            Select a driver to continue.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 sm:flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setShowAssignForm(false)}
-                          className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAssign}
-                          disabled={assigning || !selectedUserId}
-                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
-                        >
-                          {assigning ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Assigning…
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-3.5 w-3.5" />
-                              {delivery?.delivery_person_name ||
-                              (delivery?.attempts &&
-                                delivery.attempts.length > 0)
-                                ? "Reassign driver"
-                                : "Assign driver"}
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+          <div className="flex gap-2 sm:flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAssignForm(false)}
+              className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAssign}
+              disabled={assigning || !selectedUserId}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
+            >
+              {assigning ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Assigning…
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  {delivery?.delivery_person_name ||
+                  (delivery?.attempts && delivery.attempts.length > 0)
+                    ? "Reassign driver"
+                    : "Assign driver"}
                 </>
               )}
-            </motion.div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )}
+</motion.div>
+
+              
           )}
         </AnimatePresence>
       </Card>
@@ -2729,11 +2749,11 @@ const ReceiptReviewCard = ({
 
   const displayHistory = receiptHistory
     ? receiptHistory.filter((h: any) => {
-      if (h.id === receipt?.id && receipt?.status === "pending") {
-        return false;
-      }
-      return true;
-    })
+        if (h.id === receipt?.id && receipt?.status === "pending") {
+          return false;
+        }
+        return true;
+      })
     : [];
 
   const handleConfirmCOD = async () => {
@@ -2748,8 +2768,8 @@ const ReceiptReviewCard = ({
       showToast(
         "error",
         err.response?.data?.detail ||
-        err.message ||
-        "Failed to confirm COD payment",
+          err.message ||
+          "Failed to confirm COD payment",
       );
     } finally {
       setCodConfirming(false);
@@ -2790,7 +2810,11 @@ const ReceiptReviewCard = ({
               <ShieldCheck className="h-5 w-5 md:h-8 md:w-8 text-indigo-600" />
             </div>
             <p className="text-sm font-semibold text-gray-700">Verified by</p>
-            <img src="/telebirr.png" alt="Telebirr" className="h-8 object-contain" />
+            <img
+              src="/telebirr.png"
+              alt="Telebirr"
+              className="h-8 object-contain"
+            />
           </div>
         </div>
       </Card>
@@ -3164,7 +3188,9 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
       await onUpdate();
       showToast(
         "success",
-        isReplacement ? "Replacement marked as Prepared!" : "Order marked as Prepared!",
+        isReplacement
+          ? "Replacement marked as Prepared!"
+          : "Order marked as Prepared!",
       );
     } catch (err: any) {
       showToast(
@@ -3220,9 +3246,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         title={isReplacement ? "Replacement Preparation" : "Order Preparation"}
         icon={Package}
         status={status}
-        className={
-          canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""
-        }
+        className={canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""}
       >
         <div className="flex flex-col items-center text-center py-4 space-y-3">
           {canPrepare && !readOnly && (
@@ -3296,8 +3320,8 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
               </div>
               <p className="text-xs text-gray-500 mb-4">
                 If items are unavailable or cannot be replaced, submit a refund
-                request. A Superadmin will review and disburse funds back to
-                the customer.
+                request. A Superadmin will review and disburse funds back to the
+                customer.
               </p>
 
               <div className="space-y-3 mb-5">
@@ -3381,7 +3405,9 @@ export function VendorOrderDetailModal({
   if (!order) return null;
   const [refreshing, setRefreshing] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">("tracking");
+  const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">(
+    "tracking",
+  );
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>();
 
   const [localDeliveryOverride, setLocalDeliveryOverride] = useState<any>(null);
@@ -3426,46 +3452,49 @@ export function VendorOrderDetailModal({
     setIsMapOpen(true);
   }, []);
 
-  const handleDriverSelect = useCallback(async (driverId: number) => {
-    try {
-      let updatedDelivery: any = null;
+  const handleDriverSelect = useCallback(
+    async (driverId: number) => {
+      try {
+        let updatedDelivery: any = null;
 
-      if (effectiveOrder.delivery) {
-        const res = await updateDeliveryPerson(
-          effectiveOrder.delivery.id.toString(),
-          driverId
-        );
-        updatedDelivery = res?.data ?? null;
-      } else {
-        const res = await assignDelivery({
-          vendor_order: effectiveOrder.id,
-          delivery_person: driverId,
-        });
-        updatedDelivery = res?.data ?? null;
+        if (effectiveOrder.delivery) {
+          const res = await updateDeliveryPerson(
+            effectiveOrder.delivery.id.toString(),
+            driverId,
+          );
+          updatedDelivery = res?.data ?? null;
+        } else {
+          const res = await assignDelivery({
+            vendor_order: effectiveOrder.id,
+            delivery_person: driverId,
+          });
+          updatedDelivery = res?.data ?? null;
+        }
+
+        setLocalDeliveryOverride((prev: any) => ({
+          ...(prev || {}),
+          ...(updatedDelivery || {}),
+          delivery_person_name:
+            updatedDelivery?.delivery_person_name ??
+            prev?.delivery_person_name ??
+            "Assigned delivery person",
+          delivery_person_phone:
+            updatedDelivery?.delivery_person_phone ??
+            prev?.delivery_person_phone ??
+            "",
+          status: updatedDelivery?.status ?? prev?.status ?? "pending",
+        }));
+
+        await onUpdate();
+
+        return updatedDelivery;
+      } catch (err) {
+        setLocalDeliveryOverride(null);
+        throw err;
       }
-
-      setLocalDeliveryOverride((prev: any) => ({
-        ...(prev || {}),
-        ...(updatedDelivery || {}),
-        delivery_person_name:
-          updatedDelivery?.delivery_person_name ??
-          prev?.delivery_person_name ??
-          "Assigned delivery person",
-        delivery_person_phone:
-          updatedDelivery?.delivery_person_phone ??
-          prev?.delivery_person_phone ??
-          "",
-        status: updatedDelivery?.status ?? prev?.status ?? "pending",
-      }));
-
-      await onUpdate();
-
-      return updatedDelivery;
-    } catch (err) {
-      setLocalDeliveryOverride(null);
-      throw err;
-    }
-  }, [effectiveOrder, onUpdate]);
+    },
+    [effectiveOrder, onUpdate],
+  );
 
   const handleAssignmentComplete = useCallback(() => {
     setSelectedOrderId(undefined);
@@ -3522,7 +3551,8 @@ export function VendorOrderDetailModal({
                 <div className="mt-1.5">
                   <div className="flex flex-wrap items-center gap-1 sm:gap-3 mb-0.5 sm:mb-1">
                     <h2 className="text-base sm:text-2xl font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent tracking-tight break-words">
-                      Order #{effectiveOrder.id}-{effectiveOrder.master_order_id}
+                      Order #{effectiveOrder.id}-
+                      {effectiveOrder.master_order_id}
                     </h2>
                     <StatusBadge
                       status={effectiveOrder.status}
@@ -3535,17 +3565,23 @@ export function VendorOrderDetailModal({
                     <span className="flex items-center gap-1 sm:gap-2 bg-secondary/10 px-1.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full border border-secondary/20 shadow-sm">
                       <Calendar className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-secondary" />
                       <span className="font-mono text-[8px] sm:text-[12px] font-semibold text-gray-700 tracking-tight">
-                        {new Date(effectiveOrder.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}{" "}
+                        {new Date(effectiveOrder.created_at).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}{" "}
                         <span className="text-secondary mx-0.5">•</span>{" "}
-                        {new Date(effectiveOrder.created_at).toLocaleTimeString("en-US", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true,
-                        })}
+                        {new Date(effectiveOrder.created_at).toLocaleTimeString(
+                          "en-US",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                          },
+                        )}
                       </span>
                     </span>
                     <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600">
@@ -3584,13 +3620,19 @@ export function VendorOrderDetailModal({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-              {effectiveOrder.status?.toLowerCase() === "replacement_in_progress" && (
+              {effectiveOrder.status?.toLowerCase() ===
+                "replacement_in_progress" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
-                    <div className="font-bold text-purple-900">Replacement In Progress</div>
+                    <div className="font-bold text-purple-900">
+                      Replacement In Progress
+                    </div>
                     <p className="mt-0.5 text-purple-700 text-xs">
-                      The customer rejected delivery due to an issue and requested redelivery. Please prepare the replacement items. Vendor payout remains held in escrow until redelivery is fulfilled.
+                      The customer rejected delivery due to an issue and
+                      requested redelivery. Please prepare the replacement
+                      items. Vendor payout remains held in escrow until
+                      redelivery is fulfilled.
                     </p>
                   </div>
                 </div>
@@ -3599,9 +3641,12 @@ export function VendorOrderDetailModal({
                 <div className="mb-4 sm:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
-                    <div className="font-bold text-amber-900">Order Under Dispute Review</div>
+                    <div className="font-bold text-amber-900">
+                      Order Under Dispute Review
+                    </div>
                     <p className="mt-0.5 text-amber-700 text-xs">
-                      An issue was reported for this order and is under review by Superadmin. Escrow payout is currently frozen.
+                      An issue was reported for this order and is under review
+                      by Superadmin. Escrow payout is currently frozen.
                     </p>
                   </div>
                 </div>
@@ -3618,7 +3663,8 @@ export function VendorOrderDetailModal({
                     const restaurant = isRestaurant(effectiveOrder);
 
                     const isPickupLike =
-                      fulfillmentKind === "pickup" || fulfillmentKind === "onspot";
+                      fulfillmentKind === "pickup" ||
+                      fulfillmentKind === "onspot";
 
                     const locationTitle = isPickupLike
                       ? fulfillmentKind === "onspot"
@@ -3695,7 +3741,8 @@ export function VendorOrderDetailModal({
                                 )}
 
                                 {fulfillmentKind === "onspot" &&
-                                  (effectiveOrder.onspot_order_mode === "order_ahead" ? (
+                                  (effectiveOrder.onspot_order_mode ===
+                                  "order_ahead" ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
                                       <Clock className="h-3 w-3 text-purple-600" />
                                       Pre-order
@@ -3716,7 +3763,10 @@ export function VendorOrderDetailModal({
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
                                       Onspot
                                       {effectiveOrder.table_number && (
-                                        <> · Table {effectiveOrder.table_number}</>
+                                        <>
+                                          {" "}
+                                          · Table {effectiveOrder.table_number}
+                                        </>
                                       )}
                                     </span>
                                   ))}
@@ -3754,7 +3804,9 @@ export function VendorOrderDetailModal({
 
                               {effectiveOrder.created_at && (
                                 <p className="text-[10px] text-gray-400 font-mono">
-                                  {new Date(effectiveOrder.created_at).toLocaleString("en-US", {
+                                  {new Date(
+                                    effectiveOrder.created_at,
+                                  ).toLocaleString("en-US", {
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
@@ -3772,23 +3824,31 @@ export function VendorOrderDetailModal({
                             <div className="space-y-3">
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                                  {isPickupLike ? "Customer:" : "Recipient Name:"}
+                                  {isPickupLike
+                                    ? "Customer:"
+                                    : "Recipient Name:"}
                                 </span>
-                                <span className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}>
+                                <span
+                                  className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}
+                                >
                                   {customerName}
                                 </span>
                               </div>
 
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                                  {isPickupLike ? "Contact:" : "Recipient Phone:"}
+                                  {isPickupLike
+                                    ? "Contact:"
+                                    : "Recipient Phone:"}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <PhoneCall className="h-3.5 w-3.5 text-green-600" />
                                   <span className="text-sm font-mono font-bold text-green-700 tracking-tight">
                                     {customerPhone || "Not provided"}
                                   </span>
-                                  {customerPhone && <CopyButton text={customerPhone} />}
+                                  {customerPhone && (
+                                    <CopyButton text={customerPhone} />
+                                  )}
                                 </div>
                               </div>
 
@@ -3796,7 +3856,8 @@ export function VendorOrderDetailModal({
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
-                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                      ? effectiveOrder.onspot_order_mode ===
+                                        "order_ahead"
                                         ? "Pre-order At:"
                                         : "Onspot At:"
                                       : restaurant
@@ -3807,7 +3868,8 @@ export function VendorOrderDetailModal({
                                 <span className="text-sm font-bold text-secondary">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
-                                      ? effectiveOrder.onspot_order_mode === "order_ahead"
+                                      ? effectiveOrder.onspot_order_mode ===
+                                        "order_ahead"
                                         ? `${storeName} — Pre-ordered${
                                             effectiveOrder.estimated_arrival_time
                                               ? ` for ${new Date(
@@ -3824,8 +3886,9 @@ export function VendorOrderDetailModal({
                                               : ""
                                           }`
                                       : storeName
-                                    : formatAddress(effectiveOrder.shipping_address_text) ||
-                                      "No address provided."}
+                                    : formatAddress(
+                                        effectiveOrder.shipping_address_text,
+                                      ) || "No address provided."}
                                 </span>
                               </div>
 
@@ -3909,12 +3972,12 @@ export function VendorOrderDetailModal({
                                 const roundNum = Number(roundKey);
                                 const roundTime = roundItems[0]?.created_at
                                   ? new Date(
-                                    roundItems[0].created_at,
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })
+                                      roundItems[0].created_at,
+                                    ).toLocaleTimeString("en-US", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    })
                                   : "";
 
                                 return (
@@ -4165,19 +4228,24 @@ export function VendorOrderDetailModal({
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Subtotal</span>
                           <span>
-                            {Number(effectiveOrder.subtotal).toLocaleString()} ETB
+                            {Number(effectiveOrder.subtotal).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">VAT</span>
                           <span>
-                            {Number(effectiveOrder.tax_amount).toLocaleString()} ETB
+                            {Number(effectiveOrder.tax_amount).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="opacity-60">Delivery Fee</span>
                           <span>
-                            {Number(effectiveOrder.delivery_fee || 0).toLocaleString()} ETB
+                            {Number(
+                              effectiveOrder.delivery_fee || 0,
+                            ).toLocaleString()}{" "}
+                            ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
@@ -4200,19 +4268,21 @@ export function VendorOrderDetailModal({
                     receiptHistory={effectiveOrder.receipt_history}
                     fulfillmentType={
                       effectiveOrder.fulfillment_type ||
-                      (effectiveOrder.shipping_address_text ? "delivery" : "pickup")
+                      (effectiveOrder.shipping_address_text
+                        ? "delivery"
+                        : "pickup")
                     }
                   />
 
                   {(effectiveOrder.status === "confirmed" ||
                     (effectiveOrder.payment_method === "cod" &&
                       effectiveOrder.status === "pending")) && (
-                      <PreparationCard
-                        order={effectiveOrder}
-                        onUpdate={onUpdate}
-                        readOnly={readOnly}
-                      />
-                    )}
+                    <PreparationCard
+                      order={effectiveOrder}
+                      onUpdate={onUpdate}
+                      readOnly={readOnly}
+                    />
+                  )}
 
                   {getFulfillmentKind(effectiveOrder) === "delivery" &&
                     effectiveOrder.shipping_address_text && (
