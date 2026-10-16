@@ -253,8 +253,10 @@ export default function Payments() {
   const getStatusBadge = (status: string, payout?: Payout) => {
     const isDirectSplit =
       payout?.gateway === "arifpay" ||
+      payout?.gateway === "chapa" ||
       Boolean((payout as any)?.metadata?.split_settled) ||
-      payout?.vendor_order_details?.payment_method === "arifpay";
+      payout?.vendor_order_details?.payment_method === "arifpay" ||
+      payout?.vendor_order_details?.payment_method === "chapa";
 
     switch (status) {
       case "completed":
@@ -268,7 +270,7 @@ export default function Payments() {
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-            {isDirectSplit ? "Pending Payout" : "Pending Escrow"}
+            {isDirectSplit ? "Pending Payout" : "Pending Settlement"}
           </span>
         );
       case "processing":
@@ -586,17 +588,17 @@ export default function Payments() {
             </div>
           </div>
 
-          {/* Card 3: Escrow / Pending */}
+          {/* Card 3: Settlement / Pending */}
           <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-between">
             <div>
               <span className="text-xs font-semibold text-gray-400 block mb-1">
-                Pending Escrow
+                Pending Settlement
               </span>
               <span className="text-lg sm:text-xl font-bold text-amber-600">
                 ETB {stats.inEscrow.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
               <span className="text-[11px] text-amber-600/90 block mt-0.5">
-                Awaiting order release
+                Awaiting order settlement
               </span>
             </div>
             <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
@@ -711,7 +713,7 @@ export default function Payments() {
                     }}
                     options={[
                       { value: "", label: "All statuses" },
-                      { value: "pending", label: "Pending Escrow" },
+                      { value: "pending", label: "Pending Settlement" },
                       { value: "processing", label: "Processing" },
                       { value: "completed", label: "Completed" },
                       { value: "failed", label: "Failed" },
@@ -853,7 +855,7 @@ export default function Payments() {
                     onChange={(val) => setStatusFilter(val)}
                     options={[
                       { value: "", label: "All statuses" },
-                      { value: "pending", label: "Pending Escrow" },
+                      { value: "pending", label: "Pending Settlement" },
                       { value: "processing", label: "Processing" },
                       { value: "completed", label: "Completed" },
                       { value: "failed", label: "Failed" },

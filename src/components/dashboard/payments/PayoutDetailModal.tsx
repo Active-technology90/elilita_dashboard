@@ -40,8 +40,10 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
 
   const isDirectSettled =
     payout.gateway === "arifpay" ||
+    payout.gateway === "chapa" ||
     Boolean((payout as any)?.metadata?.split_settled) ||
-    vo?.payment_method === "arifpay";
+    vo?.payment_method === "arifpay" ||
+    vo?.payment_method === "chapa";
 
   const scheduledDate = payout.scheduled_at
     ? new Date(payout.scheduled_at).toLocaleDateString("en-US", {
@@ -109,7 +111,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                       ? "Failed"
                       : isDirectSettled
                       ? "Pending Payout"
-                      : "Pending Escrow"}
+                      : "Pending Settlement"}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">
@@ -172,8 +174,8 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                   </span>
                   <span className="font-bold text-gray-900 text-xs sm:text-sm">
                     {isDirectSettled
-                      ? "ArifPay Direct Split Settlement"
-                      : "Elilita Marketplace Escrow"}
+                      ? `${payout.gateway ? payout.gateway.toUpperCase() : "Direct"} Split Settlement`
+                      : "Direct Vendor Settlement"}
                   </span>
                 </div>
               </div>

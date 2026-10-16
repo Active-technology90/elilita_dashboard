@@ -1331,7 +1331,7 @@ export default function SuperadminSubscriptions() {
                 <label className="flex items-center justify-between cursor-pointer">
                   <div>
                     <span className="text-xs font-semibold text-gray-900 block">Company Store Active</span>
-                    <span className="text-[11px] text-gray-500">When enabled, store and products are visible on Qine Superapp.</span>
+                    <span className="text-[11px] text-gray-500">When enabled, store and products are visible on Elilita Superapp.</span>
                   </div>
                   <input
                     type="checkbox"

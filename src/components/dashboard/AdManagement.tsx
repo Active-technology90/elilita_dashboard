@@ -1,5 +1,5 @@
 // src/components/dashboard/ads/AdManagement.tsx
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -25,6 +25,7 @@ import {
   FileImage,
   HardDrive,
   Sliders,
+  CreditCard,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -39,6 +40,8 @@ import {
   deleteCompanyAd,
   getAdminAdPageSettings,
   updateAdminAdPageSetting,
+  initializeAdPayment,
+  verifyAdPayment,
 } from "../../services/api";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
 import PageHeader from "../ui/PageHeader";
@@ -157,6 +160,11 @@ interface Ad {
   image: string;
   target_link?: string;
   target_pages: string[];
+  start_date?: string;
+  end_date?: string;
+  total_cost?: string | number;
+  payment_status?: "pending" | "paid" | "exempt";
+  tx_ref?: string;
   is_active: boolean;
 }
 
@@ -345,12 +353,14 @@ const Input: React.FC<{
 
 const Badge: React.FC<{
   children: React.ReactNode;
-  variant?: "active" | "inactive" | "info";
+  variant?: "active" | "inactive" | "info" | "pending" | "warning";
 }> = ({ children, variant = "info" }) => {
   const styles = {
     active: "bg-emerald-100 text-emerald-700",
     inactive: "bg-gray-100 text-gray-600",
     info: "bg-blue-100 text-blue-700",
+    pending: "bg-amber-100 text-amber-800 border border-amber-200",
+    warning: "bg-yellow-100 text-yellow-800",
   };
   return (
     <span
@@ -751,15 +761,31 @@ const AdCard: React.FC<{
   ad: Ad;
   onEdit: (ad: Ad) => void;
   onDelete: (ad: Ad) => void;
+  onPay?: (ad: Ad) => void;
+  isPaying?: boolean;
   isReadOnly: boolean;
   isSuperAdmin: boolean;
-}> = ({ ad, onEdit, onDelete, isReadOnly, isSuperAdmin }) => {
+}> = ({ ad, onEdit, onDelete, onPay, isPaying, isReadOnly, isSuperAdmin }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = resolveAdImageUrl(ad.image);
 
   useEffect(() => {
     setImageFailed(false);
   }, [ad.image]);
+
+  const paymentVariant =
+    ad.payment_status === "paid"
+      ? "active"
+      : ad.payment_status === "pending"
+      ? "pending"
+      : "info";
+
+  const paymentLabel =
+    ad.payment_status === "paid"
+      ? "Paid"
+      : ad.payment_status === "pending"
+      ? "Unpaid"
+      : "Exempt";
 
   return (
     <motion.div
@@ -788,9 +814,14 @@ const AdCard: React.FC<{
             </p>
           </div>
         )}
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          {ad.payment_status && (
+            <Badge variant={paymentVariant}>
+              {paymentLabel}
+            </Badge>
+          )}
           <Badge variant={ad.is_active ? "active" : "inactive"}>
-            {ad.is_active ? "Active" : "Inactive"}
+            {ad.is_active ? "Live" : "Inactive"}
           </Badge>
         </div>
       </div>
@@ -804,6 +835,21 @@ const AdCard: React.FC<{
             {ad?.company_name}
           </p>
         )}
+
+        {/* Target Pages Pills */}
+        {ad.target_pages && ad.target_pages.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {ad.target_pages.map((p) => (
+              <span
+                key={p}
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-secondary/[0.06] text-secondary capitalize"
+              >
+                {p.replace("_", " ")}
+              </span>
+            ))}
+          </div>
+        )}
+
         {ad.target_link && (
           <a
             href={ad.target_link}
@@ -815,6 +861,29 @@ const AdCard: React.FC<{
             {ad.target_link.replace(/^https?:\/\//, "")}
           </a>
         )}
+
+        {/* Unpaid Banner with Pay Now Button */}
+        {ad.payment_status === "pending" && (
+          <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold text-amber-950">
+                Fee: ETB {Number(ad.total_cost || 0).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-amber-700">Payment required to display live</p>
+            </div>
+            {!isReadOnly && onPay && (
+              <Button
+                size="sm"
+                className="bg-[#F4C44E] text-[#4E3900] hover:bg-[#F0BC37] border border-[#E7C86E] shadow-sm text-xs font-bold"
+                isLoading={isPaying}
+                onClick={() => onPay(ad)}
+              >
+                <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay Now
+              </Button>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
           <Button
             variant="ghost"
@@ -1102,6 +1171,8 @@ export default function AdManagement() {
   const [title, setTitle] = useState("");
   const [targetLink, setTargetLink] = useState("");
   const [targetPages, setTargetPages] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1124,6 +1195,7 @@ export default function AdManagement() {
   const [slotsModalOpen, setSlotsModalOpen] = useState(false);
   const [pageSettings, setPageSettings] = useState<any[]>([]);
   const [savingSlotId, setSavingSlotId] = useState<number | null>(null);
+  const [isPayingAdId, setIsPayingAdId] = useState<number | null>(null);
 
   // ------------------------------------------------------------
   // Role / permission determination
@@ -1131,31 +1203,42 @@ export default function AdManagement() {
   const isSuperAdmin = !user?.memberships?.length;
 
   const fetchPageSettings = useCallback(async () => {
-    if (!isSuperAdmin) return;
     try {
       const res = await getAdminAdPageSettings();
       setPageSettings(res.data?.results || res.data || []);
     } catch (err) {
       console.error("Failed to load ad page settings", err);
     }
-  }, [isSuperAdmin]);
+  }, []);
 
   useEffect(() => {
     fetchPageSettings();
   }, [fetchPageSettings]);
 
-  const handleUpdateSlotLimit = async (settingId: number, max_slots: number) => {
+  const handleUpdateSlotSetting = async (
+    settingId: number,
+    max_slots: number,
+    price: number,
+  ) => {
     setSavingSlotId(settingId);
     try {
-      await updateAdminAdPageSetting(settingId, { max_slots });
-      showToast("success", "Slot limit updated successfully");
+      await updateAdminAdPageSetting(settingId, { max_slots, price });
+      showToast("success", "Slot & pricing settings updated successfully");
       await fetchPageSettings();
     } catch (err: any) {
-      showToast("error", "Failed to update slot limit");
+      showToast("error", "Failed to update page settings");
     } finally {
       setSavingSlotId(null);
     }
   };
+
+  const fixedPlacementPrice = useMemo(() => {
+    if (!targetPages || targetPages.length === 0 || !pageSettings.length) return 0;
+    return targetPages.reduce((sum, page) => {
+      const setting = pageSettings.find((s) => s.page_name === page);
+      return sum + (Number(setting?.price) || 0);
+    }, 0);
+  }, [targetPages, pageSettings]);
 
   const companyRole = (() => {
     if (!user || !company?.slug) return "";
@@ -1216,6 +1299,54 @@ export default function AdManagement() {
     fetchAds();
   }, [fetchAds]);
 
+  const handlePayAd = async (ad: Ad) => {
+    setIsPayingAdId(ad.id);
+    try {
+      const returnUrl = window.location.origin + window.location.pathname;
+      const res = await initializeAdPayment(ad.id, returnUrl);
+      if (res.data?.checkout_url) {
+        window.location.href = res.data.checkout_url;
+      } else if (res.data?.status === "paid") {
+        showToast("success", "Advertisement activated at zero fee!");
+        await fetchAds();
+      }
+    } catch (err: any) {
+      showToast(
+        "error",
+        err.response?.data?.error || "Failed to initialize payment.",
+      );
+    } finally {
+      setIsPayingAdId(null);
+    }
+  };
+
+  // Check for returning payment from Chapa (ad_tx_ref in query params)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const adTxRef = params.get("ad_tx_ref");
+    if (adTxRef) {
+      verifyAdPayment(adTxRef)
+        .then((res) => {
+          showToast(
+            "success",
+            res.data?.message || "Payment verified! Your ad is now active.",
+          );
+          params.delete("ad_tx_ref");
+          const newUrl =
+            window.location.pathname +
+            (params.toString() ? `?${params.toString()}` : "");
+          window.history.replaceState({}, document.title, newUrl);
+          fetchAds();
+        })
+        .catch((err) => {
+          showToast(
+            "error",
+            err.response?.data?.error || "Payment verification failed.",
+          );
+        });
+    }
+  }, [fetchAds, showToast]);
+
   // ------------------------------------------------------------
   // Handlers
   // ------------------------------------------------------------
@@ -1253,6 +1384,10 @@ export default function AdManagement() {
     setTitle("");
     setTargetLink("");
     setTargetPages([]);
+    const today = new Date().toISOString().slice(0, 10);
+    const inAWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    setStartDate(today);
+    setEndDate(inAWeek);
     setIsActive(true);
     setImageFile(null);
     setImagePreview(null);
@@ -1267,6 +1402,8 @@ export default function AdManagement() {
       setTitle(ad.title);
       setTargetLink(ad.target_link || "");
       setTargetPages(ad.target_pages);
+      setStartDate(ad.start_date ? ad.start_date.slice(0, 10) : "");
+      setEndDate(ad.end_date ? ad.end_date.slice(0, 10) : "");
       setIsActive(ad.is_active);
       setImageFile(null);
       setImagePreview(null);
@@ -1297,6 +1434,8 @@ export default function AdManagement() {
       if (imageFile) formData.append("image", imageFile);
       formData.append("target_pages", JSON.stringify(targetPages));
       formData.append("target_link", targetLink || "");
+      if (startDate) formData.append("start_date", startDate);
+      if (endDate) formData.append("end_date", endDate);
 
       try {
         if (editingId) {
@@ -1338,6 +1477,8 @@ export default function AdManagement() {
       imageFile,
       targetPages,
       targetLink,
+      startDate,
+      endDate,
       editingId,
       isCompanyAdmin,
       companySlug,
@@ -1411,7 +1552,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Sliders className="h-4 w-4 shrink-0" />
-                  <span>Slot Limits</span>
+                  <span>Slot Limits & Pricing</span>
                 </Button>
               )}
               {!isReadOnly && (
@@ -1436,7 +1577,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Sliders className="h-3 w-3 shrink-0" />
-                  <span>Slots</span>
+                  <span>Pricing & Slots</span>
                 </Button>
               )}
               {!isReadOnly && (
@@ -1497,6 +1638,8 @@ export default function AdManagement() {
                   ad={ad}
                   onEdit={openEditModal}
                   onDelete={handleDeleteClick}
+                  onPay={handlePayAd}
+                  isPaying={isPayingAdId === ad.id}
                   isReadOnly={isReadOnly}
                   isSuperAdmin={isSuperAdmin}
                 />
@@ -1557,6 +1700,31 @@ export default function AdManagement() {
             onChange={(e) => setTargetLink(e.target.value)}
             placeholder="https://example.com/offer"
           />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Campaign Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Campaign End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
+              />
+            </div>
+          </div>
+
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">
               Ad Placements
@@ -1579,8 +1747,16 @@ export default function AdManagement() {
                 />
                 <span className="text-sm font-medium text-gray-800">Home Page</span>
                 <span className="text-[11px] text-gray-500">
-                  (Main home banner carousel)
+                  (Main banner carousel)
                 </span>
+                {(() => {
+                  const s = pageSettings.find((p) => p.page_name === "home");
+                  return s ? (
+                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
+                      ETB {Number(s.price || 0).toFixed(0)}
+                    </span>
+                  ) : null;
+                })()}
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1599,8 +1775,16 @@ export default function AdManagement() {
                 />
                 <span className="text-sm font-medium text-gray-800">Companies List Page</span>
                 <span className="text-[11px] text-gray-500">
-                  (Company directory page)
+                  (Directory banner)
                 </span>
+                {(() => {
+                  const s = pageSettings.find((p) => p.page_name === "companies_list");
+                  return s ? (
+                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
+                      ETB {Number(s.price || 0).toFixed(0)}
+                    </span>
+                  ) : null;
+                })()}
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1619,10 +1803,41 @@ export default function AdManagement() {
                 />
                 <span className="text-sm font-medium text-gray-800">Company Detail Page</span>
                 <span className="text-[11px] text-gray-500">
-                  (Individual store pages)
+                  (Storefront banner)
                 </span>
+                {(() => {
+                  const s = pageSettings.find((p) => p.page_name === "company_detail");
+                  return s ? (
+                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
+                      ETB {Number(s.price || 0).toFixed(0)}
+                    </span>
+                  ) : null;
+                })()}
               </label>
             </div>
+
+            {/* Fixed Pricing Summary */}
+            {targetPages.length > 0 && (
+              <div className="p-4 bg-secondary/[0.04] rounded-xl border border-secondary/15 space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-secondary">
+                  <span>Selected Placements ({targetPages.length})</span>
+                  <span>ETB {fixedPlacementPrice.toFixed(2)}</span>
+                </div>
+                <div className="pt-2 border-t border-secondary/10 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Fixed Placement Fee</p>
+                    <p className="text-[11px] text-gray-500">
+                      {isSuperAdmin
+                        ? "Platform ads created by SuperAdmin are exempt from fees"
+                        : "Fixed one-time placement fee per advertisement via Chapa"}
+                    </p>
+                  </div>
+                  <span className="text-lg font-black text-secondary">
+                    ETB {fixedPlacementPrice.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <ImageUploader
@@ -1656,10 +1871,10 @@ export default function AdManagement() {
                   <div>
                     <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                       <Sliders className="h-5 w-5 text-secondary" />
-                      Page Ad Slot Limits
+                      Page Ad Slot Limits & Pricing
                     </h2>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Configure maximum active ads displayed per page. If more ads are active, they rotate randomly on page loads.
+                      Configure maximum active ads displayed per page and the fixed placement fee in ETB per ad.
                     </p>
                   </div>
                   <button
@@ -1680,7 +1895,7 @@ export default function AdManagement() {
                     pageSettings.map((setting) => (
                       <div
                         key={setting.id}
-                        className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/70 flex items-center justify-between gap-4"
+                        className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div>
                           <p className="text-sm font-semibold text-gray-800">
@@ -1690,29 +1905,48 @@ export default function AdManagement() {
                             Key: {setting.page_name}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-gray-600">
-                            Slots:
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="50"
-                            defaultValue={setting.max_slots}
-                            id={`slot-input-${setting.id}`}
-                            className="w-16 px-2.5 py-1.5 text-center text-sm font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
-                          />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs font-medium text-gray-600">
+                              Slots:
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              defaultValue={setting.max_slots}
+                              id={`slot-input-${setting.id}`}
+                              className="w-14 px-2 py-1 text-center text-xs font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs font-medium text-gray-600">
+                              Price (ETB):
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              defaultValue={Number(setting.price || 0)}
+                              id={`price-input-${setting.id}`}
+                              className="w-20 px-2 py-1 text-center text-xs font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
+                            />
+                          </div>
                           <Button
                             size="sm"
                             isLoading={savingSlotId === setting.id}
                             onClick={() => {
-                              const inputEl = document.getElementById(
+                              const slotEl = document.getElementById(
                                 `slot-input-${setting.id}`
                               ) as HTMLInputElement;
-                              if (inputEl) {
-                                const val = parseInt(inputEl.value, 10);
-                                if (!isNaN(val) && val >= 1) {
-                                  handleUpdateSlotLimit(setting.id, val);
+                              const priceEl = document.getElementById(
+                                `price-input-${setting.id}`
+                              ) as HTMLInputElement;
+                              if (slotEl && priceEl) {
+                                const slotsVal = parseInt(slotEl.value, 10);
+                                const priceVal = parseFloat(priceEl.value);
+                                if (!isNaN(slotsVal) && slotsVal >= 1 && !isNaN(priceVal) && priceVal >= 0) {
+                                  handleUpdateSlotSetting(setting.id, slotsVal, priceVal);
                                 }
                               }
                             }}

@@ -128,7 +128,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                   Payout Receipt
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Vendor Settlement &amp; Escrow Disbursement
+                  Vendor Direct Settlement &amp; Disbursement
                 </p>
               </div>
             </div>
@@ -165,7 +165,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                     ? "Paid & Settled"
                     : isFailed
                     ? "Failed"
-                    : "Pending Escrow"}
+                    : "Pending Settlement"}
                 </span>
               </div>
             </div>
@@ -188,7 +188,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                   Elilita Marketplace
                 </span>
                 <span className="text-[11px] text-gray-500 block truncate">
-                  Platform Escrow Account
+                  Platform Settlement Account
                 </span>
               </div>
             </div>

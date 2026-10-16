@@ -913,6 +913,15 @@ export const getAdminAdPageSettings = () => api.get("/ads/admin/page-settings/")
 export const updateAdminAdPageSetting = (id: number, data: any) =>
   api.patch(`/ads/admin/page-settings/${id}/`, data);
 
+export const initializeAdPayment = (adId: number, returnUrl?: string) =>
+  api.post<{ checkout_url?: string; message?: string; status?: string }>(
+    `/ads/${adId}/initialize-payment/`,
+    { return_url: returnUrl },
+  );
+
+export const verifyAdPayment = (txRef: string) =>
+  api.get<{ message?: string; status?: string }>(`/ads/verify-payment/${txRef}/`);
+
 export const prepareVendorOrder = async (companySlug: string, orderId: number) =>
   api.post(`/orders/company/${companySlug}/${orderId}/prepare/`);
 

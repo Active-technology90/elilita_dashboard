@@ -137,7 +137,7 @@ export const generatePayoutReceiptHtml = (payout: PayoutData): string => {
   const isCompleted = payout.status === "completed";
   const statusColor = isCompleted ? "#059669" : payout.status === "failed" ? "#dc2626" : "#d97706";
   const statusBg = isCompleted ? "#ecfdf5" : payout.status === "failed" ? "#fef2f2" : "#fffbeb";
-  const statusLabel = isCompleted ? "PAID & SETTLED" : payout.status === "failed" ? "PAYOUT FAILED" : "PENDING ESCROW";
+  const statusLabel = isCompleted ? "PAID & SETTLED" : payout.status === "failed" ? "PAYOUT FAILED" : "PENDING SETTLEMENT";
 
   return `
 <!DOCTYPE html>
@@ -421,7 +421,7 @@ export const generatePayoutReceiptHtml = (payout: PayoutData): string => {
         <div class="party-info">
           <h4>Disbursed By</h4>
           <div class="party-name">Elilita Marketplace</div>
-          <div class="party-sub">Platform Escrow Account</div>
+          <div class="party-sub">Direct Settlement Gateway</div>
         </div>
       </div>
 
