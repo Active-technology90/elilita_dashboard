@@ -598,7 +598,7 @@ export default function Settings() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900">Reset to default</p>
               <p className="mt-0.5 text-[12px] text-gray-500 sm:text-sm">
-                Reverts the draft to Qine's default palette. Save to publish.
+                Reverts the draft to Elilita's default palette. Save to publish.
               </p>
             </div>
             <button

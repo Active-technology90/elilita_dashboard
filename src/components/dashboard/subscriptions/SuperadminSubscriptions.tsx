@@ -1550,7 +1550,7 @@ export default function SuperadminSubscriptions() {
                     <div className="min-w-0">
                       <span className="block text-xs font-semibold text-gray-900">Company Store Active</span>
                       <span className="text-[11px] text-gray-500">
-                        When enabled, store and products are visible on Qine Superapp.
+                        When enabled, store and products are visible on Elilita superapp.
                       </span>
                     </div>
                     <input

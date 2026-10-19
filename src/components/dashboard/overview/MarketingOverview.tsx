@@ -13,6 +13,7 @@ import {
   PieChart,
   Star,
   Layers,
+  ChevronRight,
 } from "lucide-react";
 import {
   XAxis,
@@ -319,24 +320,10 @@ export default function MarketingOverview({
 
       if (agentId) {
         // ─── Admin viewing a specific agent ───
-        console.log(
-          `%c[MarketingOverview] 📡 Calling getAdminMarketingAgentPerformance(${agentId})`,
-          "color: #3B82F6;",
-        );
         try {
           const res = await getAdminMarketingAgentPerformance(agentId);
-          console.log(
-            `%c[MarketingOverview] ✅ Performance loaded for agent #${agentId}`,
-            "color: #10B981; font-weight: bold;",
-            res.data,
-          );
           setData(res.data);
         } catch (apiErr: any) {
-          console.warn(
-            `%c[MarketingOverview] ⚠️ 404 or error for agent #${agentId} — falling back to initialAgent data`,
-            "color: #F59E0B;",
-            apiErr,
-          );
           if (apiErr?.response?.status === 404 && initialAgent) {
             const dailyTarget = Number(initialAgent.daily_target) || 0;
             const weeklyTarget = Number(initialAgent.weekly_target) || 0;
@@ -365,11 +352,6 @@ export default function MarketingOverview({
               registrations_by_plan: {},
               daily_performance: [],
             };
-            console.log(
-              "%c[MarketingOverview] 🧩 Using fallback performance data",
-              "color: #F59E0B;",
-              fallback,
-            );
             setData(fallback);
             return;
           }
@@ -377,51 +359,7 @@ export default function MarketingOverview({
         }
       } else {
         // ─── Marketing user viewing their own dashboard ───
-        console.log(
-          "%c[MarketingOverview] 📡 Calling getMarketingPerformance() (self)",
-          "color: #3B82F6;",
-        );
         const res = await getMarketingPerformance();
-        console.log(
-          "%c[MarketingOverview] ✅ Own performance loaded",
-          "color: #10B981; font-weight: bold;",
-          res.data,
-        );
-
-        // 🔍 Detailed diagnostic log
-        if (res.data) {
-          console.log(
-            "%c[MarketingOverview] 📊 Data summary",
-            "color: #674FA3; font-weight: bold;",
-            {
-              agent: res.data.agent,
-              total_companies_registered:
-                res.data.total_companies_registered,
-              active_subscriptions_count:
-                res.data.active_subscriptions_count,
-              target_progress: res.data.target_progress,
-              registrations_by_plan: res.data.registrations_by_plan,
-              daily_performance_days: res.data.daily_performance?.length ?? 0,
-              daily_performance: res.data.daily_performance,
-            },
-          );
-
-          // 🔍 Per-day breakdown
-          if (Array.isArray(res.data.daily_performance)) {
-            res.data.daily_performance.forEach((day: any) => {
-              console.log(
-                `%c[MarketingOverview] 📅 ${day.date} — ${day.companies_registered_count} companies, ${day.subscriptions_started?.length ?? 0} subscriptions`,
-                "color: #6B7280;",
-                {
-                  date: day.date,
-                  companies: day.companies,
-                  subscriptions: day.subscriptions_started,
-                },
-              );
-            });
-          }
-        }
-
         setData(res.data);
       }
 
@@ -434,8 +372,6 @@ export default function MarketingOverview({
         "color: #EF4444; font-weight: bold;",
         err,
       );
-      console.error("Response data:", err?.response?.data);
-      console.error("Status:", err?.response?.status);
       setError(
         err.response?.data?.error ||
           err.response?.data?.detail ||
@@ -447,11 +383,6 @@ export default function MarketingOverview({
   };
 
   useEffect(() => {
-    console.log(
-      "%c[MarketingOverview] 🔄 Component mounted / props changed",
-      "color: #674FA3; font-weight: bold;",
-      { agentId, initialAgent },
-    );
     fetchPerformance();
   }, [agentId, initialAgent]);
 
@@ -499,7 +430,6 @@ export default function MarketingOverview({
     }));
   }, [data]);
 
-  // ✅ All stats now derived from data (agent's own registrations)
   const activeCompaniesCount = useMemo(() => {
     if (!data?.daily_performance) return 0;
     const seen = new Set<number>();
@@ -512,7 +442,6 @@ export default function MarketingOverview({
   }, [data]);
 
   const featuredCompaniesCount = useMemo(() => {
-    // Not directly returned by API — leave at 0 unless data includes it
     return 0;
   }, [data]);
 
@@ -539,7 +468,6 @@ export default function MarketingOverview({
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   }, [data]);
 
-  /* Neutral palette */
   const CHART_COLORS = [
     "var(--color-secondary)",
     "#6B7280",
@@ -550,13 +478,12 @@ export default function MarketingOverview({
   ];
 
   /* ------------------------------------------------------------
-     LOADING
+     LOADING & ERROR STATES
      ------------------------------------------------------------ */
   if (loading) {
     return (
       <div className="w-full max-w-[1600px] mx-auto space-y-6 px-2 sm:px-4 lg:px-6">
         <Toast toast={toast} />
-
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 animate-pulse rounded-xl bg-secondary/[0.06]" />
           <div className="space-y-2">
@@ -564,29 +491,14 @@ export default function MarketingOverview({
             <div className="h-3 w-64 animate-pulse rounded bg-secondary/[0.06]" />
           </div>
         </div>
-
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_260px]">
           <div className="h-[190px] animate-pulse rounded-xl border border-secondary/10 bg-white" />
           <div className="grid grid-cols-1 grid-rows-3 gap-2">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-[52px] animate-pulse rounded-lg border border-secondary/10 bg-white"
-              />
+              <div key={i} className="h-[52px] animate-pulse rounded-lg border border-secondary/10 bg-white" />
             ))}
           </div>
         </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-[220px] animate-pulse rounded-2xl border border-secondary/10 bg-white"
-            />
-          ))}
-        </div>
-
-        <div className="h-[300px] animate-pulse rounded-2xl border border-secondary/10 bg-white" />
       </div>
     );
   }
@@ -598,12 +510,8 @@ export default function MarketingOverview({
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/[0.06]">
             <XCircle className="h-10 w-10 text-gray-400" />
           </div>
-          <h3 className="mb-2 text-xl font-bold text-secondary">
-            Dashboard Unavailable
-          </h3>
-          <p className="text-sm text-gray-500">
-            {error || "No data returned from the server"}
-          </p>
+          <h3 className="mb-2 text-xl font-bold text-secondary">Dashboard Unavailable</h3>
+          <p className="text-sm text-gray-500">{error || "No data returned from the server"}</p>
           <button
             onClick={() => fetchPerformance()}
             className="mt-8 rounded-xl bg-secondary px-8 py-3.5 text-sm font-bold text-white transition-all hover:bg-secondary/90 active:scale-95"
@@ -654,13 +562,11 @@ export default function MarketingOverview({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-xl border border-secondary/10 bg-white p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-secondary/10 bg-white p-1 self-start sm:self-auto">
           <button
             onClick={() => setViewMode("grid")}
             className={`rounded-lg p-2 transition-all ${
-              viewMode === "grid"
-                ? "bg-secondary text-white"
-                : "text-gray-400 hover:text-gray-600"
+              viewMode === "grid" ? "bg-secondary text-white" : "text-gray-400 hover:text-gray-600"
             }`}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -668,9 +574,7 @@ export default function MarketingOverview({
           <button
             onClick={() => setViewMode("list")}
             className={`rounded-lg p-2 transition-all ${
-              viewMode === "list"
-                ? "bg-secondary text-white"
-                : "text-gray-400 hover:text-gray-600"
+              viewMode === "list" ? "bg-secondary text-white" : "text-gray-400 hover:text-gray-600"
             }`}
           >
             <List className="h-4 w-4" />
@@ -681,9 +585,7 @@ export default function MarketingOverview({
       {/* SUMMARY */}
       <section className="rounded-2xl bg-white p-3 sm:p-4">
         <div className="mb-3 flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
-          <span className="font-semibold text-secondary">
-            Total Companies Registered
-          </span>
+          <span className="font-semibold text-secondary">Total Companies Registered</span>
           <span>·</span>
           <span>All time</span>
         </div>
@@ -697,33 +599,15 @@ export default function MarketingOverview({
             changePercent={trends.registrations}
             comparisonLabel="yesterday"
             subStats={[
-              {
-                label: "This week",
-                value: target_progress.registered_this_week.toString(),
-              },
-              {
-                label: "Today",
-                value: target_progress.registered_today.toString(),
-              },
+              { label: "This week", value: target_progress.registered_this_week.toString() },
+              { label: "Today", value: target_progress.registered_today.toString() },
             ]}
           />
 
           <div className="grid grid-cols-1 grid-rows-3 gap-2">
-            <SummaryStatCard
-              title="Active Companies"
-              value={activeCompaniesCount.toLocaleString()}
-              icon={ShieldCheck}
-            />
-            <SummaryStatCard
-              title="Featured Companies"
-              value={featuredCompaniesCount.toLocaleString()}
-              icon={Star}
-            />
-            <SummaryStatCard
-              title="Business Types"
-              value={uniqueCategories.toLocaleString()}
-              icon={Layers}
-            />
+            <SummaryStatCard title="Active Companies" value={activeCompaniesCount.toLocaleString()} icon={ShieldCheck} />
+            <SummaryStatCard title="Featured Companies" value={featuredCompaniesCount.toLocaleString()} icon={Star} />
+            <SummaryStatCard title="Business Types" value={uniqueCategories.toLocaleString()} icon={Layers} />
           </div>
         </div>
       </section>
@@ -731,12 +615,8 @@ export default function MarketingOverview({
       {/* TARGET PROGRESS */}
       <section className="space-y-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
-            Targets
-          </p>
-          <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-            Goal progress
-          </h2>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">Targets</p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">Goal progress</h2>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -763,36 +643,17 @@ export default function MarketingOverview({
               <BarChart3 className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Companies by Business Type
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Distribution across business types
-              </p>
+              <h3 className="text-base font-bold text-gray-900">Companies by Business Type</h3>
+              <p className="text-[11px] text-gray-400">Distribution across business types</p>
             </div>
           </div>
 
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categoryData}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#E5E7EB"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tickLine={false}
-                />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tickLine={false}
-                  allowDecimals={false}
-                  width={30}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={10} tickLine={false} allowDecimals={false} width={30} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#FFFFFF",
@@ -801,16 +662,9 @@ export default function MarketingOverview({
                     fontSize: "12px",
                   }}
                 />
-                <Bar
-                  dataKey="count"
-                  fill="var(--color-secondary)"
-                  radius={[4, 4, 0, 0]}
-                >
+                <Bar dataKey="count" fill="var(--color-secondary)" radius={[4, 4, 0, 0]}>
                   {categoryData.map((_entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={CHART_COLORS[index % CHART_COLORS.length]}
-                    />
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Bar>
               </BarChart>
@@ -827,12 +681,8 @@ export default function MarketingOverview({
               <CreditCard className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Subscription Breakdown
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Plan distribution across your companies
-              </p>
+              <h3 className="text-base font-bold text-gray-900">Subscription Breakdown</h3>
+              <p className="text-[11px] text-gray-400">Plan distribution across your companies</p>
             </div>
           </div>
 
@@ -841,47 +691,27 @@ export default function MarketingOverview({
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary/[0.06]">
                 <CreditCard className="h-8 w-8 text-gray-300" />
               </div>
-              <p className="font-medium text-gray-400">
-                No active subscriptions found
-              </p>
+              <p className="font-medium text-gray-400">No active subscriptions found</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {Object.entries(registrations_by_plan).map(
-                ([planName, count]) => {
-                  const percentage =
-                    totalSubscriptions > 0
-                      ? (count / totalSubscriptions) * 100
-                      : 0;
-
-                  return (
-                    <div
-                      key={planName}
-                      className="rounded-2xl border border-secondary/10 bg-white p-5 transition-all hover:border-secondary/20"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-sm font-bold text-gray-900">
-                          {planName}
-                        </span>
-                        <span className="text-2xl font-extrabold text-secondary">
-                          {count}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-secondary transition-all duration-1000 ease-out"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <p className="mt-2 text-[10px] font-medium text-gray-500">
-                        {percentage > 0
-                          ? `${Math.round(percentage)}% of total`
-                          : "No active subscriptions"}
-                      </p>
+              {Object.entries(registrations_by_plan).map(([planName, count]) => {
+                const percentage = totalSubscriptions > 0 ? (count / totalSubscriptions) * 100 : 0;
+                return (
+                  <div key={planName} className="rounded-2xl border border-secondary/10 bg-white p-5 transition-all hover:border-secondary/20">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-sm font-bold text-gray-900">{planName}</span>
+                      <span className="text-2xl font-extrabold text-secondary">{count}</span>
                     </div>
-                  );
-                },
-              )}
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div className="h-full rounded-full bg-secondary transition-all duration-1000 ease-out" style={{ width: `${percentage}%` }} />
+                    </div>
+                    <p className="mt-2 text-[10px] font-medium text-gray-500">
+                      {percentage > 0 ? `${Math.round(percentage)}% of total` : "No active subscriptions"}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -893,9 +723,7 @@ export default function MarketingOverview({
               <PieChart className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Distribution
-              </h3>
+              <h3 className="text-base font-bold text-gray-900">Distribution</h3>
               <p className="text-[11px] text-gray-400">Visual overview</p>
             </div>
           </div>
@@ -904,20 +732,9 @@ export default function MarketingOverview({
             <>
               <ResponsiveContainer width="100%" height={220}>
                 <RePieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={4} dataKey="value">
                     {pieData.map((_entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={CHART_COLORS[index % CHART_COLORS.length]}
-                      />
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -933,19 +750,9 @@ export default function MarketingOverview({
               <div className="mt-2 flex flex-wrap justify-center gap-3">
                 {pieData.map((entry, index) => (
                   <div key={entry.name} className="flex items-center gap-1.5">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{
-                        backgroundColor:
-                          CHART_COLORS[index % CHART_COLORS.length],
-                      }}
-                    />
-                    <span className="text-[10px] font-semibold text-gray-600">
-                      {entry.name}
-                    </span>
-                    <span className="text-[9px] text-gray-400">
-                      ({entry.value})
-                    </span>
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                    <span className="text-[10px] font-semibold text-gray-600">{entry.name}</span>
+                    <span className="text-[9px] text-gray-400">({entry.value})</span>
                   </div>
                 ))}
               </div>
@@ -967,12 +774,8 @@ export default function MarketingOverview({
                 <BarChart3 className="h-5 w-5 text-secondary" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">
-                  Performance Trends
-                </h3>
-                <p className="text-[11px] text-gray-400">
-                  Your onboarding history timeline
-                </p>
+                <h3 className="text-base font-bold text-gray-900">Performance Trends</h3>
+                <p className="text-[11px] text-gray-400">Your onboarding history timeline</p>
               </div>
             </div>
             <div className="flex items-center gap-5 text-[11px] font-semibold">
@@ -989,46 +792,20 @@ export default function MarketingOverview({
 
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-              >
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="mktColorRegs" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="5%"
-                      stopColor="var(--color-secondary)"
-                      stopOpacity={0.15}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="var(--color-secondary)"
-                      stopOpacity={0}
-                    />
+                    <stop offset="5%" stopColor="var(--color-secondary)" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="var(--color-secondary)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="mktColorSubs" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#9CA3AF" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#9CA3AF" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#E5E7EB"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tickLine={false}
-                />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={10}
-                  tickLine={false}
-                  allowDecimals={false}
-                  width={30}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={10} tickLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={10} tickLine={false} allowDecimals={false} width={30} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#FFFFFF",
@@ -1038,22 +815,8 @@ export default function MarketingOverview({
                   }}
                   labelStyle={{ fontWeight: "bold", color: "#111827" }}
                 />
-                <Area
-                  type="monotone"
-                  dataKey="Registrations"
-                  stroke="var(--color-secondary)"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#mktColorRegs)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="Subscriptions"
-                  stroke="#9CA3AF"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#mktColorSubs)"
-                />
+                <Area type="monotone" dataKey="Registrations" stroke="var(--color-secondary)" strokeWidth={2.5} fillOpacity={1} fill="url(#mktColorRegs)" />
+                <Area type="monotone" dataKey="Subscriptions" stroke="#9CA3AF" strokeWidth={2.5} fillOpacity={1} fill="url(#mktColorSubs)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -1068,12 +831,8 @@ export default function MarketingOverview({
               <Calendar className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-gray-900">
-                Daily Activity Log
-              </h3>
-              <p className="text-[11px] text-gray-400">
-                Your registrations and subscriptions by day
-              </p>
+              <h3 className="text-base font-bold text-gray-900">Daily Activity Log</h3>
+              <p className="text-[11px] text-gray-400">Your registrations and subscriptions by day</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1091,75 +850,91 @@ export default function MarketingOverview({
             <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-secondary/[0.06]">
               <Calendar className="h-10 w-10 text-gray-300" />
             </div>
-            <p className="text-base font-semibold text-gray-500">
-              No activity history found
-            </p>
-            <p className="mt-1 text-sm text-gray-400">
-              Start registering companies to build your log.
-            </p>
+            <p className="text-base font-semibold text-gray-500">No activity history found</p>
+            <p className="mt-1 text-sm text-gray-400">Start registering companies to build your log.</p>
           </div>
         ) : (
-          <div
-            className={`grid gap-4 ${
-              viewMode === "grid"
-                ? "grid-cols-1 lg:grid-cols-2"
-                : "grid-cols-1"
-            }`}
-          >
+          <div className={`grid gap-4 ${viewMode === "grid" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
             {daily_performance.map((day, index) => {
               const isLatest = index === 0;
-              const hasActivity =
-                day.companies.length > 0 ||
-                day.subscriptions_started.length > 0;
+              const hasActivity = day.companies.length > 0 || day.subscriptions_started.length > 0;
 
+              // ==========================================
+              // LIST VIEW RENDERING
+              // ==========================================
+              if (viewMode === "list") {
+                return (
+                  <div key={day.date} className={`overflow-hidden rounded-xl border p-4 transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${isLatest ? "border-secondary/25 bg-secondary/[0.03]" : "border-secondary/10 bg-white hover:border-secondary/20"}`}>
+                    
+                    {/* Left side: Date & counts */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isLatest ? "bg-secondary text-white" : "bg-secondary/[0.06] text-secondary"}`}>
+                        <Calendar className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-gray-900">{day.date}</span>
+                          {isLatest && <span className="rounded-full border border-secondary/20 bg-secondary/[0.06] px-2 py-0.5 text-[9px] font-bold text-secondary">Latest</span>}
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          <span className={`text-[10px] font-semibold ${day.companies_registered_count > 0 ? "text-secondary" : "text-gray-400"}`}>
+                            {day.companies_registered_count} companies
+                          </span>
+                          <span className="text-gray-300">·</span>
+                          <span className={`text-[10px] font-semibold ${day.subscriptions_started.length > 0 ? "text-secondary" : "text-gray-400"}`}>
+                            {day.subscriptions_started.length} subscriptions
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right side: Horizontal scrolling list of companies/subs */}
+                    {hasActivity ? (
+                      <div className="flex-1 flex gap-2 overflow-x-auto pb-1 sm:justify-end hide-scrollbar">
+                        {day.companies.map((company) => (
+                          <span key={company.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-secondary/10 bg-white px-2.5 py-1.5 text-[10px] font-medium text-gray-700">
+                            {company.logo ? (
+                              <img src={company.logo} alt="" className="h-4 w-4 rounded-full object-cover" />
+                            ) : (
+                              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-bold text-white">{company.name[0]}</div>
+                            )}
+                            <span className="max-w-[100px] truncate">{company.name}</span>
+                          </span>
+                        ))}
+                        {day.subscriptions_started.map((sub) => (
+                          <span key={sub.id} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-secondary/20 bg-secondary/[0.06] px-2.5 py-1.5 text-[10px] font-medium text-secondary">
+                            <Award className="h-3 w-3" />
+                            <span className="max-w-[120px] truncate">{sub.company_name} - {sub.plan_name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] italic text-gray-400 sm:text-right">No activity recorded on this day</div>
+                    )}
+                  </div>
+                );
+              }
+
+              // ==========================================
+              // GRID VIEW RENDERING (Default)
+              // ==========================================
               return (
-                <div
-                  key={day.date}
-                  className={`overflow-hidden rounded-xl border p-4 transition-all ${
-                    isLatest
-                      ? "border-secondary/25 bg-secondary/[0.03]"
-                      : "border-secondary/10 bg-white hover:border-secondary/20"
-                  }`}
-                >
-                  <div className="flex items-center justify-between border-b border-secondary/10 pb-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                          isLatest
-                            ? "bg-secondary text-white"
-                            : "bg-secondary/[0.06] text-secondary"
-                        }`}
-                      >
+                <div key={day.date} className={`overflow-hidden rounded-xl border p-4 transition-all ${isLatest ? "border-secondary/25 bg-secondary/[0.03]" : "border-secondary/10 bg-white hover:border-secondary/20"}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary/10 pb-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isLatest ? "bg-secondary text-white" : "bg-secondary/[0.06] text-secondary"}`}>
                         <Calendar className="h-4 w-4" />
                       </div>
                       <div>
-                        <span className="text-sm font-bold text-gray-900">
-                          {day.date}
-                        </span>
-                        {isLatest && (
-                          <span className="ml-2 inline-flex items-center rounded-full border border-secondary/20 bg-secondary/[0.06] px-2 py-0.5 text-[9px] font-bold text-secondary">
-                            Latest
-                          </span>
-                        )}
+                        <span className="text-sm font-bold text-gray-900">{day.date}</span>
+                        {isLatest && <span className="ml-2 inline-flex items-center rounded-full border border-secondary/20 bg-secondary/[0.06] px-2 py-0.5 text-[9px] font-bold text-secondary">Latest</span>}
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[9px] font-bold ${
-                          day.companies_registered_count > 0
-                            ? "border-secondary/20 bg-secondary/[0.06] text-secondary"
-                            : "border-gray-200 bg-gray-100 text-gray-400"
-                        }`}
-                      >
+                      <span className={`rounded-full border px-2 py-1 text-[9px] font-bold ${day.companies_registered_count > 0 ? "border-secondary/20 bg-secondary/[0.06] text-secondary" : "border-gray-200 bg-gray-100 text-gray-400"}`}>
                         {day.companies_registered_count} companies
                       </span>
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[9px] font-bold ${
-                          day.subscriptions_started.length > 0
-                            ? "border-secondary/20 bg-secondary/[0.06] text-secondary"
-                            : "border-gray-200 bg-gray-100 text-gray-400"
-                        }`}
-                      >
+                      <span className={`rounded-full border px-2 py-1 text-[9px] font-bold ${day.subscriptions_started.length > 0 ? "border-secondary/20 bg-secondary/[0.06] text-secondary" : "border-gray-200 bg-gray-100 text-gray-400"}`}>
                         {day.subscriptions_started.length} subs
                       </span>
                     </div>
@@ -1170,33 +945,21 @@ export default function MarketingOverview({
                       {day.companies.length > 0 && (
                         <div>
                           <p className="mb-2 flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                            <Building2 className="h-3 w-3" /> Companies (
-                            {day.companies.length})
+                            <Building2 className="h-3 w-3" /> Companies ({day.companies.length})
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {day.companies.slice(0, 5).map((company) => (
-                              <span
-                                key={company.id}
-                                className="inline-flex items-center gap-2 rounded-lg border border-secondary/10 bg-white px-3 py-1.5 text-[10px] font-medium text-gray-700"
-                              >
+                              <span key={company.id} className="inline-flex items-center gap-2 rounded-lg border border-secondary/10 bg-white px-2.5 py-1.5 text-[10px] font-medium text-gray-700">
                                 {company.logo ? (
-                                  <img
-                                    src={company.logo}
-                                    alt=""
-                                    className="h-5 w-5 rounded-full object-cover"
-                                  />
+                                  <img src={company.logo} alt="" className="h-4 w-4 rounded-full object-cover" />
                                 ) : (
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[8px] font-bold text-white">
-                                    {company.name[0]}
-                                  </div>
+                                  <div className="flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-bold text-white">{company.name[0]}</div>
                                 )}
-                                {company.name}
+                                <span className="truncate max-w-[120px]">{company.name}</span>
                               </span>
                             ))}
                             {day.companies.length > 5 && (
-                              <span className="rounded-lg bg-secondary/[0.04] px-2 py-1.5 text-[10px] font-medium text-gray-400">
-                                +{day.companies.length - 5} more
-                              </span>
+                              <span className="rounded-lg bg-secondary/[0.04] px-2 py-1.5 text-[10px] font-medium text-gray-400">+{day.companies.length - 5} more</span>
                             )}
                           </div>
                         </div>
@@ -1205,27 +968,16 @@ export default function MarketingOverview({
                       {day.subscriptions_started.length > 0 && (
                         <div>
                           <p className="mb-2 flex items-center gap-2 text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                            <Award className="h-3 w-3" /> Subscriptions (
-                            {day.subscriptions_started.length})
+                            <Award className="h-3 w-3" /> Subscriptions ({day.subscriptions_started.length})
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {day.subscriptions_started
-                              .slice(0, 4)
-                              .map((sub) => (
-                                <span
-                                  key={sub.id}
-                                  className="rounded-lg border border-secondary/20 bg-secondary/[0.06] px-3 py-1.5 text-[10px] font-medium text-secondary"
-                                >
-                                  {sub.company_name} ·{" "}
-                                  <span className="font-bold">
-                                    {sub.plan_name}
-                                  </span>
-                                </span>
-                              ))}
-                            {day.subscriptions_started.length > 4 && (
-                              <span className="rounded-lg bg-secondary/[0.04] px-2 py-1.5 text-[10px] font-medium text-gray-400">
-                                +{day.subscriptions_started.length - 4} more
+                            {day.subscriptions_started.slice(0, 4).map((sub) => (
+                              <span key={sub.id} className="rounded-lg border border-secondary/20 bg-secondary/[0.06] px-2.5 py-1.5 text-[10px] font-medium text-secondary">
+                                <span className="truncate max-w-[120px] inline-block align-bottom">{sub.company_name}</span> · <span className="font-bold">{sub.plan_name}</span>
                               </span>
+                            ))}
+                            {day.subscriptions_started.length > 4 && (
+                              <span className="rounded-lg bg-secondary/[0.04] px-2 py-1.5 text-[10px] font-medium text-gray-400">+{day.subscriptions_started.length - 4} more</span>
                             )}
                           </div>
                         </div>
@@ -1233,9 +985,7 @@ export default function MarketingOverview({
                     </div>
                   ) : (
                     <div className="mt-3 py-4 text-center">
-                      <p className="text-[11px] italic text-gray-400">
-                        No activity recorded on this day
-                      </p>
+                      <p className="text-[11px] italic text-gray-400">No activity recorded on this day</p>
                     </div>
                   )}
                 </div>

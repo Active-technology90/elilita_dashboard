@@ -470,7 +470,7 @@ export function EditUserModal({
         {/* Content */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
           {/* Debug strip — remove in production */}
-          {import.meta.env.DEV && (
+          {/* {import.meta.env.DEV && (
             <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-[10px] font-mono text-gray-600">
               <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                 <span>
@@ -493,7 +493,7 @@ export function EditUserModal({
                 </span>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* User Info Card */}
           <div className="bg-gradient-to-r from-indigo-50/50 to-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 border border-indigo-100 shadow-sm">
