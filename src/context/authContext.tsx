@@ -1,8 +1,18 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useMemo,
+  useContext,
+} from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import api, { setAuthToken } from "../services/api";
 import type { User } from "../types";
+
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
 
 interface AuthContextType {
   user: User | null;
@@ -10,14 +20,12 @@ interface AuthContextType {
   isLoading: boolean;
 
   /**
-   * True only when the backend explicitly flags the user as a superuser
-   * (is_superuser === true). Memberships do NOT grant super admin.
+   * True only when the backend explicitly flags the user as a superuser.
    */
   isSuperAdmin: boolean;
 
   /**
    * True when the backend flags the user as a marketing user.
-   * Marketing users get dashboard access even without memberships.
    */
   isMarketing: boolean;
 
@@ -27,14 +35,13 @@ interface AuthContextType {
   hasMemberships: boolean;
 
   /**
-   * True when the user is allowed to access the dashboard at all.
-   * Rule: super admin OR marketing user OR has at least one active membership.
+   * True when the user can access the dashboard:
+   * super admin OR marketing user OR has at least one active membership.
    */
   canAccessDashboard: boolean;
 
   /**
-   * True when the user is signed in but has no dashboard access
-   * (no memberships, not a super admin, not a marketing user).
+   * True when the user is signed in but has no dashboard access.
    */
   isRestricted: boolean;
 
@@ -44,26 +51,58 @@ interface AuthContextType {
   getAccessToken: () => string | null;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+/* -------------------------------------------------------------------------- */
+/*                                  CONTEXT                                   */
+/* -------------------------------------------------------------------------- */
 
-export const useAuth = () => {
-  const context = React.useContext(AuthContext);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
+
+/**
+ * Custom hook to access the auth context.
+ * Exported as a named export so components can do:
+ *
+ *   import { useAuth } from "../context/AuthContext";
+ */
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
 
+/* -------------------------------------------------------------------------- */
+/*                                  PROVIDER                                  */
+/* -------------------------------------------------------------------------- */
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
+  /* ──────────────────────────────────────────────────────────────
+     Initialize auth on mount / route change
+     ────────────────────────────────────────────────────────────── */
   useEffect(() => {
     let isMounted = true;
 
     const initializeAuth = async () => {
+      // 🛑 Skip auto-init on /signin page — SignIn.tsx handles the flow itself.
+      // This prevents the context from racing against the login form and
+      // wiping the error message shown to inactive users.
+      if (location.pathname.includes("/signin")) {
+        if (isMounted) {
+          setIsLoading(false);
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+        return;
+      }
+
       try {
         const accessToken = localStorage.getItem("access");
 
@@ -86,6 +125,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(true);
         }
       } catch (error: any) {
+        // eslint-disable-next-line no-console
         console.log("Auth init error:", error?.message);
 
         localStorage.removeItem("access");
@@ -107,10 +147,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   /* ──────────────────────────────────────────────────────────────
-     Permission derivation — single source of truth
+     Derived permission flags — single source of truth
      ────────────────────────────────────────────────────────────── */
 
   const isSuperAdmin = useMemo(() => {
@@ -130,8 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const memberships = (user as any)?.memberships;
     if (!Array.isArray(memberships)) return false;
 
-    // Only count active memberships (if the field exists).
-    // A membership with is_active === false does NOT grant access.
+    // Only count active memberships — `is_active: false` grants no access.
     return memberships.some((m: any) => m?.is_active !== false);
   }, [user]);
 
@@ -152,7 +192,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (
     access: string,
     refresh: string,
-    userData: User | null,
+    userData: User | null
   ) => {
     try {
       setAuthToken(access);
@@ -161,6 +201,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error: any) {
+      // eslint-disable-next-line no-console
       console.log("Login error:", error?.message);
     }
   };
@@ -175,6 +216,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsAuthenticated(false);
       navigate("/signin");
     } catch (error: any) {
+      // eslint-disable-next-line no-console
       console.log("Logout error:", error?.message);
     }
   };
@@ -186,6 +228,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return null;
     }
   };
+
+  /* ──────────────────────────────────────────────────────────────
+     Provider
+     ────────────────────────────────────────────────────────────── */
 
   return (
     <AuthContext.Provider

@@ -2,21 +2,18 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
-import { LogOut, ShieldOff } from "lucide-react";
+import { LogOut, ShieldOff, UserX } from "lucide-react";
 
 interface DashboardGuardProps {
   children: React.ReactNode;
 }
 
-/**
- * Blocks access to the dashboard for signed-in users who are:
- *   - not super admins
- *   - not marketing users
- *   - and have no active company memberships
- */
 export default function DashboardGuard({ children }: DashboardGuardProps) {
-  const { isLoading, isAuthenticated, isRestricted, logout } = useAuth();
+  const { isLoading, isAuthenticated, isRestricted, logout, user } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user is inactive
+  const isInactive = user && (user as any).is_active === false;
 
   useEffect(() => {
     if (isLoading) return;
@@ -47,6 +44,41 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
     return null;
   }
 
+  // ============================================================
+  // 🛑 NEW: Show a dedicated screen for deactivated accounts
+  // ============================================================
+  if (isInactive) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#5f4bb6] via-[#6a5acd] to-[#4b3ca7] p-4 sm:p-6">
+        <div className="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl sm:p-9">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            <UserX className="h-7 w-7" />
+          </div>
+
+          <h2 className="mt-5 text-center text-lg font-bold text-gray-900 sm:text-xl">
+            Account deactivated
+          </h2>
+
+          <p className="mt-2 text-center text-sm leading-6 text-gray-500">
+            Your account has been deactivated. You cannot access the dashboard
+            until an administrator reactivates your account. Please contact
+            support if you believe this is a mistake.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#6a5acd] px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#5a4ac0] active:scale-[0.98]"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign in with a different account
+          </button>
+        </div>
+      </div>
+    );
+  }
+  // ============================================================
+
   if (isRestricted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#5f4bb6] via-[#6a5acd] to-[#4b3ca7] p-4 sm:p-6">
@@ -64,16 +96,6 @@ export default function DashboardGuard({ children }: DashboardGuardProps) {
             dashboard, please ask a company owner or administrator to invite
             you, or contact support.
           </p>
-
-          {/* {user?.email && (
-            <div className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs text-amber-800">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-              <div className="min-w-0">
-                <p className="font-semibold">Signed in as</p>
-                <p className="truncate font-mono">{user.email}</p>
-              </div>
-            </div>
-          )} */}
 
           <button
             type="button"
