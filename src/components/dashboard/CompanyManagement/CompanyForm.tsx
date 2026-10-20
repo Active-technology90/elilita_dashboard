@@ -32,7 +32,7 @@ import { CustomSelect } from "../../ui/CustomSelect";
 import MealCategoryIcon, {
   MEAL_ICON_OPTIONS,
 } from "../../ui/MealCategoryIcon";
-
+import TermsAndConditionsModal from "../../ui/TermsAndConditionsModal";
 /* -------------------------------------------------------------------------- */
 /*                                  TYPES                                     */
 /* -------------------------------------------------------------------------- */
@@ -212,6 +212,7 @@ export default function CompanyForm({
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatNameAm, setNewCatNameAm] = useState("");
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [newCatIcon, setNewCatIcon] = useState("utensils");
   const [phoneTouched, setPhoneTouched] = useState(false);
 
@@ -2055,40 +2056,57 @@ export default function CompanyForm({
         )}
 
         {/* Terms Agreement */}
-        <div
-          className={`rounded-xl border p-4 transition-colors ${
-            agreedToTerms
-              ? "border-emerald-200 bg-emerald-50"
-              : "border-amber-200 bg-amber-50"
-          }`}
+        {/* Terms Agreement */}
+<div
+  className={`rounded-xl border p-4 transition-colors ${
+    agreedToTerms
+      ? "border-emerald-200 bg-emerald-50"
+      : "border-amber-200 bg-amber-50"
+  }`}
+>
+  <div className="flex items-start gap-3">
+    <div
+      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+        agreedToTerms
+          ? "border-emerald-500 bg-emerald-500"
+          : "border-gray-300 bg-white"
+      }`}
+    >
+      {agreedToTerms && <Check className="h-3 w-3 text-white" />}
+    </div>
+    <div className="flex-1">
+      <p className="text-sm font-bold text-gray-900">
+        Terms and Conditions{" "}
+        <span className="text-red-500">*</span>
+      </p>
+      <p className="mt-1 text-xs text-gray-600">
+        You must read and agree to the Elilita Terms and Conditions before
+        submitting this company.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowTermsModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg border border-secondary/30 bg-white px-3 py-2 text-xs font-bold text-secondary shadow-sm transition-colors hover:bg-secondary/5"
         >
-          <label
-            className={`flex cursor-pointer items-start gap-3 ${
-              !isEditingActive ? "cursor-not-allowed opacity-60" : ""
-            }`}
+          <ScrollText className="h-4 w-4" />
+          {agreedToTerms ? "View Terms (Accepted)" : "Read Terms and Conditions"}
+        </button>
+
+        {agreedToTerms && (
+          <button
+            type="button"
+            onClick={() => onAgreedToTermsChange?.(false)}
+            className="text-xs font-semibold text-gray-500 underline-offset-2 hover:underline"
           >
-            <input
-              type="checkbox"
-              checked={agreedToTerms}
-              onChange={(e) => onAgreedToTermsChange?.(e.target.checked)}
-              disabled={!isEditingActive}
-              className="mt-0.5 h-5 w-5 flex-shrink-0 cursor-pointer rounded border-gray-300 text-secondary focus:ring-2 focus:ring-secondary/30"
-            />
-            <div>
-              <p className="text-sm font-bold text-gray-900">
-                I agree to the terms and conditions{" "}
-                <span className="text-red-500">*</span>
-              </p>
-              <p className="mt-1 text-xs text-gray-600">
-                I confirm that all the information provided above is accurate,
-                complete, and up to date. I understand that providing false or
-                misleading information may result in the rejection or
-                termination of this company account. I agree to comply with all
-                applicable laws, regulations, and platform policies.
-              </p>
-            </div>
-          </label>
-        </div>
+            Revoke acceptance
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* Ready footer */}
         <div
@@ -2203,6 +2221,13 @@ export default function CompanyForm({
           initialAddress={formData.address}
         />
       )}
+      <TermsAndConditionsModal
+  isOpen={showTermsModal}
+  onClose={() => setShowTermsModal(false)}
+  onAccept={() => onAgreedToTermsChange?.(true)}
+  alreadyAgreed={agreedToTerms}
+/>
     </form>
+    
   );
 }
