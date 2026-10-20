@@ -12,7 +12,7 @@ import {
   Package,
   ShoppingBag,
   CreditCard,
-  AlertTriangle,
+  // AlertTriangle,
   LogOut,
   Menu,
   X,
@@ -29,9 +29,9 @@ import {
   Bell,
   Settings as SettingsIcon,
   Banknote,
-  ClipboardList,
+  // ClipboardList,
   Target,
-  CalendarIcon,
+  // CalendarIcon,
   Wrench,
   CalendarDays,
   Clock,
@@ -77,8 +77,8 @@ import SuperadminSubscriptions from "./subscriptions/SuperadminSubscriptions";
 import MarketingOverview from "./overview/MarketingOverview";
 import MarketingAgentsManagement from "./UserManagement/MarketingAgentsManagement";
 import LeadsManagement from "../marketing/LeadsManagement";
-import TasksManagement from "../marketing/TasksManagement";
-import TargetsManagement from "../marketing/TargetsManagement";
+// import TasksManagement from "../marketing/TasksManagement";
+// import TargetsManagement from "../marketing/TargetsManagement";
 import CalendarManagement from "../marketing/CalendarManagement";
 import CompanyServices from "./services/CompanyServices";
 import ServiceBookings from "./services/ServiceBookings";
@@ -962,10 +962,10 @@ export default function AdminDashboard() {
           );
         case "leads":
           return <LeadsManagement key={componentKey} />;
-        case "tasks":
-          return <TasksManagement key={componentKey} />;
-        case "targets":
-          return <TargetsManagement key={componentKey} />;
+        // case "tasks":
+        //   return <TasksManagement key={componentKey} />;
+        // case "targets":
+        //   return <TargetsManagement key={componentKey} />;
         case "calendar":
           return <CalendarManagement key={componentKey} />;
 
@@ -1169,7 +1169,7 @@ export default function AdminDashboard() {
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("companies")}
               />
-              <SidebarItem
+              {/* <SidebarItem
                 icon={<Users className="h-5 w-5" />}
                 label="Leads"
                 active={activeTab === "leads"}
@@ -1189,14 +1189,14 @@ export default function AdminDashboard() {
                 active={activeTab === "targets"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("targets")}
-              />
-              <SidebarItem
+              /> */}
+              {/* <SidebarItem
                 icon={<CalendarIcon className="h-5 w-5" />}
                 label="Calendar"
                 active={activeTab === "calendar"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("calendar")}
-              />
+              /> */}
 
               <SidebarItem
                 icon={<User className="h-5 w-5" />}
@@ -1350,7 +1350,7 @@ export default function AdminDashboard() {
               )}
 
               {/* Disputes — hidden for service companies */}
-              {showPlatformAdmin && !isServiceCompany && (
+              {/* {showPlatformAdmin && !isServiceCompany && (
                 <SidebarItem
                   icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
                   label="Disputes & Refunds"
@@ -1359,7 +1359,7 @@ export default function AdminDashboard() {
                   onClick={() => navigate("disputes")}
                   disabled={isCompanyInactive}
                 />
-              )}
+              )} */}
 
               {showServiceMenu && (
                 <>

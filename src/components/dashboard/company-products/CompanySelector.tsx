@@ -63,7 +63,7 @@ function Header({
 }) {
   return (
     <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-100 bg-white/80 backdrop-blur-md">
-      {onBack && (
+      {/* {onBack && (
         <button
           onClick={onBack}
           className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
@@ -71,7 +71,7 @@ function Header({
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-      )}
+      )} */}
       <div>
         <h2 className="text-lg xs:text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-secondary to-[#8B5CF6] bg-clip-text text-transparent">
           {title}
@@ -124,7 +124,7 @@ function SearchInput({
       )}
       {!value && !isFocused && (
         <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gray-100 text-[10px] text-gray-500 font-sans border border-gray-200">
-          <span className="text-xs">⌘</span>K
+          <span className="text-xs"><Search /></span>
         </kbd>
       )}
     </div>

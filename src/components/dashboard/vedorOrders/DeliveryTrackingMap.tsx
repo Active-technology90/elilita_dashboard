@@ -167,6 +167,8 @@ interface AvailableDriver {
   is_at_vendor?: boolean;
   is_en_route?: boolean;
   can_batch?: boolean;
+  /** 🆕 Whether the driver's last/current location is inside Addis Ababa service area */
+  is_in_addis_ababa?: boolean;
 }
 
 interface RouteSummary {
@@ -217,6 +219,59 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number): numb
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   🆕 ADDIS ABABA GEOFENCE HELPERS
+   ────────────────────────────────────────────────────────────────── */
+// Approximate bounding box for Addis Ababa (expand slightly for suburbs).
+const ADDIS_ABABA_BOUNDS = {
+  minLat: 8.84,
+  maxLat: 9.12,
+  minLon: 38.65,
+  maxLon: 38.90,
+};
+
+// Simplified polygon approximating Addis Ababa boundary.
+const ADDIS_ABABA_POLYGON: [number, number][] = [
+  [9.12, 38.65], // NW
+  [9.12, 38.90], // NE
+  [9.05, 38.95], // E
+  [8.92, 38.95], // SE
+  [8.84, 38.85], // S
+  [8.84, 38.65], // SW
+];
+
+const isPointInPolygon = (lat: number, lon: number, polygon: [number, number][]): boolean => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lonI] = polygon[i];
+    const [latJ, lonJ] = polygon[j];
+    const intersect =
+      (lonI > lon) !== (lonJ > lon) &&
+      lat < ((latJ - latI) * (lon - lonI)) / (lonJ - lonI) + latI;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+export const isWithinAddisAbaba = (
+  lat: number | null | undefined,
+  lon: number | null | undefined,
+): boolean => {
+  if (lat == null || lon == null) return false;
+  const numLat = Number(lat);
+  const numLon = Number(lon);
+  if (!Number.isFinite(numLat) || !Number.isFinite(numLon)) return false;
+  if (
+    numLat < ADDIS_ABABA_BOUNDS.minLat ||
+    numLat > ADDIS_ABABA_BOUNDS.maxLat ||
+    numLon < ADDIS_ABABA_BOUNDS.minLon ||
+    numLon > ADDIS_ABABA_BOUNDS.maxLon
+  ) {
+    return false;
+  }
+  return isPointInPolygon(numLat, numLon, ADDIS_ABABA_POLYGON);
 };
 
 const formatDistance = (distance: number | null | undefined): string => {
@@ -654,6 +709,7 @@ const createDriverPopupForSelection = (
 ): string => {
   const safeName = escapeHtml(driver.name);
   const hasLocation = driver.current_lat != null && driver.current_lng != null;
+  const isOutOfBounds = driver.is_in_addis_ababa === false;
   const locationLabel = driver.isLive
     ? "🟢 Realtime GPS"
     : driver.location_source === "last_known"
@@ -662,7 +718,13 @@ const createDriverPopupForSelection = (
 
   return `
     <div style="font-family:Inter,system-ui,sans-serif;min-width:280px;max-width:340px;">
-      ${isNearest ? `
+      ${isOutOfBounds ? `
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span style="font-size:12px;font-weight:800;color:#B91C1C;">⚠️ OUTSIDE ADDIS ABABA</span>
+          <span style="font-size:10px;font-weight:700;color:#DC2626;">Not assignable</span>
+        </div>
+      ` : ""}
+      ${isNearest && !isOutOfBounds ? `
         <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <span style="font-size:12px;font-weight:800;color:#6750A4;">★ RECOMMENDED DELIVERY PERSON</span>
           <span style="font-size:10px;font-weight:700;color:#6D28D9;">Best pickup ETA</span>
@@ -718,10 +780,10 @@ const createDriverPopupForSelection = (
 
       ${driver.phone ? `
         <a href="tel:${escapeHtml(driver.phone)}" style="
-          display:block;background:#6750A4;color:white;text-align:center;
+          display:block;background:${isOutOfBounds ? "#DC2626" : "#6750A4"};color:white;text-align:center;
           padding:10px;border-radius:10px;text-decoration:none;font-weight:700;font-size:12px;
         ">
-          Call ${safeName}
+          ${isOutOfBounds ? "Outside service area" : `Call ${safeName}`}
         </a>
       ` : ""}
     </div>
@@ -787,27 +849,30 @@ const makeDriverIcon = (
   isInHouse?: boolean,
   isNearest?: boolean,
   isLive = true,
+  isOutOfBounds = false,
 ): Leaflet.DivIcon => {
   const L = (window as any).L;
   const typeLabel = isInHouse ? "In-House" : "3PL";
   const safeName = escapeHtml(driverName);
   const statusLabel = isLive ? "Live" : "View only";
-  const statusColor = isLive ? "#22C55E" : "#9CA3AF";
+  const statusColor = isOutOfBounds ? "#DC2626" : isLive ? "#22C55E" : "#9CA3AF";
+  const borderColor = isOutOfBounds ? "#DC2626" : isNearest ? "#C4B5FD" : "#E5E7EB";
+  const leftColor = isOutOfBounds ? "#DC2626" : isNearest ? "#6750A4" : color;
 
   return L.divIcon({
     className: "dispatch-driver-marker",
     html: `
-      <div style="position:relative;display:flex;align-items:center;gap:9px;background:white;border:1px solid ${isNearest ? "#C4B5FD" : "#E5E7EB"};border-left:4px solid ${isNearest ? "#6750A4" : color};border-radius:16px;padding:6px 10px 6px 6px;box-shadow:0 10px 28px rgba(15,23,42,.16);white-space:nowrap;font-family:Inter,system-ui,sans-serif;cursor:pointer;min-width:150px;">
-        <div style="position:relative;width:38px;height:38px;border-radius:12px;background:#F5F3FF;color:#6750A4;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid #EDE9FE;flex:none;">
+      <div style="position:relative;display:flex;align-items:center;gap:9px;background:white;border:1px solid ${borderColor};border-left:4px solid ${leftColor};border-radius:16px;padding:6px 10px 6px 6px;box-shadow:0 10px 28px rgba(15,23,42,.16);white-space:nowrap;font-family:Inter,system-ui,sans-serif;cursor:pointer;min-width:150px;${isOutOfBounds ? "opacity:.75;" : ""}">
+        <div style="position:relative;width:38px;height:38px;border-radius:12px;background:${isOutOfBounds ? "#FEF2F2" : "#F5F3FF"};color:${isOutOfBounds ? "#DC2626" : "#6750A4"};display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid ${isOutOfBounds ? "#FECACA" : "#EDE9FE"};flex:none;">
           🚚
           <span style="position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:999px;background:${statusColor};border:2px solid white;"></span>
         </div>
         <div style="min-width:0;display:flex;flex-direction:column;gap:2px;">
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="max-width:116px;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:800;color:#1F2937;">${safeName}</span>
-            ${isNearest ? `<span style="background:#F5F3FF;color:#6750A4;border:1px solid #DDD6FE;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">BEST</span>` : ""}
+            ${isOutOfBounds ? `<span style="background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">OUTSIDE</span>` : isNearest ? `<span style="background:#F5F3FF;color:#6750A4;border:1px solid #DDD6FE;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">BEST</span>` : ""}
           </div>
-          <span style="font-size:9px;font-weight:700;color:${isLive ? "#6B7280" : "#9CA3AF"};">${statusLabel} · ${typeLabel}${count > 1 ? ` · ${count} stops` : ""}</span>
+          <span style="font-size:9px;font-weight:700;color:${isOutOfBounds ? "#DC2626" : isLive ? "#6B7280" : "#9CA3AF"};">${isOutOfBounds ? "Outside Addis" : statusLabel} · ${typeLabel}${count > 1 ? ` · ${count} stops` : ""}</span>
         </div>
         ${count > 1 ? `<span style="position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;background:#6750A4;color:white;border:2px solid white;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;box-sizing:border-box;">${count}</span>` : ""}
       </div>
@@ -1297,12 +1362,18 @@ export default function DeliveryTrackingMap({
           : null
         : (driverToFirstStopRoute?.durationMinutes ?? null);
 
+      // 🆕 Addis Ababa service-area check
+      const isInAddis = driverLoc
+        ? isWithinAddisAbaba(driverLoc.lat, driverLoc.lon)
+        : false;
+
       return {
         ...d,
         current_lat: driverLoc?.lat ?? null,
         current_lng: driverLoc?.lon ?? null,
         location_source: locationSource,
         isLive,
+        is_in_addis_ababa: isInAddis,
         distance_to_pickup: distanceToPickup,
         distance_to_customer: distanceToCustomer,
         road_distance_to_pickup: roadDistanceToPickup,
@@ -1319,7 +1390,12 @@ export default function DeliveryTrackingMap({
     });
 
     const rankable = mapped
-      .filter((d) => d.isLive === true && d.current_lat != null && d.current_lng != null)
+      .filter((d) =>
+        d.isLive === true &&
+        d.current_lat != null &&
+        d.current_lng != null &&
+        d.is_in_addis_ababa !== false
+      )
       .sort((a, b) => {
         const etaA = a.road_eta_to_pickup ?? Number.POSITIVE_INFINITY;
         const etaB = b.road_eta_to_pickup ?? Number.POSITIVE_INFINITY;
@@ -1521,6 +1597,7 @@ export default function DeliveryTrackingMap({
       locationSource: driver.location_source,
       driverLat: driver.current_lat,
       driverLon: driver.current_lng,
+      isInAddis: driver.is_in_addis_ababa,
       pickupLat: normalizedOrder.pickupLat,
       pickupLon: normalizedOrder.pickupLon,
       customerLat: normalizedOrder.customerLat,
@@ -1909,6 +1986,7 @@ export default function DeliveryTrackingMap({
       filteredAvailableDrivers.forEach((driver, index) => {
         const color = getDriverColor(index);
         const isNearest = driver.is_nearest === true;
+        const isOutOfBounds = driver.is_in_addis_ababa === false;
         const markerKey = `selection_${driver.id}`;
         visibleSelectionKeys.add(markerKey);
 
@@ -1918,7 +1996,15 @@ export default function DeliveryTrackingMap({
           isValidCoordinate(driver.current_lat, driver.current_lng)
         ) {
           const existingMarker = driverMarkers.current.get(markerKey);
-          const icon = makeDriverIcon(driver.name, 1, color, driver.is_in_house, isNearest, driver.isLive === true);
+          const icon = makeDriverIcon(
+            driver.name,
+            1,
+            color,
+            driver.is_in_house,
+            isNearest,
+            driver.isLive === true,
+            isOutOfBounds,
+          );
           const popup = createDriverPopupForSelection(driver, normalizedOrder, color, isNearest);
           let marker: Leaflet.Marker;
 
@@ -1939,7 +2025,7 @@ export default function DeliveryTrackingMap({
           }
 
           marker.off("click");
-          if (driver.isLive === true && normalizedOrder.canAssign) {
+          if (driver.isLive === true && normalizedOrder.canAssign && !isOutOfBounds) {
             marker.on("click", () => handleDriverMarkerClick(driver.id));
           }
 
@@ -1947,7 +2033,12 @@ export default function DeliveryTrackingMap({
           visibleSelectionRouteKeys.add(lineKey);
           const line = routeLines.current.get(lineKey);
 
-          if (pickup) {
+          if (isOutOfBounds) {
+            if (line) {
+              line.remove();
+              routeLines.current.delete(lineKey);
+            }
+          } else if (pickup) {
             const routeData = routeDataByDriver[driver.id];
             if (routeData?.coordinates?.length) {
               if (!line) {
@@ -2271,6 +2362,15 @@ export default function DeliveryTrackingMap({
       return;
     }
 
+    // 🆕 Reject drivers outside Addis Ababa
+    if (driver.is_in_addis_ababa === false) {
+      showToast(
+        "error",
+        `${driver.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+      );
+      return;
+    }
+
     setPendingDriverId(driverId);
     setShowConfirmPanel(true);
 
@@ -2298,6 +2398,15 @@ export default function DeliveryTrackingMap({
 
     if (!driver.isLive) {
       showToast("error", "This delivery person is not currently live. Please select a live delivery person.");
+      return;
+    }
+
+    // 🆕 Final safety check: reject out-of-Addis drivers
+    if (driver.is_in_addis_ababa === false) {
+      showToast(
+        "error",
+        `${driver.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+      );
       return;
     }
 
@@ -2364,13 +2473,26 @@ export default function DeliveryTrackingMap({
     if (!normalizedOrder) return null;
 
     const bestDriver =
-      filteredAvailableDrivers.find((driver) => driver.is_nearest && driver.isLive === true) ||
       filteredAvailableDrivers.find(
-        (driver) => driver.isLive === true && driver.current_lat != null && driver.current_lng != null,
+        (driver) => driver.is_nearest && driver.isLive === true && driver.is_in_addis_ababa !== false,
+      ) ||
+      filteredAvailableDrivers.find(
+        (driver) =>
+          driver.isLive === true &&
+          driver.current_lat != null &&
+          driver.current_lng != null &&
+          driver.is_in_addis_ababa !== false,
       ) ||
       null;
     const liveDriverCount = filteredAvailableDrivers.filter(
-      (driver) => driver.isLive === true && driver.current_lat != null && driver.current_lng != null,
+      (driver) =>
+        driver.isLive === true &&
+        driver.current_lat != null &&
+        driver.current_lng != null &&
+        driver.is_in_addis_ababa !== false,
+    ).length;
+    const outOfBoundsCount = filteredAvailableDrivers.filter(
+      (driver) => driver.is_in_addis_ababa === false,
     ).length;
     const viewOnlyDriverCount = filteredAvailableDrivers.length - liveDriverCount;
 
@@ -2514,6 +2636,15 @@ export default function DeliveryTrackingMap({
               <span className="line-clamp-2">{normalizedOrder.assignmentBlockedReason}</span>
             </div>
           )}
+
+          {outOfBoundsCount > 0 && (
+            <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-300/25 bg-amber-500/15 px-2.5 py-2 text-[9px] text-amber-100">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+              <span className="line-clamp-2">
+                {outOfBoundsCount} driver{outOfBoundsCount === 1 ? "" : "s"} outside Addis Ababa — not assignable for city deliveries.
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="shrink-0 border-b border-white/10 px-3 py-2.5">
@@ -2609,7 +2740,12 @@ export default function DeliveryTrackingMap({
             const isSelected = selectedDriverId === driver.id;
             const isBest = driver.is_nearest === true;
             const hasLocation = driver.current_lat != null && driver.current_lng != null;
-            const canSelect = driver.isLive === true && hasLocation && normalizedOrder.canAssign;
+            const isOutOfBounds = hasLocation && driver.is_in_addis_ababa === false;
+            const canSelect =
+              driver.isLive === true &&
+              hasLocation &&
+              normalizedOrder.canAssign &&
+              !isOutOfBounds;
             const pickupDistance = driver.road_distance_to_pickup ?? driver.distance_to_pickup;
 
             return (
@@ -2623,11 +2759,13 @@ export default function DeliveryTrackingMap({
                     ? "border-white/65 bg-white/20 ring-1 ring-white/25"
                     : isSelected
                       ? "border-emerald-300/70 bg-emerald-300/10"
-                      : isBest
-                        ? "border-white/45 bg-white/15"
-                        : canSelect
-                          ? "border-white/15 bg-white/10"
-                          : "border-white/10 bg-black/10 opacity-70"
+                      : isOutOfBounds
+                        ? "border-rose-400/40 bg-rose-500/10 opacity-80"
+                        : isBest
+                          ? "border-white/45 bg-white/15"
+                          : canSelect
+                            ? "border-white/15 bg-white/10"
+                            : "border-white/10 bg-black/10 opacity-70"
                 }`}
               >
                 <div className="flex items-start gap-2.5">
@@ -2645,7 +2783,7 @@ export default function DeliveryTrackingMap({
                     )}
                     <span
                       className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#6750A4] ${
-                        driver.isLive ? "bg-emerald-400" : hasLocation ? "bg-amber-300" : "bg-white/35"
+                        isOutOfBounds ? "bg-rose-400" : driver.isLive ? "bg-emerald-400" : hasLocation ? "bg-amber-300" : "bg-white/35"
                       }`}
                     />
                   </div>
@@ -2655,13 +2793,17 @@ export default function DeliveryTrackingMap({
                       <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 items-center gap-1.5">
                           <p className="truncate text-[11px] font-extrabold text-white">{driver.name}</p>
-                          {driver.recommendation_rank != null && driver.recommendation_rank <= 3 && (
+                          {isOutOfBounds ? (
+                            <span className="shrink-0 rounded-full bg-rose-500/30 px-1.5 py-0.5 text-[7px] font-extrabold text-rose-50">
+                              OUTSIDE ADDIS
+                            </span>
+                          ) : driver.recommendation_rank != null && driver.recommendation_rank <= 3 ? (
                             <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-extrabold ${
                               isBest ? "bg-white text-[#6750A4]" : "bg-white/15 text-white/70"
                             }`}>
                               {isBest ? "BEST" : `#${driver.recommendation_rank}`}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <div className="mt-0.5 flex min-w-0 items-center gap-1 text-[8px] text-white/55">
                           <span className="truncate">{getVehicleIcon(driver.vehicle_type)} {getVehicleName(driver.vehicle_type)}</span>
@@ -2677,13 +2819,15 @@ export default function DeliveryTrackingMap({
                       </div>
 
                       <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-extrabold ${
-                        driver.isLive
-                          ? "bg-emerald-300/20 text-emerald-100"
-                          : hasLocation
-                            ? "bg-amber-200/15 text-amber-100"
-                            : "bg-white/10 text-white/45"
+                        isOutOfBounds
+                          ? "bg-rose-300/20 text-rose-100"
+                          : driver.isLive
+                            ? "bg-emerald-300/20 text-emerald-100"
+                            : hasLocation
+                              ? "bg-amber-200/15 text-amber-100"
+                              : "bg-white/10 text-white/45"
                       }`}>
-                        {driver.isLive ? "LIVE" : hasLocation ? "VIEW" : "OFFLINE"}
+                        {isOutOfBounds ? "OUTSIDE" : driver.isLive ? "LIVE" : hasLocation ? "VIEW" : "OFFLINE"}
                       </span>
                     </div>
 
@@ -2701,7 +2845,11 @@ export default function DeliveryTrackingMap({
                     <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
                       <p className="truncate text-[8px] text-white/40">
                         {driver.phone || driver.username || `Delivery Person #${index + 1}`}
-                        {!driver.isLive ? " · realtime GPS required" : ""}
+                        {isOutOfBounds
+                          ? " · outside Addis Ababa"
+                          : !driver.isLive
+                            ? " · realtime GPS required"
+                            : ""}
                       </p>
 
                       {isSelected ? (
@@ -2717,10 +2865,23 @@ export default function DeliveryTrackingMap({
                             if (canSelect) handleDriverMarkerClick(driver.id);
                           }}
                           disabled={!canSelect}
-                          title={!driver.isLive ? "Realtime GPS is required before this delivery person can be assigned" : undefined}
+                          title={
+                            !driver.isLive
+                              ? "Realtime GPS is required before this delivery person can be assigned"
+                              : isOutOfBounds
+                                ? "This delivery person is outside Addis Ababa"
+                                : undefined
+                          }
                           className="shrink-0 rounded-md bg-white px-2.5 py-1 text-[8px] font-extrabold text-[#6750A4] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
                         >
-                          {canSelect ? (isBest ? "Assign best" : "Select") : "View only"}
+                          {!driver.isLive
+                            ? "View only"
+                            : isOutOfBounds
+                              ? "Outside city"
+                              : canSelect
+                                ? (isBest ? "Assign best" : "Select")
+                                : "View only"
+                          }
                         </button>
                       )}
                     </div>
@@ -3284,6 +3445,7 @@ export default function DeliveryTrackingMap({
                 const driver = enhancedDrivers.find(d => d.id === pendingDriverId);
                 if (!driver) return null;
                 const isNearest = driver.is_nearest === true;
+                const isOutOfBounds = driver.is_in_addis_ababa === false;
 
                 const hasPickupCoords =
                   normalizedOrder.pickupLat != null &&
@@ -3291,10 +3453,12 @@ export default function DeliveryTrackingMap({
 
                 return (
                   <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/15">
-                    <div className="h-1 bg-secondary" />
+                    <div className={`h-1 ${isOutOfBounds ? "bg-rose-500" : "bg-secondary"}`} />
                     <div className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-sm font-bold text-secondary">
+                        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+                          isOutOfBounds ? "bg-rose-50 text-rose-600" : "bg-secondary/10 text-secondary"
+                        }`}>
                           {driver.profile_image ? (
                             <img src={driver.profile_image} alt={driver.name} className="h-11 w-11 rounded-xl object-cover" />
                           ) : (
@@ -3304,14 +3468,33 @@ export default function DeliveryTrackingMap({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-bold text-gray-900">{driver.name}</p>
-                            {isNearest && <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[8px] font-extrabold text-secondary">BEST MATCH</span>}
+                            {isOutOfBounds ? (
+                              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[8px] font-extrabold text-rose-700">OUTSIDE ADDIS</span>
+                            ) : isNearest ? (
+                              <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[8px] font-extrabold text-secondary">BEST MATCH</span>
+                            ) : null}
                           </div>
                           <p className="mt-0.5 text-[10px] text-gray-500">{getVehicleName(driver.vehicle_type)} · {driver.is_in_house ? "In-House" : driver.company_name || "3PL"}</p>
                         </div>
-                        <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-bold text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> LIVE
+                        <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${
+                          isOutOfBounds ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${isOutOfBounds ? "bg-rose-500" : "bg-emerald-500"}`} />
+                          {isOutOfBounds ? "OUTSIDE" : "LIVE"}
                         </span>
                       </div>
+
+                      {isOutOfBounds && (
+                        <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                          <div>
+                            <p className="text-[11px] font-bold text-rose-700">Outside service area</p>
+                            <p className="mt-0.5 text-[10px] text-rose-600">
+                              This delivery person is outside Addis Ababa and cannot be assigned to city deliveries.
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3">
                         <div>
@@ -3349,11 +3532,23 @@ export default function DeliveryTrackingMap({
                         </button>
                         <button
                           onClick={handleConfirmAssignment}
-                          disabled={isAssigning || !normalizedOrder.canAssign || !driver.isLive}
-                          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                          disabled={isAssigning || !normalizedOrder.canAssign || !driver.isLive || isOutOfBounds}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                            isOutOfBounds ? "bg-rose-500" : "bg-secondary hover:opacity-90"
+                          }`}
                         >
-                          {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                          {isAssigning ? "Assigning..." : "Assign delivery person"}
+                          {isAssigning ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isOutOfBounds ? (
+                            <AlertTriangle className="h-4 w-4" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          {isAssigning
+                            ? "Assigning..."
+                            : isOutOfBounds
+                              ? "Outside service area"
+                              : "Assign delivery person"}
                         </button>
                       </div>
                     </div>

@@ -51,6 +51,8 @@ import { ConfirmationModal } from "../../ui/confimationModal";
 import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
+// 🆕 Import Addis Ababa geofence helper (shared with DeliveryTrackingMap)
+import { isWithinAddisAbaba } from "./DeliveryTrackingMap";
 import { CustomSelect } from "../../ui/CustomSelect";
 
 // ---------- Animation Variants ----------
@@ -81,6 +83,40 @@ const formatAddress = (address?: string | null) => {
     .map((part) => part.trim())
     .filter(Boolean)
     .join(", ");
+};
+
+// 🆕 Resolve a driver's best-known coordinates from any available source
+const resolveDriverCoords = (
+  driver: any,
+  liveLocations?: Record<number, { latitude: number; longitude: number }>,
+): { lat: number | null; lon: number | null } => {
+  if (!driver) return { lat: null, lon: null };
+  const live = liveLocations?.[driver.id];
+  const lat =
+    live?.latitude ??
+    driver?.live_lat ??
+    driver?.current_lat ??
+    driver?.last_lat ??
+    null;
+  const lon =
+    live?.longitude ??
+    driver?.live_lon ??
+    driver?.current_lng ??
+    driver?.last_lon ??
+    null;
+  const numLat = lat != null && !isNaN(Number(lat)) ? Number(lat) : null;
+  const numLon = lon != null && !isNaN(Number(lon)) ? Number(lon) : null;
+  return { lat: numLat, lon: numLon };
+};
+
+// 🆕 Returns true if driver is known to be outside Addis Ababa
+const isDriverOutsideAddis = (
+  driver: any,
+  liveLocations?: Record<number, { latitude: number; longitude: number }>,
+): boolean => {
+  const { lat, lon } = resolveDriverCoords(driver, liveLocations);
+  if (lat == null || lon == null) return false;
+  return !isWithinAddisAbaba(lat, lon);
 };
 
 // ─── Fulfillment type normalizer ─────────────────────────────────
@@ -1101,6 +1137,8 @@ const DeliveryCard = ({
           isOnline: liveLoc.is_online !== false,
           live_lat: liveLoc.lat,
           live_lon: liveLoc.lon,
+          // 🆕 Addis Ababa check
+          is_in_addis_ababa: isWithinAddisAbaba(liveLoc.lat, liveLoc.lon),
         };
       }
       if (s.current_lat != null && s.current_lng != null) {
@@ -1119,6 +1157,8 @@ const DeliveryCard = ({
             isOnline: true,
             live_lat: currentLat,
             live_lon: currentLng,
+            // 🆕 Addis Ababa check
+            is_in_addis_ababa: isWithinAddisAbaba(currentLat, currentLng),
           };
         }
       }
@@ -1138,6 +1178,8 @@ const DeliveryCard = ({
             isOnline: true,
             live_lat: lastLat,
             live_lon: lastLon,
+            // 🆕 Addis Ababa check
+            is_in_addis_ababa: isWithinAddisAbaba(lastLat, lastLon),
           };
         }
       }
@@ -1148,6 +1190,8 @@ const DeliveryCard = ({
           location_source: "api",
           isLive: false,
           isOnline: true,
+          // 🆕 Unknown coords → don't block
+          is_in_addis_ababa: true,
         };
       }
       return {
@@ -1156,6 +1200,8 @@ const DeliveryCard = ({
         location_source: null,
         isLive: false,
         isOnline: true,
+        // 🆕 Unknown coords → don't block
+        is_in_addis_ababa: true,
       };
     });
   }, [
@@ -1399,6 +1445,19 @@ const DeliveryCard = ({
   const handleAssign = async () => {
     setAssigning(true);
     try {
+      // 🆕 Block assignment if the selected driver is outside Addis Ababa
+      const selectedDriverObj = staffList.find(
+        (s) => s.id === Number(selectedUserId),
+      );
+      if (selectedDriverObj && isDriverOutsideAddis(selectedDriverObj, driverLocations)) {
+        showToast(
+          "error",
+          `${selectedDriverObj.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+        );
+        setAssigning(false);
+        return;
+      }
+
       if (delivery) {
         await updateDeliveryPerson(
           delivery.id.toString(),
@@ -1411,9 +1470,6 @@ const DeliveryCard = ({
         });
       }
       await onUpdate();
-      const selectedDriverObj = staffList.find(
-        (s) => s.id === Number(selectedUserId),
-      );
       if (selectedDriverObj?.is_en_route) {
         showToast(
           "success",
@@ -1461,7 +1517,10 @@ const DeliveryCard = ({
       sortOrder !== "asc"
     )
       return null;
-    const first = filteredStaffList[0];
+    // 🆕 Exclude out-of-bounds drivers from being "best match"
+    const first = filteredStaffList.find(
+      (d) => d.is_in_addis_ababa !== false,
+    );
     if (
       first &&
       (first.live_lat != null || first.calculated_distance != null)
@@ -1474,6 +1533,15 @@ const DeliveryCard = ({
   const selectedDriver = useMemo(
     () => staffList.find((s) => s.id === Number(selectedUserId)),
     [staffList, selectedUserId],
+  );
+
+  // 🆕 Derived flag for the sticky action bar
+  const selectedDriverIsOutside = useMemo(
+    () =>
+      selectedDriver
+        ? isDriverOutsideAddis(selectedDriver, driverLocations)
+        : false,
+    [selectedDriver, driverLocations],
   );
 
   const activeFilterCount =
@@ -2378,6 +2446,8 @@ const DeliveryCard = ({
               const roadDuration = routeInfo?.durationMinutes;
               const isRouteLoading = routeInfo?.loading;
               const isBestMatch = bestMatchDriver?.id === staff.id;
+              // 🆕 Addis Ababa check
+              const isOutOfBounds = staff.is_in_addis_ababa === false;
 
               return (
                 <button
@@ -2385,11 +2455,14 @@ const DeliveryCard = ({
                   type="button"
                   onClick={() => setSelectedUserId(staff.id)}
                   aria-pressed={isSelected}
+                  aria-disabled={isOutOfBounds}
                   aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
                   className={`group relative block w-full px-4 py-4 text-left transition ${
                     isSelected
                       ? "bg-secondary/[0.04]"
-                      : "bg-white hover:bg-gray-50/70"
+                      : isOutOfBounds
+                        ? "bg-rose-50/40 hover:bg-rose-50/60"
+                        : "bg-white hover:bg-gray-50/70"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -2398,7 +2471,9 @@ const DeliveryCard = ({
                       className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
                         isSelected
                           ? "border-secondary/30 bg-secondary/10 text-secondary"
-                          : "border-gray-200 bg-gray-50 text-gray-600"
+                          : isOutOfBounds
+                            ? "border-rose-200 bg-rose-50 text-rose-500"
+                            : "border-gray-200 bg-gray-50 text-gray-600"
                       }`}
                       aria-hidden="true"
                     >
@@ -2417,6 +2492,15 @@ const DeliveryCard = ({
                             className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
                           >
                             Best match
+                          </span>
+                        )}
+                        {/* 🆕 Out-of-Addis badge */}
+                        {isOutOfBounds && (
+                          <span
+                            title="This driver is outside Addis Ababa and cannot be assigned"
+                            className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+                          >
+                            Outside Addis
                           </span>
                         )}
                       </div>
@@ -2505,9 +2589,11 @@ const DeliveryCard = ({
                       <span
                         aria-hidden="true"
                         className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
-                          isSelected
-                            ? "border-secondary bg-secondary text-white"
-                            : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
+                          isOutOfBounds
+                            ? "border-rose-300 bg-rose-50 text-rose-400"
+                            : isSelected
+                              ? "border-secondary bg-secondary text-white"
+                              : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
                         }`}
                       >
                         <Check className="h-3.5 w-3.5" />
@@ -2602,20 +2688,28 @@ const DeliveryCard = ({
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-secondary text-white"
+                  className={`inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-white ${
+                    selectedDriverIsOutside ? "bg-rose-500" : "bg-secondary"
+                  }`}
                 >
-                  <Check className="h-4 w-4" />
+                  {selectedDriverIsOutside ? (
+                    <AlertCircle className="h-4 w-4" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold text-gray-900">
                     {selectedDriver.name} selected
                   </p>
                   <p className="truncate text-[10px] text-gray-500">
-                    {selectedDriver.is_in_house
-                      ? "In-house"
-                      : selectedDriver.company_name || "3PL partner"}
-                    {selectedDriver.vehicle_type &&
-                      ` · ${getVehicleName(selectedDriver.vehicle_type)}`}
+                    {selectedDriverIsOutside
+                      ? "Outside Addis Ababa — cannot be assigned"
+                      : `${selectedDriver.is_in_house ? "In-house" : selectedDriver.company_name || "3PL partner"}${
+                          selectedDriver.vehicle_type
+                            ? ` · ${getVehicleName(selectedDriver.vehicle_type)}`
+                            : ""
+                        }`}
                   </p>
                 </div>
               </div>
@@ -2637,13 +2731,23 @@ const DeliveryCard = ({
             <button
               type="button"
               onClick={handleAssign}
-              disabled={assigning || !selectedUserId}
+              disabled={assigning || !selectedUserId || selectedDriverIsOutside}
+              title={
+                selectedDriverIsOutside
+                  ? "Selected driver is outside Addis Ababa"
+                  : undefined
+              }
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
             >
               {assigning ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Assigning…
+                </>
+              ) : selectedDriverIsOutside ? (
+                <>
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Outside Addis
                 </>
               ) : (
                 <>
@@ -3661,7 +3765,12 @@ export function VendorOrderDetailModal({
                     const customerImage = resolveCustomerImage(effectiveOrder);
 
                     const restaurant = isRestaurant(effectiveOrder);
-
+  console.log("[CustomerProfile] name:", customerName);
+  console.log("[CustomerProfile] hasName:", hasName);
+  console.log("[CustomerProfile] phone:", customerPhone);
+  console.log("[CustomerProfile] fulfillment:", fulfillmentKind);
+  console.log("[CustomerProfile] image:", customerImage);
+  console.log("[CustomerProfile] raw order:", effectiveOrder);
                     const isPickupLike =
                       fulfillmentKind === "pickup" ||
                       fulfillmentKind === "onspot";
@@ -3771,12 +3880,12 @@ export function VendorOrderDetailModal({
                                     </span>
                                   ))}
 
-                                {fulfillmentKind === "delivery" && (
+                                {/* {fulfillmentKind === "delivery" && (
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
                                     <Truck className="h-3 w-3 text-emerald-600" />
                                     Delivery
                                   </span>
-                                )}
+                                )} */}
                               </div>
 
                               {customerPhone ? (

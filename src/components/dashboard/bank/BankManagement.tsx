@@ -98,7 +98,7 @@ const getBankIdentityKey = (name: string) => {
 };
 
 const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
-  { id: "cbe", bank_name: "Commercial Bank of Ethiopia", logo: "/cbe (2).jfif" },
+  { id: "cbe", bank_name: "Commercial Bank of Ethiopia", logo: "/cbe.png" },
   { id: "bank-of-abyssinia", bank_name: "Bank of Abyssinia", logo: "/abisiniya.png" },
   { id: "dashen-bank", bank_name: "Dashen Bank", logo: "/Dashen bank.png" },
   { id: "awash-bank", bank_name: "Awash Bank", logo: "/awash.jfif" },
@@ -124,6 +124,43 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   { id: "amhara-bank", bank_name: "Amhara Bank", logo: "/amahara.png" },
   { id: "rammis-bank", bank_name: "Rammis Bank", logo: "/rammis.jfif" },
 ];
+
+// ------------------------------------------------------------------
+// 🟢 FIXED: URL to File helper
+// ------------------------------------------------------------------
+const urlToFile = async (url: string, filename: string): Promise<File | null> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const blob = await response.blob();
+    if (!blob || blob.size === 0) return null;
+
+    if (blob.type.includes("text/html")) {
+      console.warn("Received HTML instead of an image from:", url);
+      return null;
+    }
+
+    let mimeType = blob.type;
+    let extension = "jpg";
+
+    // 🛑 FIX: Enforce proper MIME type to prevent "octet-stream" error
+    if (!mimeType || mimeType === "application/octet-stream") {
+      mimeType = "image/jpeg"; // Default fallback
+    } else {
+      const parts = mimeType.split("/");
+      if (parts.length > 1) {
+        extension = parts[1];
+        if (extension === "jpeg" || extension.includes("jfif")) extension = "jpg";
+      }
+    }
+
+    return new File([blob], `${filename}.${extension}`, { type: mimeType });
+  } catch (error) {
+    console.warn("Could not fetch logo file from url:", url, error);
+    return null;
+  }
+};
 
 // ------------------------------------------------------------------
 // Bank Logo
@@ -171,24 +208,6 @@ const BankLogo = ({
       )}
     </span>
   );
-};
-
-// ------------------------------------------------------------------
-// URL to File helper
-// ------------------------------------------------------------------
-const urlToFile = async (url: string, filename: string): Promise<File | null> => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob || blob.type.includes("text/html") || blob.size === 0) return null;
-    let extension = blob.type.split("/")[1] || "jpg";
-    if (extension === "jpeg" || extension.includes("jfif")) extension = "jpg";
-    return new File([blob], `${filename}.${extension}`, { type: blob.type || "image/jpeg" });
-  } catch (error) {
-    console.warn("Could not fetch logo file from url:", url, error);
-    return null;
-  }
 };
 
 // ------------------------------------------------------------------

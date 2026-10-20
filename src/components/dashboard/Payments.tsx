@@ -471,7 +471,7 @@ export default function Payments() {
           <span>Company Payouts</span>
         </button>
 
-        <button
+        {/* <button
           type="button"
           onClick={() => setPayoutCategory("driver")}
           className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
@@ -482,7 +482,7 @@ export default function Payments() {
         >
           <Truck className="h-4 w-4" />
           <span>Delivery person Payouts</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Driver Payouts Management View */}
