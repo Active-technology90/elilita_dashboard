@@ -2,7 +2,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft,
   Building2,
   Search,
   X,
@@ -55,7 +54,6 @@ function AccessDenied() {
 function Header({
   title,
   subtitle,
-  onBack,
 }: {
   title: string;
   subtitle?: string;

@@ -775,6 +775,8 @@ export const getAdminDriverPayoutDetail = async (payoutId: number | string) =>
 
 export const createAdminDriverPayout = async (data: {
   driver_id: number;
+  company_id?: number;
+  company_slug?: string;
   assignment_ids?: number[];
   payout_type?: "instant" | "weekly" | "monthly" | "manual";
   payment_method?: string;
@@ -782,6 +784,21 @@ export const createAdminDriverPayout = async (data: {
   notes?: string;
   deduct_cod?: boolean;
 }) => api.post("/deliveries/admin/payouts/", data);
+
+export const resolveAdminDriverPayout = async (
+  payoutId: number | string,
+  data: {
+    transaction_reference?: string;
+    payment_method?: string;
+    notes?: string;
+    mark_confirmed?: boolean;
+  }
+) => api.post(`/deliveries/admin/payouts/${payoutId}/resolve/`, data);
+
+export const cancelAdminDriverPayout = async (
+  payoutId: number | string,
+  reason?: string
+) => api.post(`/deliveries/admin/payouts/${payoutId}/cancel/`, { reason });
 
 export const getAvailableDeliveryDrivers = async (
   companySlug: string,

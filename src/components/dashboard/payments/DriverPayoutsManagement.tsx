@@ -14,12 +14,17 @@ import {
   AlertCircle,
   Phone,
   Banknote,
+  XCircle,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import {
   getAdminUnpaidDeliveries,
   getAdminDriverPayouts,
   getAdminDriverPayoutDetail,
   createAdminDriverPayout,
+  resolveAdminDriverPayout,
+  cancelAdminDriverPayout,
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 
@@ -42,6 +47,7 @@ interface UnpaidDeliveryItem {
   company_slug: string;
   delivery_fee: string;
   cod_collected: string;
+  cod_payment_confirmed?: boolean;
   payment_method: string;
   completed_at: string;
   customer_name: string;
@@ -52,6 +58,24 @@ interface UnpaidDeliveryItem {
 // Helper to reliably get assignment ID from item
 const getAssignmentId = (ord: UnpaidDeliveryItem): number =>
   Number(ord.assignment_id || (ord as any).id || 0);
+
+// Helper to parse original notes vs admin resolution notes
+const parsePayoutNotes = (rawNotes?: string) => {
+  if (!rawNotes) return { originalNote: "", resolutionNote: "" };
+  const resIndex = rawNotes.indexOf("Resolution:");
+  const altResIndex = rawNotes.indexOf("[Admin Resolution]:");
+
+  if (resIndex !== -1) {
+    const original = rawNotes.slice(0, resIndex).trim();
+    const resolution = rawNotes.slice(resIndex + "Resolution:".length).trim();
+    return { originalNote: original, resolutionNote: resolution };
+  } else if (altResIndex !== -1) {
+    const original = rawNotes.slice(0, altResIndex).trim();
+    const resolution = rawNotes.slice(altResIndex + "[Admin Resolution]:".length).trim();
+    return { originalNote: original, resolutionNote: resolution };
+  }
+  return { originalNote: rawNotes.trim(), resolutionNote: "" };
+};
 
 interface DriverPayoutRecord {
   id: number;
@@ -83,9 +107,13 @@ interface DriverPayoutRecord {
 }
 
 interface DriverUnpaidGroup {
+  group_key: string;
   driver_id: number;
   driver_name: string;
   driver_phone?: string;
+  company_id: number;
+  company_name: string;
+  company_slug: string;
   orders: UnpaidDeliveryItem[];
   total_gross_fees: number;
   total_cod_collected: number;
@@ -107,7 +135,7 @@ export function DriverPayoutsManagement({
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [payoutTypeFilter, _setPayoutTypeFilter] = useState<string>("all");
-  const [expandedDrivers, setExpandedDrivers] = useState<Record<number, boolean>>({});
+  const [expandedDrivers, setExpandedDrivers] = useState<Record<string, boolean>>({});
 
   // Disburse Modal State
   const [disburseModalOpen, setDisburseModalOpen] = useState(false);
@@ -116,7 +144,6 @@ export function DriverPayoutsManagement({
   const [payoutType, setPayoutType] = useState<"instant" | "weekly" | "monthly" | "manual">("weekly");
   const [paymentMethod, setPaymentMethod] = useState("telebirr");
   const [transactionRef, setTransactionRef] = useState("");
-  const [deductCod, setDeductCod] = useState(true);
   const [payoutNotes, setPayoutNotes] = useState("");
   const [submittingPayout, setSubmittingPayout] = useState(false);
 
@@ -124,6 +151,11 @@ export function DriverPayoutsManagement({
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState<DriverPayoutRecord | null>(null);
   const [_loadingDetail, setLoadingDetail] = useState(false);
+  const [resolvingDispute, setResolvingDispute] = useState(false);
+  const [cancellingPayout, setCancellingPayout] = useState(false);
+  const [cancelConfirmModalOpen, setCancelConfirmModalOpen] = useState(false);
+  const [resolveRef, setResolveRef] = useState("");
+  const [resolveNotes, setResolveNotes] = useState("");
 
   // Helper: Filter orders by interval
   const selectOrdersByInterval = (
@@ -136,8 +168,8 @@ export function DriverPayoutsManagement({
       return;
     }
     if (type === "manual") {
-      // Retain current selection or select all if empty
-      setSelectedAssignmentIds((prev) => (prev.length > 0 ? prev : orders.map(getAssignmentId)));
+      // Select all unpaid orders
+      setSelectedAssignmentIds(orders.map(getAssignmentId));
       return;
     }
 
@@ -213,26 +245,70 @@ export function DriverPayoutsManagement({
     );
   }, [selectedOrders]);
 
-  const selectedCodCollected = useMemo(() => {
-    return selectedOrders.reduce(
-      (sum, o) => sum + parseFloat(o.cod_collected || "0"),
-      0
-    );
-  }, [selectedOrders]);
-
   const selectedNetDisbursable = useMemo(() => {
-    const codOffset = deductCod ? selectedCodCollected : 0;
-    return Math.max(0, selectedGrossFees - codOffset);
-  }, [selectedGrossFees, selectedCodCollected, deductCod]);
+    return selectedGrossFees;
+  }, [selectedGrossFees]);
 
-  // Open Disburse Modal
+  // Dynamic order count preview per interval for selected driver group
+  const intervalCounts = useMemo(() => {
+    if (!selectedDriverGroup || !selectedDriverGroup.orders) {
+      return { instant: 0, weekly: 0, monthly: 0, all: 0 };
+    }
+    const orders = selectedDriverGroup.orders;
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    let instant = 0;
+    let weekly = 0;
+    let monthly = 0;
+
+    orders.forEach((o) => {
+      if (!o.completed_at) return;
+      const d = new Date(o.completed_at);
+      if (d.toDateString() === todayStr || now.getTime() - d.getTime() <= 24 * 60 * 60 * 1000) {
+        instant++;
+      }
+      if (d >= sevenDaysAgo) {
+        weekly++;
+      }
+      if (d >= thirtyDaysAgo) {
+        monthly++;
+      }
+    });
+
+    return {
+      instant,
+      weekly,
+      monthly,
+      all: orders.length,
+    };
+  }, [selectedDriverGroup]);
+
+  // Open Disburse Modal with Smart Default Interval
   const handleOpenDisburse = (group: DriverUnpaidGroup) => {
     setSelectedDriverGroup(group);
     setPaymentMethod("telebirr");
     setTransactionRef("");
-    setDeductCod(true);
     setPayoutNotes("");
-    selectOrdersByInterval("weekly", group.orders);
+
+    // Smart default: check if weekly has orders; if not, check monthly; if none match date filters, default to manual (all orders)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const hasWeekly = group.orders.some((o) => o.completed_at && new Date(o.completed_at) >= sevenDaysAgo);
+    const hasMonthly = group.orders.some((o) => o.completed_at && new Date(o.completed_at) >= thirtyDaysAgo);
+
+    if (hasWeekly) {
+      selectOrdersByInterval("weekly", group.orders);
+    } else if (hasMonthly) {
+      selectOrdersByInterval("monthly", group.orders);
+    } else {
+      selectOrdersByInterval("manual", group.orders);
+    }
+
     setDisburseModalOpen(true);
   };
 
@@ -244,11 +320,12 @@ export function DriverPayoutsManagement({
     try {
       await createAdminDriverPayout({
         driver_id: selectedDriverGroup.driver_id,
+        company_id: selectedDriverGroup.company_id || undefined,
+        company_slug: selectedDriverGroup.company_slug || companySlug || undefined,
         assignment_ids: selectedAssignmentIds,
         payout_type: payoutType,
         payment_method: paymentMethod,
         transaction_reference: transactionRef.trim() || undefined,
-        deduct_cod: deductCod,
         notes: payoutNotes.trim() || undefined,
       });
 
@@ -270,6 +347,52 @@ export function DriverPayoutsManagement({
       showToast("error", errMsg);
     } finally {
       setSubmittingPayout(false);
+    }
+  };
+
+  // Resolve Driver Dispute
+  const handleResolveDispute = async () => {
+    if (!selectedPayout) return;
+    setResolvingDispute(true);
+    try {
+      const res = await resolveAdminDriverPayout(selectedPayout.id, {
+        transaction_reference: resolveRef.trim() || undefined,
+        notes: resolveNotes.trim() || undefined,
+      });
+      showToast("success", "Dispute resolved and payout returned to awaiting confirmation.");
+      setSelectedPayout(res.data.payout);
+      setResolveRef("");
+      setResolveNotes("");
+      await fetchData();
+    } catch (err: any) {
+      showToast("error", err.response?.data?.error || "Failed to resolve dispute");
+    } finally {
+      setResolvingDispute(false);
+    }
+  };
+
+  // Cancel Payout & Release Orders (Handled via Custom Modal)
+  const handleOpenCancelConfirm = () => {
+    setCancelConfirmModalOpen(true);
+  };
+
+  const executeCancelPayout = async () => {
+    if (!selectedPayout) return;
+    setCancellingPayout(true);
+    try {
+      await cancelAdminDriverPayout(selectedPayout.id, "Admin cancelled payout");
+      showToast(
+        "success",
+        `Payout #${selectedPayout.payout_number} cancelled and orders released back to unpaid list.`
+      );
+      setCancelConfirmModalOpen(false);
+      setDetailModalOpen(false);
+      setSelectedPayout(null);
+      await fetchData();
+    } catch (err: any) {
+      showToast("error", err.response?.data?.error || "Failed to cancel payout");
+    } finally {
+      setCancellingPayout(false);
     }
   };
 
@@ -307,9 +430,9 @@ export function DriverPayoutsManagement({
     fetchData();
   }, [companySlug]);
 
-  // Group unpaid orders by Driver
+  // Group unpaid orders by Driver & Store context
   const driverGroups = useMemo<DriverUnpaidGroup[]>(() => {
-    const groups: Record<number, DriverUnpaidGroup> = {};
+    const groups: Record<string, DriverUnpaidGroup> = {};
 
     unpaidItems.forEach((item) => {
       const driverId =
@@ -318,6 +441,11 @@ export function DriverPayoutsManagement({
         (item as any).delivery_person ||
         0;
       if (!driverId) return;
+
+      const compId = item.company_id || (item as any).vendor_order?.company_id || 0;
+      const compSlug = item.company_slug || (item as any).vendor_order?.company?.slug || "";
+      const compName = item.company_name || (item as any).vendor_order?.company?.name || "Company Store";
+      const groupKey = `${driverId}-${compId || 'store'}`;
 
       const driverName =
         item.driver_name ||
@@ -328,26 +456,30 @@ export function DriverPayoutsManagement({
         (item as any).delivery_person_phone ||
         "";
 
-      if (!groups[driverId]) {
-        groups[driverId] = {
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          group_key: groupKey,
           driver_id: driverId,
           driver_name: driverName,
           driver_phone: driverPhone,
+          company_id: compId,
+          company_name: compName,
+          company_slug: compSlug,
           orders: [],
           total_gross_fees: 0,
           total_cod_collected: 0,
           suggested_net: 0,
         };
       }
-      groups[driverId].orders.push(item);
+      groups[groupKey].orders.push(item);
       const fee = parseFloat(item.delivery_fee || (item as any).driver_earning || "0");
       const cod = parseFloat(item.cod_collected || "0");
-      groups[driverId].total_gross_fees += fee;
-      groups[driverId].total_cod_collected += cod;
+      groups[groupKey].total_gross_fees += fee;
+      groups[groupKey].total_cod_collected += cod;
     });
 
     Object.values(groups).forEach((g) => {
-      g.suggested_net = Math.max(0, g.total_gross_fees - g.total_cod_collected);
+      g.suggested_net = g.total_gross_fees;
     });
 
     return Object.values(groups);
@@ -360,6 +492,7 @@ export function DriverPayoutsManagement({
     return driverGroups.filter(
       (g) =>
         (g.driver_name || "").toLowerCase().includes(term) ||
+        (g.company_name || "").toLowerCase().includes(term) ||
         (g.driver_phone && g.driver_phone.includes(term))
     );
   }, [driverGroups, searchTerm]);
@@ -401,10 +534,10 @@ export function DriverPayoutsManagement({
   }, [payouts]);
 
   // Toggle driver orders accordion
-  const toggleDriverExpand = (driverId: number) => {
+  const toggleDriverExpand = (groupKey: string) => {
     setExpandedDrivers((prev) => ({
       ...prev,
-      [driverId]: !prev[driverId],
+      [groupKey]: !prev[groupKey],
     }));
   };
 
@@ -639,10 +772,10 @@ export function DriverPayoutsManagement({
               </div>
             ) : (
               filteredDriverGroups.map((group) => {
-                const isExpanded = !!expandedDrivers[group.driver_id];
+                const isExpanded = !!expandedDrivers[group.group_key];
                 return (
                   <div
-                    key={group.driver_id}
+                    key={group.group_key}
                     className="border border-gray-200 rounded-2xl overflow-hidden hover:border-gray-300 transition-all shadow-sm"
                   >
                     {/* Driver Card Header */}
@@ -670,7 +803,7 @@ export function DriverPayoutsManagement({
                             )}
                             <span>·</span>
                             <span>
-                              Store: {group.orders[0]?.company_name || "Company Store"}
+                              Store: {group.company_name || group.orders[0]?.company_name || "Company Store"}
                             </span>
                           </div>
                         </div>
@@ -689,11 +822,11 @@ export function DriverPayoutsManagement({
 
                         {group.total_cod_collected > 0 && (
                           <div className="text-right">
-                            <p className="text-[11px] text-orange-500 font-semibold uppercase">
-                              COD Retained
+                            <p className="text-[11px] text-amber-600 font-semibold uppercase">
+                              COD Collected
                             </p>
-                            <p className="text-sm font-bold text-orange-600">
-                              -{group.total_cod_collected.toFixed(2)} ETB
+                            <p className="text-sm font-bold text-amber-700">
+                              {group.total_cod_collected.toFixed(2)} ETB
                             </p>
                           </div>
                         )}
@@ -717,7 +850,7 @@ export function DriverPayoutsManagement({
                           </button>
 
                           <button
-                            onClick={() => toggleDriverExpand(group.driver_id)}
+                            onClick={() => toggleDriverExpand(group.group_key)}
                             className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-500 transition"
                             title={isExpanded ? "Collapse orders" : "View orders"}
                           >
@@ -765,16 +898,29 @@ export function DriverPayoutsManagement({
                                     : "N/A"}
                                 </td>
                                 <td className="py-2.5 px-3">
-                                  <span className="capitalize px-2 py-0.5 rounded-md bg-gray-200/70 text-gray-700 font-medium text-[11px]">
-                                    {ord.payment_method}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="capitalize px-2 py-0.5 rounded-md bg-gray-200/70 text-gray-700 font-medium text-[11px]">
+                                      {ord.payment_method}
+                                    </span>
+                                    {ord.payment_method === "cod" && (
+                                      <span
+                                        className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                          ord.cod_payment_confirmed
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-amber-100 text-amber-700"
+                                        }`}
+                                      >
+                                        {ord.cod_payment_confirmed ? "COD Handed In" : "COD Pending Turn-in"}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-bold text-gray-900">
                                   +{parseFloat(ord.delivery_fee).toFixed(2)} ETB
                                 </td>
-                                <td className="py-2.5 px-3 text-right font-medium text-orange-600">
+                                <td className="py-2.5 px-3 text-right font-medium text-amber-700">
                                   {parseFloat(ord.cod_collected) > 0
-                                    ? `-${parseFloat(ord.cod_collected).toFixed(2)} ETB`
+                                    ? `${parseFloat(ord.cod_collected).toFixed(2)} ETB`
                                     : "0.00 ETB"}
                                 </td>
                               </tr>
@@ -904,41 +1050,63 @@ export function DriverPayoutsManagement({
 
             {/* Step 1: Payout Interval / Quick Filter */}
             <div>
-              <label className="block font-bold text-gray-700 text-xs mb-1.5">
-                1. Select Payout Interval (Quick Filters Orders)
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block font-bold text-gray-700 text-xs">
+                  1. Select Payout Interval (Quick Filters Orders)
+                </label>
+                <span className="text-[11px] text-gray-400">
+                  {intervalCounts.all} unpaid {intervalCounts.all === 1 ? "order" : "orders"} available
+                </span>
+              </div>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { key: "instant", label: "Instant", sub: "Today" },
-                  { key: "weekly", label: "Weekly", sub: "Last 7 Days" },
-                  { key: "monthly", label: "Monthly", sub: "Last 30 Days" },
-                  { key: "manual", label: "Manual", sub: "Custom Pick" },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() =>
-                      selectOrdersByInterval(
-                        item.key as any,
-                        selectedDriverGroup.orders
-                      )
-                    }
-                    className={`py-2 px-1 text-center rounded-xl font-bold transition border ${
-                      payoutType === item.key
-                        ? "bg-secondary text-white border-secondary shadow-sm"
-                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="capitalize text-xs leading-tight">{item.label}</div>
-                    <div
-                      className={`text-[9px] font-medium leading-tight mt-0.5 ${
-                        payoutType === item.key ? "text-purple-200" : "text-gray-400"
+                  { key: "instant", label: "Instant", sub: "Today", count: intervalCounts.instant },
+                  { key: "weekly", label: "Weekly", sub: "Last 7 Days", count: intervalCounts.weekly },
+                  { key: "monthly", label: "Monthly", sub: "Last 30 Days", count: intervalCounts.monthly },
+                  { key: "manual", label: "All Unpaid", sub: "Select All", count: intervalCounts.all },
+                ].map((item) => {
+                  const isSelected = payoutType === item.key;
+                  const hasMatches = item.count > 0;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() =>
+                        selectOrdersByInterval(
+                          item.key as any,
+                          selectedDriverGroup.orders
+                        )
+                      }
+                      className={`py-2 px-1 text-center rounded-2xl font-bold transition border relative ${
+                        isSelected
+                          ? "bg-secondary text-white border-secondary shadow-sm shadow-secondary/20"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-secondary/40 hover:bg-secondary/5"
                       }`}
                     >
-                      {item.sub}
-                    </div>
-                  </button>
-                ))}
+                      <div className="capitalize text-xs leading-tight font-black">{item.label}</div>
+                      <div
+                        className={`text-[9px] font-medium leading-tight mt-0.5 ${
+                          isSelected ? "text-purple-200" : "text-gray-400"
+                        }`}
+                      >
+                        {item.sub}
+                      </div>
+                      <div className="mt-1">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isSelected
+                              ? "bg-white/20 text-white"
+                              : hasMatches
+                              ? "bg-secondary/10 text-secondary"
+                              : "bg-gray-100 text-gray-400"
+                          }`}
+                        >
+                          {item.count} {item.count === 1 ? "order" : "orders"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -967,10 +1135,10 @@ export function DriverPayoutsManagement({
                 </div>
               </div>
               {selectedAssignmentIds.length === 0 && (
-                <div className="flex items-center gap-1.5 p-2 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-800">
-                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-amber-600" />
+                <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200/80 rounded-2xl text-[11px] text-amber-800">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
                   <span>
-                    No orders delivered within the <b className="capitalize">{payoutType}</b> timeframe. Select orders manually below or click &quot;Select All&quot;.
+                    No orders delivered within the <b className="capitalize">{payoutType}</b> timeframe ({payoutType === "instant" ? intervalCounts.instant : payoutType === "weekly" ? intervalCounts.weekly : intervalCounts.monthly} matching). Click <b>&quot;All Unpaid&quot;</b> or check orders individually below.
                   </span>
                 </div>
               )}
@@ -995,8 +1163,8 @@ export function DriverPayoutsManagement({
                       onClick={() => toggleOrderSelection(orderId)}
                       className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
                         isChecked
-                          ? "bg-purple-50/90 border-secondary/40 text-gray-900 shadow-xs"
-                          : "bg-white border-gray-200/80 text-gray-500 hover:bg-gray-50"
+                          ? "bg-secondary/5 border-secondary/40 text-gray-900 shadow-xs ring-1 ring-secondary/20"
+                          : "bg-white border-gray-200/80 text-gray-500 hover:border-secondary/20 hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -1005,14 +1173,25 @@ export function DriverPayoutsManagement({
                           checked={isChecked}
                           onClick={(e) => e.stopPropagation()}
                           onChange={() => toggleOrderSelection(orderId)}
-                          className="rounded text-secondary focus:ring-secondary h-4 w-4"
+                          className="rounded text-secondary focus:ring-secondary/20 h-4 w-4"
                         />
                         <div>
-                          <div className="font-bold text-gray-900 flex items-center gap-1.5">
-                            <span>#{ord.order_number}</span>
+                          <div className="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                            <span className="text-secondary font-black">#{ord.order_number}</span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-medium capitalize">
                               {ord.payment_method}
                             </span>
+                            {ord.payment_method === "cod" && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                  ord.cod_payment_confirmed
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-amber-100 text-amber-700"
+                                }`}
+                              >
+                                {ord.cod_payment_confirmed ? "COD Handed In" : "COD Pending Turn-in"}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-gray-400 mt-0.5">
                             {completedStr} · {ord.customer_name}
@@ -1021,14 +1200,9 @@ export function DriverPayoutsManagement({
                       </div>
 
                       <div className="text-right">
-                        <span className="font-bold text-gray-900 block">
+                        <span className="font-black text-gray-900 block">
                           +{parseFloat(ord.delivery_fee || "0").toFixed(2)} ETB
                         </span>
-                        {parseFloat(ord.cod_collected || "0") > 0 && (
-                          <span className="text-[10px] font-semibold text-orange-600 block">
-                            COD: -{parseFloat(ord.cod_collected || "0").toFixed(2)} ETB
-                          </span>
-                        )}
                       </div>
                     </div>
                   );
@@ -1036,8 +1210,8 @@ export function DriverPayoutsManagement({
               </div>
             </div>
 
-            {/* Financial Summary Box (Dynamically updates with checked orders) */}
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200/80 space-y-1.5">
+            {/* Financial Summary Box */}
+            <div className="bg-secondary/5 rounded-2xl p-4 border border-secondary/20 space-y-2">
               <div className="flex justify-between text-xs text-gray-600">
                 <span>Selected Deliveries:</span>
                 <span className="font-bold text-gray-900">
@@ -1045,22 +1219,14 @@ export function DriverPayoutsManagement({
                 </span>
               </div>
               <div className="flex justify-between text-xs text-gray-600">
-                <span>Gross Delivery Fees:</span>
+                <span>Delivery Fees (Total Disbursable):</span>
                 <span className="font-bold text-gray-900">
                   +{selectedGrossFees.toFixed(2)} ETB
                 </span>
               </div>
-              {deductCod && selectedCodCollected > 0 && (
-                <div className="flex justify-between text-xs text-orange-600">
-                  <span>COD Cash Retained by Driver:</span>
-                  <span className="font-bold">
-                    -{selectedCodCollected.toFixed(2)} ETB
-                  </span>
-                </div>
-              )}
-              <div className="pt-2 border-t border-gray-200 flex justify-between items-center text-sm">
+              <div className="pt-2 border-t border-secondary/20 flex justify-between items-center text-sm">
                 <span className="font-bold text-gray-900">Net Amount to Disburse:</span>
-                <span className="font-black text-green-600 text-base">
+                <span className="font-black text-secondary text-base">
                   {selectedNetDisbursable.toFixed(2)} ETB
                 </span>
               </div>
@@ -1078,7 +1244,7 @@ export function DriverPayoutsManagement({
                 >
                   <option value="telebirr">Telebirr Transfer</option>
                   <option value="cbe_birr">CBE Birr Transfer</option>
-                  <option value="bank_transfer">Direct Bank Transfer</option>
+                  {/* <option value="bank_transfer">Direct Bank Transfer</option> */}
                   <option value="cash">Cash in Person</option>
                   <option value="other">Other Method</option>
                 </select>
@@ -1097,26 +1263,6 @@ export function DriverPayoutsManagement({
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary"
                 />
               </div>
-
-              {/* Deduct COD Checkbox */}
-              {selectedCodCollected > 0 && (
-                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-orange-50/60 border border-orange-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={deductCod}
-                    onChange={(e) => setDeductCod(e.target.checked)}
-                    className="mt-0.5 rounded text-secondary focus:ring-secondary"
-                  />
-                  <div>
-                    <span className="font-bold text-orange-950 block">
-                      Deduct COD Cash Retained ({selectedCodCollected.toFixed(2)} ETB)
-                    </span>
-                    <span className="text-[11px] text-orange-800">
-                      Delivery person  already holds this physical cash from customers, so deducting it ensures accurate reconciliation.
-                    </span>
-                  </div>
-                </label>
-              )}
 
               {/* Notes */}
               <div>
@@ -1175,152 +1321,437 @@ export function DriverPayoutsManagement({
       )}
 
       {/* Payout Detail Modal */}
-      {detailModalOpen && selectedPayout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 space-y-5 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-gray-900 text-lg">
-                    Payout #{selectedPayout.payout_number}
-                  </h3>
-                  {renderStatusBadge(selectedPayout.status)}
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Issued to {selectedPayout.driver_name} · {selectedPayout.company_name}
-                </p>
-              </div>
-              <button
-                onClick={() => setDetailModalOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Dispute Banner if disputed */}
-            {selectedPayout.status === "disputed" && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+      {detailModalOpen && selectedPayout && (() => {
+        const parsedNotes = parsePayoutNotes(selectedPayout.notes);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 space-y-5 max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div>
-                  <h5 className="font-bold text-red-900 text-xs">Delivery person  Dispute Filed</h5>
-                  <p className="text-xs text-red-700 mt-1">
-                    {selectedPayout.dispute_reason || "Delivery person reported an issue with this payout."}
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-gray-900 text-lg">
+                      Payout #{selectedPayout.payout_number}
+                    </h3>
+                    {renderStatusBadge(selectedPayout.status)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Issued to {selectedPayout.driver_name} · {selectedPayout.company_name}
                   </p>
-                  {selectedPayout.disputed_at && (
-                    <p className="text-[10px] text-red-500 mt-1">
-                      Reported on {new Date(selectedPayout.disputed_at).toLocaleString()}
-                    </p>
+                </div>
+                <button
+                  onClick={() => setDetailModalOpen(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Financial Details Grid */}
+              <div className="grid grid-cols-3 gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center">
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Gross Delivery Fees</p>
+                  <p className="text-sm font-bold text-gray-900 mt-1">
+                    +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)} ETB
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-amber-600 font-bold uppercase">COD Collected</p>
+                  <p className="text-sm font-bold text-amber-700 mt-1">
+                    {parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)} ETB
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-green-600 font-bold uppercase">Net Amount Paid</p>
+                  <p className="text-base font-black text-green-600 mt-1">
+                    {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                  </p>
+                </div>
+              </div>
+
+              {/* Handshake & Verification Lifecycle Timeline */}
+              <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 text-secondary" />
+                    <span>Settlement & Handshake Timeline</span>
+                  </h4>
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    Lifecycle Audit
+                  </span>
+                </div>
+
+                <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
+                  {/* Step 1: Disbursed */}
+                  <div className="relative">
+                    <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-secondary text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                      <Send className="w-2.5 h-2.5" />
+                    </div>
+                    <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-gray-900">
+                          1. Payout Disbursed by Admin
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {selectedPayout.disbursed_at
+                            ? new Date(selectedPayout.disbursed_at).toLocaleString()
+                            : new Date(selectedPayout.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[11px] uppercase border border-purple-100">
+                          {selectedPayout.payment_method?.replace(/_/g, " ")}
+                        </span>
+                        {selectedPayout.transaction_reference && (
+                          <span className="text-gray-600 font-mono text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                            Ref: <strong className="text-gray-900">{selectedPayout.transaction_reference}</strong>
+                          </span>
+                        )}
+                        <span className="text-[11px] font-bold text-green-700 ml-auto">
+                          Net: {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                        </span>
+                      </div>
+                      {parsedNotes.originalNote && (
+                        <p className="text-[11px] text-gray-600 bg-gray-50/70 p-2 rounded-lg border border-gray-100">
+                          <span className="font-semibold text-gray-700">Disbursement Note:</span> {parsedNotes.originalNote}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 2: Dispute (if disputed or dispute_reason exists) */}
+                  {(selectedPayout.dispute_reason || selectedPayout.status === "disputed" || selectedPayout.disputed_at) && (
+                    <div className="relative">
+                      <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                        <AlertCircle className="w-2.5 h-2.5" />
+                      </div>
+                      <div className="bg-red-50/60 rounded-xl p-3 border border-red-200 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-red-900">
+                            2. Delivery Person Dispute Reported
+                          </span>
+                          <span className="text-[10px] text-red-500 font-medium">
+                            {selectedPayout.disputed_at
+                              ? new Date(selectedPayout.disputed_at).toLocaleString()
+                              : "Reported"}
+                          </span>
+                        </div>
+                        <div className="bg-white/90 rounded-lg p-2.5 border border-red-100 text-xs text-red-800">
+                          <div className="flex items-start gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                            <p className="italic font-medium">
+                              "{selectedPayout.dispute_reason || "Payment not received or transaction reference not matching bank account."}"
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: Admin Resolution (if disputed or resolution note exists) */}
+                  {(parsedNotes.resolutionNote || selectedPayout.status === "disputed") && (
+                    <div className="relative">
+                      <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                        <RefreshCw className="w-2.5 h-2.5" />
+                      </div>
+                      <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-200 shadow-xs space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-amber-900">
+                            3. Admin Review & Resolution
+                          </span>
+                          {selectedPayout.status === "disputed" ? (
+                            <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
+                              Action Required
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                              Resolved & Re-disbursed
+                            </span>
+                          )}
+                        </div>
+
+                        {parsedNotes.resolutionNote && (
+                          <div className="bg-white rounded-lg p-2.5 border border-amber-100 text-xs text-amber-950 space-y-1">
+                            <p className="font-semibold text-gray-700 text-[11px]">Resolution Details:</p>
+                            <p className="text-gray-800 text-[11px] leading-relaxed">{parsedNotes.resolutionNote}</p>
+                          </div>
+                        )}
+
+                        {selectedPayout.status === "disputed" && (
+                          <div className="bg-white rounded-xl p-3.5 border border-amber-200/90 shadow-sm space-y-3">
+                            <p className="text-[11px] text-gray-600 font-medium">
+                              Provide corrected reference or transfer details to clear the dispute and return the payout for delivery person confirmation:
+                            </p>
+                            <div>
+                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                Corrected Transaction Reference
+                              </label>
+                              <input
+                                type="text"
+                                value={resolveRef}
+                                onChange={(e) => setResolveRef(e.target.value)}
+                                placeholder="e.g. Telebirr Txn # / Bank Transfer Ref"
+                                className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                Resolution Notes for Delivery Person
+                              </label>
+                              <textarea
+                                value={resolveNotes}
+                                onChange={(e) => setResolveNotes(e.target.value)}
+                                rows={2}
+                                placeholder="Explain resolution (e.g. resent payout with correct reference)..."
+                                className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleResolveDispute}
+                                disabled={resolvingDispute}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:bg-secondary/90 transition shadow-sm disabled:opacity-50"
+                              >
+                                {resolvingDispute ? (
+                                  <>
+                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                    <span>Submitting Resolution...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>Submit Resolution & Re-disburse</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 4: Final Handshake Confirmation */}
+                  <div className="relative">
+                    <div
+                      className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full text-white flex items-center justify-center ring-4 ring-white shadow-xs ${
+                        selectedPayout.status === "confirmed"
+                          ? "bg-green-600"
+                          : selectedPayout.status === "cancelled"
+                          ? "bg-gray-500"
+                          : selectedPayout.status === "disputed"
+                          ? "bg-red-500"
+                          : "bg-amber-500"
+                      }`}
+                    >
+                      {selectedPayout.status === "confirmed" ? (
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                      ) : selectedPayout.status === "cancelled" ? (
+                        <XCircle className="w-2.5 h-2.5" />
+                      ) : selectedPayout.status === "disputed" ? (
+                        <AlertCircle className="w-2.5 h-2.5" />
+                      ) : (
+                        <Clock className="w-2.5 h-2.5" />
+                      )}
+                    </div>
+
+                    <div
+                      className={`rounded-xl p-3 border shadow-xs space-y-1 ${
+                        selectedPayout.status === "confirmed"
+                          ? "bg-green-50/70 border-green-200"
+                          : selectedPayout.status === "cancelled"
+                          ? "bg-gray-50 border-gray-200"
+                          : selectedPayout.status === "disputed"
+                          ? "bg-red-50/50 border-red-200"
+                          : "bg-amber-50/60 border-amber-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-bold text-xs ${
+                            selectedPayout.status === "confirmed"
+                              ? "text-green-900"
+                              : selectedPayout.status === "cancelled"
+                              ? "text-gray-700"
+                              : selectedPayout.status === "disputed"
+                              ? "text-red-900"
+                              : "text-amber-900"
+                          }`}
+                        >
+                          {selectedPayout.status === "confirmed"
+                            ? "4. Receipt Confirmed by Delivery Person"
+                            : selectedPayout.status === "cancelled"
+                            ? "4. Payout Cancelled (Orders Released)"
+                            : selectedPayout.status === "disputed"
+                            ? "4. Confirmation On Hold"
+                            : "4. Awaiting Delivery Person Confirmation"}
+                        </span>
+                        {selectedPayout.confirmed_at && (
+                          <span className="text-[10px] text-green-700 font-semibold">
+                            {new Date(selectedPayout.confirmed_at).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        {selectedPayout.status === "confirmed"
+                          ? `${selectedPayout.driver_name} confirmed receipt of this payout in their mobile app. Settlement closed successfully.`
+                          : selectedPayout.status === "cancelled"
+                          ? "This payout was cancelled by admin. All associated orders were returned to the unpaid pool."
+                          : selectedPayout.status === "disputed"
+                          ? "Delivery person disputed this disbursement. Payout cannot be confirmed until the dispute is resolved."
+                          : `Funds have been disbursed. Awaiting ${selectedPayout.driver_name} to verify receipt on their device and tap 'Confirm Payout'.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Metadata Rows */}
+              <div className="grid grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
+                <div>
+                  <span className="text-gray-400 font-medium">Payment Channel:</span>{" "}
+                  <span className="font-bold text-gray-800 capitalize">
+                    {selectedPayout.payment_method?.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400 font-medium">Payout Interval:</span>{" "}
+                  <span className="font-bold text-gray-800 capitalize">
+                    {selectedPayout.payout_type}
+                  </span>
+                </div>
+                {selectedPayout.transaction_reference && (
+                  <div className="col-span-2">
+                    <span className="text-gray-400 font-medium">Transaction Reference:</span>{" "}
+                    <span className="font-mono font-bold text-gray-800">
+                      {selectedPayout.transaction_reference}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Orders Included in Payout */}
+              <div>
+                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider mb-2">
+                  Settled Orders ({selectedPayout.items?.length || selectedPayout.items_count})
+                </h4>
+                <div className="border border-gray-100 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-400 font-semibold uppercase sticky top-0 border-b border-gray-100">
+                      <tr>
+                        <th className="py-2 px-3">Order Number</th>
+                        <th className="py-2 px-3">Customer</th>
+                        <th className="py-2 px-3 text-right">Fee</th>
+                        <th className="py-2 px-3 text-right">COD</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {(selectedPayout.items || []).map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50/50">
+                          <td className="py-2 px-3 font-bold text-secondary">
+                            #{item.order_number}
+                          </td>
+                          <td className="py-2 px-3 text-gray-700">{item.customer_name}</td>
+                          <td className="py-2 px-3 text-right font-bold text-gray-900">
+                            +{parseFloat(item.delivery_fee).toFixed(2)} ETB
+                          </td>
+                          <td className="py-2 px-3 text-right text-amber-700 font-medium">
+                            {parseFloat(item.cod_collected) > 0
+                              ? `${parseFloat(item.cod_collected).toFixed(2)} ETB`
+                              : "0.00 ETB"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div>
+                  {(selectedPayout.status === "disbursed" || selectedPayout.status === "disputed") && (
+                    <button
+                      onClick={handleOpenCancelConfirm}
+                      disabled={cancellingPayout}
+                      className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Cancel Payout & Release Orders</span>
+                    </button>
                   )}
                 </div>
+                <button
+                  onClick={() => setDetailModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                >
+                  Close
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        );
+      })()}
 
-            {/* Financial Details Grid */}
-            <div className="grid grid-cols-3 gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center">
-              <div>
-                <p className="text-[10px] text-gray-400 font-bold uppercase">Gross Delivery Fees</p>
-                <p className="text-sm font-bold text-gray-900 mt-1">
-                  +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)} ETB
-                </p>
+      {/* Custom Confirmation Modal for Cancelling Payout */}
+      {cancelConfirmModalOpen && selectedPayout && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-[10px] text-orange-500 font-bold uppercase">COD Cash Retained</p>
-                <p className="text-sm font-bold text-orange-600 mt-1">
-                  -{parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)} ETB
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-green-600 font-bold uppercase">Net Amount Paid</p>
-                <p className="text-base font-black text-green-600 mt-1">
-                  {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                <h3 className="font-black text-gray-900 text-base">
+                  Cancel Payout #{selectedPayout.payout_number}?
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Issued to {selectedPayout.driver_name}
                 </p>
               </div>
             </div>
 
-            {/* Metadata Rows */}
-            <div className="grid grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
-              <div>
-                <span className="text-gray-400 font-medium">Payment Channel:</span>{" "}
-                <span className="font-bold text-gray-800 capitalize">
-                  {selectedPayout.payment_method?.replace(/_/g, " ")}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 font-medium">Payout Interval:</span>{" "}
-                <span className="font-bold text-gray-800 capitalize">
-                  {selectedPayout.payout_type}
-                </span>
-              </div>
-              {selectedPayout.transaction_reference && (
-                <div className="col-span-2">
-                  <span className="text-gray-400 font-medium">Transaction Reference:</span>{" "}
-                  <span className="font-mono font-bold text-gray-800">
-                    {selectedPayout.transaction_reference}
-                  </span>
-                </div>
-              )}
-              {selectedPayout.confirmed_at && (
-                <div>
-                  <span className="text-gray-400 font-medium">Confirmed At:</span>{" "}
-                  <span className="font-bold text-green-700">
-                    {new Date(selectedPayout.confirmed_at).toLocaleString()}
-                  </span>
-                </div>
-              )}
-              {selectedPayout.notes && (
-                <div className="col-span-2">
-                  <span className="text-gray-400 font-medium">Notes:</span>{" "}
-                  <span className="text-gray-700">{selectedPayout.notes}</span>
-                </div>
-              )}
+            <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
+              <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>Release Warning</span>
+              </p>
+              <p className="text-amber-700 leading-relaxed">
+                Cancelling will permanently void this payout and release all{" "}
+                <strong className="font-extrabold text-amber-900">
+                  {selectedPayout.items?.length || selectedPayout.items_count} orders
+                </strong>{" "}
+                back to the unpaid deliveries queue so they can be re-disbursed.
+              </p>
             </div>
 
-            {/* Orders Included in Payout */}
-            <div>
-              <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider mb-2">
-                Settled Orders ({selectedPayout.items?.length || selectedPayout.items_count})
-              </h4>
-              <div className="border border-gray-100 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-gray-50 text-gray-400 font-semibold uppercase sticky top-0 border-b border-gray-100">
-                    <tr>
-                      <th className="py-2 px-3">Order Number</th>
-                      <th className="py-2 px-3">Customer</th>
-                      <th className="py-2 px-3 text-right">Fee</th>
-                      <th className="py-2 px-3 text-right">COD</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(selectedPayout.items || []).map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50">
-                        <td className="py-2 px-3 font-bold text-secondary">
-                          #{item.order_number}
-                        </td>
-                        <td className="py-2 px-3 text-gray-700">{item.customer_name}</td>
-                        <td className="py-2 px-3 text-right font-bold text-gray-900">
-                          +{parseFloat(item.delivery_fee).toFixed(2)} ETB
-                        </td>
-                        <td className="py-2 px-3 text-right text-orange-600 font-medium">
-                          {parseFloat(item.cod_collected) > 0
-                            ? `-${parseFloat(item.cod_collected).toFixed(2)} ETB`
-                            : "0.00 ETB"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="pt-3 border-t border-gray-100 flex justify-end">
+            <div className="pt-2 flex items-center justify-end gap-3">
               <button
-                onClick={() => setDetailModalOpen(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                type="button"
+                disabled={cancellingPayout}
+                onClick={() => setCancelConfirmModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition disabled:opacity-50"
               >
-                Close
+                Keep Payout
+              </button>
+              <button
+                type="button"
+                disabled={cancellingPayout}
+                onClick={executeCancelPayout}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-sm text-xs disabled:opacity-50"
+              >
+                {cancellingPayout ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>Cancelling...</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4" />
+                    <span>Yes, Cancel & Release Orders</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

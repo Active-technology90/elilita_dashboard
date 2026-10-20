@@ -13,7 +13,6 @@ import {
   PieChart,
   Star,
   Layers,
-  ChevronRight,
 } from "lucide-react";
 import {
   XAxis,
