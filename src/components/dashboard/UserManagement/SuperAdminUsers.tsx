@@ -37,7 +37,7 @@ import {
 import type { User, UserRole, Membership } from "../../../types";
 import ReactDOM from "react-dom";
 import { Pagination } from "../../ui/Pagination";
-import { EditUserModal, type VehicleType } from "../companyUser/EditUserModal";
+import EditUserModal from "./EditUserModal";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import ManageMembershipsModal from "./ManageMembershipsModal";
 import ViewUserModal from "./ViewUserModal";
@@ -46,7 +46,7 @@ import { Toast } from "../../ui/Toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
 import PageHeader from "../../ui/PageHeader";
-import { CreateCompanyUserModal } from "../companyUser/CreateCompanyUserModal";
+import { CreateCompanyUserModal, type VehicleType } from "../companyUser/CreateCompanyUserModal";
 
 // ============================================================
 // Role display labels — backend stores "staff", UI shows "Dispatcher"
@@ -907,6 +907,9 @@ const SuperAdminUsers: React.FC = () => {
     Record<string, string | string[]>
   >({});
 
+  console.log('upda',updatingUser)
+  console.log('upda',updateUserServerErrors)
+  
   const fetchAllUsers = useCallback(async (): Promise<User[]> => {
     let page = 1;
     let all: User[] = [];
@@ -1044,46 +1047,27 @@ const SuperAdminUsers: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  // ✅ NEW: proper edit save with vehicle_type support
-  const handleSaveEdit = async (updatedData: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    role: string;
-    vehicle_type?: VehicleType;
-  }) => {
+  const handleSaveEdit = async (updatedData: Partial<User>) => {
     if (!editingUser) return;
     setUpdatingUser(true);
     setUpdateUserServerErrors({});
 
     try {
-      const payload: Record<string, any> = {
-        first_name: updatedData.first_name,
-        last_name: updatedData.last_name,
-        email: updatedData.email,
-        username: updatedData.username,
-        role: updatedData.role,
-      };
-
-      if (updatedData.role === "delivery" && updatedData.vehicle_type) {
-        payload.vehicle_type = updatedData.vehicle_type;
-      } else if (updatedData.role !== "delivery") {
-        payload.vehicle_type = null;
-      }
-
-      await updateUser(editingUser.id, payload);
+      await updateUser(editingUser.id, updatedData);
       await refreshAllUsers();
       showToast("success", "User updated successfully");
       setIsEditModalOpen(false);
     } catch (err: any) {
       const backendErrors = err?.response?.data;
+      let message = err.message || "Failed to update user";
       if (backendErrors && typeof backendErrors === "object") {
         setUpdateUserServerErrors(backendErrors);
-      } else {
-        showToast("error", err.message || "Failed to update user");
+        message = Object.entries(backendErrors)
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+          .join("; ");
       }
+      showToast("error", message);
+      throw new Error(message);
     } finally {
       setUpdatingUser(false);
     }
@@ -1364,10 +1348,8 @@ const SuperAdminUsers: React.FC = () => {
           setIsEditModalOpen(false);
           setUpdateUserServerErrors({});
         }}
-        user={editingUser as any}
+        user={editingUser}
         onSave={handleSaveEdit}
-        updating={updatingUser}
-        serverErrors={updateUserServerErrors}
       />
 
       <ConfirmDeleteModal

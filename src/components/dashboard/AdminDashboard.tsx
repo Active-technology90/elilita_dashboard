@@ -668,11 +668,11 @@ export default function AdminDashboard() {
   }, [company?.slug, isCompanyInactive]);
 
   // ── Tab blocking logic (both inactive AND service company) ──
-  const isTabBlocked = (tab: Tab): boolean => {
-    if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) return true;
-    if (isServiceCompany && SERVICE_BLOCKED_TABS.includes(tab)) return true;
-    return false;
-  };
+  // const isTabBlocked = (tab: Tab): boolean => {
+  //   if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) return true;
+  //   if (isServiceCompany && SERVICE_BLOCKED_TABS.includes(tab)) return true;
+  //   return false;
+  // };
 
   const navigate = (tab: Tab) => {
     if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) {

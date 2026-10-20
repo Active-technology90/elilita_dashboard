@@ -1275,10 +1275,14 @@ export default function CompanyManagement() {
 
       if (formData.license instanceof File) {
         formPayload.append("license", formData.license, formData.license.name);
+      } else if (formData.license === null && originalFormData?.license) {
+        formPayload.append("license", "");
       }
 
       if (formData.moa_file instanceof File) {
         formPayload.append("moa_file", formData.moa_file, formData.moa_file.name);
+      } else if (formData.moa_file === null && originalFormData?.moa_file) {
+        formPayload.append("moa_file", "");
       }
 
       if (formData.logo instanceof File) {

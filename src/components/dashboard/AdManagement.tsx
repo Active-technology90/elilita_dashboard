@@ -1,5 +1,5 @@
 // src/components/dashboard/ads/AdManagement.tsx
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2,
@@ -26,6 +26,10 @@ import {
   HardDrive,
   Sliders,
   CreditCard,
+  Home,
+  Store,
+  Building2,
+  Check,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -1199,11 +1203,21 @@ export default function AdManagement() {
   // Role / permission determination
   // ------------------------------------------------------------
   const isSuperAdmin = !user?.memberships?.length;
+  const [slotDrafts, setSlotDrafts] = useState<
+    Record<number, { slots: number; price: number }>
+  >({});
 
   const fetchPageSettings = useCallback(async () => {
     try {
       const res = await getAdminAdPageSettings();
-      setPageSettings(res.data?.results || res.data || []);
+      const settingsList = res.data?.results || res.data || [];
+      setPageSettings(settingsList);
+
+      const drafts: Record<number, { slots: number; price: number }> = {};
+      settingsList.forEach((s: any) => {
+        drafts[s.id] = { slots: s.max_slots, price: Number(s.price || 0) };
+      });
+      setSlotDrafts(drafts);
     } catch (err) {
       console.error("Failed to load ad page settings", err);
     }
@@ -1212,6 +1226,29 @@ export default function AdManagement() {
   useEffect(() => {
     fetchPageSettings();
   }, [fetchPageSettings]);
+
+  const handleSlotDraftChange = (
+    id: number,
+    field: "slots" | "price",
+    val: number,
+  ) => {
+    setSlotDrafts((prev) => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] || { slots: 1, price: 0 }),
+        [field]: isNaN(val) ? 0 : val,
+      },
+    }));
+  };
+
+  const isRowModified = (setting: any) => {
+    const draft = slotDrafts[setting.id];
+    if (!draft) return false;
+    return (
+      draft.slots !== setting.max_slots ||
+      draft.price !== Number(setting.price || 0)
+    );
+  };
 
   const handleUpdateSlotSetting = async (
     settingId: number,
@@ -1230,13 +1267,31 @@ export default function AdManagement() {
     }
   };
 
-  const fixedPlacementPrice = useMemo(() => {
-    if (!targetPages || targetPages.length === 0 || !pageSettings.length) return 0;
-    return targetPages.reduce((sum, page) => {
-      const setting = pageSettings.find((s) => s.page_name === page);
-      return sum + (Number(setting?.price) || 0);
-    }, 0);
-  }, [targetPages, pageSettings]);
+  const saveSettingRow = async (setting: any) => {
+    if (!isRowModified(setting)) return;
+
+    const draft = slotDrafts[setting.id] || {
+      slots: setting.max_slots,
+      price: Number(setting.price || 0),
+    };
+    if (draft.slots < 1) {
+      showToast("error", "Max slots must be at least 1");
+      return;
+    }
+    if (draft.price < 0) {
+      showToast("error", "Price cannot be negative");
+      return;
+    }
+    await handleUpdateSlotSetting(setting.id, draft.slots, draft.price);
+  };
+
+  // const fixedPlacementPrice = useMemo(() => {
+  //   if (!targetPages || targetPages.length === 0 || !pageSettings.length) return 0;
+  //   return targetPages.reduce((sum, page) => {
+  //     const setting = pageSettings.find((s) => s.page_name === page);
+  //     return sum + (Number(setting?.price) || 0);
+  //   }, 0);
+  // }, [targetPages, pageSettings]);
 
   const companyRole = (() => {
     if (!user || !company?.slug) return "";
@@ -1674,23 +1729,26 @@ export default function AdManagement() {
             required
             error={formErrors.title}
           />
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-[#674FA3]"
-              />
-              <label
-                htmlFor="isActive"
-                className="text-sm font-medium text-gray-700"
-              >
-                Active (visible to users)
-              </label>
+          {/* Active status is only shown when editing an existing ad */}
+          {editingId && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-[#674FA3]"
+                />
+                <label
+                  htmlFor="isActive"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  Active (visible to users once paid)
+                </label>
+              </div>
             </div>
-          </div>
+          )}
           <Input
             label="Target Link (optional)"
             type="url"
@@ -1728,7 +1786,7 @@ export default function AdManagement() {
               Ad Placements
             </label>
             <p className="text-xs text-gray-500">
-              Placements rotate fairly across page slots configured by Superadmin.
+              Select which application screens this advertisement should appear on.
             </p>
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1747,14 +1805,6 @@ export default function AdManagement() {
                 <span className="text-[11px] text-gray-500">
                   (Main banner carousel)
                 </span>
-                {(() => {
-                  const s = pageSettings.find((p) => p.page_name === "home");
-                  return s ? (
-                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
-                      ETB {Number(s.price || 0).toFixed(0)}
-                    </span>
-                  ) : null;
-                })()}
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1771,18 +1821,10 @@ export default function AdManagement() {
                   }}
                   className="w-4 h-4 text-secondary rounded border-gray-300"
                 />
-                <span className="text-sm font-medium text-gray-800">Companies List Page</span>
+                <span className="text-sm font-medium text-gray-800">Companies / Services List Page</span>
                 <span className="text-[11px] text-gray-500">
                   (Directory banner)
                 </span>
-                {(() => {
-                  const s = pageSettings.find((p) => p.page_name === "companies_list");
-                  return s ? (
-                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
-                      ETB {Number(s.price || 0).toFixed(0)}
-                    </span>
-                  ) : null;
-                })()}
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1803,39 +1845,8 @@ export default function AdManagement() {
                 <span className="text-[11px] text-gray-500">
                   (Storefront banner)
                 </span>
-                {(() => {
-                  const s = pageSettings.find((p) => p.page_name === "company_detail");
-                  return s ? (
-                    <span className="text-[10px] font-bold text-secondary bg-secondary/[0.08] px-2 py-0.5 rounded-full ml-auto">
-                      ETB {Number(s.price || 0).toFixed(0)}
-                    </span>
-                  ) : null;
-                })()}
               </label>
             </div>
-
-            {/* Fixed Pricing Summary */}
-            {targetPages.length > 0 && (
-              <div className="p-4 bg-secondary/[0.04] rounded-xl border border-secondary/15 space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-secondary">
-                  <span>Selected Placements ({targetPages.length})</span>
-                  <span>ETB {fixedPlacementPrice.toFixed(2)}</span>
-                </div>
-                <div className="pt-2 border-t border-secondary/10 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-gray-900">Fixed Placement Fee</p>
-                    <p className="text-[11px] text-gray-500">
-                      {isSuperAdmin
-                        ? "Platform ads created by SuperAdmin are exempt from fees"
-                        : "Fixed one-time placement fee per advertisement via Chapa"}
-                    </p>
-                  </div>
-                  <span className="text-lg font-black text-secondary">
-                    ETB {fixedPlacementPrice.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
           <ImageUploader
@@ -1856,109 +1867,217 @@ export default function AdManagement() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity"
                 onClick={() => setSlotsModalOpen(false)}
               />
               <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                initial={{ scale: 0.96, opacity: 0, y: 16 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-2xl shadow-2xl z-50 p-6"
+                exit={{ scale: 0.96, opacity: 0, y: 16 }}
+                transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white rounded-3xl shadow-2xl z-50 overflow-hidden border border-gray-100 max-h-[92vh] flex flex-col"
               >
-                <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                      <Sliders className="h-5 w-5 text-secondary" />
-                      Page Ad Slot Limits & Pricing
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Configure maximum active ads displayed per page and the fixed placement fee in ETB per ad.
-                    </p>
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-gray-50/90">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary border border-secondary/20 shadow-sm">
+                      <Sliders className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                        Page Placement Slots & Pricing
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Configure display slot capacity and placement fees per app screen.
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSlotsModalOpen(false)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="mt-4 space-y-4">
+                {/* Modal Content */}
+                <div className="overflow-y-auto p-6 space-y-4 flex-1">
+                  {/* Informational Guidance Box on Slots */}
+                  {/* <div className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border border-blue-100 text-blue-950 shadow-xs">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 mt-0.5">
+                      <Info className="h-4 w-4" />
+                    </div>
+                    <div className="text-xs leading-relaxed">
+                      <span className="font-bold text-blue-900">How Slots Work:</span>{" "}
+                      <strong>Slots</strong> specify the maximum number of ads displayed concurrently on that screen. If more advertisers buy ads on a page than its slot limit, the system automatically <strong>rotates ads randomly</strong> on every page load to guarantee equal and fair exposure.
+                    </div>
+                  </div> */}
+
                   {pageSettings.length === 0 ? (
-                    <div className="text-center py-6 text-sm text-gray-500">
-                      No placement settings found. Ensure database settings are initialized.
+                    <div className="text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50">
+                      <p className="text-sm font-medium text-gray-600">
+                        No placement settings found.
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Ensure database placement settings are initialized on your server.
+                      </p>
                     </div>
                   ) : (
-                    pageSettings.map((setting) => (
-                      <div
-                        key={setting.id}
-                        className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">
-                            {setting.page_name_display || setting.page_name}
-                          </p>
-                          <p className="text-xs text-gray-500 font-mono mt-0.5">
-                            Key: {setting.page_name}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="flex items-center gap-1">
-                            <label className="text-xs font-medium text-gray-600">
-                              Slots:
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="50"
-                              defaultValue={setting.max_slots}
-                              id={`slot-input-${setting.id}`}
-                              className="w-14 px-2 py-1 text-center text-xs font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
-                            />
+                    pageSettings.map((setting) => {
+                      const modified = isRowModified(setting);
+                      const isSaving = savingSlotId === setting.id;
+                      const draft = slotDrafts[setting.id] || {
+                        slots: setting.max_slots,
+                        price: Number(setting.price || 0),
+                      };
+
+                      const getIcon = () => {
+                        if (setting.page_name === "home")
+                          return <Home className="h-5 w-5 text-secondary" />;
+                        if (setting.page_name === "companies_list")
+                          return <Store className="h-5 w-5 text-secondary" />;
+                        if (setting.page_name === "company_detail")
+                          return <Building2 className="h-5 w-5 text-secondary" />;
+                        return <LayoutDashboard className="h-5 w-5 text-gray-600" />;
+                      };
+
+                      const getBadgeBg = () => {
+                        if (setting.page_name === "home")
+                          return "bg-indigo-50 border-indigo-100 text-indigo-700";
+                        if (setting.page_name === "companies_list")
+                          return "bg-purple-50 border-purple-100 text-purple-700";
+                        if (setting.page_name === "company_detail")
+                          return "bg-emerald-50 border-emerald-100 text-emerald-700";
+                        return "bg-gray-50 border-gray-100 text-gray-700";
+                      };
+
+                      return (
+                        <div
+                          key={setting.id}
+                          className="rounded-2xl border border-gray-200/80 bg-white p-4.5 shadow-xs hover:border-secondary/30 hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                        >
+                          {/* Page Identity */}
+                          <div className="flex items-center gap-3.5">
+                            <div
+                              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-xs ${getBadgeBg()}`}
+                            >
+                              {getIcon()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-gray-900">
+                                  {setting.page_name_display || setting.page_name}
+                                </p>
+                                {/* <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-gray-100 text-gray-600 border border-gray-200/70">
+                                  {setting.page_name}
+                                </span> */}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {setting.page_name === "home"
+                                  ? "Main application landing carousel screen"
+                                  : setting.page_name === "companies_list"
+                                  ? "Stores/Services and companies directory screen"
+                                  : "Individual store storefront & menu screen"}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <label className="text-xs font-medium text-gray-600">
-                              Price (ETB):
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              defaultValue={Number(setting.price || 0)}
-                              id={`price-input-${setting.id}`}
-                              className="w-20 px-2 py-1 text-center text-xs font-bold border border-gray-300 rounded-lg bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-secondary"
-                            />
+
+                          {/* Controls (Slots + Price + Save) */}
+                          <div className="flex items-center gap-3 justify-between md:justify-end flex-wrap sm:flex-nowrap border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+                            {/* Slots Input */}
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                Max Slots
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="50"
+                                  value={draft.slots}
+                                  onChange={(e) =>
+                                    handleSlotDraftChange(
+                                      setting.id,
+                                      "slots",
+                                      parseInt(e.target.value, 10),
+                                    )
+                                  }
+                                  className="w-20 px-3 py-1.5 text-center text-xs font-bold border border-gray-300 rounded-xl bg-gray-50/80 text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Price Input */}
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                Price  
+                              </label>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-2.5 text-[10px] font-bold text-gray-400 select-none">
+                                  ETB
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={draft.price}
+                                  onChange={(e) =>
+                                    handleSlotDraftChange(
+                                      setting.id,
+                                      "price",
+                                      parseFloat(e.target.value),
+                                    )
+                                  }
+                                  className="w-28 pl-9 pr-3 py-1.5 text-right text-xs font-bold border border-gray-300 rounded-xl bg-gray-50/80 text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Save Action */}
+                            <div className="flex flex-col justify-end mt-5 pt-4 sm:pt-0">
+                              <Button
+                                size="sm"
+                                disabled={savingSlotId !== null || !modified}
+                                onClick={() => saveSettingRow(setting)}
+                                className={`h-8.5 px-4 text-xs font-semibold rounded-xl shadow-xs transition-all ${
+                                  modified
+                                    ? "bg-secondary text-white hover:bg-secondary/90 shadow-secondary/20 cursor-pointer"
+                                    : "bg-gray-100/80 text-gray-500 border border-gray-200 cursor-not-allowed shadow-none"
+                                }`}
+                              >
+                                {isSaving ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <span>Saving</span>
+                                  </>
+                                ) : modified ? (
+                                  "Save"
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 text-white">
+                                    <Check className="h-3.5 w-3.5 text-white stroke-[2.5]" />
+                                    <span>Saved</span>
+                                  </span>
+                                )}
+                              </Button>
+                            </div>
                           </div>
-                          <Button
-                            size="sm"
-                            isLoading={savingSlotId === setting.id}
-                            onClick={() => {
-                              const slotEl = document.getElementById(
-                                `slot-input-${setting.id}`
-                              ) as HTMLInputElement;
-                              const priceEl = document.getElementById(
-                                `price-input-${setting.id}`
-                              ) as HTMLInputElement;
-                              if (slotEl && priceEl) {
-                                const slotsVal = parseInt(slotEl.value, 10);
-                                const priceVal = parseFloat(priceEl.value);
-                                if (!isNaN(slotsVal) && slotsVal >= 1 && !isNaN(priceVal) && priceVal >= 0) {
-                                  handleUpdateSlotSetting(setting.id, slotsVal, priceVal);
-                                }
-                              }
-                            }}
-                          >
-                            Save
-                          </Button>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
-                <div className="mt-6 flex justify-end">
-                  <Button variant="outline" onClick={() => setSlotsModalOpen(false)}>
+                {/* Modal Footer */}
+                <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-t border-gray-100">
+                  <p className="text-xs text-gray-500">
+                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSlotsModalOpen(false)}
+                    className="px-5 rounded-xl border-gray-300 text-gray-700 hover:bg-gray-100"
+                  >
                     Close
                   </Button>
                 </div>

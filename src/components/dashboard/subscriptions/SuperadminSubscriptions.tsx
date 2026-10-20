@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles, Gift, SlidersHorizontal, Filter } from "lucide-react";
+import { Plus, Edit, CreditCard, Building2, Download, AlertCircle, X, Check, Sparkles, Gift, Filter } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   getAdminSubscriptionPlans,

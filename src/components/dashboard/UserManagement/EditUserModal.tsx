@@ -518,7 +518,7 @@ const EditUserModal: React.FC<EditUserModalProps> = React.memo(
           email: user.email,
           phone_number: user.phone_number || "",
           username: user.username,
-          is_active: Boolean(user.is_active),
+          is_active: user.is_active !== false,
           is_marketing: Boolean(user.is_marketing),
           daily_target: user.daily_target || 0,
           weekly_target: user.weekly_target || 0,

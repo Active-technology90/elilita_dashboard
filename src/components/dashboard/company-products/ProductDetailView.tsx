@@ -11,7 +11,6 @@ import {
   UtensilsCrossed,
   TrendingUp,
   TrendingDown,
-  CheckCircle2,
   XCircle,
   Sparkles,
 } from "lucide-react";

@@ -14,6 +14,7 @@ interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   maxHeight?: number; // ✅ NEW
+  ariaLabel?: string;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -23,6 +24,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   placeholder = "Select...",
   className = "",
   maxHeight = 260,
+  ariaLabel,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -65,6 +67,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <button
         key={value}
         type="button"
+        aria-label={ariaLabel}
         onClick={() => setOpen((p) => !p)}
         className="
           w-full flex items-center justify-between
