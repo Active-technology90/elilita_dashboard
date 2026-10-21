@@ -14,6 +14,13 @@ import type { User } from "../types";
 /*                                   TYPES                                    */
 /* -------------------------------------------------------------------------- */
 
+export interface Membership {
+  company_slug: string;
+  company_name: string;
+  role: string;
+  is_active?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -31,6 +38,7 @@ interface AuthContextType {
 
   /**
    * True when the user belongs to at least one active company membership.
+   * Inactive memberships (`is_active: false`) do NOT count.
    */
   hasMemberships: boolean;
 
@@ -41,9 +49,21 @@ interface AuthContextType {
   canAccessDashboard: boolean;
 
   /**
-   * True when the user is signed in but has no dashboard access.
+   * True when the user is signed in but has no dashboard access
+   * (no memberships at all — for non-super, non-marketing users).
    */
   isRestricted: boolean;
+
+  /**
+   * True when the user has memberships but ALL of them are inactive.
+   * This is distinct from `isRestricted` (which means "no memberships").
+   */
+  allMembershipsInactive: boolean;
+
+  /**
+   * The first active membership, or null if none.
+   */
+  activeMembership: Membership | null;
 
   login: (access: string, refresh: string, user: User | null) => Promise<void>;
   logout: () => Promise<void>;
@@ -56,12 +76,11 @@ interface AuthContextType {
 /* -------------------------------------------------------------------------- */
 
 export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
+  undefined,
 );
 
 /**
  * Custom hook to access the auth context.
- * Exported as a named export so components can do:
  *
  *   import { useAuth } from "../context/AuthContext";
  */
@@ -166,24 +185,61 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return u.is_marketing === true;
   }, [user]);
 
-  const hasMemberships = useMemo(() => {
-    if (!user) return false;
+  /**
+   * All memberships returned by the backend (may include inactive ones).
+   */
+  const membershipsList = useMemo<Membership[]>(() => {
+    if (!user) return [];
     const memberships = (user as any)?.memberships;
-    if (!Array.isArray(memberships)) return false;
-
-    // Only count active memberships — `is_active: false` grants no access.
-    return memberships.some((m: any) => m?.is_active !== false);
+    if (!Array.isArray(memberships)) return [];
+    return memberships as Membership[];
   }, [user]);
 
+  /**
+   * First active membership (or null).
+   */
+  const activeMembership = useMemo<Membership | null>(() => {
+    return membershipsList.find((m) => m?.is_active !== false) ?? null;
+  }, [membershipsList]);
+
+  /**
+   * True when the user belongs to at least one ACTIVE membership.
+   * Inactive memberships (`is_active: false`) are ignored.
+   */
+  const hasMemberships = useMemo(() => {
+    if (!user) return false;
+    return activeMembership !== null;
+  }, [user, activeMembership]);
+
+  /**
+   * True when the user has memberships but NONE are active.
+   * (e.g., 2 memberships, both is_active: false)
+   */
+  const allMembershipsInactive = useMemo(() => {
+    if (!user) return false;
+    if (isSuperAdmin || isMarketing) return false;
+    if (membershipsList.length === 0) return false;
+    return !hasMemberships;
+  }, [user, isSuperAdmin, isMarketing, membershipsList, hasMemberships]);
+
+  /**
+   * True when the user can access the dashboard at all.
+   */
   const canAccessDashboard = useMemo(() => {
     if (!user) return false;
     return isSuperAdmin || isMarketing || hasMemberships;
   }, [user, isSuperAdmin, isMarketing, hasMemberships]);
 
+  /**
+   * True when the user is signed in but has NO memberships at all
+   * (and is not super admin / marketing).
+   */
   const isRestricted = useMemo(() => {
     if (!user) return false;
-    return !canAccessDashboard;
-  }, [user, canAccessDashboard]);
+    if (isSuperAdmin || isMarketing) return false;
+    if (membershipsList.length > 0) return false; // allMembershipsInactive covers this
+    return !hasMemberships;
+  }, [user, isSuperAdmin, isMarketing, membershipsList, hasMemberships]);
 
   /* ──────────────────────────────────────────────────────────────
      Actions
@@ -192,7 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (
     access: string,
     refresh: string,
-    userData: User | null
+    userData: User | null,
   ) => {
     try {
       setAuthToken(access);
@@ -244,6 +300,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hasMemberships,
         canAccessDashboard,
         isRestricted,
+        allMembershipsInactive,
+        activeMembership,
         login,
         logout,
         setUser,

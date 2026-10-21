@@ -1888,12 +1888,12 @@ export default function CompanyForm({
                 {formData.fan_number || "— (required 16 digits)"}
               </p>
             </div>
-            <div>
+            {/* <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
                 Tax Type
               </p>
               <p className="text-sm font-semibold text-gray-900">No Tax</p>
-            </div>
+            </div> */}
 
             {/* TAX COMMENT — COMMENTED OUT */}
             {/* <div className="col-span-2">

@@ -48,7 +48,11 @@ export default function SignIn(): React.JSX.Element {
       } catch (profileErr: any) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        try { setUser(null); } catch {}
+        try {
+          setUser(null);
+        } catch {
+          /* noop */
+        }
 
         const status = profileErr?.response?.status;
         const backendDetail =
@@ -57,13 +61,13 @@ export default function SignIn(): React.JSX.Element {
 
         if (status === 401 || status === 403) {
           setError(
-            "Your account is deactivated or restricted. Please contact your administrator or support to reactivate your account."
+            "Your account is deactivated or restricted. Please contact your administrator or support to reactivate your account.",
           );
         } else if (backendDetail) {
           setError(`Unable to load profile: ${backendDetail}`);
         } else {
           setError(
-            "Failed to load your profile. Please try again or contact support."
+            "Failed to load your profile. Please try again or contact support.",
           );
         }
         setLoading(false);
@@ -74,31 +78,47 @@ export default function SignIn(): React.JSX.Element {
       if (userData && userData.is_active === false) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        try { setUser(null); } catch {}
+        try {
+          setUser(null);
+        } catch {
+          /* noop */
+        }
 
         setError(
-          "Your account is deactivated. Please contact your administrator or support to reactivate your account."
+          "Your account is deactivated. Please contact your administrator or support to reactivate your account.",
         );
         setLoading(false);
         return;
       }
 
       // ─────────────────────────────────────────────────────
-      // STEP 3: Success
+      // STEP 3: Determine dashboard access
       // ─────────────────────────────────────────────────────
-      await login(access, refresh, userData);
-
       const isSuper = userData?.is_superuser === true;
+      const isMarketing = userData?.is_marketing === true;
       const memberships = Array.isArray(userData?.memberships)
         ? userData.memberships
         : [];
       const hasActiveMembership = memberships.some(
-        (m: any) => m?.is_active !== false
+        (m: any) => m?.is_active !== false,
       );
 
-      if (isSuper || hasActiveMembership) {
+      const canAccess = isSuper || isMarketing || hasActiveMembership;
+
+      // Persist session in context first (so logout button works on restricted screen)
+      await login(access, refresh, userData);
+
+      if (canAccess) {
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      // ── Logged in, but no active membership and not super/marketing ──
+      if (memberships.length > 0) {
+        // Has memberships but all inactive → let guard show "Company access restricted"
         navigate("/dashboard", { replace: true });
       } else {
+        // No memberships at all → let guard show "Dashboard access restricted"
         navigate("/dashboard", { replace: true });
       }
     } catch (err: any) {
@@ -107,32 +127,28 @@ export default function SignIn(): React.JSX.Element {
       // ─────────────────────────────────────────────────────
       const status = err?.response?.status;
       const backendDetail =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message;
+        err?.response?.data?.detail || err?.response?.data?.message;
       const errMessage = err?.message || "";
 
-      // Login endpoint failed → wrong credentials
       if (status === 401) {
         setError("Invalid username or password. Please try again.");
       } else if (status === 400) {
         setError(
-          backendDetail || "Please enter a valid username and password."
+          backendDetail || "Please enter a valid username and password.",
         );
       } else if (errMessage === "NO_REFRESH_TOKEN") {
-        setError(
-          "Your session has expired. Please sign in again."
-        );
+        setError("Your session has expired. Please sign in again.");
       } else if (errMessage === "SESSION_EXPIRED") {
         setError("Your session has expired. Please sign in again.");
       } else if (status === 500 || status === 502 || status === 503) {
         setError("Server is unavailable. Please try again in a moment.");
       } else if (!err?.response) {
         setError(
-          "Cannot reach the server. Please check your internet connection."
+          "Cannot reach the server. Please check your internet connection.",
         );
       } else {
         setError(
-          backendDetail || "Login failed. Please check your credentials."
+          backendDetail || "Login failed. Please check your credentials.",
         );
       }
     } finally {
