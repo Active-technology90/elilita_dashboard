@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   Shield,
+  ShieldAlert,
 } from "lucide-react";
 
 type ProfileForm = {
@@ -243,6 +244,9 @@ export default function AdminProfile() {
   };
 
   const handleSwitchCompany = (membership: any) => {
+    // 🛑 BLOCK SWITCHING IF INACTIVE
+    if (membership.is_active === false) return;
+
     switchCompany({
       slug: membership.company_slug,
       name: membership.company_name,
@@ -287,12 +291,6 @@ export default function AdminProfile() {
         )}
         {/* Profile Header Card */}
         <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
-          {/* <div
-          className="relative h-32 bg-gradient-to-r from-secondary to-[#8B6BB4]"
-          style={{
-            backgroundImage: `linear-gradient(135deg, ${BRAND_COLOR}, #6750A4)`,
-          }}
-        > */}
           <div
             className="relative h-28 sm:h-32 md:h-36"
             style={{
@@ -717,23 +715,38 @@ export default function AdminProfile() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {user.memberships.map((membership: any, idx: number) => {
                       const isActive = isCurrentCompany(membership);
+                      
+                      // 🛑 Check if the specific membership is inactive
+                      const isInactive =
+                        membership.is_active === false ||
+                        (membership.is_active === undefined &&
+                          companies.find(
+                            (c: any) => c.slug === membership.company_slug,
+                          )?.is_active === false);
+
                       return (
                         <div
                           key={idx}
-                          onClick={() => handleSwitchCompany(membership)}
-                          className={`relative bg-white border rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-200 group ${
-                            isActive
-                              ? "border-secondary shadow-md ring-1 ring-secondary/20"
-                              : "border-gray-200 hover:shadow-md"
+                          onClick={() =>
+                            !isInactive && handleSwitchCompany(membership)
+                          }
+                          className={`relative bg-white border rounded-xl p-3 sm:p-4 transition-all duration-200 group ${
+                            isInactive
+                              ? "opacity-60 cursor-not-allowed border-gray-200 bg-gray-50/50"
+                              : isActive
+                                ? "border-secondary shadow-md ring-1 ring-secondary/20 cursor-pointer"
+                                : "border-gray-200 hover:shadow-md cursor-pointer"
                           }`}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-3">
                               <div
                                 className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all duration-300 overflow-hidden shadow-md flex-shrink-0 ${
-                                  isActive
-                                    ? "bg-gradient-to-br from-secondary to-purple-700 ring-2 ring-secondary/30"
-                                    : "bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-secondary/10 group-hover:to-purple-100"
+                                  isInactive
+                                    ? "bg-gray-200 grayscale"
+                                    : isActive
+                                      ? "bg-gradient-to-br from-secondary to-purple-700 ring-2 ring-secondary/30"
+                                      : "bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-secondary/10 group-hover:to-purple-100"
                                 }`}
                               >
                                 {(() => {
@@ -752,9 +765,11 @@ export default function AdminProfile() {
                                   return (
                                     <Building
                                       className={`h-5 w-5 sm:h-6 sm:w-6 transition-all duration-300 ${
-                                        isActive
-                                          ? "text-white"
-                                          : "text-gray-500 group-hover:text-secondary"
+                                        isInactive
+                                          ? "text-gray-400"
+                                          : isActive
+                                            ? "text-white"
+                                            : "text-gray-500 group-hover:text-secondary"
                                       }`}
                                     />
                                   );
@@ -763,9 +778,11 @@ export default function AdminProfile() {
                               <div className="flex-1 min-w-0">
                                 <p
                                   className={`font-semibold transition-all duration-300 break-words ${
-                                    isActive
-                                      ? "text-secondary text-base sm:text-lg"
-                                      : "text-gray-800 group-hover:text-secondary text-sm sm:text-base"
+                                    isInactive
+                                      ? "text-gray-500 line-through"
+                                      : isActive
+                                        ? "text-secondary text-base sm:text-lg"
+                                        : "text-gray-800 group-hover:text-secondary text-sm sm:text-base"
                                   }`}
                                 >
                                   {membership.company_name}
@@ -782,29 +799,45 @@ export default function AdminProfile() {
                                             : "bg-gray-100 text-gray-600"
                                     }`}
                                   >
-                                    {membership.role === "staff" ? "Dispatcher" : membership.role}
+                                    {membership.role === "staff"
+                                      ? "Dispatcher"
+                                      : membership.role}
                                   </span>
-                                  {isActive && (
+                                  
+                                  {/* Show Inactive Badge instead of Active */}
+                                  {isInactive ? (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-100 border border-red-200 px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1">
+                                      <ShieldAlert className="h-3 w-3" />
+                                      Inactive
+                                    </span>
+                                  ) : isActive ? (
                                     <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full">
                                       Active
                                     </span>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-2">
-                              <span
-                                className={`text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium ${
-                                  membership.role === "admin"
-                                    ? "bg-green-100 text-green-700"
-                                    : membership.role === "staff"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-gray-100 text-gray-600"
-                                }`}
-                              >
-                                {membership.role === "staff" ? "Dispatcher" : membership.role}
-                              </span>
-                              {isActive ? (
+                              {!isInactive && (
+                                <span
+                                  className={`text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-medium ${
+                                    membership.role === "admin"
+                                      ? "bg-green-100 text-green-700"
+                                      : membership.role === "staff"
+                                        ? "bg-blue-100 text-blue-700"
+                                        : "bg-gray-100 text-gray-600"
+                                  }`}
+                                >
+                                  {membership.role === "staff"
+                                    ? "Dispatcher"
+                                    : membership.role}
+                                </span>
+                              )}
+                              
+                              {isInactive ? (
+                                <ShieldAlert className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                              ) : isActive ? (
                                 <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-secondary" />
                               ) : (
                                 <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-300 group-hover:text-secondary transition-colors" />

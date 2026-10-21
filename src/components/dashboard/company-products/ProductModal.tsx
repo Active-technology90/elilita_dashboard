@@ -541,7 +541,7 @@ export function ProductModal({
                 )}
 
                 {/* SKU – disabled when editing or basic read-only */}
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     SKU <span className="text-red-500">*</span>
                   </label>
@@ -561,7 +561,7 @@ export function ProductModal({
                       {errors.sku.message}
                     </p>
                   )}
-                </div>
+                </div> */}
 
                 {/* Title */}
                 <div>
