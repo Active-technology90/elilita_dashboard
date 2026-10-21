@@ -280,19 +280,11 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   moa_file: null,
   contact_phone: "",
   contact_email: "",
+  terms_signatory_name: "",
+  terms_signatory_role: "Owner",
 };
 
-const COMPANY_VERIFICATION_STORAGE_KEY = "company-verification-status-v1";
 
-const readCompanyVerificationState = (): Record<string, boolean> => {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(COMPANY_VERIFICATION_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
 
 /* ──────────────────────────────────────────────────────────────────
    Main component
@@ -419,31 +411,14 @@ export default function CompanyManagement() {
   );
   const { toast, showToast } = useToast();
   const [isEditingActive, setIsEditingActive] = useState(false);
-  const [verificationBySlug, setVerificationBySlug] = useState<
-    Record<string, boolean>
-  >(readCompanyVerificationState);
   const [verificationDraft, setVerificationDraft] = useState(false);
   const [originalVerification, setOriginalVerification] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(
-        COMPANY_VERIFICATION_STORAGE_KEY,
-        JSON.stringify(verificationBySlug),
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [verificationBySlug]);
 
   const handleVerificationChange = useCallback(
     (verified: boolean) => {
       if (!isSuperAdmin || !editingSlug) return;
       setVerificationDraft(verified);
-      if (!verified) {
-        setFormData((current) => ({ ...current, is_active: false }));
-      }
+      setFormData((current) => ({ ...current, is_active: verified }));
     },
     [isSuperAdmin, editingSlug],
   );
@@ -767,6 +742,8 @@ export default function CompanyManagement() {
           tax_type: "none",
           chapa_sub_account_id:
             (companyListItem as any).chapa_sub_account_id || "",
+          terms_signatory_name: (companyListItem as any).terms_signatory_name || "",
+          terms_signatory_role: (companyListItem as any).terms_signatory_role || "Owner",
         };
 
         setFormData(newFormData);
@@ -898,6 +875,8 @@ export default function CompanyManagement() {
             fan_number: (first as any).fan_number || "",
             tax_type: "none",
             chapa_sub_account_id: (first as any).chapa_sub_account_id || "",
+            terms_signatory_name: (first as any).terms_signatory_name || "",
+            terms_signatory_role: (first as any).terms_signatory_role || "Owner",
           };
           setFormData(newFormData);
           setOriginalFormData({
@@ -1004,12 +983,21 @@ export default function CompanyManagement() {
       return;
     }
 
-    if (!agreedToTerms) {
-      showToast(
-        "error",
-        "You must agree to the terms and conditions before submitting.",
-      );
-      return;
+    if (isMarketing && !editingSlug) {
+      if (!agreedToTerms) {
+        showToast(
+          "error",
+          "The company owner must agree to the terms and conditions before registration.",
+        );
+        return;
+      }
+      if (!formData.terms_signatory_name?.trim()) {
+        showToast(
+          "error",
+          "Please enter the legal name of the owner or authorized signatory who agreed to the terms.",
+        );
+        return;
+      }
     }
 
     // ─── CHANGE DETECTION ───
@@ -1141,6 +1129,16 @@ export default function CompanyManagement() {
           cleanString(originalFormData.contact_email)
         )
           return true;
+        if (
+          cleanString(formData.terms_signatory_name) !==
+          cleanString(originalFormData.terms_signatory_name)
+        )
+          return true;
+        if (
+          cleanString(formData.terms_signatory_role) !==
+          cleanString(originalFormData.terms_signatory_role)
+        )
+          return true;
 
         if (formData.license instanceof File) return true;
         if (formData.license === null && originalFormData.license) return true;
@@ -1217,12 +1215,17 @@ export default function CompanyManagement() {
 
       if (!editingSlug) {
         formPayload.append("is_active", "false");
-      } else if (isSuperAdmin) {
-        formPayload.append(
-          "is_active",
-          String(verificationDraft ? formData.is_active : false),
-        );
+        formPayload.append("is_verified", "false");
+        formPayload.append("terms_agreed", String(agreedToTerms));
+      } else {
+        if (isSuperAdmin) {
+          formPayload.append("is_active", String(formData.is_active));
+          formPayload.append("is_verified", String(verificationDraft));
+        }
+        formPayload.append("terms_agreed", String(agreedToTerms));
       }
+      formPayload.append("terms_signatory_name", formData.terms_signatory_name?.trim() || "");
+      formPayload.append("terms_signatory_role", formData.terms_signatory_role || "Owner");
 
       formPayload.append(
         "supports_table_service",
@@ -1342,20 +1345,10 @@ export default function CompanyManagement() {
         );
 
         if (isSuperAdmin) {
-          setVerificationBySlug((current) => ({
-            ...current,
-            [editingSlug]: verificationDraft,
-          }));
           setOriginalVerification(verificationDraft);
         }
       } else {
         await createCompany(formPayload);
-        if (formData.slug.trim()) {
-          setVerificationBySlug((current) => ({
-            ...current,
-            [formData.slug.trim()]: false,
-          }));
-        }
       }
 
       showToast(
@@ -1412,6 +1405,8 @@ export default function CompanyManagement() {
             onCoverFileChange={handleCoverChange}
             isEditingActive={true}
             canManageActiveStatus={isSuperAdmin}
+            isSuperAdmin={isSuperAdmin}
+            isMarketing={isMarketing}
             isCompanyVerified={verificationDraft}
             onVerificationChange={handleVerificationChange}
             submitting={submitting}
@@ -1446,6 +1441,8 @@ export default function CompanyManagement() {
             onCoverFileChange={handleCoverChange}
             isEditingActive={true}
             canManageActiveStatus={isSuperAdmin}
+            isSuperAdmin={isSuperAdmin}
+            isMarketing={isMarketing}
             isCompanyVerified={verificationDraft}
             onVerificationChange={handleVerificationChange}
             submitting={submitting}
@@ -1480,6 +1477,8 @@ export default function CompanyManagement() {
             onCoverFileChange={handleCoverChange}
             isEditingActive={true}
             canManageActiveStatus={isSuperAdmin}
+            isSuperAdmin={isSuperAdmin}
+            isMarketing={isMarketing}
             isCompanyVerified={verificationDraft}
             onVerificationChange={handleVerificationChange}
             submitting={submitting}
@@ -1514,6 +1513,8 @@ export default function CompanyManagement() {
             onCoverFileChange={handleCoverChange}
             isEditingActive={true}
             canManageActiveStatus={isSuperAdmin}
+            isSuperAdmin={isSuperAdmin}
+            isMarketing={isMarketing}
             isCompanyVerified={verificationDraft}
             onVerificationChange={handleVerificationChange}
             submitting={submitting}
@@ -1655,6 +1656,14 @@ export default function CompanyManagement() {
           detail.chapa_sub_account_id ??
           (company as any).chapa_sub_account_id ??
           "",
+        terms_signatory_name:
+          detail.terms_signatory_name ??
+          (company as any).terms_signatory_name ??
+          "",
+        terms_signatory_role:
+          detail.terms_signatory_role ??
+          (company as any).terms_signatory_role ??
+          "Owner",
       };
 
       setFormData(newFormData);
@@ -1664,13 +1673,12 @@ export default function CompanyManagement() {
         cover_image: detail.cover_image ?? company.cover_image ?? null,
       });
 
-      const storedVerification = verificationBySlug[company.slug];
-      const initialVerification =
-        storedVerification === undefined
-          ? Boolean(company.is_active)
-          : storedVerification;
+      const initialVerification = Boolean(
+        detail.is_verified ?? company.is_verified,
+      );
       setVerificationDraft(initialVerification);
       setOriginalVerification(initialVerification);
+      setAgreedToTerms(Boolean(detail.terms_agreed ?? company.terms_agreed));
 
       const logoUrl = detail.logo ?? company.logo;
       const coverUrl = detail.cover_image ?? company.cover_image;
@@ -1683,7 +1691,7 @@ export default function CompanyManagement() {
         setIsEditingActive(true);
       }
     },
-    [canEditCompany, isSuperAdmin, isMarketing, showToast, verificationBySlug],
+    [canEditCompany, isSuperAdmin, isMarketing, showToast],
   );
 
   const closeInlineEdit = useCallback(() => {
@@ -1917,7 +1925,11 @@ export default function CompanyManagement() {
           onStepChange={setCurrentStep}
           onSubmit={handleSubmit}
           submitting={submitting}
-          disableSubmit={!agreedToTerms}
+          disableSubmit={Boolean(
+            isMarketing &&
+              !editingSlug &&
+              (!agreedToTerms || !formData.terms_signatory_name?.trim()),
+          )}
           maxWidth="2xl"
         />
 

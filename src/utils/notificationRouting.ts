@@ -65,11 +65,12 @@ export function getNotificationRoute(
         : "/dashboard/orders";
 
     // ---------- Company / subscription ----------
+    case "company.registered":
+    case "company.pending_review":
+    case "company.activated":
     case "company.approved":
     case "company.rejected":
-      return data.company_slug
-        ? `/dashboard/companies/${data.company_slug}`
-        : "/dashboard/companies";
+      return "/dashboard/companies";
 
     case "subscription.expiring":
     case "subscription.expired":

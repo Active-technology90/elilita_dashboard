@@ -118,6 +118,12 @@ export interface Company {
   address_am?: string;
   is_active: boolean;
   is_featured: boolean;
+  is_verified?: boolean;
+  verified_at?: string | null;
+  terms_agreed?: boolean;
+  terms_agreed_at?: string | null;
+  terms_signatory_name?: string;
+  terms_signatory_role?: string;
   supports_table_service: boolean;
   show_order_queue?: boolean;
   meal_periods?: MealPeriodCategory[];
@@ -178,6 +184,12 @@ export interface CompanyListItem {
   theme_light?: string;
   is_active: boolean;
   is_featured: boolean;
+  is_verified?: boolean;
+  verified_at?: string | null;
+  terms_agreed?: boolean;
+  terms_agreed_at?: string | null;
+  terms_signatory_name?: string;
+  terms_signatory_role?: string;
   supports_table_service: boolean;
   show_order_queue?: boolean;
   meal_periods?: MealPeriodCategory[];

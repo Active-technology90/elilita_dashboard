@@ -512,6 +512,8 @@ export default function NonSuperAdminView({
                   onCoverFileChange={onCoverFileChange}
                   isEditingActive={isEditingActive}
                   canManageActiveStatus={false}
+                  isSuperAdmin={false}
+                  isMarketing={false}
                   headCompanies={headCompanies}
                   submitting={submitting}
                   editingSlug={editingSlug}

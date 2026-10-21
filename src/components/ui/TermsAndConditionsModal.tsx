@@ -1,5 +1,5 @@
 // src/components/ui/TermsAndConditionsModal.tsx
-import React, { useState } from "react";
+import React from "react";
 import { X, ShieldCheck, Check } from "lucide-react";
 
 interface TermsAndConditionsModalProps {
@@ -15,17 +15,7 @@ export default function TermsAndConditionsModal({
   onAccept,
   alreadyAgreed,
 }: TermsAndConditionsModalProps) {
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(alreadyAgreed);
-
   if (!isOpen) return null;
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Allow a 20px tolerance for rounding errors
-    if (scrollTop + clientHeight >= scrollHeight - 20) {
-      setHasScrolledToBottom(true);
-    }
-  };
 
   return (
     <div
@@ -61,10 +51,7 @@ export default function TermsAndConditionsModal({
         </div>
 
         {/* Scrollable Body */}
-        <div
-          className="flex-1 overflow-y-auto px-6 py-4 text-sm leading-relaxed text-gray-700"
-          onScroll={handleScroll}
-        >
+        <div className="flex-1 overflow-y-auto px-6 py-4 text-sm leading-relaxed text-gray-700">
           <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-p:text-gray-700">
             <h1 className="mb-2 text-2xl font-extrabold text-gray-900">
               ELILITA
@@ -664,14 +651,12 @@ export default function TermsAndConditionsModal({
         {/* Footer */}
         <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/80 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-gray-500">
-            {!hasScrolledToBottom && !alreadyAgreed ? (
-              <span>Scroll to the bottom to enable acceptance</span>
-            ) : alreadyAgreed ? (
+            {alreadyAgreed ? (
               <span className="flex items-center gap-1 font-medium text-emerald-600">
                 <Check className="h-4 w-4" /> You have already agreed
               </span>
             ) : (
-              <span>You have read the full terms</span>
+              <span>Please review the merchant terms before accepting</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -688,10 +673,9 @@ export default function TermsAndConditionsModal({
                 onAccept();
                 onClose();
               }}
-              disabled={!hasScrolledToBottom && !alreadyAgreed}
-              className="rounded-xl bg-secondary px-5 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#5b4694] disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl bg-secondary px-5 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#5b4694]"
             >
-              {alreadyAgreed ? "Close" : "I Agree"}
+              {alreadyAgreed ? "Close (Accepted)" : "I Agree & Accept"}
             </button>
           </div>
         </div>

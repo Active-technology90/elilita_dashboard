@@ -452,32 +452,39 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
                     <ChevronRight size={16} />
                   </button>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={submitting || isValidating || disableSubmit}
-                    className="
-                      px-5 h-10 min-h-10 rounded-xl
-                      bg-secondary
-                      hover:bg-[#5B4294]
-                      text-white font-medium text-sm
-                      transition-all duration-200
-                      disabled:opacity-50
-                      flex items-center justify-center gap-1.5
-                      shadow-md shadow-secondary/20
-                    "
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        Submit
-                        <CheckCircle2 size={16} />
-                      </>
+                  <div className="flex flex-col items-end">
+                    <button
+                      type="submit"
+                      disabled={submitting || isValidating || disableSubmit}
+                      className="
+                        px-5 h-10 min-h-10 rounded-xl
+                        bg-secondary
+                        hover:bg-[#5B4294]
+                        text-white font-medium text-sm
+                        transition-all duration-200
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                        flex items-center justify-center gap-1.5
+                        shadow-md shadow-secondary/20
+                      "
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit
+                          <CheckCircle2 size={16} />
+                        </>
+                      )}
+                    </button>
+                    {disableSubmit && (
+                      <p className="mt-1.5 text-[11px] font-medium text-amber-600">
+                        * Owner agreement required to submit
+                      </p>
                     )}
-                  </button>
+                  </div>
                 )}
               </div>
             </div>

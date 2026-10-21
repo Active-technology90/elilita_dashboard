@@ -73,6 +73,8 @@ export interface CompanyFormData {
   moa_file: File | string | null; // MOA document
   contact_phone: string;
   contact_email: string;
+  terms_signatory_name?: string;
+  terms_signatory_role?: string;
 }
 
 interface CompanyFormProps {
@@ -87,6 +89,8 @@ interface CompanyFormProps {
   onCoverFileChange?: (file: File | null) => void;
   isEditingActive: boolean;
   canManageActiveStatus?: boolean;
+  isSuperAdmin?: boolean;
+  isMarketing?: boolean;
   isCompanyVerified?: boolean;
   onVerificationChange?: (verified: boolean) => void;
   submitting: boolean;
@@ -197,6 +201,8 @@ export default function CompanyForm({
   onCoverFileChange,
   isEditingActive,
   canManageActiveStatus = false,
+  isSuperAdmin = false,
+  isMarketing = false,
   isCompanyVerified = false,
   onVerificationChange,
   submitting: _submitting,
@@ -239,9 +245,14 @@ export default function CompanyForm({
     [formData.contact_phone],
   );
 
-  const showVerificationBlock = canManageActiveStatus && !!editingSlug;
+  const effectiveIsSuperAdmin = isSuperAdmin || canManageActiveStatus;
+  const showVerificationBlock = effectiveIsSuperAdmin && !!editingSlug;
 
-  const blockedByVerification = showVerificationBlock && !isCompanyVerified;
+  // Terms agreement is strictly required only when marketing registers a new company
+  const isTermsRequired = isMarketing && !editingSlug;
+  const blockedByTerms =
+    isTermsRequired &&
+    (!agreedToTerms || !formData.terms_signatory_name?.trim());
 
   /* ------------------------------ Option lists ---------------------------- */
 
@@ -2001,35 +2012,35 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Company Verification — super admin only */}
+        {/* Company Verification & Activation — super admin only */}
         {showVerificationBlock && (
           <div
             className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
               isCompanyVerified
-                ? "border-blue-200 bg-blue-50"
-                : "border-amber-200 bg-amber-50"
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-blue-200 bg-blue-50"
             }`}
           >
             <div className="flex items-start gap-3">
               <div
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-                  isCompanyVerified ? "bg-blue-100" : "bg-amber-100"
+                  isCompanyVerified ? "bg-emerald-100" : "bg-blue-100"
                 }`}
               >
                 {isCompanyVerified ? (
-                  <ShieldCheck className="h-5 w-5 text-blue-600" />
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
                 ) : (
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <AlertTriangle className="h-5 w-5 text-blue-600" />
                 )}
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900">
-                  Company Verification
+                  Company Verification & Activation
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
                   {isCompanyVerified
-                    ? "Verified. The active status can now be changed."
-                    : "Verify this company before activating it."}
+                    ? "Verified & Active. Saving will activate this company and dispatch access instructions to the owner."
+                    : "Verify this company to make it active and notify the owner."}
                 </p>
               </div>
             </div>
@@ -2048,70 +2059,217 @@ export default function CompanyForm({
               />
               <div
                 className={`h-6 w-11 rounded-full after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full ${
-                  isCompanyVerified ? "bg-blue-500" : "bg-gray-300"
+                  isCompanyVerified ? "bg-emerald-500" : "bg-gray-300"
                 } ${!isEditingActive ? "opacity-60" : ""}`}
               />
             </label>
           </div>
         )}
 
-        {/* Terms Agreement */}
-        {/* Terms Agreement */}
-<div
-  className={`rounded-xl border p-4 transition-colors ${
-    agreedToTerms
-      ? "border-emerald-200 bg-emerald-50"
-      : "border-amber-200 bg-amber-50"
-  }`}
->
-  <div className="flex items-start gap-3">
-    <div
-      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-        agreedToTerms
-          ? "border-emerald-500 bg-emerald-500"
-          : "border-gray-300 bg-white"
-      }`}
-    >
-      {agreedToTerms && <Check className="h-3 w-3 text-white" />}
-    </div>
-    <div className="flex-1">
-      <p className="text-sm font-bold text-gray-900">
-        Terms and Conditions{" "}
-        <span className="text-red-500">*</span>
-      </p>
-      <p className="mt-1 text-xs text-gray-600">
-        You must read and agree to the Elilita Terms and Conditions before
-        submitting this company.
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setShowTermsModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-secondary/30 bg-white px-3 py-2 text-xs font-bold text-secondary shadow-sm transition-colors hover:bg-secondary/5"
-        >
-          <ScrollText className="h-4 w-4" />
-          {agreedToTerms ? "View Terms (Accepted)" : "Read Terms and Conditions"}
-        </button>
-
-        {agreedToTerms && (
-          <button
-            type="button"
-            onClick={() => onAgreedToTermsChange?.(false)}
-            className="text-xs font-semibold text-gray-500 underline-offset-2 hover:underline"
-          >
-            Revoke acceptance
-          </button>
+        {/* Informative Notice for Marketing Registration */}
+        {isTermsRequired && (
+          <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-950">
+                Registration Status: Pending Superadmin Verification
+              </p>
+              <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
+                As a marketing agent, submitting this form registers the company in an inactive onboarding state. Platform Superadmins will review the submitted Trade License, FAN, and TIN to verify and activate the company on the marketplace.
+              </p>
+            </div>
+          </div>
         )}
-      </div>
-    </div>
-  </div>
-</div>
+
+        {/* Terms Agreement — Pattern A Role-Tailored */}
+        {effectiveIsSuperAdmin ? (
+          /* Superadmin: Review owner agreement status, read-only view */
+          <div
+            className={`rounded-xl border p-4 transition-colors ${
+              agreedToTerms
+                ? "border-emerald-200 bg-emerald-50"
+                : "border-amber-200 bg-amber-50"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div
+                  className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full ${
+                    agreedToTerms
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-amber-100 text-amber-600"
+                  }`}
+                >
+                  {agreedToTerms ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">
+                    Terms & Conditions Agreement
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-600">
+                    {agreedToTerms
+                      ? `Accepted by ${formData.terms_signatory_name || "Owner"} (${formData.terms_signatory_role || "Owner"}).`
+                      : "Company owner terms agreement is pending."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/5"
+              >
+                <ScrollText className="h-3.5 w-3.5" />
+                Read Terms
+              </button>
+            </div>
+          </div>
+        ) : !isMarketing && agreedToTerms ? (
+          /* Company Admin / Staff: Terms already agreed, clean read-only view */
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <Check className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">
+                    Elilita Terms and Conditions
+                  </p>
+                  <p className="mt-0.5 text-xs text-emerald-700">
+                    Accepted. You can review the full terms at any time.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/5"
+              >
+                <ScrollText className="h-3.5 w-3.5" />
+                Read Terms
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Marketing registration flow: Pattern A In-Person Signatory Agreement Card */
+          <div
+            className={`rounded-xl border p-5 transition-colors ${
+              agreedToTerms && formData.terms_signatory_name?.trim()
+                ? "border-emerald-200 bg-emerald-50/60"
+                : "border-secondary/20 bg-white"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+                  <ScrollText className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">
+                    Owner / Authorized Signatory Agreement{" "}
+                    {isTermsRequired && <span className="text-red-500">*</span>}
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    Enter the legal representative's details and present the merchant terms to accept.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary shadow-sm hover:bg-secondary/5 transition-colors"
+              >
+                <ScrollText className="h-3.5 w-3.5" />
+                Read Full Terms
+              </button>
+            </div>
+
+            {/* Signatory Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Signatory Legal Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.terms_signatory_name || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, terms_signatory_name: e.target.value })
+                  }
+                  placeholder="e.g. Abebe Bikila"
+                  className={inputClassName(
+                    formErrors.terms_signatory_name ||
+                      (!formData.terms_signatory_name?.trim() && agreedToTerms
+                        ? "Signatory name is required"
+                        : undefined),
+                  )}
+                  disabled={!isEditingActive}
+                />
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Full name of the company owner, manager, or authorized agent.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Signatory Title / Capacity <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.terms_signatory_role || "Owner"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, terms_signatory_role: e.target.value })
+                  }
+                  className={inputClassName()}
+                  disabled={!isEditingActive}
+                >
+                  <option value="Owner">Owner</option>
+                  <option value="General Manager">General Manager</option>
+                  <option value="Managing Director">Managing Director</option>
+                  <option value="CEO">CEO</option>
+                  <option value="Authorized Representative">Authorized Representative</option>
+                  <option value="Branch Manager">Branch Manager</option>
+                </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Legal capacity authorized under business registration.
+                </p>
+              </div>
+            </div>
+
+            {/* Legal Binding Checkbox */}
+            <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-secondary/20 bg-secondary/[0.04] p-3.5 hover:bg-secondary/[0.08] transition-colors">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => onAgreedToTermsChange?.(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+              />
+              <div className="text-xs text-gray-800 leading-relaxed">
+                <span className="font-bold text-gray-900">Binding Legal Declaration:</span>{" "}
+                I confirm that{" "}
+                <strong className="text-secondary font-bold">
+                  {formData.terms_signatory_name?.trim() || "the authorized representative"}
+                </strong>{" "}
+                acting as{" "}
+                <strong className="text-gray-900">
+                  {formData.terms_signatory_role || "Owner"}
+                </strong>{" "}
+                has reviewed the Elilita Merchant Terms & Conditions and legally agreed to bind{" "}
+                <strong className="text-gray-900">{formData.name || "this company"}</strong> to the Elilita Merchant Agreement.
+              </div>
+            </label>
+          </div>
+        )}
 
         {/* Ready footer */}
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
-            blockedByVerification || !agreedToTerms
+            blockedByTerms
               ? "border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/50"
               : "border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/50"
           }`}
@@ -2119,28 +2277,26 @@ export default function CompanyForm({
           <div className="flex items-center gap-3">
             <span
               className={`text-sm font-bold ${
-                blockedByVerification || !agreedToTerms
-                  ? "text-amber-700"
-                  : "text-emerald-700"
+                blockedByTerms ? "text-amber-700" : "text-emerald-700"
               }`}
             >
-              {blockedByVerification
-                ? "⚠️ Verify the company before submitting"
-                : !agreedToTerms
-                ? "⚠️ Please agree to the terms to submit"
+              {blockedByTerms
+                ? "⚠️ Please complete the owner agreement & signatory name above to submit"
+                : editingSlug
+                ? "✅ Ready to Save Changes"
                 : "✅ Ready to Submit"}
             </span>
             <span
               className={`text-xs ${
-                blockedByVerification || !agreedToTerms
-                  ? "text-amber-600"
-                  : "text-emerald-600"
+                blockedByTerms ? "text-amber-600" : "text-emerald-600"
               }`}
             >
-              {blockedByVerification
-                ? "Toggle Company Verification above"
-                : !agreedToTerms
-                ? "Check the agreement box above"
+              {blockedByTerms
+                ? "Enter signatory full name and check the legal agreement declaration"
+                : effectiveIsSuperAdmin && isCompanyVerified
+                ? "Company will be verified and activated upon saving"
+                : isMarketing && !editingSlug
+                ? "Company will be submitted for Superadmin verification"
                 : "All steps completed"}
             </span>
           </div>
@@ -2161,14 +2317,23 @@ export default function CompanyForm({
             <span className="text-xs text-gray-600">
               {formData.contact_email ? "✅" : "❌"} Email
             </span>
-            {showVerificationBlock && (
+            {isTermsRequired && (
               <span className="text-xs text-gray-600">
-                {isCompanyVerified ? "✅" : "❌"} Verified
+                {formData.terms_signatory_name?.trim() ? "✅" : "❌"} Signatory
               </span>
             )}
             <span className="text-xs text-gray-600">
-              {agreedToTerms ? "✅" : "❌"} Terms
+              {agreedToTerms ? "✅" : isTermsRequired ? "❌" : "⚪"} Terms
             </span>
+            {showVerificationBlock ? (
+              <span className="text-xs text-gray-600">
+                {isCompanyVerified ? "✅" : "⚪"} Verified
+              </span>
+            ) : (
+              <span className="text-xs text-blue-600 font-medium">
+                ⏳ Pending Verification
+              </span>
+            )}
           </div>
         </div>
       </div>
