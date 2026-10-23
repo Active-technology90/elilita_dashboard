@@ -2147,6 +2147,7 @@ export default function AdminDashboard() {
         onClose={() => setHelpModalOpen(false)}
         userRole={company?.role}
         isSuperAdmin={isSuperAdmin}
+        isMarketing={isMarketing}
       />
     </div>
   );

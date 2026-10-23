@@ -44,10 +44,12 @@ const deliveryStatusOptions: SelectOption[] = [
 ];
 
 const paymentMethodOptions: SelectOption[] = [
-  { value: "", label: "All payment methods" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "chapa", label: "Chapa" },
-  { value: "cod", label: "COD" },
+  { value: "", label: "All Payment Method" },
+    { value: "bank_transfer", label: "Bank Transfer" },
+    { value: "chapa", label: "Chapa" },
+    { value: "cod", label: "Cash on Delivery" },
+    { value: "telebirr", label: "Telebirr" },
+    { value: "arifpay", label: "ArifPay (Direct)" },
 ];
 
 const pageSizeOptions: SelectOption[] = [

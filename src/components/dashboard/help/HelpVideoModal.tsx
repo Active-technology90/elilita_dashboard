@@ -23,13 +23,16 @@ interface HelpVideoModalProps {
   onClose: () => void;
   userRole?: string; // "owner" | "admin" | "staff" | "viewer"
   isSuperAdmin?: boolean;
+  isMarketing?: boolean;
 }
+
 
 export const HelpVideoModal: React.FC<HelpVideoModalProps> = ({
   isOpen,
   onClose,
   userRole = "staff",
   isSuperAdmin = false,
+  isMarketing = false,
 }) => {
   // Normalize role: staff is dispatcher
   const normalizedRole: "owner" | "admin" | "staff" = useMemo(() => {
@@ -44,14 +47,14 @@ export const HelpVideoModal: React.FC<HelpVideoModalProps> = ({
   // Admin: sees Admin & Dispatcher links
   // Dispatcher (staff): strictly sees Dispatcher link
   const availableRoles: ("owner" | "admin" | "staff")[] = useMemo(() => {
-    if (isSuperAdmin || normalizedRole === "owner") {
+    if (isSuperAdmin || isMarketing || normalizedRole === "owner") {
       return ["owner", "admin", "staff"];
     }
     if (normalizedRole === "admin") {
       return ["admin", "staff"];
     }
     return ["staff"];
-  }, [normalizedRole, isSuperAdmin]);
+  }, [normalizedRole, isSuperAdmin, isMarketing]);
 
   const [selectedRole, setSelectedRole] = useState<"owner" | "admin" | "staff">(normalizedRole);
   const [isPlaying, setIsPlaying] = useState(false);

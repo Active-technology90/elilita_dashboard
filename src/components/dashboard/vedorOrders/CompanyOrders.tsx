@@ -5,6 +5,7 @@ import {
   X,
   Navigation,
   Package2,
+  Download,
 } from "lucide-react";
 import { Pagination } from "../../ui/Pagination";
 import { DataTable, type Column } from "../../ui/DataTable";
@@ -26,6 +27,7 @@ import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
 import PageHeader from "../../ui/PageHeader";
+import { OrderExportModal } from "./OrderExportModal";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -153,19 +155,6 @@ const CompanyAvatar = ({
   </div>
 );
 
-/**
- * Resolve the correct status key for the Delivery Status column.
- *
- * Restaurant (company.supports_table_service === true):
- *   pickup    → takeaway
- *   onspot    → onspot   (both already_here and order_ahead)
- *
- * Non-restaurant:
- *   pickup    → self_pickup
- *   onspot    → onspot
- *
- * Real delivery orders keep using the assigned delivery status.
- */
 const resolveDeliveryStatusKey = (order: VendorOrder): string => {
   const anyOrder = order as any;
 
@@ -173,17 +162,14 @@ const resolveDeliveryStatusKey = (order: VendorOrder): string => {
     anyOrder?.company?.supports_table_service === true ||
     anyOrder?.vendor_orders?.[0]?.company?.supports_table_service === true;
 
-  // Onspot — same label for both dine-in and pre-order in the list
   if (anyOrder.fulfillment_type === "onspot") {
     return "onspot";
   }
 
-  // Pickup — restaurants call it "takeaway", others "self pickup"
   if (!anyOrder.shipping_address_text) {
     return supportsTableService ? "takeaway" : "self_pickup";
   }
 
-  // Real delivery
   return order.delivery?.status || "no_assigned";
 };
 
@@ -208,6 +194,16 @@ export default function CompanyOrders() {
     return null;
   }, [shouldFetchAll, companySlug, user]);
 
+  // Role gate: super admin, owner, admin can export
+  const canExport = useMemo(() => {
+    if (isSuperAdmin) return true;
+    const membership = user?.memberships?.find(
+      (m: any) => m.company_slug === effectiveSlug,
+    );
+    const role = (membership?.role || "").toLowerCase();
+    return role === "owner" || role === "admin" || role === "super_admin";
+  }, [isSuperAdmin, user, effectiveSlug]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
@@ -223,11 +219,11 @@ export default function CompanyOrders() {
   const [selectedOrder, setSelectedOrder] = useState<VendorOrder | null>(null);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [showTrackingMap, setShowTrackingMap] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const { toast, showToast } = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Search debounce. When the debounced value changes, reset pagination.
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -434,7 +430,9 @@ export default function CompanyOrders() {
     { value: "", label: "All Payment Method" },
     { value: "bank_transfer", label: "Bank Transfer" },
     { value: "chapa", label: "Chapa" },
-    { value: "cod", label: "COD" },
+    { value: "cod", label: "Cash on Delivery" },
+    { value: "telebirr", label: "Telebirr" },
+    { value: "arifpay", label: "ArifPay (Direct)" },
   ];
 
   const pageSizeOptions: SelectOption[] = [
@@ -577,24 +575,52 @@ export default function CompanyOrders() {
           ) : undefined
         }
         actionMobile={
-          <button
-            type="button"
-            onClick={() => setShowTrackingMap(true)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-          >
-            <Navigation className="h-4 w-4" />
-            <span>Tracking</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {canExport && (
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                title="Export daily / weekly / monthly / yearly order reports"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowTrackingMap(true)}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90"
+            >
+              <Navigation className="h-4 w-4" />
+              <span>Tracking</span>
+            </button>
+          </div>
         }
         actions={
-          <button
-            type="button"
-            onClick={() => setShowTrackingMap(true)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-          >
-            <Navigation className="h-4 w-4" />
-            <span>Live Tracking</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canExport && (
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:text-sm"
+                title="Export daily / weekly / monthly / yearly order reports"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export Report</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowTrackingMap(true)}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
+            >
+              <Navigation className="h-4 w-4" />
+              <span>Live Tracking</span>
+            </button>
+          </div>
         }
         className="mb-5 sm:mb-6"
       />
@@ -801,6 +827,21 @@ export default function CompanyOrders() {
 
       {showTrackingMap && (
         <DeliveryTrackingMap onClose={() => setShowTrackingMap(false)} />
+      )}
+
+      {canExport && (
+        <OrderExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          orders={orders}
+          companySlug={effectiveSlug}
+          companyName={
+            isAdminLike && !effectiveSlug
+              ? "All Companies"
+              : company?.name || ""
+          }
+          onSuccess={(message) => showToast("success", message)}
+        />
       )}
     </div>
   );
