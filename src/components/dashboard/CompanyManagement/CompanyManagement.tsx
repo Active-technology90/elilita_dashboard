@@ -275,6 +275,7 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   vat_registration_number: "",
   fan_number: "",
   tax_type: "none", // always No Tax
+  show_vat: false,
   // tax_comment: "",            // COMMENTED OUT
   license: null,
   moa_file: null,
@@ -367,14 +368,15 @@ export default function CompanyManagement() {
     ...EMPTY_COMPANY_FORM,
   });
   const [originalFormData, setOriginalFormData] =
-    useState<CompanyFormData | null>(null);
+  useState<CompanyFormData | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
+  
   // Terms agreement
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
+  
+  console.log('current', currentStep)
   const handleLogoChange = useCallback(
     (file: File | null) => {
       if (logoPreview && logoPreview.startsWith("blob:")) {
@@ -740,6 +742,7 @@ export default function CompanyManagement() {
             companyListItem.vat_registration_number || "",
           fan_number: (companyListItem as any).fan_number || "",
           tax_type: "none",
+          show_vat: Boolean((companyListItem as any).show_vat),
           chapa_sub_account_id:
             (companyListItem as any).chapa_sub_account_id || "",
           terms_signatory_name: (companyListItem as any).terms_signatory_name || "",
@@ -874,6 +877,7 @@ export default function CompanyManagement() {
             vat_registration_number: first.vat_registration_number || "",
             fan_number: (first as any).fan_number || "",
             tax_type: "none",
+            show_vat: Boolean((first as any).show_vat),
             chapa_sub_account_id: (first as any).chapa_sub_account_id || "",
             terms_signatory_name: (first as any).terms_signatory_name || "",
             terms_signatory_role: (first as any).terms_signatory_role || "Owner",
@@ -956,7 +960,7 @@ export default function CompanyManagement() {
 
   const validateDocuments = () => {
     const errors: Record<string, string> = {};
-    if (!formData.fan_number || !/^\d{16}$/.test(formData.fan_number)) {
+    if (formData.fan_number && !/^\d{16}$/.test(formData.fan_number)) {
       errors.fan_number = "FAN Number must be exactly 16 digits";
     }
     setFormErrors(errors);
@@ -1100,6 +1104,11 @@ export default function CompanyManagement() {
         )
           return true;
         if (
+          Boolean(formData.show_vat) !==
+          Boolean(originalFormData.show_vat)
+        )
+          return true;
+        if (
           cleanString(formData.tin_number) !==
           cleanString(originalFormData.tin_number)
         )
@@ -1172,6 +1181,8 @@ export default function CompanyManagement() {
           resetForm();
         } else {
           setModalOpen(false);
+          setCurrentStep(0);
+          resetForm();
         }
         setSubmitting(false);
         return;
@@ -1269,6 +1280,7 @@ export default function CompanyManagement() {
       formPayload.append("fan_number", formData.fan_number || "");
       // Tax type — always "none" (No Tax)
       formPayload.append("tax_type", "none");
+      formPayload.append("show_vat", String(Boolean(formData.show_vat)));
       formPayload.append(
         "chapa_sub_account_id",
         formData.chapa_sub_account_id || "",
@@ -1359,6 +1371,7 @@ export default function CompanyManagement() {
       );
 
       setModalOpen(false);
+      setCurrentStep(0);
       setIsEditingActive(false);
       await fetchData();
       resetForm();
@@ -1382,6 +1395,28 @@ export default function CompanyManagement() {
       setSubmitting(false);
     }
   };
+
+  /* ──────────────────────────────────────────────────────────────
+     Form Reset & Modal Close
+     ────────────────────────────────────────────────────────────── */
+  const resetForm = useCallback(() => {
+    setEditingSlug(null);
+    setCurrentStep(0);
+    setFormData({ ...EMPTY_COMPANY_FORM });
+    setOriginalFormData(null);
+    setLogoPreview(null);
+    setCoverPreview(null);
+    setFormErrors({});
+    setVerificationDraft(false);
+    setOriginalVerification(false);
+    setAgreedToTerms(false);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setModalOpen(false);
+    setCurrentStep(0);
+    resetForm();
+  }, [resetForm]);
 
   /* ──────────────────────────────────────────────────────────────
      Steps
@@ -1419,7 +1454,7 @@ export default function CompanyManagement() {
             agreedToTerms={agreedToTerms}
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
-            onClose={() => setModalOpen(false)}
+            onClose={handleCloseModal}
           />
         ),
         validate: validateBasicInfo,
@@ -1455,7 +1490,7 @@ export default function CompanyManagement() {
             agreedToTerms={agreedToTerms}
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
-            onClose={() => setModalOpen(false)}
+            onClose={handleCloseModal}
           />
         ),
         validate: validateLocation,
@@ -1491,7 +1526,7 @@ export default function CompanyManagement() {
             agreedToTerms={agreedToTerms}
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
-            onClose={() => setModalOpen(false)}
+            onClose={handleCloseModal}
           />
         ),
         validate: validateDocuments,
@@ -1527,7 +1562,7 @@ export default function CompanyManagement() {
             agreedToTerms={agreedToTerms}
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
-            onClose={() => setModalOpen(false)}
+            onClose={handleCloseModal}
           />
         ),
       },
@@ -1549,20 +1584,9 @@ export default function CompanyManagement() {
       verificationDraft,
       handleVerificationChange,
       agreedToTerms,
+      handleCloseModal,
     ],
   );
-
-  const resetForm = () => {
-    setEditingSlug(null);
-    setFormData({ ...EMPTY_COMPANY_FORM });
-    setOriginalFormData(null);
-    setLogoPreview(null);
-    setCoverPreview(null);
-    setFormErrors({});
-    setVerificationDraft(false);
-    setOriginalVerification(false);
-    setAgreedToTerms(false);
-  };
 
   /* ──────────────────────────────────────────────────────────────
      openEdit
@@ -1650,6 +1674,7 @@ export default function CompanyManagement() {
           "",
         fan_number: detail.fan_number ?? (company as any).fan_number ?? "",
         tax_type: "none",
+        show_vat: Boolean(detail.show_vat ?? (company as any).show_vat),
         license: detail.license ?? (company as any).license ?? null,
         moa_file: detail.moa_file ?? (company as any).moa_file ?? null,
         chapa_sub_account_id:
@@ -1793,6 +1818,7 @@ export default function CompanyManagement() {
                 type="button"
                 onClick={() => {
                   resetForm();
+                  setCurrentStep(0);
                   setModalOpen(true);
                 }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
@@ -1809,6 +1835,7 @@ export default function CompanyManagement() {
                 type="button"
                 onClick={() => {
                   resetForm();
+                  setCurrentStep(0);
                   setModalOpen(true);
                 }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
@@ -1919,9 +1946,9 @@ export default function CompanyManagement() {
 
         <MultiStepFormModal
           isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={handleCloseModal}
           steps={steps}
-          initialStep={currentStep}
+          initialStep={0}
           onStepChange={setCurrentStep}
           onSubmit={handleSubmit}
           submitting={submitting}

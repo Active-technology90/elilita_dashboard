@@ -152,6 +152,7 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
       const timer = window.setTimeout(() => {
         setMounted(false);
         setAnimateOut(false);
+        setCurrentStep(initialStep);
       }, 220);
 
       document.body.style.overflow = "";
@@ -163,12 +164,6 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
       document.body.style.overflow = "";
     };
   }, [isOpen, initialStep, mounted]);
-
-  // useEffect(() => {
-  //   if (isOpen) {
-  //     setCurrentStep(initialStep);
-  //   }
-  // }, [initialStep, isOpen]);
 
   useEffect(() => {
     if (autoSave && isOpen) {
@@ -182,6 +177,8 @@ export const MultiStepFormModal: React.FC<MultiStepFormModalProps> = ({
   const handleClose = () => {
     if (preventCloseWhileSubmitting && submitting) return;
 
+    setCurrentStep(initialStep);
+    onStepChange?.(initialStep);
     onClose();
   };
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { X, Loader2, AlertCircle, AlertTriangle, ChevronRight, ChevronLeft, CheckCircle, Star, MessageSquare, Check } from 'lucide-react';
+import { X, Loader2, AlertTriangle, ChevronRight, ChevronLeft, CheckCircle, Star, MessageSquare, Check } from 'lucide-react';
 import { ImageGallery } from './ImageGallery';
 import { getCompanyProductDetail, getMySubscription, getCompanyDetail } from '../../../services/api';
 import { useCurrentCompany } from '../../../context/CurrentCompanyContext';

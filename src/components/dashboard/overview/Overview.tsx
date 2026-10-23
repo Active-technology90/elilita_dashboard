@@ -211,7 +211,9 @@ export type DashboardTab =
   | "companies"
   | "allOrders"
   | "companyUser"
-  | "users";
+  | "users"
+  | "adminSubscriptions"
+  | "add advertisment";
 
 export default function Overview({
   onNavigate,
@@ -606,6 +608,12 @@ export default function Overview({
 
         conversionRate:
           analytics.summary.success_rate,
+
+        completed_orders:
+          analytics.summary.completed_orders ?? analytics.summary.orders,
+
+        pending_orders:
+          analytics.summary.pending_orders ?? 0,
       };
     }
 
@@ -633,6 +641,12 @@ export default function Overview({
 
       conversionRate:
         analytics.summary.success_rate,
+
+      completed_orders:
+        analytics.summary.completed_orders ?? 0,
+
+      pending_orders:
+        analytics.summary.pending_orders ?? 0,
     };
   }, [isSuperAdmin, analytics.summary]);
 
@@ -897,15 +911,15 @@ export default function Overview({
     [period],
   );
 
-  const paymentBreakdown = useMemo(() => {
+  const financialBreakdown = useMemo(() => {
     const summary = analytics.summary as typeof analytics.summary &
       Record<string, unknown>;
 
-    const getAmount = (keys: string[], fallback: number) => {
+    const getAmount = (keys: string[], fallback: number = 0) => {
       for (const key of keys) {
         const raw = summary[key];
 
-        if (raw === undefined || raw === null) {
+        if (raw === undefined || raw === null || raw === "") {
           continue;
         }
 
@@ -920,24 +934,27 @@ export default function Overview({
     };
 
     return {
-      subscriptions: getAmount(
-        [
-          "subscriptions_total",
-          "subscription_total",
-          "subscription_revenue",
-          "subscriptions_revenue",
-        ],
-        41900,
-      ),
-      oneTime: getAmount(
-        [
-          "one_time_total",
-          "one_time_revenue",
-          "one_time_payments_total",
-          "one_time_payment_total",
-        ],
-        6350,
-      ),
+      platformRevenue: getAmount([
+        "platform_revenue",
+        "platform_revenue_total",
+        "platform_fees_revenue",
+      ]),
+      subscriptions: getAmount([
+        "subscriptions_revenue",
+        "subscriptions_total",
+        "subscription_total",
+        "subscription_revenue",
+      ]),
+      ads: getAmount([
+        "ads_revenue",
+        "ads_total",
+        "ad_revenue",
+        "advertisements_revenue",
+      ]),
+      totalPaymentFlow: getAmount([
+        "total_payment_flow",
+        "payments_total",
+      ]),
     };
   }, [analytics.summary]);
 
@@ -1313,7 +1330,7 @@ export default function Overview({
     "
   >
     <span className="font-semibold text-secondary">
-      {isSuperAdmin ? "Total Payments" : "Total Orders"}
+      {isSuperAdmin ? "Total Payment Flow" : "Total Orders"}
     </span>
 
     <span>·</span>
@@ -1347,7 +1364,7 @@ export default function Overview({
 
       {isSuperAdmin ? (
         <SummaryCard
-          title="Total Payments"
+          title="Total Payment Flow"
           value={formatCurrency(periodPaymentsTotal)}
           icon={DollarSign}
           featured
@@ -1356,12 +1373,22 @@ export default function Overview({
           sparklineData={sparklineData}
           subStats={[
             {
-              label: "Subscriptions",
-              value: formatCurrency(paymentBreakdown.subscriptions),
+              label: "Platform Revenue",
+              value: formatCurrency(financialBreakdown.platformRevenue),
+              onClick: () => onNavigate?.("payments"),
+              title: "Net revenue earned by Qine platform (Commission + Subscriptions + Ads)",
             },
             {
-              label: "One-time",
-              value: formatCurrency(paymentBreakdown.oneTime),
+              label: "Subscriptions",
+              value: formatCurrency(financialBreakdown.subscriptions),
+              onClick: () => onNavigate?.("adminSubscriptions"),
+              title: "Revenue from company subscription plans",
+            },
+            {
+              label: "Ads",
+              value: formatCurrency(financialBreakdown.ads),
+              onClick: () => onNavigate?.("add advertisment"),
+              title: "Revenue from sponsored banner ad campaigns",
             },
           ]}
           onClick={() =>
@@ -1381,12 +1408,14 @@ export default function Overview({
           sparklineData={sparklineData}
           subStats={[
             {
-              label: "Subscriptions",
-              value: formatCurrency(paymentBreakdown.subscriptions),
+              label: "Completed",
+              value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} Paid`,
+              title: "Completed / Paid Orders",
             },
             {
-              label: "One-time",
-              value: formatCurrency(paymentBreakdown.oneTime),
+              label: "Avg. Order Value",
+              value: formatCurrency(summaryData?.avgOrderValue || 0),
+              title: "Average Order Value",
             },
           ]}
           onClick={() =>

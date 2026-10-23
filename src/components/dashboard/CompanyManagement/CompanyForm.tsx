@@ -66,8 +66,9 @@ export interface CompanyFormData {
   // theme_light: string;     // COMMENTED OUT
   tin_number: string;
   vat_registration_number: string;
-  fan_number: string; // 16-digit FAN number
+  fan_number: string; // Optional 16-digit FAN number
   tax_type: string; // Always "none" (No Tax)
+  show_vat: boolean; // Show 15% VAT Breakdown to Customers
   // tax_comment: string;     // COMMENTED OUT
   license: File | string | null;
   moa_file: File | string | null; // MOA document
@@ -1177,8 +1178,20 @@ export default function CompanyForm({
   /*                       STEP 3 — MEDIA & DOCUMENTS                         */
   /* ======================================================================== */
 
-  const renderStep3 = () => (
-    <div className="space-y-6">
+  const renderStep3 = () => {
+    const isFanEmpty =
+      !formData.fan_number || formData.fan_number.length === 0;
+    const isFanComplete = formData.fan_number.length === 16;
+    const fanError = isFanEmpty
+      ? undefined
+      : !isFanComplete
+      ? "FAN Number must be exactly 16 digits"
+      : formErrors.fan_number !== "FAN Number must be exactly 16 digits"
+      ? formErrors.fan_number
+      : undefined;
+
+    return (
+      <div className="space-y-6">
       <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
           <ImageIcon className="h-5 w-5 text-secondary" />
@@ -1391,10 +1404,13 @@ export default function CompanyForm({
             </div>
           </div>
 
-          {/* FAN — 16 digits */}
+          {/* FAN — 16 digits (Optional) */}
           <div>
             <label className={labelClassName}>
-              FAN Number <span className="text-red-500">*</span>
+              FAN Number{" "}
+              <span className="text-xs font-normal text-gray-400">
+                (Optional)
+              </span>
             </label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -1414,18 +1430,56 @@ export default function CompanyForm({
                   }));
                 }}
                 disabled={!isEditingActive}
-                className={`${inputClassName(formErrors.fan_number)} pl-10 font-mono tracking-wider`}
+                className={`${inputClassName(fanError)} pl-10 font-mono tracking-wider`}
               />
             </div>
-            {formErrors.fan_number ? (
-              <p className="mt-1 text-xs text-red-500">
-                {formErrors.fan_number}
+            {fanError ? (
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <p className="text-red-500">{fanError}</p>
+                <span className="font-mono text-red-500">
+                  {formData.fan_number.length}/16
+                </span>
+              </div>
+            ) : formData.fan_number ? (
+              <p className="mt-1 text-xs text-emerald-600">
+                ✓ 16/16 digits entered
               </p>
             ) : (
               <p className="mt-1 text-xs text-gray-400">
-                {formData.fan_number.length}/16 digits
+                Optional · 16 digits if provided
               </p>
             )}
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* SHOW VAT BREAKDOWN TO CUSTOMERS                             */}
+        {/* ============================================================ */}
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-semibold text-gray-800">
+                Show 15% VAT Breakdown to Customers
+              </label>
+              {/* <p className="mt-1 text-xs leading-5 text-gray-500">
+                When enabled, checkout screens and customer invoices will show the 15% VAT portion extracted from your product and service prices. When disabled (default), prices are displayed as VAT Inclusive without separate breakdown lines.
+              </p> */}
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center shrink-0 mt-0.5">
+              <input
+                type="checkbox"
+                checked={Boolean(formData.show_vat)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    show_vat: e.target.checked,
+                  }))
+                }
+                disabled={!isEditingActive}
+                className="peer sr-only"
+              />
+              <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6750A4] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-disabled:cursor-not-allowed peer-disabled:opacity-60" />
+            </label>
           </div>
         </div>
 
@@ -1647,7 +1701,8 @@ export default function CompanyForm({
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   /* ======================================================================== */
   /*                       STEP 4 — REVIEW & SUMMARY                          */
@@ -1655,7 +1710,7 @@ export default function CompanyForm({
 
   const renderStep4 = () => {
     const isFanValid =
-      !!formData.fan_number && /^\d{16}$/.test(formData.fan_number);
+      !formData.fan_number || /^\d{16}$/.test(formData.fan_number);
 
     return (
       <div className="mx-auto max-w-4xl space-y-4">
@@ -1889,14 +1944,26 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                FAN Number <span className="text-red-500">*</span>
+                Show 15% VAT Breakdown
+              </p>
+              <p className="text-sm font-semibold text-gray-900">
+                {formData.show_vat ? "Yes (Breakdown Shown)" : "No (VAT Inclusive)"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                FAN Number
               </p>
               <p
                 className={`font-mono text-sm font-semibold tracking-wider ${
-                  isFanValid ? "text-gray-900" : "text-red-500"
+                  !formData.fan_number
+                    ? "text-gray-500"
+                    : isFanValid
+                    ? "text-gray-900"
+                    : "text-red-500"
                 }`}
               >
-                {formData.fan_number || "— (required 16 digits)"}
+                {formData.fan_number || "— (Optional)"}
               </p>
             </div>
             {/* <div>

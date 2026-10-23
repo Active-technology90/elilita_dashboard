@@ -140,6 +140,7 @@ export interface Company {
   tin_number?: string;
   vat_registration_number?: string;
   tax_type?: string;
+  show_vat?: boolean;
   license?: string | null;
   registered_by?: number;
   registered_by_username?: string;
@@ -200,6 +201,7 @@ export interface CompanyListItem {
   vat_registration_number?: string;
   fan_number?: string;
   tax_type?: string;
+  show_vat?: boolean;
   license?: string | null;
   moa_file?: string | null;
   registered_by?: number;
@@ -973,6 +975,18 @@ export interface AnalyticsSummary {
   avg_order_value: number;
   success_rate: number;
   active_categories: number;
+  // Financial breakdown
+  total_payment_flow?: number;
+  platform_revenue?: number;
+  subscriptions_revenue?: number;
+  ads_revenue?: number;
+  platform_fees_revenue?: number;
+  all_time_payment_flow?: number;
+  all_time_platform_revenue?: number;
+  all_time_subscriptions?: number;
+  all_time_ads?: number;
+  completed_orders?: number;
+  pending_orders?: number;
 }
 
 export interface AnalyticsRevenuePoint {

@@ -13,6 +13,8 @@ import {
 export type SummaryCardSubStat = {
   label: string;
   value: string;
+  onClick?: () => void;
+  title?: string;
 };
 
 export type SummaryCardSparkPoint = {
@@ -316,36 +318,38 @@ export const SummaryCard = ({
 
           {subStats.length > 0 && (
             <div
-              className="
+              className={`
                 mt-4
-
                 grid
-                grid-cols-2
-
-                gap-6
-
+                ${subStats.length >= 3 ? "grid-cols-3 gap-2 sm:gap-4" : "grid-cols-2 gap-6"}
                 border-t
                 border-secondary/10
-
                 pt-3.5
-              "
+              `}
             >
               {subStats
-                .slice(0, 2)
+                .slice(0, 3)
                 .map((item) => (
                   <div
                     key={item.label}
-                    className="min-w-0"
+                    className={`min-w-0 ${item.onClick ? "cursor-pointer group/stat" : ""}`}
+                    onClick={(e) => {
+                      if (item.onClick) {
+                        e.stopPropagation();
+                        item.onClick();
+                      }
+                    }}
+                    title={item.title || item.label}
                   >
                     <p
                       className="
                         truncate
-
                         text-[9px]
                         font-medium
                         leading-none
-
                         text-gray-500
+                        transition-colors
+                        group-hover/stat:text-secondary
                       "
                     >
                       {item.label}
@@ -354,14 +358,14 @@ export const SummaryCard = ({
                     <p
                       className="
                         mt-1.5
-
                         truncate
-
-                        text-sm
+                        text-xs
+                        sm:text-sm
                         font-bold
                         leading-none
-
                         text-gray-900
+                        transition-colors
+                        group-hover/stat:text-secondary
                       "
                     >
                       {item.value}
