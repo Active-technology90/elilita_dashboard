@@ -10,7 +10,7 @@ import type { ProductImage, MealPeriodCategory } from '../../../types';
 import MealCategoryIcon from '../../ui/MealCategoryIcon';
 
 interface ProductFormData {
-  sku: string;
+  sku?: string;
   title: string;
   title_am?: string;
   description?: string;
@@ -25,7 +25,7 @@ interface ProductFormData {
 }
 
 const productSchema = z.object({
-  sku: z.string().min(1, 'SKU is required'),
+  sku: z.string().optional(),
   title: z.string().min(1, 'Title is required'),
   title_am: z.string().optional(),
   description: z.string().optional(),
@@ -299,12 +299,12 @@ export function ProductModal({
           unit: 'pcs',
           meal_periods: [],
           is_featured: false,
-          is_active: true,
+          is_active: canAddMoreActive,
         });
         setStep('details');
       }
     }
-  }, [editingProduct, reset, isOpen]);
+  }, [editingProduct, reset, isOpen, canAddMoreActive]);
 
   // Fetch full product detail to ensure meal periods, description, and images are fresh
   useEffect(() => {
@@ -421,8 +421,23 @@ export function ProductModal({
     if (!canEditBasic) return;
     try {
       let productId = savedProductId;
+
+      // Auto-generate a clean, unique SKU in the background if empty or omitted
+      const autoSKU = (data.sku && data.sku.trim().length > 0)
+        ? data.sku.trim()
+        : editingProduct?.sku || (() => {
+            const cleanTitle = (data.title || 'PRD')
+              .replace(/[^a-zA-Z0-9]/g, '')
+              .substring(0, 4)
+              .toUpperCase() || 'PRD';
+            const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const timePart = Date.now().toString(36).slice(-4).toUpperCase();
+            return `${cleanTitle}-${timePart}${randomPart}`;
+          })();
+
       const payload = {
         ...data,
+        sku: autoSKU,
         is_featured: maxFeatured === 0 ? false : Boolean(data.is_featured),
         meal_periods: selectedMealPeriods,
       };
@@ -443,7 +458,7 @@ export function ProductModal({
       setSavedProductId(productId);
       setStep('gallery');
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save product details:', err);
     }
   };
 
@@ -530,7 +545,13 @@ export function ProductModal({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="transition-all duration-300 ease-out">
             {step === 'details' ? (
-              <form id="product-details-form" onSubmit={handleSubmit(onSubmitDetails)} className="space-y-4 sm:space-y-5">
+              <form
+                id="product-details-form"
+                onSubmit={handleSubmit(onSubmitDetails, (formErrors) => {
+                  console.warn('Form validation failed:', formErrors);
+                })}
+                className="space-y-4 sm:space-y-5"
+              >
                 {isProductLimitReached && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs sm:text-sm text-amber-800 flex items-start gap-2.5 shadow-sm">
                     <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -539,29 +560,6 @@ export function ProductModal({
                     </div>
                   </div>
                 )}
-
-                {/* SKU – disabled when editing or basic read-only */}
-                {/* <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    SKU <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    {...register('sku')}
-                    disabled={isSubmitting || !!editingProduct || isReadOnlyBasic}
-                    className={`w-full px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base rounded-lg border ${errors.sku
-                      ? 'border-red-500 focus:ring-red-100'
-                      : 'border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20'
-                      } transition-all outline-none ${(!!editingProduct || isReadOnlyBasic) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                      }`}
-                    placeholder="e.g., FLR-001"
-                  />
-                  {errors.sku && (
-                    <p className="text-red-500 text-xs sm:text-sm mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                      {errors.sku.message}
-                    </p>
-                  )}
-                </div> */}
 
                 {/* Title */}
                 <div>
@@ -646,20 +644,6 @@ export function ProductModal({
                     <option value="USD">USD (US Dollar)</option>
                     <option value="EUR">EUR (Euro)</option>
                   </select>
-                </div>
-
-                {/* Active Status */}
-                <div className="flex items-center pt-2">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    {...register('is_active')}
-                    disabled={isSubmitting || isReadOnlyBasic}
-                    className="w-4 h-4 text-secondary bg-gray-100 border-gray-300 rounded focus:ring-secondary focus:ring-2 disabled:opacity-50"
-                  />
-                  <label htmlFor="is_active" className="ml-2 text-sm font-medium text-gray-700">
-                    Active (visible to customers)
-                  </label>
                 </div>
 
                 {/* Price & Stock */}

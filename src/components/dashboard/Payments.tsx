@@ -7,7 +7,7 @@ import {
   Package2,
   Eye,
   Printer,
-  FileSpreadsheet,
+  // FileSpreadsheet,
   Wallet,
   TrendingUp,
   Clock,
@@ -30,7 +30,7 @@ import { CustomSelect, type SelectOption } from "../ui/CustomSelect";
 import { SearchInput } from "../ui/SearchInput";
 import PageHeader from "../ui/PageHeader";
 import type { PayoutData } from "../../utils/payoutReceipt";
-import { downloadPayoutCsv } from "../../utils/payoutReceipt";
+// import { downloadPayoutCsv } from "../../utils/payoutReceipt";
 import { PayoutReceiptModal } from "./payments/PayoutReceiptModal";
 import { PayoutDetailModal } from "./payments/PayoutDetailModal";
 import { DriverPayoutsManagement } from "./payments/DriverPayoutsManagement";
@@ -328,17 +328,17 @@ export default function Payments() {
   };
 
   // Quick CSV of currently-filtered records
-  const handleQuickExportCsv = () => {
-    if (filteredPayouts.length === 0) {
-      showToast("info", "No payouts to export");
-      return;
-    }
-    const filename = `payouts_${effectiveCompanySlug || "all"}_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
-    downloadPayoutCsv(filteredPayouts, filename);
-    showToast("success", `Exported ${filteredPayouts.length} payout records`);
-  };
+  // const handleQuickExportCsv = () => {
+  //   if (filteredPayouts.length === 0) {
+  //     showToast("info", "No payouts to export");
+  //     return;
+  //   }
+  //   const filename = `payouts_${effectiveCompanySlug || "all"}_${
+  //     new Date().toISOString().split("T")[0]
+  //   }.csv`;
+  //   downloadPayoutCsv(filteredPayouts, filename);
+  //   showToast("success", `Exported ${filteredPayouts.length} payout records`);
+  // };
 
   const columns = useMemo<Column<Payout>[]>(() => {
     const cols: Column<Payout>[] = [
