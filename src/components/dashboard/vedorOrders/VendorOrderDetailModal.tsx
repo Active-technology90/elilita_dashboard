@@ -732,8 +732,18 @@ const DeliveryCard = ({
   >({});
 
   const delivery = order.delivery;
+  // 🆕 FIX: Define terminal statuses to prevent the "Change" button from showing on completed orders
+  const isTerminal =
+    order.status?.toLowerCase() === "fulfilled" ||
+    order.status?.toLowerCase() === "completed" ||
+    order.status?.toLowerCase() === "delivered" ||
+    order.status?.toLowerCase() === "cancelled" ||
+    order.status?.toLowerCase() === "refunded" ||
+    order.status?.toLowerCase() === "failed";
+
   const canManage =
     !readOnly &&
+    !isTerminal &&
     (order.status?.toLowerCase() === "processing" ||
       order.status?.toLowerCase() === "replacement_in_progress");
   const cod = order.payment_method === "cod";
@@ -1731,7 +1741,8 @@ const DeliveryCard = ({
                               View map
                             </button>
                           )}
-                          {!deliveryStatus && (canManage || cod) && (
+                          {/* 🆕 FIX: Added !isTerminal to ensure change button doesn't show for completed/cancelled orders */}
+                          {!deliveryStatus && (canManage || cod) && !isTerminal && (
                             <button
                               type="button"
                               onClick={() => setShowAssignForm(true)}
@@ -1871,7 +1882,8 @@ const DeliveryCard = ({
                       : "Choose an available in-house delivery person or logistics partner to continue this delivery."}
                   </p>
                   <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
-                    {!deliveryStatus && canManage && (
+                    {/* 🆕 FIX: Added !isTerminal here too */}
+                    {!deliveryStatus && canManage && !isTerminal && (
                       <button
                         type="button"
                         onClick={() => setShowAssignForm(true)}
@@ -2091,8 +2103,8 @@ const DeliveryCard = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search drivers…"
-            aria-label="Search delivery personnel"
+            placeholder="Search delivery…"
+            aria-label="Search delivery person"
             className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
           />
         </div>
@@ -2183,10 +2195,10 @@ const DeliveryCard = ({
 
       <div className="min-w-0">
         <h3 className="text-xs font-bold text-gray-900">
-          Filter drivers
+          Filter delivery person
         </h3>
         <p className="text-[10px] text-gray-500">
-          Refine available drivers
+          Refine available delivery persons
         </p>
       </div>
 
@@ -2241,8 +2253,8 @@ const DeliveryCard = ({
         options={[
           {
             value: "all",
-            label: "All drivers",
-            description: "Every available driver",
+            label: "All delivery persons",
+            description: "Every available delivery person",
             count: allCount,
             accent: "secondary",
             icon: <Users className="h-3 w-3" />,
@@ -2250,7 +2262,7 @@ const DeliveryCard = ({
           {
             value: "in_house",
             label: "In-house",
-            description: "Your company drivers",
+            description: "Your company delivery persons",
             count: inHouseFilterCount,
             accent: "emerald",
             icon: <Truck className="h-3 w-3" />,
@@ -2352,7 +2364,7 @@ const DeliveryCard = ({
         className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
       >
         Show {filteredStaffList.length}{" "}
-        {filteredStaffList.length === 1 ? "driver" : "drivers"}
+        {filteredStaffList.length === 1 ? "delivery person" : "delivery persons"}
         <Check className="h-3.5 w-3.5 shrink-0" />
       </button>
     </div>
@@ -2367,7 +2379,7 @@ const DeliveryCard = ({
 
       {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
       <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
-        <h6 className="text-sm font-bold text-gray-900">Available drivers</h6>
+        <h6 className="text-sm font-bold text-gray-900">Available delivery persons</h6>
         <p className="text-[11px] text-gray-500">
           {inHouseCount} in-house · {thirdPartyCount} third-party
         </p>
@@ -2412,7 +2424,7 @@ const DeliveryCard = ({
           <div className="text-center">
             <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
             <p className="mt-2 text-xs font-medium text-gray-500">
-              Loading drivers…
+              Loading delivery persons…
             </p>
           </div>
         </div>
@@ -2421,14 +2433,14 @@ const DeliveryCard = ({
           <div>
             <Users className="mx-auto h-7 w-7 text-gray-300" />
             <p className="mt-2 text-sm font-semibold text-gray-800">
-              No drivers found
+              No delivery persons found
             </p>
             <p className="mt-1 text-xs text-gray-500">
               {searchTerm ||
               filterType !== "all" ||
               vehicleTypeFilter !== "all"
                 ? "Try changing the search or filters."
-                : "There are no available drivers right now."}
+                : "There are no available delivery persons right now."}
             </p>
           </div>
         </div>
@@ -2758,8 +2770,8 @@ const DeliveryCard = ({
                   <CheckCircle className="h-3.5 w-3.5" />
                   {delivery?.delivery_person_name ||
                   (delivery?.attempts && delivery.attempts.length > 0)
-                    ? "Reassign driver"
-                    : "Assign driver"}
+                    ? "Reassign "
+                    : "Assign "}
                 </>
               )}
             </button>
@@ -3379,7 +3391,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
             </button>
           )}
 
-          {canRequestRefund && !readOnly && (
+          {/* {canRequestRefund && !readOnly && (
             <button
               onClick={() => setShowOutOfStockModal(true)}
               className="w-full py-2.5 px-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors flex items-center justify-center gap-2"
@@ -3389,7 +3401,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
                 ? "Cannot Replace / Request Refund"
                 : "Out of Stock / Request Refund"}
             </button>
-          )}
+          )} */}
         </div>
       </Card>
 
