@@ -711,16 +711,18 @@ export default function CompanyOrders() {
         </div>
       )}
 
-      <VendorOrderDetailModal
-        order={selectedOrder}
-        receipt={selectedOrder?.receipt || null}
-        onClose={() => setSelectedOrder(null)}
-        onUpdate={handleModalUpdate}
-        readOnly={readOnly}
-        onOpenLiveTracking={() => setShowTrackingMap(true)}
-        allOrders={orders}
-        onSelectOrder={setSelectedOrder}
-      />
+      {selectedOrder && (
+        <VendorOrderDetailModal
+          order={selectedOrder}
+          receipt={selectedOrder?.receipt || null}
+          onClose={() => setSelectedOrder(null)}
+          onUpdate={handleModalUpdate}
+          readOnly={readOnly}
+          onOpenLiveTracking={() => setShowTrackingMap(true)}
+          allOrders={orders}
+          onSelectOrder={setSelectedOrder}
+        />
+      )}
 
       {showMobileFilterModal && (
         <div

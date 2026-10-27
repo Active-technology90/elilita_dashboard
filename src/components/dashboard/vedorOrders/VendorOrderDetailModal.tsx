@@ -45,6 +45,7 @@ import {
   prepareVendorOrder,
   confirmCODPayment,
   vendorRequestRefund,
+  approveDisputeRedelivery,
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { ConfirmationModal } from "../../ui/confimationModal";
@@ -731,7 +732,10 @@ const DeliveryCard = ({
   >({});
 
   const delivery = order.delivery;
-  const canManage = !readOnly && order.status?.toLowerCase() === "processing";
+  const canManage =
+    !readOnly &&
+    (order.status?.toLowerCase() === "processing" ||
+      order.status?.toLowerCase() === "replacement_in_progress");
   const cod = order.payment_method === "cod";
   const deliveryStatus = delivery?.status?.toLowerCase() === "picked_up";
 
@@ -3506,7 +3510,27 @@ export function VendorOrderDetailModal({
   allOrders = [],
   onSelectOrder,
 }: any) {
-  if (!order) return null;
+  const { showToast } = useToast();
+  const [approvingRedelivery, setApprovingRedelivery] = useState(false);
+
+  const handleApproveRedelivery = async (disputeId: number) => {
+    try {
+      setApprovingRedelivery(true);
+      await approveDisputeRedelivery(disputeId, {
+        admin_notes: "Redelivery approved by store/admin for replacement items.",
+      });
+      await onUpdate();
+      showToast("success", "Redelivery approved! Please prepare replacement items.");
+    } catch (err: any) {
+      showToast(
+        "error",
+        err.response?.data?.detail || "Failed to approve redelivery",
+      );
+    } finally {
+      setApprovingRedelivery(false);
+    }
+  };
+
   const [refreshing, setRefreshing] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [mapMode, setMapMode] = useState<"tracking" | "driver_selection">(
@@ -3630,6 +3654,8 @@ export function VendorOrderDetailModal({
       .slice(0, 10);
   }, [effectiveOrder, allOrders]);
 
+  if (!effectiveOrder) return null;
+
   return (
     <>
       <AnimatePresence>
@@ -3733,10 +3759,8 @@ export function VendorOrderDetailModal({
                       Replacement In Progress
                     </div>
                     <p className="mt-0.5 text-purple-700 text-xs">
-                      The customer rejected delivery due to an issue and
-                      requested redelivery. Please prepare the replacement
-                      items. Vendor payout remains held in escrow until
-                      redelivery is fulfilled.
+                      Customer reported an issue and redelivery was approved.
+                      Please prepare the replacement items and assign a delivery person.
                     </p>
                   </div>
                 </div>
@@ -3745,13 +3769,66 @@ export function VendorOrderDetailModal({
                 <div className="mb-4 sm:mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
-                    <div className="font-bold text-amber-900">
-                      Order Under Dispute Review
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="font-bold text-amber-900">
+                        Order Issue Reported (Disputed)
+                      </div>
+                      {effectiveOrder.active_dispute && (
+                        <button
+                          type="button"
+                          disabled={approvingRedelivery}
+                          onClick={() => handleApproveRedelivery(effectiveOrder.active_dispute.id)}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${approvingRedelivery ? "animate-spin" : ""}`} />
+                          {approvingRedelivery ? "Approving..." : "Approve Redelivery"}
+                        </button>
+                      )}
                     </div>
-                    <p className="mt-0.5 text-amber-700 text-xs">
-                      An issue was reported for this order and is under review
-                      by Superadmin. Escrow payout is currently frozen.
+                    <p className="mt-1 text-amber-800 text-xs">
+                      {effectiveOrder.active_dispute
+                        ? `Reason: ${effectiveOrder.active_dispute.reason} — ${effectiveOrder.active_dispute.explanation || "No additional note provided"}`
+                        : "An issue was reported for this order. Please review and authorize replacement redelivery."}
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery Attempt History Audit Card */}
+              {Array.isArray(effectiveOrder.delivery_history) && effectiveOrder.delivery_history.length > 0 && (
+                <div className="mb-4 sm:mb-6 p-4 bg-gray-50 border border-gray-200 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-3 text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <History className="h-4 w-4 text-gray-500" />
+                    Delivery History & Past Attempts ({effectiveOrder.delivery_history.length})
+                  </div>
+                  <div className="space-y-2.5">
+                    {effectiveOrder.delivery_history.map((att: any) => (
+                      <div key={att.id} className="p-3 bg-white border border-gray-200 rounded-xl flex items-start justify-between gap-3 text-xs">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900">Attempt #{att.attempt_number}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                              {att.status}
+                            </span>
+                          </div>
+                          {att.delivery_person_name && (
+                            <p className="mt-1 text-gray-600">
+                              Driver: <span className="font-medium text-gray-800">{att.delivery_person_name}</span> {att.delivery_person_phone ? `(${att.delivery_person_phone})` : ""}
+                            </p>
+                          )}
+                          {att.failure_reason && (
+                            <p className="mt-0.5 text-gray-500 italic">
+                              Note: {att.failure_reason}
+                            </p>
+                          )}
+                        </div>
+                        {att.completed_at && (
+                          <div className="text-[11px] text-gray-400 shrink-0">
+                            {new Date(att.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -4384,6 +4461,7 @@ export function VendorOrderDetailModal({
                   />
 
                   {(effectiveOrder.status === "confirmed" ||
+                    effectiveOrder.status === "replacement_in_progress" ||
                     (effectiveOrder.payment_method === "cod" &&
                       effectiveOrder.status === "pending")) && (
                     <PreparationCard
