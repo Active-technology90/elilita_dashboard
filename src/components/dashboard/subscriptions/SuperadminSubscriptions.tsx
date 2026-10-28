@@ -617,27 +617,32 @@ export default function SuperadminSubscriptions() {
               </button>
             </div>
           }
-          actionMobile={
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button
-                type="button"
-                onClick={exportPlans}
-                disabled={isLoading || plans.length === 0}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateClick}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md sm:flex-none sm:text-sm"
-              >
-                <Plus className="h-4 w-4" />
-                Add Plan
-              </button>
-            </div>
-          }
+         actionMobile={
+  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+    {/* Primary — Add Plan */}
+    <button
+      type="button"
+      onClick={handleCreateClick}
+      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] sm:order-2 sm:w-auto sm:min-h-10 sm:text-xs sm:text-sm"
+    >
+      <Plus className="h-4 w-4 shrink-0" />
+      <span className="truncate">Add Plan</span>
+    </button>
+
+    {/* Secondary — Export */}
+    <button
+      type="button"
+      onClick={exportPlans}
+      disabled={isLoading || plans.length === 0}
+      aria-label="Export plans"
+      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98] sm:order-1 sm:w-auto sm:min-h-10 sm:px-3 sm:text-xs sm:text-sm"
+    >
+      <Download className="h-4 w-4 shrink-0" />
+      {/* Show text on mobile & up; hide label only below 360 if needed */}
+      <span className="truncate">Export</span>
+    </button>
+  </div>
+}
           className="mb-0"
         />
 
@@ -1105,7 +1110,7 @@ export default function SuperadminSubscriptions() {
                     }`}
                   >
                     <Filter className="h-4 w-4 " />
-                    <span className="hidden max-w-[100px] truncate sm:inline">
+                    <span className="hidden max-w-[50px] truncate sm:inline">
                       {activePlanLabel}
                     </span>
                     {planFilter !== "all" && (
@@ -1120,9 +1125,9 @@ export default function SuperadminSubscriptions() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -4, scale: 0.98 }}
                         transition={{ duration: 0.12 }}
-                        className="absolute right-0 z-30 mt-2 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-900/5"
+                        className="absolute right-0 z-30 mt-2 w-46 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-900/5"
                       >
-                        <div className="max-h-64 overflow-y-auto py-1">
+                        <div className="max-h-64  overflow-y-auto py-1">
                           <button
                             type="button"
                             onClick={() => {

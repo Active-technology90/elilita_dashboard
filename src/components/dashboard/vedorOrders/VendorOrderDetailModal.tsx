@@ -300,19 +300,29 @@ const buildOrderTimeline = (order: any) => {
     });
   }
 
-  if (
-    order.delivery?.status?.toLowerCase() === "delivered" ||
-    order.status?.toLowerCase() === "fulfilled"
-  ) {
-    events.push({
-      id: "delivered",
-      label: "Delivered",
-      icon: "🏁",
-      time: order.delivery?.updated_at || order.updated_at,
-      actor: order.delivery?.delivery_person_name || "System",
-      status: "completed",
-    });
-  }
+// Prefer the actual delivery completion time, then any order-level
+// timestamp, and finally the created_at as a last resort.
+const deliveredTimestamp =
+  order.delivery?.delivered_at ||
+  order.delivery?.updated_at ||
+  order.delivery?.created_at ||
+  order.updated_at ||
+  order.created_at;
+
+if (
+  (order.delivery?.status?.toLowerCase() === "delivered" ||
+    order.status?.toLowerCase() === "fulfilled") &&
+  deliveredTimestamp
+) {
+  events.push({
+    id: "delivered",
+    label: "Delivered",
+    icon: "🏁",
+    time: deliveredTimestamp,
+    actor: order.delivery?.delivery_person_name || "System",
+    status: "completed",
+  });
+}
 
   if (order.status?.toLowerCase() === "pending" && !approvedReceipt) {
     events.push({
