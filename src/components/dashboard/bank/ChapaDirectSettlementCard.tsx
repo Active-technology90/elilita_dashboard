@@ -247,8 +247,10 @@ export default function ChapaDirectSettlementCard({
         <DeleteConfirmModal
           isOpen={showDelinkModal}
           onClose={() => setShowDelinkModal(false)}
+          onCancel={() => setShowDelinkModal(false)}
           onConfirm={handleDelink}
-          title="De-link Chapa Subaccount?"
+          deleteTitle="De-link Chapa Subaccount?"
+          title={companyName}
           message={`Are you sure you want to de-link the Chapa subaccount for "${companyName}"? Chapa online checkout will be immediately disabled for this store until a new subaccount is provisioned.`}
           confirmLabel={isDelinking ? "De-linking..." : "De-link Subaccount"}
         />
