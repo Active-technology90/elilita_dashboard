@@ -1484,6 +1484,37 @@ export default function CompanyForm({
         </div>
 
         {/* ============================================================ */}
+        {/* CHAPA SPLIT SETTLEMENT STATUS                               */}
+        {/* ============================================================ */}
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-gray-800">
+                  Chapa Split Settlement
+                </label>
+                {formData.chapa_sub_account_id ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Linked
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Not Configured
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                {formData.chapa_sub_account_id
+                  ? `Subaccount ID: ${formData.chapa_sub_account_id}. Vendor payouts are routed automatically by Chapa.`
+                  : "Chapa online payments remain disabled at checkout for this vendor until a bank subaccount is linked in the Bank Accounts section."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
         {/* TAX TYPE — Fixed to "No Tax"                                  */}
         {/* ============================================================ */}
         {/* <div className="mt-4">
@@ -1965,6 +1996,32 @@ export default function CompanyForm({
               >
                 {formData.fan_number || "— (Optional)"}
               </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">
+                Chapa Split Settlement
+              </p>
+              {formData.chapa_sub_account_id ? (
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Linked
+                  </span>
+                  <span className="font-mono text-xs text-gray-600 truncate" title={formData.chapa_sub_account_id}>
+                    {formData.chapa_sub_account_id}
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-0.5">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Not Configured
+                  </span>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Configure via Bank Accounts
+                  </p>
+                </div>
+              )}
             </div>
             {/* <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">

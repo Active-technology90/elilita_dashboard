@@ -37,6 +37,7 @@ import { useAuth } from "../../../hooks/useAuth";
 import type { BankInfo } from "../../../types";
 import PageHeader from "../../ui/PageHeader";
 import { CompanySelect } from "../overview/dropdowncompanyselector";
+import ChapaDirectSettlementCard from "./ChapaDirectSettlementCard";
 
 // ------------------------------------------------------------------
 // Types
@@ -864,6 +865,20 @@ export default function BankManagement() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ─────────── Chapa Direct Settlement (Split Payments) ─────────── */}
+      <div className="mb-6">
+        <ChapaDirectSettlementCard
+          companySlug={isSuperAdmin ? selectedFilterCompanySlug : companySlug}
+          companyName={
+            isSuperAdmin
+              ? selectedFilterCompany?.label || "Selected Company"
+              : companyName
+          }
+          canWrite={canWrite}
+          onChanged={fetchBanks}
+        />
       </div>
 
       {/* ─────────── Mobile Cards (< md) ─────────── */}

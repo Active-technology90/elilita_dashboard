@@ -632,6 +632,29 @@ export default function CompanyManagement() {
           </span>
         ),
       },
+      {
+        key: "chapa_sub_account_id",
+        header: "Chapa Split",
+        sortable: false,
+        render: (comp: any) =>
+          comp.chapa_sub_account_id ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+              title={`Chapa Subaccount: ${comp.chapa_sub_account_id}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Linked
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+              title="Online payment disabled until subaccount is linked in Bank Accounts"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              Not Configured
+            </span>
+          ),
+      },
     ],
     [],
   );

@@ -654,6 +654,55 @@ export const updateAdminBankAccount = async (
   return api.patch(`/payments/admin/bank-accounts/${id}/`, data);
 };
 
+// ========== CHAPA SUBACCOUNTS & BANKS ==========
+export interface ChapaBankItem {
+  id: number | string;
+  name: string;
+  slug: string;
+  swift?: string;
+  acct_length?: number;
+  logo?: string | null;
+  is_active: boolean;
+  is_rtgs?: boolean;
+}
+
+export interface ChapaSubaccountStatus {
+  status: string;
+  company_slug: string;
+  company_name: string;
+  chapa_sub_account_id: string;
+  is_connected: boolean;
+  platform_fee_percent?: string | number | null;
+}
+
+export const getChapaBanks = async () =>
+  api.get<{ banks: ChapaBankItem[] }>('/payments/chapa/banks/');
+
+export const getCompanyChapaSubaccountStatus = async (companySlug: string) =>
+  api.get<ChapaSubaccountStatus>(`/payments/company/${companySlug}/chapa-subaccount/`);
+
+export const provisionCompanyChapaSubaccount = async (
+  companySlug: string,
+  data: {
+    bank_code: string | number;
+    account_number: string;
+    account_name: string;
+    business_name?: string;
+    bank_name?: string;
+  },
+) =>
+  api.post<{
+    status: string;
+    message: string;
+    subaccount_id: string;
+    company_slug: string;
+  }>(`/payments/company/${companySlug}/chapa-subaccount/provision/`, data);
+
+export const delinkCompanyChapaSubaccount = async (companySlug: string) =>
+  api.post<{ status: string; message: string }>(
+    `/payments/company/${companySlug}/chapa-subaccount/delink/`,
+  );
+
 export const uploadPaymentReceipt = async (
   orderId: number,
   file: File | Blob,
