@@ -17,6 +17,9 @@ import {
   XCircle,
   Send,
   MessageSquare,
+  Package,
+  Check,
+  Info,
 } from "lucide-react";
 import {
   getAdminUnpaidDeliveries,
@@ -27,6 +30,7 @@ import {
   cancelAdminDriverPayout,
 } from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
+import { CustomSelect } from "../../ui/CustomSelect";
 
 interface DriverPayoutsManagementProps {
   companySlug: string | null;
@@ -1025,257 +1029,574 @@ export function DriverPayoutsManagement({
 
       {/* Disburse Payout Modal */}
       {disburseModalOpen && selectedDriverGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/55 backdrop-blur-md">
+          <div role="dialog" aria-modal="true" aria-label="Disburse driver payout" className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-4xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70 animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center">
+            <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="w-11 h-11 shrink-0 rounded-2xl bg-white/80 border border-secondary/15 text-secondary flex items-center justify-center shadow-sm">
                   <Wallet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 text-base">Disburse Delivery person  Payout</h3>
-                  <p className="text-xs text-gray-400">
-                    Settle completed deliveries for {selectedDriverGroup.driver_name}
+                  <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">Disburse Driver Payout</h3>
+                  <p className="text-xs text-gray-600 mt-0.5 truncate">
+                    Settle completed deliveries for <span className="font-semibold text-secondary">{selectedDriverGroup.driver_name}</span>
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setDisburseModalOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                aria-label="Close disburse payout"
+                className="shrink-0 p-2 text-gray-500 hover:text-gray-800 rounded-xl border border-white/70 bg-white/70 hover:bg-white transition shadow-sm"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
+            
+            {/* SCROLLABLE BODY */}
+<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
             {/* Step 1: Payout Interval / Quick Filter */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block font-bold text-gray-700 text-xs">
-                  1. Select Payout Interval (Quick Filters Orders)
-                </label>
-                <span className="text-[11px] text-gray-400">
-                  {intervalCounts.all} unpaid {intervalCounts.all === 1 ? "order" : "orders"} available
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { key: "instant", label: "Instant", sub: "Today", count: intervalCounts.instant },
-                  { key: "weekly", label: "Weekly", sub: "Last 7 Days", count: intervalCounts.weekly },
-                  { key: "monthly", label: "Monthly", sub: "Last 30 Days", count: intervalCounts.monthly },
-                  { key: "manual", label: "All Unpaid", sub: "Select All", count: intervalCounts.all },
-                ].map((item) => {
-                  const isSelected = payoutType === item.key;
-                  const hasMatches = item.count > 0;
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() =>
-                        selectOrdersByInterval(
-                          item.key as any,
-                          selectedDriverGroup.orders
-                        )
-                      }
-                      className={`py-2 px-1 text-center rounded-2xl font-bold transition border relative ${
-                        isSelected
-                          ? "bg-secondary text-white border-secondary shadow-sm shadow-secondary/20"
-                          : "bg-white text-gray-700 border-gray-200 hover:border-secondary/40 hover:bg-secondary/5"
-                      }`}
-                    >
-                      <div className="capitalize text-xs leading-tight font-black">{item.label}</div>
-                      <div
-                        className={`text-[9px] font-medium leading-tight mt-0.5 ${
-                          isSelected ? "text-purple-200" : "text-gray-400"
-                        }`}
-                      >
-                        {item.sub}
-                      </div>
-                      <div className="mt-1">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            isSelected
-                              ? "bg-white/20 text-white"
-                              : hasMatches
-                              ? "bg-secondary/10 text-secondary"
-                              : "bg-gray-100 text-gray-400"
-                          }`}
-                        >
-                          {item.count} {item.count === 1 ? "order" : "orders"}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          
+<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+  {/* Section Header */}
+  <div className="flex flex-col gap-1 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+    <div>
+      <h3 className="text-sm font-bold text-gray-900">
+        Payout Interval
+      </h3>
+      <p className="mt-1 text-[11px] text-gray-500">
+        Choose a time period to filter unpaid deliveries.
+      </p>
+    </div>
+
+    <div className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] font-medium text-gray-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="font-bold text-gray-900 tabular-nums">
+        {intervalCounts.all}
+      </span>
+      unpaid {intervalCounts.all === 1 ? "order" : "orders"} available
+    </div>
+  </div>
+
+  {/* Interval Options */}
+  <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
+    {[
+      {
+        key: "instant",
+        label: "Instant",
+        sub: "Today",
+        count: intervalCounts.instant,
+      },
+      {
+        key: "weekly",
+        label: "Weekly",
+        sub: "Last 7 days",
+        count: intervalCounts.weekly,
+      },
+      {
+        key: "monthly",
+        label: "Monthly",
+        sub: "Last 30 days",
+        count: intervalCounts.monthly,
+      },
+      {
+        key: "manual",
+        label: "All Unpaid",
+        sub: "Manual selection",
+        count: intervalCounts.all,
+      },
+    ].map((item) => {
+      const isSelected = payoutType === item.key;
+      const hasMatches = item.count > 0;
+
+      return (
+        <button
+          key={item.key}
+          type="button"
+          aria-pressed={isSelected}
+          onClick={() =>
+            selectOrdersByInterval(
+              item.key as any,
+              selectedDriverGroup.orders
+            )
+          }
+          className={`
+            relative flex min-h-[112px] flex-col justify-between
+            rounded-xl border p-3 text-left
+            transition-all duration-200
+            focus:outline-none focus-visible:ring-2
+            focus-visible:ring-secondary/30 focus-visible:ring-offset-2
+            ${
+              isSelected
+                ? "border-secondary bg-secondary/[0.06] ring-1 ring-secondary/20"
+                : "border-gray-200 bg-white hover:border-secondary/40 hover:bg-gray-50"
+            }
+          `}
+        >
+          {/* Selected indicator */}
+          {isSelected && (
+            <span className="absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-white">
+              <Check className="h-2.5 w-2.5" />
+            </span>
+          )}
+
+          {/* Label */}
+          <div className="pr-5">
+            <p
+              className={`text-sm font-bold ${
+                isSelected ? "text-secondary" : "text-gray-900"
+              }`}
+            >
+              {item.label}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500">
+              {item.sub}
+            </p>
+          </div>
+
+          {/* Count */}
+          <div className="mt-3 flex items-center justify-between gap-1">
+            <span
+              className={`
+                rounded-md px-2 py-1 text-[10px] font-bold tabular-nums
+                ${
+                  isSelected
+                    ? "bg-secondary text-white"
+                    : hasMatches
+                      ? "bg-gray-100 text-gray-700"
+                      : "bg-gray-50 text-gray-400"
+                }
+              `}
+            >
+              {item.count} {item.count === 1 ? "order" : "orders"}
+            </span>
+
+            {isSelected && (
+              <span className="text-[10px] font-semibold text-secondary">
+                Selected
+              </span>
+            )}
+          </div>
+        </button>
+      );
+    })}
+  </div>
+
+  {/* Selection information */}
+  <div className="flex items-start gap-2 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
+    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+    <p className="text-[11px] leading-relaxed text-gray-500">
+      {payoutType === "manual"
+        ? "All unpaid deliveries are available. Select the specific orders you want to settle."
+        : `Showing unpaid deliveries matching the ${
+            payoutType === "instant"
+              ? "today"
+              : payoutType === "weekly"
+                ? "last 7 days"
+                : "last 30 days"
+          } payout interval.`}
+    </p>
+  </div>
+</div>
+
 
             {/* Step 2: Interactive Order Selection Checklist */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-gray-700 text-xs">
-                  2. Choose Orders to Settle ({selectedAssignmentIds.length} of {selectedDriverGroup.orders.length} Selected)
-                </label>
-                <div className="flex items-center gap-2 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllOrders}
-                    className="text-secondary font-bold hover:underline"
+         
+<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+  {/* Header */}
+  <div className="border-b border-gray-100 p-4 sm:p-5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-gray-900">
+            Choose Orders to Settle
+          </h3>
+          <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-bold text-secondary">
+            {selectedAssignmentIds.length}/{selectedDriverGroup.orders.length}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Select the delivered orders you want to include in this payout.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSelectAllOrders}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          onClick={handleDeselectAllOrders}
+          disabled={selectedAssignmentIds.length === 0}
+          className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+
+    {/* Selection progress */}
+    <div className="mt-4">
+      <div className="mb-1.5 flex items-center justify-between text-[11px]">
+        <span className="font-medium text-gray-500">Selection progress</span>
+        <span className="font-bold tabular-nums text-gray-700">
+          {selectedDriverGroup.orders.length > 0
+            ? Math.round(
+                (selectedAssignmentIds.length /
+                  selectedDriverGroup.orders.length) *
+                  100
+              )
+            : 0}
+          %
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div
+          className="h-full rounded-full bg-secondary transition-all duration-200"
+          style={{
+            width: `${
+              selectedDriverGroup.orders.length > 0
+                ? (selectedAssignmentIds.length /
+                    selectedDriverGroup.orders.length) *
+                  100
+                : 0
+            }%`,
+          }}
+        />
+      </div>
+    </div>
+  </div>
+
+  {/* Empty selection notice */}
+  {selectedAssignmentIds.length === 0 && (
+    <div className="mx-4 mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mx-5">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-amber-900">
+          No orders selected
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-amber-800">
+          No orders match the{" "}
+          <span className="font-semibold capitalize">{payoutType}</span>{" "}
+          timeframe ({payoutType === "instant"
+            ? intervalCounts.instant
+            : payoutType === "weekly"
+              ? intervalCounts.weekly
+              : intervalCounts.monthly} matching).
+          Select orders individually or use the All Unpaid option.
+        </p>
+      </div>
+    </div>
+  )}
+
+  {/* Orders list */}
+  <div className="p-4 sm:p-5">
+    <div className="mb-3 flex items-center justify-between">
+      <p className="text-xs font-semibold text-gray-600">
+        Available orders
+      </p>
+      <span className="text-[11px] text-gray-400">
+        {selectedDriverGroup.orders.length} orders
+      </span>
+    </div>
+
+    <div className="max-h-72 space-y-2 overflow-y-auto pr-1 sm:max-h-80 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+      {selectedDriverGroup.orders.map((ord) => {
+        const orderId = getAssignmentId(ord);
+        const isChecked = selectedAssignmentIds.includes(orderId);
+
+        const completedStr = ord.completed_at
+          ? new Date(ord.completed_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Delivered";
+
+        return (
+          <div
+            key={orderId}
+            role="button"
+            tabIndex={0}
+            aria-pressed={isChecked}
+            onClick={() => toggleOrderSelection(orderId)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleOrderSelection(orderId);
+              }
+            }}
+            className={`group flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+              isChecked
+                ? "border-secondary/40 bg-secondary/[0.04] shadow-sm"
+                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70"
+            }`}
+          >
+            {/* Checkbox */}
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onClick={(e) => e.stopPropagation()}
+              onChange={() => toggleOrderSelection(orderId)}
+              className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-secondary focus:ring-secondary/30"
+              aria-label={`Select order ${ord.order_number}`}
+            />
+
+            {/* Order information */}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-gray-900">
+                  #{ord.order_number}
+                </span>
+
+                <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-gray-600">
+                  {ord.payment_method}
+                </span>
+
+                {ord.payment_method === "cod" && (
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                      ord.cod_payment_confirmed
+                        ? "bg-green-50 text-green-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
                   >
-                    Select All
-                  </button>
-                  <span className="text-gray-300">|</span>
-                  <button
-                    type="button"
-                    onClick={handleDeselectAllOrders}
-                    className="text-gray-500 font-semibold hover:underline"
-                  >
-                    Deselect All
-                  </button>
-                </div>
-              </div>
-              {selectedAssignmentIds.length === 0 && (
-                <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200/80 rounded-2xl text-[11px] text-amber-800">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-amber-600" />
-                  <span>
-                    No orders delivered within the <b className="capitalize">{payoutType}</b> timeframe ({payoutType === "instant" ? intervalCounts.instant : payoutType === "weekly" ? intervalCounts.weekly : intervalCounts.monthly} matching). Click <b>&quot;All Unpaid&quot;</b> or check orders individually below.
+                    {ord.cod_payment_confirmed
+                      ? "COD received"
+                      : "COD pending"}
                   </span>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Scrollable Order Items List */}
-              <div className="max-h-44 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-2xl border border-gray-200">
-                {selectedDriverGroup.orders.map((ord) => {
-                  const orderId = getAssignmentId(ord);
-                  const isChecked = selectedAssignmentIds.includes(orderId);
-                  const completedStr = ord.completed_at
-                    ? new Date(ord.completed_at).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Delivered";
-
-                  return (
-                    <div
-                      key={orderId}
-                      onClick={() => toggleOrderSelection(orderId)}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition select-none ${
-                        isChecked
-                          ? "bg-secondary/5 border-secondary/40 text-gray-900 shadow-xs ring-1 ring-secondary/20"
-                          : "bg-white border-gray-200/80 text-gray-500 hover:border-secondary/20 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => toggleOrderSelection(orderId)}
-                          className="rounded text-secondary focus:ring-secondary/20 h-4 w-4"
-                        />
-                        <div>
-                          <div className="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
-                            <span className="text-secondary font-black">#{ord.order_number}</span>
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-medium capitalize">
-                              {ord.payment_method}
-                            </span>
-                            {ord.payment_method === "cod" && (
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                                  ord.cod_payment_confirmed
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-amber-100 text-amber-700"
-                                }`}
-                              >
-                                {ord.cod_payment_confirmed ? "COD Handed In" : "COD Pending Turn-in"}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-gray-400 mt-0.5">
-                            {completedStr} · {ord.customer_name}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="font-black text-gray-900 block">
-                          +{parseFloat(ord.delivery_fee || "0").toFixed(2)} ETB
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                <span className="truncate">
+                  {ord.customer_name}
+                </span>
+                <span className="hidden text-gray-300 sm:inline">•</span>
+                <span>{completedStr}</span>
               </div>
             </div>
+
+            {/* Delivery fee */}
+            <div className="shrink-0 text-right">
+              <p className="text-[10px] font-medium text-gray-400">
+                Delivery fee
+              </p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-gray-900">
+                +{parseFloat(ord.delivery_fee || "0").toFixed(2)}
+                <span className="ml-1 text-[10px] font-semibold text-gray-500">
+                  ETB
+                </span>
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  {/* Footer summary */}
+  <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
+    <div>
+      <p className="text-[11px] text-gray-500">Selected orders</p>
+      <p className="text-sm font-bold text-gray-900">
+        {selectedAssignmentIds.length} of {selectedDriverGroup.orders.length}
+      </p>
+    </div>
+    <span className="text-[11px] font-medium text-gray-500">
+      {selectedAssignmentIds.length === 0
+        ? "Select orders to continue"
+        : "Selection updated"}
+    </span>
+  </div>
+</div>
+
 
             {/* Financial Summary Box */}
-            <div className="bg-secondary/5 rounded-2xl p-4 border border-secondary/20 space-y-2">
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>Selected Deliveries:</span>
-                <span className="font-bold text-gray-900">
-                  {selectedOrders.length} of {selectedDriverGroup.orders.length} Deliveries
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-gray-600">
-                <span>Delivery Fees (Total Disbursable):</span>
-                <span className="font-bold text-gray-900">
-                  +{selectedGrossFees.toFixed(2)} ETB
-                </span>
-              </div>
-              <div className="pt-2 border-t border-secondary/20 flex justify-between items-center text-sm">
-                <span className="font-bold text-gray-900">Net Amount to Disburse:</span>
-                <span className="font-black text-secondary text-base">
-                  {selectedNetDisbursable.toFixed(2)} ETB
-                </span>
-              </div>
-            </div>
+         
+<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+  {/* Summary header */}
+  <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+    <div>
+      <h3 className="text-sm font-bold text-gray-900">
+        Payout Summary
+      </h3>
+      <p className="mt-0.5 text-[11px] text-gray-500">
+        Review the selected delivery amounts before disbursement.
+      </p>
+    </div>
+
+    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+      <Wallet className="h-4.5 w-4.5" />
+    </div>
+  </div>
+
+  {/* Breakdown */}
+  <div className="space-y-4 p-4 sm:p-5">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+          <Package className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-800">
+            Selected Deliveries
+          </p>
+          <p className="text-[11px] text-gray-400">
+            Orders included in this payout
+          </p>
+        </div>
+      </div>
+
+      <span className="text-sm font-bold tabular-nums text-gray-900">
+        {selectedOrders.length}
+        <span className="ml-1 text-xs font-medium text-gray-400">
+          / {selectedDriverGroup.orders.length}
+        </span>
+      </span>
+    </div>
+
+    <div className="h-px bg-gray-100" />
+
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <Truck className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-800">
+            Total Delivery Fees
+          </p>
+          <p className="text-[11px] text-gray-400">
+            Gross amount from selected orders
+          </p>
+        </div>
+      </div>
+
+      <span className="text-sm font-bold tabular-nums text-gray-900">
+        {selectedGrossFees.toFixed(2)}
+        <span className="ml-1 text-[10px] font-semibold text-gray-500">
+          ETB
+        </span>
+      </span>
+    </div>
+  </div>
+
+  {/* Final payout amount */}
+  <div className="border-t border-gray-100 bg-gray-50/80 p-4 sm:p-5">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-xs font-bold text-gray-700">
+          Net Amount to Disburse
+        </p>
+        <p className="mt-0.5 text-[11px] text-gray-500">
+          Final payable amount for this selection
+        </p>
+      </div>
+
+      <div className="flex items-baseline gap-1.5 sm:justify-end">
+        <span className="text-2xl font-black tracking-tight tabular-nums text-secondary">
+          {selectedNetDisbursable.toFixed(2)}
+        </span>
+        <span className="text-xs font-bold text-gray-500">
+          ETB
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
 
             {/* Payout Options Form */}
-            <div className="space-y-3 text-xs">
-              {/* Payment Method */}
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Disbursement Channel</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary font-medium text-gray-800"
-                >
-                  <option value="telebirr">Telebirr Transfer</option>
-                  <option value="cbe_birr">CBE Birr Transfer</option>
-                  {/* <option value="bank_transfer">Direct Bank Transfer</option> */}
-                  <option value="cash">Cash in Person</option>
-                  <option value="other">Other Method</option>
-                </select>
-              </div>
+         
 
-              {/* Transaction Reference */}
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Transaction Reference / Slip # (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Telebirr Txn ID, Bank Ref #..."
-                  value={transactionRef}
-                  onChange={(e) => setTransactionRef(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary"
-                />
-              </div>
+<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+  {/* Header */}
+  <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 sm:px-5">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+      <Wallet className="h-4 w-4" />
+    </div>
+    <div>
+      <h3 className="text-sm font-bold text-gray-900">
+        Disbursement Details
+      </h3>
+      <p className="mt-0.5 text-[11px] text-gray-500">
+        Specify how the driver will receive the payout.
+      </p>
+    </div>
+  </div>
 
-              {/* Notes */}
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">Disbursement Notes (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Settled for week of Oct 1 - Oct 7"
-                  value={payoutNotes}
-                  onChange={(e) => setPayoutNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary"
-                />
-              </div>
-            </div>
+  <div className="space-y-5 p-4 sm:p-5">
+    {/* Payment Channel */}
+    <div>
+      <label className="mb-2 block text-xs font-semibold text-gray-700">
+        Payment Channel <span className="text-red-500">*</span>
+      </label>
+
+      <CustomSelect
+        ariaLabel="Select disbursement payment channel"
+        options={[
+          { value: "telebirr", label: "Telebirr Transfer" },
+          { value: "cbe_birr", label: "CBE Birr Transfer" },
+          { value: "cash", label: "Cash in Person" },
+          { value: "other", label: "Other Method" },
+        ]}
+        value={paymentMethod}
+        onChange={(value) => setPaymentMethod(value)}
+        placeholder="Choose payment channel"
+        maxHeight={220}
+        className="w-full"
+      />
+    </div>
+
+    {/* Transaction Reference */}
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+        Transaction Reference
+        <span className="ml-1 font-normal text-gray-400">(Optional)</span>
+      </label>
+
+      <input
+        type="text"
+        placeholder="Enter transaction ID or bank reference number"
+        value={transactionRef}
+        onChange={(e) => setTransactionRef(e.target.value)}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
+      />
+
+      <p className="mt-1.5 text-[11px] text-gray-400">
+        Use this reference to identify and verify the payment later.
+      </p>
+    </div>
+
+    {/* Payment Notes */}
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+        Payment Notes
+        <span className="ml-1 font-normal text-gray-400">(Optional)</span>
+      </label>
+
+      <textarea
+        rows={3}
+        placeholder="Add payout period, payment details, or additional remarks..."
+        value={payoutNotes}
+        onChange={(e) => setPayoutNotes(e.target.value)}
+        className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
+      />
+
+      <p className="mt-1.5 text-[11px] text-gray-400">
+        Additional information for your payout records.
+      </p>
+    </div>
+  </div>
+</div>
+
 
             {/* Validation warning if no orders selected */}
             {selectedAssignmentIds.length === 0 && (
@@ -1285,12 +1606,13 @@ export function DriverPayoutsManagement({
               </div>
             )}
 
-            {/* Actions */}
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-3">
+            </div>
+            {/* FIXED FOOTER */}
+            <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setDisburseModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition"
+                className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition"
               >
                 Cancel
               </button>
@@ -1299,7 +1621,7 @@ export function DriverPayoutsManagement({
                 type="button"
                 disabled={submittingPayout || selectedAssignmentIds.length === 0}
                 onClick={handleCreatePayout}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white font-bold rounded-xl hover:bg-secondary/90 transition shadow-sm text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white font-bold rounded-xl hover:bg-secondary/90 transition shadow-sm text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submittingPayout ? (
                   <>
@@ -1324,31 +1646,38 @@ export function DriverPayoutsManagement({
       {detailModalOpen && selectedPayout && (() => {
         const parsedNotes = parsePayoutNotes(selectedPayout.notes);
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 space-y-5 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/55 backdrop-blur-md">
+            <div role="dialog" aria-modal="true" aria-label={`Payout ${selectedPayout.payout_number} details`} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-5xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
               {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-gray-900 text-lg">
+              <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-10 h-10 shrink-0 rounded-2xl bg-white/80 border border-secondary/15 text-secondary flex items-center justify-center shadow-sm">
+                      <Wallet className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
                       Payout #{selectedPayout.payout_number}
                     </h3>
                     {renderStatusBadge(selectedPayout.status)}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Issued to {selectedPayout.driver_name} · {selectedPayout.company_name}
+                  <p className="text-xs text-gray-600 mt-1 truncate">
+                    Issued to <span className="font-semibold text-gray-800">{selectedPayout.driver_name}</span> · {selectedPayout.company_name}
                   </p>
                 </div>
                 <button
                   onClick={() => setDetailModalOpen(false)}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                  aria-label="Close payout details"
+                  className="shrink-0 p-2 text-gray-500 hover:text-gray-800 rounded-xl border border-white/70 bg-white/70 hover:bg-white transition shadow-sm"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
+              {/* SCROLLABLE BODY */}
+              {/* SCROLLABLE BODY */}
+<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
               {/* Financial Details Grid */}
-              <div className="grid grid-cols-3 gap-3 bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 rounded-2xl p-4 sm:p-6 border border-gray-200/80 text-center">
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase">Gross Delivery Fees</p>
                   <p className="text-sm font-bold text-gray-900 mt-1">
@@ -1370,7 +1699,7 @@ export function DriverPayoutsManagement({
               </div>
 
               {/* Handshake & Verification Lifecycle Timeline */}
-              <div className="bg-gray-50/70 border border-gray-100 rounded-2xl p-4 space-y-4">
+              <div className="bg-slate-50/70 border border-gray-200/80 rounded-2xl p-4 sm:p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-2">
                     <RefreshCw className="w-3.5 h-3.5 text-secondary" />
@@ -1608,7 +1937,7 @@ export function DriverPayoutsManagement({
               </div>
 
               {/* Metadata Rows */}
-              <div className="grid grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
                 <div>
                   <span className="text-gray-400 font-medium">Payment Channel:</span>{" "}
                   <span className="font-bold text-gray-800 capitalize">
@@ -1636,8 +1965,8 @@ export function DriverPayoutsManagement({
                 <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider mb-2">
                   Settled Orders ({selectedPayout.items?.length || selectedPayout.items_count})
                 </h4>
-                <div className="border border-gray-100 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                  <table className="w-full text-xs text-left">
+                <div className="border border-gray-100 rounded-xl overflow-x-auto max-h-72 overflow-y-auto">
+                  <table className="w-full min-w-[600px] text-xs text-left">
                     <thead className="bg-gray-50 text-gray-400 font-semibold uppercase sticky top-0 border-b border-gray-100">
                       <tr>
                         <th className="py-2 px-3">Order Number</th>
@@ -1668,14 +1997,15 @@ export function DriverPayoutsManagement({
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+              </div>
+              {/* FIXED FOOTER */}
+              <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
                 <div>
                   {(selectedPayout.status === "disbursed" || selectedPayout.status === "disputed") && (
                     <button
                       onClick={handleOpenCancelConfirm}
                       disabled={cancellingPayout}
-                      className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
+                      className="w-full sm:w-auto justify-center px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
                     >
                       <XCircle className="h-4 w-4" />
                       <span>Cancel Payout & Release Orders</span>
@@ -1684,7 +2014,7 @@ export function DriverPayoutsManagement({
                 </div>
                 <button
                   onClick={() => setDetailModalOpen(false)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
+                  className="w-full sm:w-auto justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
                 >
                   Close
                 </button>
@@ -1696,22 +2026,27 @@ export function DriverPayoutsManagement({
 
       {/* Custom Confirmation Modal for Cancelling Payout */}
       {cancelConfirmModalOpen && selectedPayout && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div role="alertdialog" aria-modal="true" aria-label={`Confirm cancellation of payout ${selectedPayout.payout_number}`} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none sm:max-w-md max-h-[92vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
+            <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0 shadow-sm">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h3 className="font-black text-gray-900 text-base">
+                <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
                   Cancel Payout #{selectedPayout.payout_number}?
                 </h3>
-                <p className="text-xs text-gray-500">
-                  Issued to {selectedPayout.driver_name}
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Issued to <span className="font-semibold text-gray-800">{selectedPayout.driver_name}</span>
                 </p>
               </div>
+              </div>
+              <span className="rounded-full bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide">Confirmation</span>
             </div>
 
+            {/* SCROLLABLE BODY */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 lg:px-10 py-6">
             <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
               <p className="font-bold flex items-center gap-1.5 text-amber-800">
                 <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
@@ -1726,12 +2061,14 @@ export function DriverPayoutsManagement({
               </p>
             </div>
 
-            <div className="pt-2 flex items-center justify-end gap-3">
+            </div>
+            {/* FIXED FOOTER */}
+            <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
               <button
                 type="button"
                 disabled={cancellingPayout}
                 onClick={() => setCancelConfirmModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition disabled:opacity-50"
+                className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition disabled:opacity-50"
               >
                 Keep Payout
               </button>
@@ -1739,7 +2076,7 @@ export function DriverPayoutsManagement({
                 type="button"
                 disabled={cancellingPayout}
                 onClick={executeCancelPayout}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-sm text-xs disabled:opacity-50"
+                className="w-full sm:w-auto justify-center inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-sm text-xs disabled:opacity-50"
               >
                 {cancellingPayout ? (
                   <>
