@@ -574,30 +574,33 @@ export default function CompanyOrders() {
             </span>
           ) : undefined
         }
-        actionMobile={
-          <div className="flex items-center gap-2">
-            {canExport && (
-              <button
-                type="button"
-                onClick={() => setShowExportModal(true)}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
-                title="Export daily / weekly / monthly / yearly order reports"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export</span>
-              </button>
-            )}
+      actionMobile={
+  <div className="flex items-center justify-end gap-1.5">
+    {canExport && (
+      <button
+        type="button"
+        onClick={() => setShowExportModal(true)}
+        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+        aria-label="Export report"
+        title="Export daily / weekly / monthly / yearly order reports"
+      >
+        <Download className="h-3.5 w-3.5 shrink-0" />
+        <span className="whitespace-nowrap">Export</span>
+      </button>
+    )}
 
-            <button
-              type="button"
-              onClick={() => setShowTrackingMap(true)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90"
-            >
-              <Navigation className="h-4 w-4" />
-              <span>Tracking</span>
-            </button>
-          </div>
-        }
+    <button
+      type="button"
+      onClick={() => setShowTrackingMap(true)}
+      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-1.5 text-[10px] font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-secondary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2"
+      aria-label="Open tracking map"
+      title="Open tracking map"
+    >
+      <Navigation className="h-3.5 w-3.5 shrink-0" />
+      <span className="whitespace-nowrap">Tracking</span>
+    </button>
+  </div>
+}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canExport && (

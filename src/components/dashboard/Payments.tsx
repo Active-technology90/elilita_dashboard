@@ -581,45 +581,53 @@ export default function Payments() {
                   )}
                 </div>
               }
-              actionMobile={
-                <div className="flex flex-wrap items-center gap-2">
-                  {canExport && (
-                    <button
-                      type="button"
-                      onClick={() => setShowExportModal(true)}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
-                      title="Export daily / weekly / monthly / yearly reports"
-                    >
-                      <Download className="h-4 w-4" />
-                      <span>Export</span>
-                    </button>
-                  )}
+           actionMobile={
+  <div className="flex items-center justify-end gap-1">
+    {canExport && (
+      <button
+        type="button"
+        onClick={() => setShowExportModal(true)}
+        className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[9px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+        aria-label="Export report"
+        title="Export daily / weekly / monthly / yearly reports"
+      >
+        <Download className="h-3 w-3 shrink-0" />
+        <span className="whitespace-nowrap">Export</span>
+      </button>
+    )}
 
-                  {isSuperAdmin && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsCompanySelectorOpen(true)}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        <span>{companySlug ? "Change" : "Select"}</span>
-                      </button>
-                      {companySlug && (
-                        <button
-                          type="button"
-                          onClick={clearCompany}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                          aria-label="Clear selected company"
-                          title="Show payouts for all companies"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              }
+    {isSuperAdmin && (
+      <>
+        <button
+          type="button"
+          onClick={() => setIsCompanySelectorOpen(true)}
+          className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] font-semibold text-secondary shadow-sm transition active:scale-[0.97] hover:border-secondary/30 hover:bg-secondary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+          aria-label={companySlug ? "Change company" : "Select company"}
+          title={
+            companySlug ? "Change the selected company" : "Select a company"
+          }
+        >
+          <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+          <span className="whitespace-nowrap">
+            {companySlug ? "" : "Select"}
+          </span>
+        </button>
+
+        {companySlug && (
+          <button
+            type="button"
+            onClick={clearCompany}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition active:scale-[0.97] hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            aria-label="Clear selected company"
+            title="Show payouts for all companies"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </>
+    )}
+  </div>
+}
               className="mb-5 sm:mb-6"
             />
             {/* Financial KPI Summary Cards */}
