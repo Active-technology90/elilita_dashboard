@@ -40,7 +40,11 @@ type PushState = "unsupported" | "default" | "granted" | "denied";
 interface NotificationsContextValue {
   notifications: AppNotification[];
   unread: number;
+  totalCount: number;
   loading: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => Promise<void>;
   pushState: PushState;
   refetch: () => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -74,7 +78,11 @@ export function NotificationsProvider({
   const navigate = useNavigate(); // ✅ needed for routing
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [pushState, setPushState] = useState<PushState>(currentPushState());
   const foregroundUnsub = useRef<() => void>(() => {});
 
@@ -86,13 +94,21 @@ export function NotificationsProvider({
     setLoading(true);
     try {
       const [listRes, unreadRes] = await Promise.all([
-        getNotifications(),
+        getNotifications(1),
         getUnreadCount(),
       ]);
       const data = listRes.data as
-        | { results?: AppNotification[] }
+        | { count?: number; next?: string | null; results?: AppNotification[] }
         | AppNotification[];
-      setNotifications(Array.isArray(data) ? data : data.results ?? []);
+      const items = Array.isArray(data) ? data : data.results ?? [];
+      const total = Array.isArray(data)
+        ? data.length
+        : (typeof data.count === "number" ? data.count : items.length);
+
+      setNotifications(items);
+      setTotalCount(total);
+      setHasMore(!Array.isArray(data) && Boolean(data.next));
+      setPage(1);
       setUnread(unreadRes.data.unread);
     } catch {
       /* not authed / network — ignore */
@@ -100,6 +116,34 @@ export function NotificationsProvider({
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || !localStorage.getItem("access")) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await getNotifications(nextPage);
+      const data = res.data as
+        | { count?: number; next?: string | null; results?: AppNotification[] }
+        | AppNotification[];
+      const newItems = Array.isArray(data) ? data : data.results ?? [];
+
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const uniqueNew = newItems.filter((n) => !existingIds.has(n.id));
+        return [...prev, ...uniqueNew];
+      });
+      setPage(nextPage);
+      setHasMore(!Array.isArray(data) && Boolean(data.next));
+      if (!Array.isArray(data) && typeof data.count === "number") {
+        setTotalCount(data.count);
+      }
+    } catch (e) {
+      console.error("Failed to load more notifications", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, page]);
 
   const markAllRead = useCallback(async () => {
     await markNotificationsRead();
@@ -208,7 +252,11 @@ export function NotificationsProvider({
       value={{
         notifications,
         unread,
+        totalCount,
         loading,
+        hasMore,
+        loadingMore,
+        loadMore,
         pushState,
         refetch,
         markAllRead,

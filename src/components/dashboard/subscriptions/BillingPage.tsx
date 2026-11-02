@@ -303,11 +303,105 @@ const calculateUsage = (current: number, limit: number) => {
   return Math.min(100, Math.max(0, (current / limit) * 100));
 };
 
+const getDynamicPlanFeatures = (
+  plan: SubscriptionPlan,
+  tier: PlanTier,
+): PlanFeatureItem[] => {
+  const staffCount = plan.max_staff_members ?? 5;
+  const hasFeatured =
+    plan.max_featured_products === -1 || plan.max_featured_products > 0;
+
+  const productsLabel =
+    plan.max_products === -1
+      ? "Unlimited public products"
+      : `Up to ${formatLimit(plan.max_products)} public products`;
+
+  const staffLabel =
+    staffCount === -1
+      ? "Unlimited staff accounts"
+      : staffCount === 1
+        ? "1 staff account"
+        : `Up to ${formatLimit(staffCount)} staff accounts`;
+
+  const featuredLabel =
+    plan.max_featured_products === -1
+      ? "Unlimited featured products"
+      : plan.max_featured_products > 0
+        ? `Up to ${formatLimit(plan.max_featured_products)} featured products`
+        : "Featured products";
+
+  if (tier === "custom") {
+    return [
+      {
+        label: productsLabel,
+        enabled: plan.max_products !== 0,
+      },
+      {
+        label: staffLabel,
+        enabled: staffCount !== 0,
+      },
+      {
+        label: featuredLabel,
+        enabled: hasFeatured,
+      },
+      { label: "Storefront & profile management", enabled: true },
+      { label: "Order & inventory management", enabled: true },
+      { label: "Standard customer notifications", enabled: true },
+    ];
+  }
+
+  return PLAN_FEATURES[tier].map((item) => {
+    const lower = item.label.toLowerCase();
+
+    // Match product quota entries
+    if (
+      (lower.includes("catalogue") ||
+        lower.includes("product listing") ||
+        (lower.includes("product") && lower.includes("up to"))) &&
+      !lower.includes("featured")
+    ) {
+      const extra = lower.includes("bulk") ? " & bulk management" : "";
+      return {
+        label: `${productsLabel}${extra}`,
+        enabled: plan.max_products !== 0,
+      };
+    }
+
+    // Match staff quota entries
+    if (lower.includes("staff")) {
+      const hasRole = lower.includes("role");
+      return {
+        label: hasRole ? `${staffLabel} with role-based access` : staffLabel,
+        enabled: staffCount !== 0,
+      };
+    }
+
+    // Match featured products quota entries
+    if (lower.includes("featured product")) {
+      const extraPromo =
+        lower.includes("promotional") || lower.includes("placement");
+      return {
+        label:
+          extraPromo && hasFeatured
+            ? `${featuredLabel} & promotional placement`
+            : featuredLabel,
+        enabled: hasFeatured,
+      };
+    }
+
+    return item;
+  });
+};
+
 const SkeletonCard = () => (
   <div className="animate-pulse rounded-xl border border-secondary/10 bg-white p-5 shadow-sm">
     <div className="h-3 w-24 rounded bg-secondary/[0.06]" />
     <div className="mt-3 h-7 w-32 rounded bg-secondary/[0.06]" />
-    <div className="mt-3 h-9 w-36 rounded bg-secondary/[0.04]" />
+    <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-secondary/10 bg-secondary/[0.025] p-2">
+      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
+      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
+      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
+    </div>
     <div className="mt-5 space-y-2.5">
       {Array.from({ length: 5 }).map((_, index) => (
         <div
@@ -863,32 +957,7 @@ export default function BillingPage() {
               const isAdvanced = tier === "advanced";
               const isPremium = tier === "premium";
 
-              const includedItems =
-                tier !== "custom"
-                  ? PLAN_FEATURES[tier]
-                  : [
-                      {
-                        label:
-                          plan.max_products === -1
-                            ? "Unlimited public products"
-                            : `Post up to ${formatLimit(plan.max_products)} public products`,
-                        enabled: true,
-                      },
-                      {
-                        label:
-                          plan.max_featured_products > 0
-                            ? `Can feature up to ${formatLimit(plan.max_featured_products)} products`
-                            : "Can feature up to 0 products",
-                        enabled: plan.max_featured_products > 0,
-                      },
-                      {
-                        label:
-                          (plan.max_staff_members ?? 5) === -1
-                            ? "Unlimited staff members"
-                            : `Up to ${formatLimit(plan.max_staff_members ?? 5)} staff members`,
-                        enabled: true,
-                      },
-                    ];
+              const includedItems = getDynamicPlanFeatures(plan, tier);
 
               return (
                 <article
@@ -929,7 +998,48 @@ export default function BillingPage() {
                     )}
                   </div>
 
-                  <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.11em] text-secondary/50">
+                  {/* Dynamic Core Quotas Summary */}
+                  {/* <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-secondary/10 bg-secondary/[0.025] p-2">
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
+                      <Package className="h-3.5 w-3.5 text-secondary" />
+                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
+                        {plan.max_products === -1
+                          ? "Unlimited"
+                          : formatLimit(plan.max_products)}
+                      </span>
+                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
+                        Products
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
+                      <Users className="h-3.5 w-3.5 text-secondary" />
+                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
+                        {(plan.max_staff_members ?? 5) === -1
+                          ? "Unlimited"
+                          : formatLimit(plan.max_staff_members ?? 5)}
+                      </span>
+                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
+                        Staff
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
+                      <Zap className="h-3.5 w-3.5 text-secondary" />
+                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
+                        {plan.max_featured_products === -1
+                          ? "Unlimited"
+                          : plan.max_featured_products <= 0
+                            ? "0"
+                            : formatLimit(plan.max_featured_products)}
+                      </span>
+                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
+                        Featured
+                      </span>
+                    </div>
+                  </div> */}
+
+                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.11em] text-secondary/50">
                     What&apos;s included
                   </p>
 

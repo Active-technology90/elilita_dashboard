@@ -74,8 +74,17 @@ export default function NotificationsPage({
   onNotificationClick,
 }: NotificationsPageProps) {
   const navigate = useNavigate(); // ✅ for routing
-  const { notifications, unread, loading, markAllRead, markRead } =
-    useNotifications();
+  const {
+    notifications,
+    unread,
+    totalCount,
+    loading,
+    hasMore,
+    loadingMore,
+    loadMore,
+    markAllRead,
+    markRead,
+  } = useNotifications();
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [markingAll, setMarkingAll] = useState(false);
@@ -91,7 +100,7 @@ export default function NotificationsPage({
   const grouped = useMemo(() => groupNotificationsByDate(filtered), [filtered]);
 
   const isInitialLoading = loading && notifications.length === 0;
-  const totalCount = notifications.length;
+  const allCount = Math.max(totalCount, unread, notifications.length);
 
   const headerSubtitle = isInitialLoading
     ? "Loading notifications..."
@@ -170,7 +179,7 @@ export default function NotificationsPage({
         aria-label="Filter notifications"
       >
         {(["all", "unread"] as const).map((f) => {
-          const count = f === "all" ? totalCount : unread;
+          const count = f === "all" ? allCount : unread;
           const active = filter === f;
 
           return (
@@ -220,14 +229,28 @@ export default function NotificationsPage({
           </div>
           <p className="text-sm sm:text-base font-bold text-gray-900">
             {filter === "unread"
-              ? "You're all caught up"
+              ? unread > 0
+                ? "Unread notifications in older pages"
+                : "You're all caught up"
               : "No notifications yet"}
           </p>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-xs text-center">
             {filter === "unread"
-              ? "You have no unread notifications."
+              ? unread > 0
+                ? `You have ${unread} unread notifications in older pages. Load older notifications to view them.`
+                : "You have no unread notifications."
               : "New orders, payments and deliveries will appear here."}
           </p>
+          {filter === "unread" && unread > 0 && hasMore && (
+            <button
+              type="button"
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-secondary/85 disabled:opacity-60"
+            >
+              {loadingMore ? "Loading older..." : "Load older notifications"}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-5">
@@ -335,6 +358,32 @@ export default function NotificationsPage({
               </div>
             </section>
           ))}
+
+          {/* Load More Pagination */}
+          {hasMore && (
+            <div className="pt-4 flex flex-col items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-2 rounded-xl border border-secondary/20 bg-white px-5 py-2.5 text-xs font-bold text-secondary shadow-sm transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-secondary/30 border-t-secondary" />
+                    <span>Loading more notifications...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Load more notifications</span>
+                    <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-bold text-secondary">
+                      {notifications.length} of {allCount}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
