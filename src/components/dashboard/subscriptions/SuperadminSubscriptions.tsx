@@ -618,15 +618,15 @@ export default function SuperadminSubscriptions() {
             </div>
           }
          actionMobile={
-  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+  <div className="flex w-full flex-row gap-1 sm:w-auto sm:flex-row sm:items-center">
     {/* Primary — Add Plan */}
     <button
       type="button"
       onClick={handleCreateClick}
-      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] sm:order-2 sm:w-auto sm:min-h-10 sm:text-xs sm:text-sm"
+      className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 text-[9px] font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] sm:order-2 sm:w-auto sm:min-h-10 sm:text-xs sm:text-sm"
     >
-      <Plus className="h-4 w-4 shrink-0" />
-      <span className="truncate">Add Plan</span>
+      <Plus className="h-3 w-3 shrink-0" />
+      <span className="truncate">Add</span>
     </button>
 
     {/* Secondary — Export */}
@@ -635,9 +635,9 @@ export default function SuperadminSubscriptions() {
       onClick={exportPlans}
       disabled={isLoading || plans.length === 0}
       aria-label="Export plans"
-      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98] sm:order-1 sm:w-auto sm:min-h-10 sm:px-3 sm:text-xs sm:text-sm"
+      className="inline-flex h-7 w-full items-center justify-center gap-1 rounded-xl border border-gray-200 bg-white px-1.5 text-[9px] font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98] sm:order-1 sm:w-auto sm:min-h-10 sm:px-3 sm:text-xs sm:text-sm"
     >
-      <Download className="h-4 w-4 shrink-0" />
+      <Download className="h-3 w-3 shrink-0" />
       {/* Show text on mobile & up; hide label only below 360 if needed */}
       <span className="truncate">Export</span>
     </button>
@@ -667,7 +667,7 @@ export default function SuperadminSubscriptions() {
         )}
 
         {/* ========== STATS CARDS ========== */}
-        <section className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
+        <section className=" hidden grid  sm:gap-4  sm:grid-cols-3">
           {[
             {
               label: "Active plans",
