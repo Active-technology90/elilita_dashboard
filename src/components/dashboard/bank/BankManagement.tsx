@@ -19,6 +19,7 @@ import {
   Split,
   ShieldCheck,
   Link2,
+  Filter,
 } from "lucide-react";
 import {
   getCompanyBankAccounts,
@@ -43,6 +44,7 @@ import type { BankInfo } from "../../../types";
 import PageHeader from "../../ui/PageHeader";
 import { CompanySelect } from "../overview/dropdowncompanyselector";
 import ChapaDirectSettlementCard from "./ChapaDirectSettlementCard";
+import { CustomSelect, type SelectOption } from "../../ui/CustomSelect"; // 👈 adjust path if your CustomSelect lives elsewhere
 
 // ------------------------------------------------------------------
 // Types
@@ -157,13 +159,6 @@ const readChapaStatusFromObject = (obj: any): ChapaStatus | null => {
   return null;
 };
 
-/**
- * Priority order for Chapa status:
- *  1. Real API map (fetched per company slug) — authoritative
- *  2. Heuristic on the bank row
- *  3. Heuristic on the matching company object
- *  4. unknown
- */
 const getChapaStatus = (
   bank: BankInfo,
   allCompanies: any[] = [],
@@ -335,7 +330,7 @@ const BankLogo = ({
 };
 
 // ------------------------------------------------------------------
-// Status Badge (bank active/inactive)
+// Status Badge
 // ------------------------------------------------------------------
 const StatusBadge = ({ isActive }: { isActive: boolean }) => {
   if (isActive) {
@@ -355,10 +350,7 @@ const StatusBadge = ({ isActive }: { isActive: boolean }) => {
 };
 
 // ------------------------------------------------------------------
-// Company Chapa badge (used in Company column)
-//   connected     -> green "Linked" pill
-//   not_connected -> amber "Connect" button (opens settlement card)
-//   unknown       -> gray "Link" button (opens settlement card)
+// Company Chapa badge
 // ------------------------------------------------------------------
 const CompanyChapaBadge = ({
   status,
@@ -397,7 +389,6 @@ const CompanyChapaBadge = ({
     );
   }
 
-  // unknown
   return (
     <button
       type="button"
@@ -412,7 +403,7 @@ const CompanyChapaBadge = ({
 };
 
 // ------------------------------------------------------------------
-// Bank Selector (Add / Edit form)
+// Bank Selector
 // ------------------------------------------------------------------
 const BankSelector = ({
   banks,
@@ -807,6 +798,14 @@ export default function BankManagement() {
   const [editingBank, setEditingBank] = useState<BankInfo | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BankInfo | null>(null);
 
+  // ── Filters ──
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
+  const [chapaFilter, setChapaFilter] = useState<
+    "all" | "linked" | "not_linked"
+  >("all");
+
   const isSuperAdmin = !user?.memberships?.length;
   const companySlug = company?.slug;
   const companyName = company?.name || "Your Company";
@@ -823,8 +822,6 @@ export default function BankManagement() {
   const chapaDropdownRef = useRef<HTMLDivElement>(null);
   const chapaCardRef = useRef<HTMLDivElement>(null);
 
-  // ── REAL Chapa subaccount status per company slug ──
-  // slug -> true if is_connected, false otherwise
   const [chapaStatusMap, setChapaStatusMap] = useState<Record<string, boolean>>(
     {},
   );
@@ -937,7 +934,6 @@ export default function BankManagement() {
     fetchBanks();
   }, [fetchBanks]);
 
-  // ── Fetch REAL Chapa status per company ──
   const fetchChapaStatuses = useCallback(
     async (slugs: string[]) => {
       if (!isSuperAdmin) return;
@@ -969,17 +965,85 @@ export default function BankManagement() {
     fetchChapaStatuses(slugs);
   }, [banks, isSuperAdmin, fetchChapaStatuses]);
 
+  // ── Filter option configs for CustomSelect ──
+  const statusFilterOptions: SelectOption[] = useMemo(
+    () => [
+      {
+        value: "all",
+        label: "All Status",
+        icon: <Filter className="h-3.5 w-3.5" />,
+      },
+      {
+        value: "active",
+        label: "Active",
+        icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />,
+      },
+      {
+        value: "inactive",
+        label: "Inactive",
+        icon: <AlertCircle className="h-3.5 w-3.5 text-amber-600" />,
+      },
+    ],
+    [],
+  );
+
+  const chapaFilterOptions: SelectOption[] = useMemo(
+    () => [
+      {
+        value: "all",
+        label: "All Chapa",
+        icon: <Split className="h-3.5 w-3.5" />,
+      },
+      {
+        value: "linked",
+        label: "Linked",
+        icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />,
+      },
+      {
+        value: "not_linked",
+        label: "Not Linked",
+        icon: <Link2 className="h-3.5 w-3.5 text-gray-500" />,
+      },
+    ],
+    [],
+  );
+
   const filteredBanks = useMemo(() => {
-    if (!searchTerm.trim()) return banks;
+    let result = banks;
+
+    if (statusFilter !== "all") {
+      result = result.filter((b) => {
+        const isActive = b.is_active ?? true;
+        return statusFilter === "active" ? isActive : !isActive;
+      });
+    }
+
+    if (chapaFilter !== "all") {
+      result = result.filter((b) => {
+        const status = getChapaStatus(b, allCompanies, chapaStatusMap);
+        return chapaFilter === "linked"
+          ? status === "connected"
+          : status !== "connected";
+      });
+    }
+
+    if (!searchTerm.trim()) return result;
     const term = searchTerm.toLowerCase();
-    return banks.filter(
+    return result.filter(
       (b) =>
         b.bank_name.toLowerCase().includes(term) ||
         b.account_number.includes(term) ||
         b.account_name.toLowerCase().includes(term) ||
         (b.company_name && b.company_name.toLowerCase().includes(term)),
     );
-  }, [banks, searchTerm]);
+  }, [
+    banks,
+    searchTerm,
+    statusFilter,
+    chapaFilter,
+    allCompanies,
+    chapaStatusMap,
+  ]);
 
   const paginatedBanks = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -1200,6 +1264,7 @@ export default function BankManagement() {
         className="mb-5 sm:mb-6"
       />
 
+      {/* ─────────── Sticky Search + Filters + Chapa ─────────── */}
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
         <div className="w-full flex flex-col gap-3 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] sm:flex-row sm:items-center">
           <div className="flex-1 w-full min-w-0">
@@ -1214,6 +1279,34 @@ export default function BankManagement() {
               debounceMs={0}
               showClearButton={true}
               className="w-full"
+            />
+          </div>
+
+          {/* Status filter (CustomSelect) */}
+          <div className="w-full shrink-0 sm:w-[150px]">
+            <CustomSelect
+              value={statusFilter}
+              onChange={(v) => {
+                setStatusFilter(v as "all" | "active" | "inactive");
+                setCurrentPage(1);
+              }}
+              options={statusFilterOptions}
+              placeholder="All Status"
+              ariaLabel="Filter by bank status"
+            />
+          </div>
+
+          {/* Chapa filter (CustomSelect) */}
+          <div className="w-full shrink-0 sm:w-[160px]">
+            <CustomSelect
+              value={chapaFilter}
+              onChange={(v) => {
+                setChapaFilter(v as "all" | "linked" | "not_linked");
+                setCurrentPage(1);
+              }}
+              options={chapaFilterOptions}
+              placeholder="All Chapa"
+              ariaLabel="Filter by Chapa connection"
             />
           </div>
 
@@ -1255,7 +1348,7 @@ export default function BankManagement() {
                 id="chapa-company-dropdown"
                 role="dialog"
                 aria-label="Select company for Chapa Direct Split Settlement"
-                className="absolute top-full z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 left-0 right-0 sm:left-auto sm:right-0 sm:w-[400px] max-w-[calc(100vw-1rem)] transition-all duration-150 ease-out"
+                className="absolute top-full z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 left-0 right-0 sm:left-auto sm:right-0 sm:w-[320px] max-w-[calc(100vw-1rem)] transition-all duration-150 ease-out"
               >
                 <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-secondary/5 to-transparent px-3.5 py-3">
                   <div className="flex min-w-0 items-center gap-2.5">
@@ -1411,6 +1504,54 @@ export default function BankManagement() {
         </div>
       </div>
 
+      {/* ─────────── Active filter chips ─────────── */}
+      {(statusFilter !== "all" || chapaFilter !== "all") && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-medium text-gray-500">
+            Active filters:
+          </span>
+          {statusFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter("all");
+                setCurrentPage(1);
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary border border-secondary/20 transition hover:bg-secondary/20"
+            >
+              <Filter className="h-3 w-3" />
+              Status: {statusFilter === "active" ? "Active" : "Inactive"}
+              <X className="h-3 w-3" />
+            </button>
+          )}
+          {chapaFilter !== "all" && (
+            <button
+              type="button"
+              onClick={() => {
+                setChapaFilter("all");
+                setCurrentPage(1);
+              }}
+              className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary border border-secondary/20 transition hover:bg-secondary/20"
+            >
+              <Link2 className="h-3 w-3" />
+              Chapa: {chapaFilter === "linked" ? "Linked" : "Not linked"}
+              <X className="h-3 w-3" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("all");
+              setChapaFilter("all");
+              setCurrentPage(1);
+            }}
+            className="text-[11px] font-semibold text-red-600 hover:text-red-700"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {showChapaCard && chapaCompanySlug && (
         <div
           ref={chapaCardRef}
@@ -1494,8 +1635,10 @@ export default function BankManagement() {
               No bank accounts found
             </h3>
             <p className="text-sm text-gray-500 mt-1 max-w-xs">
-              {searchTerm.trim()
-                ? "Try adjusting your search or filter."
+              {searchTerm.trim() ||
+              statusFilter !== "all" ||
+              chapaFilter !== "all"
+                ? "Try adjusting your search or filters."
                 : canWrite
                   ? "Add your first bank account to get started."
                   : "No accounts available."}

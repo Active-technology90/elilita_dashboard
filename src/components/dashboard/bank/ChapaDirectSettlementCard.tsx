@@ -18,6 +18,7 @@ import {
   Wallet,
   User,
   Hash,
+  KeyRound,
 } from "lucide-react";
 import {
   getChapaBanks,
@@ -30,6 +31,19 @@ import {
 import { useToast } from "../../../hooks/useToast";
 import { Toast } from "../../ui/Toast";
 import { DeleteConfirmModal } from "../../ui/DeleteConfirmModal";
+
+// ==================================================================
+// Logging
+// ==================================================================
+const LOG_PREFIX = "[Chapa]";
+const log = {
+  info: (...args: any[]) => console.log(LOG_PREFIX, ...args),
+  warn: (...args: any[]) => console.warn(LOG_PREFIX, ...args),
+  error: (...args: any[]) => console.error(LOG_PREFIX, ...args),
+  group: (label: string) => console.group(`${LOG_PREFIX} ${label}`),
+  groupEnd: () => console.groupEnd(),
+  table: (data: any) => console.table(data),
+};
 
 // ------------------------------------------------------------------
 // Types
@@ -64,7 +78,7 @@ interface CompanyBankAccount {
 type Tab = "existing" | "new";
 
 // ------------------------------------------------------------------
-// Local Ethiopian bank catalogue (same as BankManagement)
+// Local Ethiopian bank catalogue
 // ------------------------------------------------------------------
 interface AvailableBank {
   id: string;
@@ -130,7 +144,6 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   { id: "cbe-birr", bank_name: "CBE Birr", logo: "/cbebirr.png" },
 ];
 
-// Short aliases used by Chapa / user input
 const BANK_NAME_ALIASES: Record<string, string> = {
   cbe: "Commercial Bank of Ethiopia",
   "commercial bank of ethiopia": "Commercial Bank of Ethiopia",
@@ -201,22 +214,16 @@ const normalizeBankName = (s: string) =>
     .trim()
     .replace(/\s+/g, " ");
 
-/**
- * Resolve a bank's logo from the local catalogue.
- * Tries: exact normalized name → alias → contains → token-based → first word.
- */
 const findLocalBankLogo = (name?: string | null): string | null => {
   if (!name) return null;
   const normalized = normalizeBankName(name);
   if (!normalized) return null;
 
-  // 1. Exact normalized match
   let match = FRONTEND_ETHIOPIAN_BANKS.find(
     (b) => normalizeBankName(b.bank_name) === normalized,
   );
   if (match) return match.logo;
 
-  // 2. Alias resolution
   const aliasedName = BANK_NAME_ALIASES[normalized];
   if (aliasedName) {
     const aliasedNorm = normalizeBankName(aliasedName);
@@ -226,14 +233,12 @@ const findLocalBankLogo = (name?: string | null): string | null => {
     if (match) return match.logo;
   }
 
-  // 3. Contains (one way)
   match = FRONTEND_ETHIOPIAN_BANKS.find((b) => {
     const bn = normalizeBankName(b.bank_name);
     return bn.includes(normalized) || normalized.includes(bn);
   });
   if (match) return match.logo;
 
-  // 4. Token-based (any word ≥ 3 chars appears in both)
   const tokens = normalized.split(" ").filter((t) => t.length >= 3);
   if (tokens.length > 0) {
     match = FRONTEND_ETHIOPIAN_BANKS.find((b) => {
@@ -246,9 +251,6 @@ const findLocalBankLogo = (name?: string | null): string | null => {
   return null;
 };
 
-/**
- * Resolve the best logo for a bank: local catalogue first, API value as fallback.
- */
 const resolveLogo = (
   name?: string | null,
   apiLogo?: string | null,
@@ -260,7 +262,110 @@ const resolveLogo = (
 };
 
 // ------------------------------------------------------------------
-// Bank logo with graceful fallback
+// Error extraction
+// ------------------------------------------------------------------
+const isInvalidApiKeyError = (status?: number, body?: any): boolean => {
+  if (status !== 400 && status !== 401 && status !== 403) return false;
+  const text = JSON.stringify(body ?? {}).toLowerCase();
+  return (
+    /invalid\s+api\s+key/.test(text) ||
+    /api\s+key.*invalid/.test(text) ||
+    /can.t\s+accept\s+payment/.test(text) ||
+    /business\s+.*inactive/.test(text) ||
+    /account\s+.*not\s+active/.test(text)
+  );
+};
+
+const extractErrorMessage = (err: any): string => {
+  const data = err?.response?.data;
+
+  if (!data) return err?.message || "Request failed. Please try again.";
+  if (typeof data === "string" && data.trim()) return data;
+
+  if (typeof data === "object") {
+    if (typeof data.detail === "string" && data.detail.trim()) {
+      return data.detail;
+    }
+    if (typeof data.message === "string" && data.message.trim()) {
+      return data.message;
+    }
+    if (typeof data.error === "string" && data.error.trim()) {
+      return data.error;
+    }
+
+    if (Array.isArray(data.non_field_errors) && data.non_field_errors.length) {
+      return String(data.non_field_errors[0]);
+    }
+
+    const container =
+      typeof data.detail === "object" && data.detail !== null
+        ? data.detail
+        : data;
+
+    const messages: string[] = [];
+    Object.keys(container).forEach((key) => {
+      const v = (container as any)[key];
+      if (Array.isArray(v) && v.length > 0) {
+        messages.push(`${key}: ${v[0]}`);
+      } else if (typeof v === "string" && v.trim()) {
+        messages.push(`${key}: ${v}`);
+      }
+    });
+
+    if (messages.length > 0) {
+      const joined = messages.join(" • ");
+      if (
+        /account_name|name.*match|kyc|verification/i.test(joined) ||
+        messages.some((m) => m.toLowerCase().startsWith("account_name"))
+      ) {
+        return `${joined} — the account holder name must exactly match the name registered with the bank (KYC).`;
+      }
+      return joined;
+    }
+  }
+
+  return "Request failed. Please check the details and try again.";
+};
+
+const isDuplicateSubaccountError = (status?: number, body?: any): boolean => {
+  if (status !== 400 && status !== 409) return false;
+
+  const candidates: string[] = [];
+  if (typeof body === "string") {
+    candidates.push(body);
+  } else if (body && typeof body === "object") {
+    if (typeof (body as any).detail === "string")
+      candidates.push((body as any).detail);
+    if (typeof (body as any).message === "string")
+      candidates.push((body as any).message);
+    if ((body as any).details && typeof (body as any).details === "object") {
+      if (typeof (body as any).details.message === "string")
+        candidates.push((body as any).details.message);
+      if (typeof (body as any).details.detail === "string")
+        candidates.push((body as any).details.detail);
+    }
+    try {
+      candidates.push(JSON.stringify(body));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const text = candidates.join(" ").toLowerCase();
+  const match =
+    /\bdoes\s+exist\b/.test(text) ||
+    /\balready\s+exist(s)?\b/.test(text) ||
+    /\bresource[_\s-]?conflict\b/.test(text) ||
+    /\bduplicate\b/.test(text) ||
+    /\balready\s+registered\b/.test(text) ||
+    /\balready\s+linked\b/.test(text);
+
+  log.info("duplicate check:", { status, text: text.slice(0, 400), match });
+  return match;
+};
+
+// ------------------------------------------------------------------
+// Bank logo
 // ------------------------------------------------------------------
 const BankLogo = ({
   logo,
@@ -296,11 +401,11 @@ const BankLogo = ({
 };
 
 // ------------------------------------------------------------------
-// Robust payload extraction
+// Status payload helpers
 // ------------------------------------------------------------------
 const extractStatusPayload = (input: any): any => {
   let p = input?.data ?? input;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     if (!p || typeof p !== "object" || Array.isArray(p)) return p;
     if (
       "is_connected" in p ||
@@ -309,9 +414,15 @@ const extractStatusPayload = (input: any): any => {
       "chapa_linked" in p ||
       "has_chapa_subaccount" in p ||
       "chapa_sub_account_id" in p ||
+      "chapa_subaccount_id" in p ||
       "subaccount_id" in p ||
+      "sub_account_id" in p ||
+      "chapa_account_id" in p ||
+      "chapa_subaccount" in p ||
       "chapa_status" in p ||
-      "chapa_subaccount_status" in p
+      "chapa_subaccount_status" in p ||
+      "platform_fee_percent" in p ||
+      "platform_fee" in p
     ) {
       return p;
     }
@@ -324,11 +435,48 @@ const extractStatusPayload = (input: any): any => {
   return p;
 };
 
-const normaliseStatus = (input: any): NormalizedStatus => {
-  const p = extractStatusPayload(input) || {};
+const findSubaccountIdDeep = (obj: any, depth = 0): string | undefined => {
+  if (!obj || depth > 3 || typeof obj !== "object") return undefined;
+  const keys = [
+    "chapa_sub_account_id",
+    "chapa_subaccount_id",
+    "subaccount_id",
+    "sub_account_id",
+    "chapa_account_id",
+    "subaccountId",
+    "chapaSubAccountId",
+  ];
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim().length > 0) return v;
+    if (typeof v === "number") return String(v);
+  }
+  for (const k of Object.keys(obj)) {
+    const v = obj[k];
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const inner = findSubaccountIdDeep(v, depth + 1);
+      if (inner) return inner;
+    }
+  }
+  return undefined;
+};
 
+const normaliseStatus = (input: any): NormalizedStatus => {
+  const rawAxios = input;
+  const rawData = rawAxios?.data ?? rawAxios;
+  log.info("🔍 raw status payload:", rawData);
+  try {
+    log.info(
+      "🔍 stringified status payload:",
+      JSON.stringify(rawData, null, 2),
+    );
+  } catch {
+    /* ignore */
+  }
+
+  const p = extractStatusPayload(input) || {};
   const subaccountId =
-    p.chapa_sub_account_id || p.subaccount_id || p.chapa_id || undefined;
+    findSubaccountIdDeep(p) || findSubaccountIdDeep(rawData);
 
   const is_connected =
     p.is_connected === true ||
@@ -344,21 +492,35 @@ const normaliseStatus = (input: any): NormalizedStatus => {
       ? p.platform_fee_percent
       : typeof p.platform_fee === "number"
         ? p.platform_fee
-        : undefined;
+        : typeof rawData?.platform_fee_percent === "number"
+          ? rawData.platform_fee_percent
+          : undefined;
 
-  return {
+  const normalized = {
     is_connected,
     chapa_sub_account_id: subaccountId,
     platform_fee_percent,
-    bank_name: p.chapa_bank_name || p.bank_name || p.subaccount_bank_name,
-    account_name: p.chapa_account_name || p.account_name,
-    account_number: p.chapa_account_number || p.account_number,
+    bank_name:
+      p.chapa_bank_name ||
+      p.bank_name ||
+      p.subaccount_bank_name ||
+      rawData?.chapa_bank_name ||
+      rawData?.bank_name,
+    account_name:
+      p.chapa_account_name || p.account_name || rawData?.chapa_account_name,
+    account_number:
+      p.chapa_account_number ||
+      p.account_number ||
+      rawData?.chapa_account_number,
     raw: p,
   };
+
+  log.info("✅ normalised status:", normalized);
+  return normalized;
 };
 
 // ==================================================================
-// Main Component
+// Main Card
 // ==================================================================
 export default function ChapaDirectSettlementCard({
   companySlug,
@@ -375,36 +537,60 @@ export default function ChapaDirectSettlementCard({
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [showDelinkModal, setShowDelinkModal] = useState(false);
   const [isDelinking, setIsDelinking] = useState(false);
+  const [pendingLinked, setPendingLinked] = useState(false);
 
-  const fetchStatus = useCallback(async () => {
-    if (!companySlug) {
-      setStatusData(null);
-      setFetchError(null);
-      return;
-    }
-    try {
-      setLoading(true);
-      setFetchError(null);
-      const res = await getCompanyChapaSubaccountStatus(companySlug);
-      setStatusData(normaliseStatus(res));
-    } catch (err: any) {
-      const statusCode = err?.response?.status;
-      if (statusCode === 404) {
-        setStatusData(normaliseStatus({ is_connected: false }));
-        setFetchError(null);
-      } else {
-        console.warn("Failed to load Chapa subaccount status:", err);
+  const fetchStatus = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!companySlug) {
+        log.info("fetchStatus skipped — no companySlug");
         setStatusData(null);
-        setFetchError(
-          err?.response?.data?.detail ||
-            err?.message ||
-            "Unable to verify Chapa status",
-        );
+        setFetchError(null);
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [companySlug]);
+      if (!opts?.silent) log.group(`fetchStatus → ${companySlug}`);
+      try {
+        if (!opts?.silent) setLoading(true);
+        setFetchError(null);
+        const res = await getCompanyChapaSubaccountStatus(companySlug);
+        log.info("raw status response:", res);
+        const normalised = normaliseStatus(res);
+
+        if (!normalised.is_connected && pendingLinked) {
+          log.warn(
+            "status endpoint still reports not_connected but we just linked — keeping pending link state",
+          );
+          setStatusData({
+            ...normalised,
+            is_connected: true,
+            chapa_sub_account_id:
+              normalised.chapa_sub_account_id || "pending-sync",
+          });
+        } else {
+          setStatusData(normalised);
+        }
+      } catch (err: any) {
+        const statusCode = err?.response?.status;
+        log.warn("status fetch failed:", statusCode, err?.response?.data);
+        if (statusCode === 404) {
+          setStatusData(normaliseStatus({ is_connected: false }));
+          setFetchError(null);
+        } else {
+          setStatusData(null);
+          setFetchError(
+            err?.response?.data?.detail ||
+              err?.message ||
+              "Unable to verify Chapa status",
+          );
+        }
+      } finally {
+        if (!opts?.silent) {
+          setLoading(false);
+          log.groupEnd();
+        }
+      }
+    },
+    [companySlug, pendingLinked],
+  );
 
   useEffect(() => {
     fetchStatus();
@@ -412,23 +598,27 @@ export default function ChapaDirectSettlementCard({
 
   const handleDelink = async () => {
     if (!companySlug) return;
+    log.group(`delink → ${companySlug}`);
     try {
       setIsDelinking(true);
       await delinkCompanyChapaSubaccount(companySlug);
+      log.info("delink success");
       showToast("success", `Chapa subaccount de-linked for ${companyName}`);
       setShowDelinkModal(false);
+      setPendingLinked(false);
       await fetchStatus();
       if (onChanged) onChanged();
     } catch (err: any) {
+      log.error("delink failed:", err?.response?.data || err);
       const msg =
         err?.response?.data?.detail || "Failed to de-link Chapa subaccount";
       showToast("error", msg);
     } finally {
       setIsDelinking(false);
+      log.groupEnd();
     }
   };
 
-  // ── No company selected ──
   if (!companySlug) {
     return (
       <div
@@ -451,7 +641,6 @@ export default function ChapaDirectSettlementCard({
     );
   }
 
-  // ── Initial loading ──
   if (loading && !statusData && !fetchError) {
     return (
       <div
@@ -468,7 +657,6 @@ export default function ChapaDirectSettlementCard({
     );
   }
 
-  // ── Fetch error ──
   if (fetchError && !statusData) {
     return (
       <>
@@ -486,7 +674,7 @@ export default function ChapaDirectSettlementCard({
             </div>
             <button
               type="button"
-              onClick={fetchStatus}
+              onClick={() => fetchStatus()}
               className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-200"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -514,81 +702,97 @@ export default function ChapaDirectSettlementCard({
         } p-4 sm:p-6 shadow-sm ${className}`}
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          {/* Header & Icon */}
-          <div className="flex items-start gap-3.5 min-w-0">
-            <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm ${
-                isConnected
-                  ? "bg-secondary text-white"
-                  : "bg-amber-500 text-white"
-              }`}
-            >
-              {isConnected ? (
-                <ShieldCheck className="h-6 w-6" />
-              ) : (
-                <CreditCard className="h-6 w-6" />
-              )}
+       
+<div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-3.5">
+  {/* Icon */}
+  <div
+    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm sm:h-11 sm:w-11 ${
+      isConnected
+        ? "bg-secondary text-white"
+        : "bg-amber-500 text-white"
+    }`}
+  >
+    {isConnected ? (
+      <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
+    ) : (
+      <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
+    )}
+  </div>
+
+  {/* Content */}
+  <div className="min-w-0 flex-1">
+    {/* Title + Status + Refresh */}
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2">
+      <h3 className="min-w-0 flex-1 basis-full truncate text-sm font-bold leading-snug text-gray-900 sm:basis-auto sm:text-base">
+        Chapa Split Settlement — {companyName}
+      </h3>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {isConnected ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-secondary/30 bg-secondary/10 px-2 py-1 text-[10px] font-semibold text-secondary sm:px-2.5 sm:text-xs">
+            <CheckCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+            Linked & Ready
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800 sm:px-2.5 sm:text-xs">
+            <AlertCircle className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+            Not Configured
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => fetchStatus()}
+          title="Refresh status"
+          aria-label="Refresh Chapa status"
+          disabled={loading}
+          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:h-6 sm:w-6"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${
+              loading ? "animate-spin" : ""
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+
+    {/* Description */}
+    <p className="mt-2 text-xs leading-relaxed text-gray-600 sm:mt-1.5 sm:text-xs">
+      {isConnected
+        ? "Customer payments at checkout are automatically split: vendor merchandise revenue is deposited directly into this store's bank account, and the platform commission is retained in the main account."
+        : "Enable Chapa online payments at checkout by provisioning a Chapa subaccount. Store earnings are routed directly to the store's verified bank account."}
+    </p>
+
+    {/* Connected Account Details */}
+    {isConnected &&
+      (subaccountId || typeof platformFeePercent === "number") && (
+        <div className="mt-2.5 flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/80 p-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1 sm:border-0 sm:bg-transparent sm:p-0">
+          {subaccountId && (
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+              <span className="shrink-0 text-gray-500">
+                Subaccount ID:
+              </span>
+              <code className="max-w-full break-all rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-gray-800 border border-gray-200 sm:text-xs">
+                {subaccountId}
+              </code>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-bold text-gray-900 truncate">
-                  Chapa Split Settlement — {companyName}
-                </h3>
-                {isConnected ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-secondary/10 text-secondary border border-secondary/30">
-                    <CheckCircle className="h-3.5 w-3.5 text-secondary" />
-                    Linked & Ready
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-                    Not Configured
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={fetchStatus}
-                  title="Refresh status"
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                  aria-label="Refresh status"
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-                  />
-                </button>
-              </div>
+          )}
 
-              <p className="mt-1 text-xs text-gray-600 leading-relaxed">
-                {isConnected
-                  ? "Customer payments at checkout are automatically split: vendor merchandise revenue is deposited directly into this store's bank account, and the platform commission is retained in the main account."
-                  : "To enable Chapa online payments at checkout for this store, provision a Chapa subaccount. All earnings route directly to the store's verified bank account."}
-              </p>
-
-              {isConnected &&
-                (subaccountId || typeof platformFeePercent === "number") && (
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                    {subaccountId && (
-                      <span className="text-gray-500">
-                        Subaccount ID:{" "}
-                        <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-gray-800 border border-gray-200">
-                          {subaccountId}
-                        </code>
-                      </span>
-                    )}
-                    {typeof platformFeePercent === "number" && (
-                      <span className="text-gray-500">
-                        Platform Fee:{" "}
-                        <span className="font-semibold text-gray-700">
-                          {platformFeePercent}%
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                )}
+          {typeof platformFeePercent === "number" && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500">Platform Fee:</span>
+              <span className="font-semibold text-gray-700">
+                {platformFeePercent}%
+              </span>
             </div>
-          </div>
+          )}
+        </div>
+      )}
+  </div>
+</div>
 
-          {/* Actions */}
+
           {canWrite && (
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               {isConnected ? (
@@ -625,13 +829,12 @@ export default function ChapaDirectSettlementCard({
         </div>
       </div>
 
-      {/* Provision Modal */}
       {showProvisionModal && (
         <ChapaProvisionModal
           companySlug={companySlug}
           companyName={companyName}
           onClose={() => setShowProvisionModal(false)}
-          onSuccess={async () => {
+          onSuccess={async ({ wasDuplicate }) => {
             setShowProvisionModal(false);
             showToast(
               "success",
@@ -639,13 +842,37 @@ export default function ChapaDirectSettlementCard({
                 ? "Chapa subaccount updated successfully!"
                 : "Chapa subaccount provisioned successfully!",
             );
-            await fetchStatus();
+
+            if (wasDuplicate) {
+              log.warn(
+                "⚡ provision returned duplicate — flagging pendingLinked and re-checking status",
+              );
+              setPendingLinked(true);
+              setStatusData({
+                is_connected: true,
+                chapa_sub_account_id: "pending-sync",
+                platform_fee_percent: undefined,
+                raw: null,
+              });
+
+              [1500, 4000, 8000].forEach((delay, idx) => {
+                setTimeout(async () => {
+                  log.info(
+                    `retry fetchStatus (${idx + 1}/3) after ${delay}ms`,
+                  );
+                  await fetchStatus({ silent: true });
+                }, delay);
+              });
+            } else {
+              setPendingLinked(false);
+              await fetchStatus();
+            }
+
             if (onChanged) onChanged();
           }}
         />
       )}
 
-      {/* Delink Confirmation */}
       {showDelinkModal && (
         <DeleteConfirmModal
           isOpen={showDelinkModal}
@@ -663,13 +890,13 @@ export default function ChapaDirectSettlementCard({
 }
 
 // ==================================================================
-// Provision Modal (with Existing + New tabs)
+// Provision Modal — both tabs share ONE submission path
 // ==================================================================
 interface ModalProps {
   companySlug: string;
   companyName: string;
   onClose: () => void;
-  onSuccess: (subaccountId?: string) => void;
+  onSuccess: (info: { wasDuplicate?: boolean; subaccountId?: string }) => void;
 }
 
 function ChapaProvisionModal({
@@ -680,7 +907,6 @@ function ChapaProvisionModal({
 }: ModalProps) {
   const [tab, setTab] = useState<Tab>("existing");
 
-  // ── Chapa bank list (for the "new account" tab) ──
   const [banks, setBanks] = useState<ChapaBankItem[]>([]);
   const [loadingBanks, setLoadingBanks] = useState(true);
   const [bankSearch, setBankSearch] = useState("");
@@ -688,21 +914,24 @@ function ChapaProvisionModal({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ── Existing company bank accounts ──
   const [existing, setExisting] = useState<CompanyBankAccount[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [selectedExisting, setSelectedExisting] = useState<string | null>(null);
 
-  // ── New account form fields ──
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [businessName, setBusinessName] = useState(companyName);
 
-  // ── Submission state ──
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState(false);
 
-  // Close bank dropdown on outside click
+  useEffect(() => {
+    log.group(`modal opened → ${companySlug}`);
+    log.info("companyName:", companyName);
+    log.groupEnd();
+  }, [companySlug, companyName]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -716,7 +945,6 @@ function ChapaProvisionModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Esc closes modal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !submitting) onClose();
@@ -725,51 +953,57 @@ function ChapaProvisionModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose, submitting]);
 
-  // Fetch Chapa banks
   useEffect(() => {
     const fetchBanks = async () => {
+      log.group("fetch Chapa banks");
       try {
         setLoadingBanks(true);
         const res = await getChapaBanks();
         const bankList = res.data?.banks || res.data || [];
-        setBanks(
-          (bankList as ChapaBankItem[]).filter((b) => b.is_active !== false),
+        const active = (bankList as ChapaBankItem[]).filter(
+          (b) => b.is_active !== false,
         );
+        log.info(`loaded ${active.length} active Chapa banks`);
+        setBanks(active);
       } catch (err: any) {
-        console.error("Failed to fetch Chapa bank list:", err);
+        log.error("fetch banks failed:", err?.response?.data || err);
         setErrorMsg("Failed to load Ethiopian banks from Chapa.");
       } finally {
         setLoadingBanks(false);
+        log.groupEnd();
       }
     };
     fetchBanks();
   }, []);
 
-  // Fetch existing company bank accounts
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      log.group(`fetch existing accounts → ${companySlug}`);
       try {
         setLoadingExisting(true);
         const res = await getCompanyBankAccounts(companySlug);
         if (cancelled) return;
         const raw = res.data?.results || res.data || [];
-        const list: CompanyBankAccount[] = (raw as any[]).map((b) => ({
-          id: b.id,
-          bank_name: b.bank_name || "Unknown Bank",
-          account_name: b.account_name || "",
-          account_number: b.account_number || "",
-          // Prefer local catalogue logo, fallback to server-returned logo
-          logo: resolveLogo(b.bank_name, b.logo),
-          is_active: b.is_active ?? true,
-        }));
+        const list: CompanyBankAccount[] = (raw as any[])
+          .filter((b) => b.is_active !== false)
+          .map((b) => ({
+            id: b.id,
+            bank_name: b.bank_name || "Unknown Bank",
+            account_name: b.account_name || "",
+            account_number: String(b.account_number || ""),
+            logo: resolveLogo(b.bank_name, b.logo),
+            is_active: b.is_active ?? true,
+          }));
+        log.info(`active accounts: ${list.length}`);
         setExisting(list);
         if (list.length === 0) setTab("new");
       } catch (err) {
-        console.error("Failed to load existing bank accounts:", err);
+        log.error("load accounts failed:", err);
         if (!cancelled) setTab("new");
       } finally {
         if (!cancelled) setLoadingExisting(false);
+        log.groupEnd();
       }
     };
     load();
@@ -788,109 +1022,184 @@ function ChapaProvisionModal({
     );
   }, [banks, bankSearch]);
 
-  // Match an existing bank account's name against Chapa's bank list
   const findChapaBankByName = (
     bankName: string,
   ): ChapaBankItem | undefined => {
     if (!bankName) return undefined;
-    const lower = bankName.toLowerCase();
-    return banks.find((b) => {
-      const bn = (b.name || "").toLowerCase();
-      const slug = (b.slug || "").toLowerCase();
-      return (
-        bn === lower ||
-        bn.includes(lower) ||
-        lower.includes(bn) ||
-        slug === lower
+    const normalized = normalizeBankName(bankName);
+
+    const exact = banks.find(
+      (b) => normalizeBankName(b.name) === normalized,
+    );
+    if (exact) return exact;
+
+    const aliased = BANK_NAME_ALIASES[normalized];
+    if (aliased) {
+      const aliasedNorm = normalizeBankName(aliased);
+      const aliasMatch = banks.find(
+        (b) => normalizeBankName(b.name) === aliasedNorm,
       );
+      if (aliasMatch) return aliasMatch;
+    }
+
+    const containsMatches = banks.filter((b) => {
+      const bn = normalizeBankName(b.name);
+      return bn.includes(normalized) || normalized.includes(bn);
     });
+    if (containsMatches.length > 0) {
+      return containsMatches.sort(
+        (a, b) => (b.name?.length || 0) - (a.name?.length || 0),
+      )[0];
+    }
+    return undefined;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    let payload: {
-      bank_code: string;
+  // ================================================================
+  // SHARED SUBMISSION — both tabs call this identical function
+  // ================================================================
+  const runProvision = async (
+    payload: {
+      bank_code: any;
       bank_name: string;
       account_number: string;
       account_name: string;
       business_name: string;
-    } | null = null;
-
-    if (tab === "existing") {
-      if (!selectedExisting) {
-        setErrorMsg("Please select a bank account to link.");
-        return;
-      }
-      const acct = existing.find(
-        (a) => String(a.id) === String(selectedExisting),
-      );
-      if (!acct) {
-        setErrorMsg("Selected account could not be found.");
-        return;
-      }
-      const matched = findChapaBankByName(acct.bank_name);
-      if (!matched) {
-        setErrorMsg(
-          `"${acct.bank_name}" is not available in Chapa's bank list. Please use the "Add New Account" tab instead.`,
-        );
-        return;
-      }
-      payload = {
-        bank_code: matched.id,
-        bank_name: matched.name,
-        account_number: acct.account_number.trim(),
-        account_name: acct.account_name.trim(),
-        business_name: companyName,
-      };
-    } else {
-      if (!selectedBank) {
-        setErrorMsg("Please select a bank from the list.");
-        return;
-      }
-      if (!accountNumber.trim()) {
-        setErrorMsg("Account number is required.");
-        return;
-      }
-      if (!accountName.trim()) {
-        setErrorMsg(
-          "Account holder name is required (as registered with the bank).",
-        );
-        return;
-      }
-      payload = {
-        bank_code: selectedBank.id,
-        account_number: accountNumber.trim(),
-        account_name: accountName.trim(),
-        business_name: businessName.trim() || companyName,
-        bank_name: selectedBank.name,
-      };
-    }
-
+    },
+    source: "existing" | "new",
+  ) => {
+    setErrorMsg(null);
+    setApiKeyError(false);
     try {
       setSubmitting(true);
+      log.info(`POST /provision/ [${source}]:`, payload);
+
       const res = await provisionCompanyChapaSubaccount(companySlug, payload);
+      log.info(`provision response [${source}]:`, res?.data);
+
       const subId =
         res?.data?.subaccount_id ||
         res?.data?.data?.subaccount_id ||
         res?.data?.chapa_sub_account_id ||
         undefined;
-      onSuccess(subId);
+
+      onSuccess({ subaccountId: subId });
     } catch (err: any) {
-      console.error("Failed to provision subaccount:", err);
-      let msg =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        "Failed to provision Chapa subaccount.";
-      if (typeof msg === "object") {
-        const firstKey = Object.keys(msg)[0];
-        msg = `${firstKey}: ${(msg as any)[firstKey]}`;
+      const status = err?.response?.status;
+      const body = err?.response?.data;
+
+      log.error(`provision failed [${source}]`);
+      log.info("status:", status);
+      log.info("body:", body);
+      log.info("stringified body:", JSON.stringify(body ?? {}, null, 2));
+      log.info("payload:", payload);
+
+      if (isDuplicateSubaccountError(status, body)) {
+        log.warn(
+          "🔁 duplicate subaccount detected — treating as success",
+        );
+        onSuccess({ wasDuplicate: true });
+        return;
       }
+
+      if (isInvalidApiKeyError(status, body)) {
+        setApiKeyError(true);
+        setErrorMsg(
+          "Chapa rejected the request because the platform's Chapa API key is invalid or the platform business account can't accept payments right now. This is a backend/admin configuration issue — please contact the platform admin to verify the Chapa API key and business account status.",
+        );
+        return;
+      }
+
+      const msg =
+        extractErrorMessage(err) || "Failed to provision Chapa subaccount.";
       setErrorMsg(msg);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (tab === "existing") {
+      log.group("EXISTING tab → submit");
+
+      if (!selectedExisting) {
+        log.warn("no account selected");
+        setErrorMsg("Please select a bank account to link.");
+        log.groupEnd();
+        return;
+      }
+
+      const acct = existing.find(
+        (a) => String(a.id) === String(selectedExisting),
+      );
+      if (!acct) {
+        log.warn("selected account not found:", selectedExisting);
+        setErrorMsg("Selected account could not be found.");
+        log.groupEnd();
+        return;
+      }
+
+      const matched = findChapaBankByName(acct.bank_name);
+      log.info("matched Chapa bank:", matched);
+      if (!matched) {
+        log.warn(`"${acct.bank_name}" not found in Chapa bank list`);
+        setErrorMsg(
+          `"${acct.bank_name}" is not available in Chapa's bank list. Please use the "Add New Account" tab instead.`,
+        );
+        log.groupEnd();
+        return;
+      }
+
+      // Build the EXACT same payload as the "new" flow
+      const payload = {
+        bank_code: matched.id as any,
+        bank_name: matched.name,
+        account_number: acct.account_number.replace(/\s+/g, ""),
+        account_name: acct.account_name.trim(),
+        business_name: companyName,
+      };
+
+      await runProvision(payload, "existing");
+      log.groupEnd();
+      return;
+    }
+
+    // NEW tab
+    log.group("NEW tab → submit");
+
+    if (!selectedBank) {
+      log.warn("no bank selected");
+      setErrorMsg("Please select a bank from the list.");
+      log.groupEnd();
+      return;
+    }
+    const accountNumberClean = accountNumber.replace(/\s+/g, "");
+    if (!accountNumberClean) {
+      log.warn("empty account number");
+      setErrorMsg("Account number is required.");
+      log.groupEnd();
+      return;
+    }
+    if (!accountName.trim()) {
+      log.warn("empty account name");
+      setErrorMsg(
+        "Account holder name is required (as registered with the bank).",
+      );
+      log.groupEnd();
+      return;
+    }
+
+    const payload = {
+      bank_code: selectedBank.id as any,
+      bank_name: selectedBank.name,
+      account_number: accountNumberClean,
+      account_name: accountName.trim(),
+      business_name: businessName.trim() || companyName,
+    };
+
+    await runProvision(payload, "new");
+    log.groupEnd();
   };
 
   const submitLabel =
@@ -966,15 +1275,29 @@ function ChapaProvisionModal({
         </div>
 
         {/* Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 min-h-0 flex flex-col"
-        >
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
           <div className="flex-1 overflow-y-auto overscroll-contain px-5 sm:px-6 py-4 space-y-4">
             {errorMsg && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
-                <div className="flex-1 font-medium">{errorMsg}</div>
+              <div
+                className={`flex items-start gap-2.5 rounded-xl border p-3 text-xs ${
+                  apiKeyError
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
+                {apiKeyError ? (
+                  <KeyRound className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                )}
+                <div className="flex-1 font-medium break-words">
+                  {apiKeyError && (
+                    <p className="font-semibold mb-0.5">
+                      Chapa API key / business config issue
+                    </p>
+                  )}
+                  {errorMsg}
+                </div>
               </div>
             )}
 
@@ -1025,6 +1348,8 @@ function ChapaProvisionModal({
                           onClick={() => {
                             setSelectedExisting(String(acct.id));
                             setErrorMsg(null);
+                            setApiKeyError(false);
+                            log.info("selected existing account:", acct);
                           }}
                           className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
                             selected
@@ -1124,7 +1449,6 @@ function ChapaProvisionModal({
 
                   {isDropdownOpen && !loadingBanks && (
                     <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden flex flex-col">
-                      {/* Search */}
                       <div className="p-2 border-b border-gray-100 bg-gray-50/70">
                         <div className="relative">
                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
@@ -1149,7 +1473,6 @@ function ChapaProvisionModal({
                         </div>
                       </div>
 
-                      {/* Bank list */}
                       <div className="max-h-72 overflow-y-auto overscroll-contain p-1">
                         {filteredBanks.length === 0 ? (
                           <div className="py-8 text-center">
@@ -1173,6 +1496,7 @@ function ChapaProvisionModal({
                                     setSelectedBank(bank);
                                     setIsDropdownOpen(false);
                                     setBankSearch("");
+                                    log.info("selected Chapa bank:", bank);
                                   }}
                                   className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition ${
                                     isSelected
