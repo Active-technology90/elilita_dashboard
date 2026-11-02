@@ -164,22 +164,30 @@ const getChapaStatus = (
   allCompanies: any[] = [],
   chapaStatusMap: Record<string, boolean> = {},
 ): ChapaStatus => {
-  const slug = (bank as any).company_slug as string | undefined;
-  if (slug && slug in chapaStatusMap) {
-    return chapaStatusMap[slug] ? "connected" : "not_connected";
-  }
-
-  const fromBank = readChapaStatusFromObject(bank as any);
-  if (fromBank) return fromBank;
-
-  if (slug) {
+  // If called for a pure company object (no bank id), check company-level status for dropdowns
+  if (!bank.id && (bank as any).company_slug) {
+    const slug = (bank as any).company_slug as string;
+    if (slug in chapaStatusMap) {
+      return chapaStatusMap[slug] ? "connected" : "not_connected";
+    }
     const company = allCompanies.find((c: any) => c?.slug === slug);
     if (company) {
       const fromCompany = readChapaStatusFromObject(company);
       if (fromCompany) return fromCompany;
     }
+    return "not_connected";
   }
-  return "unknown";
+
+  // Per-Bank Tracking: only the specific bank account holding the active subaccount is "connected"
+  if (bank.is_chapa_linked === true) return "connected";
+  if (typeof bank.chapa_sub_account_id === "string") {
+    return bank.chapa_sub_account_id.trim().length > 0 ? "connected" : "not_connected";
+  }
+
+  const fromBank = readChapaStatusFromObject(bank as any);
+  if (fromBank) return fromBank;
+
+  return "not_connected";
 };
 
 // ------------------------------------------------------------------
@@ -687,9 +695,20 @@ const BankCard: React.FC<{
       <div className="flex items-center gap-3">
         <BankLogo logo={bank.logo || null} name={bank.bank_name} size="md" />
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm text-gray-900 truncate">
-            {bank.bank_name}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm text-gray-900 truncate">
+              {bank.bank_name}
+            </h3>
+            {chapaStatus === "connected" && (
+              <span
+                title="Active Chapa Direct Split Settlement account"
+                className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-300 shadow-sm"
+              >
+                <CheckCircle className="h-3 w-3 text-emerald-600" />
+                Linked
+              </span>
+            )}
+          </div>
           <p className="text-[11px] text-gray-400 mt-0.5">
             #{rowNumber} · {bank.bank_id || "Bank"}
           </p>
@@ -938,12 +957,20 @@ export default function BankManagement() {
     async (slugs: string[]) => {
       if (!isSuperAdmin) return;
       const unique = Array.from(new Set(slugs.filter(Boolean)));
-      if (unique.length === 0) {
-        setChapaStatusMap({});
-        return;
-      }
+      if (unique.length === 0) return;
+
+      // Avoid redundant queries: filter out slugs already resolved from allCompanies or already cached
+      const toFetch = unique.filter((slug) => {
+        if (slug in chapaStatusMap) return false;
+        const comp = allCompanies.find((c: any) => c?.slug === slug);
+        if (comp && readChapaStatusFromObject(comp) !== null) return false;
+        return true;
+      });
+
+      if (toFetch.length === 0) return;
+
       const entries = await Promise.all(
-        unique.map(async (slug) => {
+        toFetch.map(async (slug) => {
           try {
             const res = await getCompanyChapaSubaccountStatus(slug);
             return [slug, !!res?.data?.is_connected] as const;
@@ -952,9 +979,9 @@ export default function BankManagement() {
           }
         }),
       );
-      setChapaStatusMap(Object.fromEntries(entries));
+      setChapaStatusMap((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
     },
-    [isSuperAdmin],
+    [isSuperAdmin, chapaStatusMap, allCompanies],
   );
 
   useEffect(() => {
@@ -1204,8 +1231,7 @@ export default function BankManagement() {
 
   const handleConfigureChapaFromRow = useCallback(
     (bank: BankInfo) => {
-      if (!isSuperAdmin) return;
-      const targetSlug = (bank as any).company_slug;
+      const targetSlug = (bank as any).company_slug || companySlug;
       if (!targetSlug) return;
 
       setChapaCompanySlug(targetSlug);
@@ -1220,7 +1246,7 @@ export default function BankManagement() {
         });
       }, 60);
     },
-    [isSuperAdmin],
+    [companySlug],
   );
 
   const chapaButtonActive = isSuperAdmin ? showChapaDropdown : showChapaCard;
@@ -1832,12 +1858,23 @@ const BankTable: React.FC<{
                         size="sm"
                       />
                       <div className="min-w-0">
-                        <p
-                          className="truncate text-sm font-semibold text-gray-900"
-                          title={bank.bank_name}
-                        >
-                          {bank.bank_name}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p
+                            className="truncate text-sm font-semibold text-gray-900"
+                            title={bank.bank_name}
+                          >
+                            {bank.bank_name}
+                          </p>
+                          {chapaStatus === "connected" && (
+                            <span
+                              title="Active Chapa Direct Split Settlement account"
+                              className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-300 shadow-sm"
+                            >
+                              <CheckCircle className="h-3 w-3 text-emerald-600" />
+                              Linked
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-gray-400 lg:hidden truncate">
                           {bank.account_name}
                         </p>
