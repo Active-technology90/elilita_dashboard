@@ -49,6 +49,7 @@ import {
   getCompanyChapaSubaccountStatus,
 
   provisionCompanyChapaSubaccount,
+  updateCompanyChapaSubaccount,
 
   delinkCompanyChapaSubaccount,
 
@@ -72,6 +73,9 @@ import { DeleteConfirmModal } from "../../ui/DeleteConfirmModal";
 
 // ==================================================================
 
+// Feature Toggle: Set to true once Chapa team enables API v2 key access on api.chapa.global
+const ENABLE_CHAPA_V2_INPLACE_UPDATE = false;
+
 const LOG_PREFIX = "[Chapa]";
 
 const log = {
@@ -1115,6 +1119,7 @@ export default function ChapaDirectSettlementCard({
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [isUpdateMode, setIsUpdateMode] = useState(false);
 
   const [showDelinkModal, setShowDelinkModal] = useState(false);
 
@@ -1644,15 +1649,14 @@ export default function ChapaDirectSettlementCard({
 
                     type="button"
 
-                    onClick={() => setShowProvisionModal(true)}
-
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
-
-                  >
-
-                    <RefreshCw className="h-3.5 w-3.5 text-gray-500" />
-
-                    Update Bank
+                    onClick={() => {
+                    setIsUpdateMode(true);
+                    setShowProvisionModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 text-gray-500" />
+                  Update Bank
 
                   </button>
 
@@ -1680,14 +1684,13 @@ export default function ChapaDirectSettlementCard({
 
                   type="button"
 
-                  onClick={() => setShowProvisionModal(true)}
-
+                  onClick={() => {
+                    setIsUpdateMode(false);
+                    setShowProvisionModal(true);
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 active:scale-95"
-
                 >
-
                   <Link2 className="h-3.5 w-3.5" />
-
                   Connect Chapa Subaccount
 
                 </button>
@@ -1707,8 +1710,8 @@ export default function ChapaDirectSettlementCard({
       {showProvisionModal && (
 
         <ChapaProvisionModal
-
           companySlug={companySlug}
+          isUpdate={isUpdateMode}
 
           companyName={companyName}
 
@@ -1831,10 +1834,9 @@ export default function ChapaDirectSettlementCard({
 // ==================================================================
 
 interface ModalProps {
-
   companySlug: string;
-
   companyName: string;
+  isUpdate?: boolean;
 
   onClose: () => void;
 
@@ -1845,15 +1847,11 @@ interface ModalProps {
 
 
 function ChapaProvisionModal({
-
   companySlug,
-
   companyName,
-
+  isUpdate = false,
   onClose,
-
   onSuccess,
-
 }: ModalProps) {
 
   const [tab, setTab] = useState<Tab>("existing");
@@ -2196,7 +2194,9 @@ function ChapaProvisionModal({
 
 
 
-      const res = await provisionCompanyChapaSubaccount(companySlug, payload);
+      const res = (isUpdate && ENABLE_CHAPA_V2_INPLACE_UPDATE)
+        ? await updateCompanyChapaSubaccount(companySlug, payload)
+        : await provisionCompanyChapaSubaccount(companySlug, payload);
 
       log.info(`provision response [${source}]:`, res?.data);
 
@@ -2458,20 +2458,16 @@ function ChapaProvisionModal({
 
 
 
-  const submitLabel =
-
-    tab === "existing"
-
+  const submitLabel = isUpdate
+    ? submitting
+      ? "Updating Bank..."
+      : ENABLE_CHAPA_V2_INPLACE_UPDATE ? "Update Bank (Keep Subaccount ID)" : "Update Settlement Bank"
+    : tab === "existing"
       ? submitting
-
         ? "Linking..."
-
         : "Link Account"
-
       : submitting
-
         ? "Provisioning..."
-
         : "Provision & Link Subaccount";
 
 
@@ -2499,9 +2495,7 @@ function ChapaProvisionModal({
           <div>
 
             <h3 className="text-base font-bold text-gray-900">
-
-              Connect Chapa Split Subaccount
-
+              {isUpdate ? "Update Chapa Settlement Bank" : "Connect Chapa Split Subaccount"}
             </h3>
 
             <p className="text-xs text-gray-500 mt-0.5">

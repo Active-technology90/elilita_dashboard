@@ -698,6 +698,28 @@ export const provisionCompanyChapaSubaccount = async (
     company_slug: string;
   }>(`/payments/company/${companySlug}/chapa-subaccount/provision/`, data);
 
+export const updateCompanyChapaSubaccount = async (
+  companySlug: string,
+  data: {
+    bank_code?: string | number;
+    bank_slug?: string;
+    bank_name?: string;
+    account_number: string;
+    account_name: string;
+    business_name?: string;
+  },
+) =>
+  api.put<{
+    status: string;
+    message: string;
+    subaccount_id: string;
+    company_slug: string;
+    bank_name: string;
+    account_number: string;
+    account_name: string;
+    is_chapa_linked: boolean;
+  }>(`/payments/company/${companySlug}/chapa-subaccount/`, data);
+
 export const delinkCompanyChapaSubaccount = async (companySlug: string) =>
   api.post<{ status: string; message: string }>(
     `/payments/company/${companySlug}/chapa-subaccount/delink/`,
