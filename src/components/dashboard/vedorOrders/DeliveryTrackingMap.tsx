@@ -907,9 +907,13 @@ export default function DeliveryTrackingMap({
     }
     return null;
   }, [shouldFetchAll, companySlug, user]);
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
+const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+  // Desktop (lg+ = 1024px): open by default
+  // Mobile / tablet (< lg): collapsed by default so the map is visible immediately
+  if (typeof window === "undefined") return true;
+  return window.innerWidth >= 1024;
+});
+const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
   const [activeOrderId, setActiveOrderId] = useState<number | null>(selectedOrderId || initialOrder?.id || null);
   const [followDriver, setFollowDriver] = useState<boolean>(false);
   const [driverFilter, setDriverFilter] = useState<"all" | "in_house" | "third_party">("all");
