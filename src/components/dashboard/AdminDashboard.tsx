@@ -40,6 +40,7 @@ import {
   HelpCircle,
   AlertCircle,
   Download,
+  Wallet,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -89,6 +90,7 @@ import {
   getCompanyVendorOrders,
 } from "../../services/api";
 import { VendorOrderDetailModal } from "./vedorOrders/VendorOrderDetailModal";
+import PlatformFeeManager from "./platform-fees/page";
 
 type Tab =
   | "overview"
@@ -119,6 +121,7 @@ type Tab =
   | "serviceBookings"
   | "serviceSubscriptions"
   | "portfolio"
+  |"platformfee"
   | "availability"
   | "serviceStaff";
 
@@ -145,6 +148,7 @@ const MANAGEMENT_TABS: Tab[] = [
   "serviceStaff",
   "add advertisment",
   "users",
+  "platformfee"
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -1089,6 +1093,8 @@ export default function AdminDashboard() {
           return <AvailabilityManagement key={componentKey} />;
         case "serviceStaff":
           return <StaffManagement key={componentKey} />;
+        case "platformfee":
+          return <PlatformFeeManager key={componentKey} />;  
 
         default:
           return (
@@ -1367,6 +1373,16 @@ export default function AdminDashboard() {
                   active={activeTab === "bankAccounts"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("bankAccounts")}
+                  disabled={isCompanyInactive}
+                />
+              )}
+              {!isDispatcher && (
+                <SidebarItem
+                 icon={<Wallet className="h-5 w-5" />}
+                  label="Platform Fees"
+                  active={activeTab === "platformfee"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("platformfee")}
                   disabled={isCompanyInactive}
                 />
               )}
