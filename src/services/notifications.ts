@@ -6,16 +6,17 @@ import { registerDevice } from "./api";
 
 export type ClientApp = "admin" | "customer" | "delivery";
 
-const SW_PATH = "/firebase-messaging-sw.js";
+const SW_PATH = "/sw.js";
 const TOKEN_STORAGE_KEY = "qine_admin_fcm_token";
 
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
-  const existing = await navigator.serviceWorker.getRegistration(SW_PATH);
+  const existing = await navigator.serviceWorker.getRegistration("/");
   if (existing?.active) return existing;
 
-  const swReg = await navigator.serviceWorker.register(SW_PATH);
-  await navigator.serviceWorker.ready;
-  return swReg;
+  if (!existing) {
+    await navigator.serviceWorker.register(SW_PATH, { scope: "/" });
+  }
+  return navigator.serviceWorker.ready;
 }
 
 /**

@@ -20,4 +20,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/sw.ts'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.serviceworker,
+    },
+  },
 ])

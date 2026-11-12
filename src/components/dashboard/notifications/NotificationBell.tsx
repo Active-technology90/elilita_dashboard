@@ -1,8 +1,10 @@
 // src/components/dashboard/notifications/NotificationBell.tsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   Bell,
+  BellRing,
   CheckCheck,
   ArrowRight,
   X,
@@ -27,11 +29,27 @@ export default function NotificationBell({
   onViewAll,
   onNotificationClick,
 }: NotificationBellProps) {
-  const { notifications, unread, markAllRead, markRead, refetch } =
+  const { notifications, unread, markAllRead, markRead, refetch, pushState, enablePush } =
     useNotifications();
   const navigate = useNavigate(); // ✅ for routing
   const [open, setOpen] = useState(false);
+  const [enablingPush, setEnablingPush] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const handleEnablePush = async () => {
+    if (enablingPush) return;
+    setEnablingPush(true);
+    try {
+      await enablePush();
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        toast.success("Push notifications enabled on this device");
+      } else if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        toast.error("Notifications were blocked in browser settings");
+      }
+    } finally {
+      setEnablingPush(false);
+    }
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -176,6 +194,24 @@ export default function NotificationBell({
                 </button>
               </div>
             </div>
+
+            {/* Gesture-triggered push opt-in for iOS standalone & mobile browsers */}
+            {pushState === "default" && (
+              <div className="flex items-center justify-between gap-2 border-b border-secondary/10 bg-secondary/[0.05] px-3.5 sm:px-4 py-2 shrink-0">
+                <span className="text-[11px] font-medium text-gray-700">
+                  Enable device push alerts
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void handleEnablePush()}
+                  disabled={enablingPush}
+                  className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-secondary/90 disabled:opacity-60 cursor-pointer"
+                >
+                  <BellRing className="h-3 w-3" />
+                  <span>{enablingPush ? "Enabling..." : "Allow"}</span>
+                </button>
+              </div>
+            )}
 
             {/* Notification items list */}
             <div className="flex-1 overflow-y-auto divide-y divide-gray-50 overscroll-contain">

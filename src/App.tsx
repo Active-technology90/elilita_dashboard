@@ -9,52 +9,56 @@ import { CurrentCompanyProvider } from "./context/CurrentCompanyContext";
 import { useAuth } from "./context/authContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { NotificationsProvider } from "./context/NotificationsContext";
+import { PWAInstallPrompt } from "./components/pwa/PWAInstallPrompt";
+import { PWAUpdatePrompt } from "./components/pwa/PWAUpdatePrompt";
 
 export default function App() {
   const { user } = useAuth();
 
+  const dashboardElement = (
+    <DashboardGuard>
+      <CurrentCompanyProvider userMemberships={user?.memberships || null}>
+        <ThemeProvider>
+          <NotificationsProvider>
+            <AdminDashboard />
+          </NotificationsProvider>
+        </ThemeProvider>
+      </CurrentCompanyProvider>
+    </DashboardGuard>
+  );
+
   return (
-    <Routes>
-      <Route path="/sso" element={<SSOCallback />} />
-      <Route path="/signin" element={<SignIn />} />
+    <>
+      <PWAInstallPrompt />
+      <PWAUpdatePrompt />
+      <Routes>
+        <Route path="/sso" element={<SSOCallback />} />
+        <Route path="/signin" element={<SignIn />} />
 
-      {/* Dashboard — restricted to super admins & users with active memberships */}
-      <Route
-        path="/dashboard"
-        element={
-          <DashboardGuard>
-            <CurrentCompanyProvider
-              userMemberships={user?.memberships || null}
-            >
-              <ThemeProvider>
-                <NotificationsProvider>
-                  <AdminDashboard />
-                </NotificationsProvider>
-              </ThemeProvider>
-            </CurrentCompanyProvider>
-          </DashboardGuard>
-        }
-      />
+        {/* Dashboard — restricted to super admins & users with active memberships */}
+        <Route path="/dashboard" element={dashboardElement} />
+        <Route path="/dashboard/*" element={dashboardElement} />
 
-      {/* Bank Management — same restriction */}
-      <Route
-        path="/bank-accounts"
-        element={
-          <DashboardGuard>
-            <CurrentCompanyProvider
-              userMemberships={user?.memberships || null}
-            >
-              <ThemeProvider>
-                <NotificationsProvider>
-                  <BankManagement />
-                </NotificationsProvider>
-              </ThemeProvider>
-            </CurrentCompanyProvider>
-          </DashboardGuard>
-        }
-      />
+        {/* Bank Management — same restriction */}
+        <Route
+          path="/bank-accounts"
+          element={
+            <DashboardGuard>
+              <CurrentCompanyProvider
+                userMemberships={user?.memberships || null}
+              >
+                <ThemeProvider>
+                  <NotificationsProvider>
+                    <BankManagement />
+                  </NotificationsProvider>
+                </ThemeProvider>
+              </CurrentCompanyProvider>
+            </DashboardGuard>
+          }
+        />
 
-      <Route path="/" element={<SignIn />} />
-    </Routes>
+        <Route path="/" element={<SignIn />} />
+      </Routes>
+    </>
   );
 }

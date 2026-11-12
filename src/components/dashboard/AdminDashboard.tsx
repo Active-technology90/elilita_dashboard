@@ -39,9 +39,12 @@ import {
   UsersRound,
   HelpCircle,
   AlertCircle,
+  Download,
 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
+import { usePWAInstall } from "../../hooks/usePWAInstall";
 import { HelpVideoModal } from "./help/HelpVideoModal";
 
 import Overview, { type DashboardTab } from "./overview/Overview";
@@ -492,6 +495,9 @@ function OrdersMenu({
 // ════════════════════════════════════════════════════════
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const routerNavigate = useNavigate();
+  const { isInstallable, triggerInstall } = usePWAInstall();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [ordersMenuOpen, setOrdersMenuOpen] = useState(false);
@@ -759,6 +765,36 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("admin-push-navigate", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
+
+  // Sync /dashboard/* subpaths triggered by notification routing
+  useEffect(() => {
+    const subPath = location.pathname.replace(/^\/dashboard\/?/, "").toLowerCase();
+    if (!subPath) return;
+
+    const params = new URLSearchParams(location.search);
+    const vendorOrderId = params.get("vendor_order_id");
+
+    if (subPath === "notifications") {
+      navigate("notifications");
+    } else if (subPath === "orders") {
+      void applyPushNavigation({
+        pushTab: isSuperAdmin ? "masterOrders" : "companyOrders",
+        pushType: "vendor_order",
+        vendor_order_id: vendorOrderId,
+      });
+    } else if (subPath === "companies") {
+      navigate("companies");
+    } else if (subPath === "payments") {
+      navigate("payments");
+    } else if (subPath === "subscription") {
+      navigate(isSuperAdmin ? "adminSubscriptions" : "billing");
+    } else if (subPath === "ads") {
+      navigate("add advertisment");
+    }
+
+    routerNavigate("/dashboard", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, isSuperAdmin]);
 
   const handleLogoutClick = () => {
     setProfileDropdownOpen(false);
@@ -1097,7 +1133,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-secondary/[0.025] font-sans text-gray-900">
+    <div className="flex h-dvh overflow-hidden bg-secondary/[0.025] font-sans text-gray-900">
       {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
@@ -1114,7 +1150,7 @@ export default function AdminDashboard() {
           top-0
           z-50
           flex
-          h-screen
+          h-dvh
           flex-col
           border-r
           border-white/15
@@ -1905,6 +1941,35 @@ export default function AdminDashboard() {
                       <Users className="h-3.5 w-3.5" />
                       My Profile
                     </button>
+
+                    {isInstallable && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          void triggerInstall();
+                        }}
+                        className="
+                          mt-0.5
+                          flex
+                          h-8
+                          w-full
+                          items-center
+                          gap-2
+                          rounded-md
+                          px-2.5
+                          text-left
+                          text-[11px]
+                          font-medium
+                          text-secondary
+                          transition-colors
+                          hover:bg-secondary/[0.06]
+                        "
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Install App
+                      </button>
+                    )}
 
                     <button
                       type="button"
