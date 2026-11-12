@@ -414,31 +414,33 @@ export const generatePayoutReceiptHtml = (payout: PayoutData): string => {
     </div>
 
     <!-- Parties Flow: Elilita Platform -> Vendor Company -->
-    <div class="parties-flow">
-      <!-- Payer: Elilita -->
-      <div class="party-box">
-        <img src="${elilitaLogoUrl}" alt="Elilita" class="party-logo" onerror="this.style.display='none'" />
-        <div class="party-info">
-          <h4>Disbursed By</h4>
-          <div class="party-name">Elilita Marketplace</div>
-          <div class="party-sub">Direct Settlement Gateway</div>
+    <div style="display: none;">
+      <div class="parties-flow">
+        <!-- Payer: Elilita -->
+        <div class="party-box">
+          <img src="${elilitaLogoUrl}" alt="Elilita" class="party-logo" onerror="this.style.display='none'" />
+          <div class="party-info">
+            <h4>Disbursed By</h4>
+            <div class="party-name">Elilita Marketplace</div>
+            <div class="party-sub">Direct Settlement Gateway</div>
+          </div>
         </div>
-      </div>
 
-      <!-- Arrow -->
-      <div class="flow-arrow">&rarr;</div>
+        <!-- Arrow -->
+        <div class="flow-arrow">&rarr;</div>
 
-      <!-- Beneficiary: Vendor -->
-      <div class="party-box">
-        ${
-          companyLogoUrl
-            ? `<img src="${companyLogoUrl}" alt="${payout.company_name}" class="party-logo" onerror="this.style.display='none'" />`
-            : `<div class="party-logo" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: #6750A4; font-size: 16px;">${payout.company_name.charAt(0)}</div>`
-        }
-        <div class="party-info">
-          <h4>Beneficiary Vendor</h4>
-          <div class="party-name">${payout.company_name}</div>
-          <div class="party-sub">@${payout.company_slug}</div>
+        <!-- Beneficiary: Vendor -->
+        <div class="party-box">
+          ${
+            companyLogoUrl
+              ? `<img src="${companyLogoUrl}" alt="${payout.company_name}" class="party-logo" onerror="this.style.display='none'" />`
+              : `<div class="party-logo" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: #6750A4; font-size: 16px;">${payout.company_name.charAt(0)}</div>`
+          }
+          <div class="party-info">
+            <h4>Beneficiary Vendor</h4>
+            <div class="party-name">${payout.company_name}</div>
+            <div class="party-sub">@${payout.company_slug}</div>
+          </div>
         </div>
       </div>
     </div>

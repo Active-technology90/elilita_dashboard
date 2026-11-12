@@ -124,8 +124,8 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                 <span className="text-[11px] font-extrabold uppercase tracking-widest text-secondary">
                   Elilita Super App
                 </span>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-                  Payout Receipt
+                <h2 className="text-xl font-black text-gray-900 tracking-tight">
+                  Order Payment Receipt
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Vendor Direct Settlement &amp; Disbursement
@@ -172,9 +172,9 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
           </div>
 
           {/* Parties Flow: Elilita -> Vendor */}
-          <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          {/* <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"> */}
             {/* Payer */}
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* <div className="flex items-center gap-3 flex-1 min-w-0">
               <img
                 src="/elilta1.jpg"
                 alt="Elilita"
@@ -191,15 +191,15 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                   Platform Settlement Account
                 </span>
               </div>
-            </div>
+            </div> */}
 
             {/* Connecting Arrow */}
-            <div className="hidden sm:flex w-8 h-8 rounded-full bg-secondary/10 items-center justify-center text-secondary shrink-0">
+            {/* <div className="hidden sm:flex w-8 h-8 rounded-full bg-secondary/10 items-center justify-center text-secondary shrink-0">
               <ArrowRight className="h-4 w-4" />
-            </div>
+            </div> */}
 
             {/* Beneficiary Vendor */}
-            <div className="flex items-center gap-3 flex-1 min-w-0 sm:justify-end sm:text-right">
+            {/* <div className="flex items-center gap-3 flex-1 min-w-0 sm:justify-end sm:text-right">
               <div className="min-w-0 order-2 sm:order-1">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                   Beneficiary Vendor
@@ -223,8 +223,8 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                   {payout.company_name.charAt(0)}
                 </div>
               )}
-            </div>
-          </div>
+            </div> */}
+          {/* </div> */}
 
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
