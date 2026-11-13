@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Target,
@@ -77,12 +78,16 @@ export default function AgentAuditModal({
   initialAgent,
   onClose,
 }: AgentAuditModalProps) {
+  const { t } = useTranslation("marketingAgents");
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<AgentPerformancePayload | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"companies" | "subscriptions">("companies");
+  const [activeTab, setActiveTab] = useState<"companies" | "subscriptions">(
+    "companies",
+  );
 
   const fetchAuditData = async (isManualRefresh = false) => {
     try {
@@ -97,7 +102,6 @@ export default function AgentAuditModal({
         const res = await getAdminMarketingAgentPerformance(agentId);
         setData(res.data);
       } catch (err: any) {
-        // Fallback gracefully if endpoint is deploying or returns 404
         if (err?.response?.status === 404 && initialAgent) {
           const dailyTarget = Number(initialAgent.daily_target) || 0;
           const weeklyTarget = Number(initialAgent.weekly_target) || 0;
@@ -133,7 +137,11 @@ export default function AgentAuditModal({
       }
     } catch (err: any) {
       console.error("Failed to load audit data:", err);
-      setError(err?.response?.data?.error || err?.response?.data?.detail || "Failed to load agent performance metrics");
+      setError(
+        err?.response?.data?.error ||
+          err?.response?.data?.detail ||
+          t("auditLoadFailed"),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -142,25 +150,23 @@ export default function AgentAuditModal({
 
   useEffect(() => {
     fetchAuditData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
 
-  // Aggregate all registered companies for searching
   const allRegisteredCompanies = useMemo(() => {
     if (!data?.daily_performance) return [];
     return data.daily_performance.flatMap((day) =>
-      day.companies.map((c) => ({ ...c, registered_date: day.date }))
+      day.companies.map((c) => ({ ...c, registered_date: day.date })),
     );
   }, [data]);
 
-  // Aggregate all subscriptions for searching
   const allSubscriptions = useMemo(() => {
     if (!data?.daily_performance) return [];
     return data.daily_performance.flatMap((day) =>
-      day.subscriptions_started.map((s) => ({ ...s, action_date: day.date }))
+      day.subscriptions_started.map((s) => ({ ...s, action_date: day.date })),
     );
   }, [data]);
 
-  // Filtered companies based on search
   const filteredCompanies = useMemo(() => {
     if (!searchTerm.trim()) return allRegisteredCompanies;
     const term = searchTerm.toLowerCase();
@@ -168,18 +174,17 @@ export default function AgentAuditModal({
       (c) =>
         c.name.toLowerCase().includes(term) ||
         c.slug.toLowerCase().includes(term) ||
-        c.business_type?.toLowerCase().includes(term)
+        c.business_type?.toLowerCase().includes(term),
     );
   }, [allRegisteredCompanies, searchTerm]);
 
-  // Filtered subscriptions based on search
   const filteredSubscriptions = useMemo(() => {
     if (!searchTerm.trim()) return allSubscriptions;
     const term = searchTerm.toLowerCase();
     return allSubscriptions.filter(
       (s) =>
         s.company_name.toLowerCase().includes(term) ||
-        s.plan_name.toLowerCase().includes(term)
+        s.plan_name.toLowerCase().includes(term),
     );
   }, [allSubscriptions, searchTerm]);
 
@@ -190,11 +195,13 @@ export default function AgentAuditModal({
       return full || data.agent.username;
     }
     if (initialAgent) {
-      const full = `${initialAgent.first_name || ""} ${initialAgent.last_name || ""}`.trim();
+      const full = `${initialAgent.first_name || ""} ${
+        initialAgent.last_name || ""
+      }`.trim();
       return full || initialAgent.username;
     }
     return `Agent #${agentId}`;
-  }, [data, initialAgent, agentId]);
+  }, [data, initialAgent, agentId, propAgentName]);
 
   const formatDateTime = (dateStr: string) => {
     try {
@@ -212,9 +219,7 @@ export default function AgentAuditModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/50 p-3 sm:p-4">
       <div className="flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-2xl">
-        {/* ======================================================== */}
-        {/* MODAL HEADER (White with secondary accent) */}
-        {/* ======================================================== */}
+        {/* Header */}
         <div className="sticky top-0 z-20 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary/10 text-secondary font-bold text-sm">
@@ -222,14 +227,18 @@ export default function AgentAuditModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-gray-900">{agentName}</h2>
+                <h2 className="text-base font-bold text-gray-900">
+                  {agentName}
+                </h2>
                 <span className="rounded-md bg-secondary/10 px-2 py-0.5 text-[11px] font-semibold text-secondary">
-                  Agent Audit
+                  {t("agentAuditLabel")}
                 </span>
               </div>
               <p className="text-xs text-gray-500">
-                @{data?.agent.username || initialAgent?.username || "agent"} • ID: #{agentId}
-                {(data?.agent.email || initialAgent?.email) && ` • ${data?.agent.email || initialAgent?.email}`}
+                @{data?.agent.username || initialAgent?.username || "agent"} •{" "}
+                {t("agentIdLabel")} #{agentId}
+                {(data?.agent.email || initialAgent?.email) &&
+                  ` • ${data?.agent.email || initialAgent?.email}`}
               </p>
             </div>
           </div>
@@ -239,32 +248,36 @@ export default function AgentAuditModal({
               onClick={() => fetchAuditData(true)}
               disabled={refreshing || loading}
               className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:opacity-50"
-              title="Refresh performance metrics"
+              title={t("refreshTitle")}
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-secondary ${refreshing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw
+                className={`h-3.5 w-3.5 text-secondary ${
+                  refreshing ? "animate-spin" : ""
+                }`}
+              />
+              <span className="hidden sm:inline">{t("refreshBtn")}</span>
             </button>
 
             <button
               onClick={onClose}
               className="rounded-xl border border-gray-200 p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
-              aria-label="Close modal"
+              aria-label={t("closeModal")}
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* MODAL BODY */}
-        {/* ======================================================== */}
+        {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {loading ? (
-            /* Loading Skeleton */
             <div className="space-y-6 animate-pulse">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
+                  <div
+                    key={i}
+                    className="rounded-xl border border-gray-200 bg-white p-4 space-y-2"
+                  >
                     <div className="h-3 w-16 bg-gray-200 rounded"></div>
                     <div className="h-7 w-20 bg-gray-200 rounded"></div>
                     <div className="h-2 w-full bg-gray-100 rounded"></div>
@@ -275,43 +288,46 @@ export default function AgentAuditModal({
                 <div className="h-4 w-32 bg-gray-200 rounded"></div>
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded-lg"></div>
+                    <div
+                      key={i}
+                      className="h-12 bg-gray-100 rounded-lg"
+                    ></div>
                   ))}
                 </div>
               </div>
             </div>
           ) : error && !data ? (
-            /* Error State */
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/10 text-secondary mb-3">
                 <Target className="h-6 w-6" />
               </div>
-              <h3 className="text-base font-bold text-gray-900">Performance Data Unavailable</h3>
+              <h3 className="text-base font-bold text-gray-900">
+                {t("performanceUnavailableTitle")}
+              </h3>
               <p className="mt-1 max-w-sm text-xs text-gray-500">{error}</p>
               <button
                 onClick={() => fetchAuditData(false)}
                 className="mt-4 rounded-xl bg-secondary px-5 py-2 text-xs font-bold text-white transition hover:bg-secondary/90 active:scale-95"
               >
-                Retry Loading
+                {t("retryLoading")}
               </button>
             </div>
           ) : data ? (
             <>
-              {/* ======================================================== */}
-              {/* SECTION 1: KEY PERFORMANCE METRICS */}
-              {/* ======================================================== */}
+              {/* Performance summary */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Performance Summary
+                    {t("performanceSummary")}
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  {/* Daily Target Progress */}
                   <div className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-secondary/40">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-600">Daily Target</span>
+                      <span className="text-xs font-semibold text-gray-600">
+                        {t("dailyTargetLabel")}
+                      </span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                         <Target className="h-4 w-4" />
                       </div>
@@ -326,7 +342,7 @@ export default function AgentAuditModal({
                     </div>
                     <div className="mt-2.5">
                       <div className="flex justify-between text-[11px] font-medium text-gray-500 mb-1">
-                        <span>Today</span>
+                        <span>{t("perfToday")}</span>
                         <span className="text-secondary font-bold">
                           {data.target_progress.daily_progress_percentage}%
                         </span>
@@ -335,17 +351,21 @@ export default function AgentAuditModal({
                         <div
                           className="h-full rounded-full bg-secondary transition-all duration-500"
                           style={{
-                            width: `${Math.min(100, data.target_progress.daily_progress_percentage)}%`,
+                            width: `${Math.min(
+                              100,
+                              data.target_progress.daily_progress_percentage,
+                            )}%`,
                           }}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Weekly Target Progress */}
                   <div className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-secondary/40">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-600">Weekly Quota</span>
+                      <span className="text-xs font-semibold text-gray-600">
+                        {t("weeklyQuotaLabel")}
+                      </span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                         <Award className="h-4 w-4" />
                       </div>
@@ -360,7 +380,7 @@ export default function AgentAuditModal({
                     </div>
                     <div className="mt-2.5">
                       <div className="flex justify-between text-[11px] font-medium text-gray-500 mb-1">
-                        <span>This Week</span>
+                        <span>{t("perfThisWeek")}</span>
                         <span className="text-secondary font-bold">
                           {data.target_progress.weekly_progress_percentage}%
                         </span>
@@ -369,17 +389,21 @@ export default function AgentAuditModal({
                         <div
                           className="h-full rounded-full bg-secondary transition-all duration-500"
                           style={{
-                            width: `${Math.min(100, data.target_progress.weekly_progress_percentage)}%`,
+                            width: `${Math.min(
+                              100,
+                              data.target_progress.weekly_progress_percentage,
+                            )}%`,
                           }}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Total Companies Registered */}
                   <div className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-secondary/40">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-600">Total Companies</span>
+                      <span className="text-xs font-semibold text-gray-600">
+                        {t("totalCompaniesLabel")}
+                      </span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                         <Building2 className="h-4 w-4" />
                       </div>
@@ -390,14 +414,15 @@ export default function AgentAuditModal({
                       </span>
                     </div>
                     <p className="mt-3 text-[11px] text-gray-500">
-                      Total lifetime onboardings
+                      {t("lifetimeOnboardings")}
                     </p>
                   </div>
 
-                  {/* Active Subscriptions */}
                   <div className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-secondary/40">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-600">Active Subscriptions</span>
+                      <span className="text-xs font-semibold text-gray-600">
+                        {t("activeSubscriptionsLabel")}
+                      </span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                         <CheckCircle className="h-4 w-4" />
                       </div>
@@ -408,50 +433,54 @@ export default function AgentAuditModal({
                       </span>
                     </div>
                     <p className="mt-3 text-[11px] text-gray-500">
-                      Currently active plans
+                      {t("currentlyActivePlans")}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* ======================================================== */}
-              {/* SECTION 2: SUBSCRIPTION BREAKDOWN (IF ANY) */}
-              {/* ======================================================== */}
-              {data.registrations_by_plan && Object.keys(data.registrations_by_plan).length > 0 && (
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Layers className="h-4 w-4 text-secondary" />
-                    <h4 className="text-xs font-bold text-gray-700">Subscriptions by Plan</h4>
+              {/* Plans breakdown */}
+              {data.registrations_by_plan &&
+                Object.keys(data.registrations_by_plan).length > 0 && (
+                  <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Layers className="h-4 w-4 text-secondary" />
+                      <h4 className="text-xs font-bold text-gray-700">
+                        {t("subscriptionsByPlan")}
+                      </h4>
+                    </div>
+                    <div className="flex flex-wrap gap-2.5">
+                      {Object.entries(data.registrations_by_plan).map(
+                        ([plan, count]) => (
+                          <div
+                            key={plan}
+                            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs"
+                          >
+                            <span className="font-semibold text-gray-700">
+                              {plan}
+                            </span>
+                            <span className="rounded-md bg-secondary/10 px-1.5 py-0.5 font-bold text-secondary">
+                              {count}
+                            </span>
+                          </div>
+                        ),
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2.5">
-                    {Object.entries(data.registrations_by_plan).map(([plan, count]) => (
-                      <div
-                        key={plan}
-                        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs"
-                      >
-                        <span className="font-semibold text-gray-700">{plan}</span>
-                        <span className="rounded-md bg-secondary/10 px-1.5 py-0.5 font-bold text-secondary">
-                          {count}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* ======================================================== */}
-              {/* SECTION 3: AGENT ACTIONS AUDIT LOG */}
-              {/* ======================================================== */}
+              {/* Action history */}
               <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">Agent Action History</h3>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {t("agentActionHistory")}
+                    </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Chronological audit of companies registered and subscriptions onboarded
+                      {t("agentActionHistoryDesc")}
                     </p>
                   </div>
 
-                  {/* Tabs: Companies vs Subscriptions */}
                   <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
                     <button
                       onClick={() => setActiveTab("companies")}
@@ -462,23 +491,15 @@ export default function AgentAuditModal({
                       }`}
                     >
                       <Building2 className="h-3.5 w-3.5" />
-                      <span>Companies ({allRegisteredCompanies.length})</span>
+                      <span>
+                        {t("tabCompanies", {
+                          count: allRegisteredCompanies.length,
+                        })}
+                      </span>
                     </button>
-                    {/* <button
-                      onClick={() => setActiveTab("subscriptions")}
-                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                        activeTab === "subscriptions"
-                          ? "bg-white text-secondary shadow-sm"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      <Layers className="h-3.5 w-3.5" />
-                      <span>Subscriptions ({allSubscriptions.length})</span>
-                    </button> */}
                   </div>
                 </div>
 
-                {/* Search Bar */}
                 <div className="mt-3 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <input
@@ -487,24 +508,25 @@ export default function AgentAuditModal({
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder={
                       activeTab === "companies"
-                        ? "Search registered companies by name or type..."
-                        : "Search subscriptions by company or plan..."
+                        ? t("searchCompaniesPlaceholder")
+                        : t("searchSubscriptionsPlaceholder")
                     }
                     className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-xs text-gray-800 placeholder-gray-400 outline-none transition focus:border-secondary focus:ring-1 focus:ring-secondary/20"
                   />
                 </div>
 
-                {/* Actions Table / List */}
                 <div className="mt-4">
                   {activeTab === "companies" ? (
                     filteredCompanies.length === 0 ? (
                       <div className="py-12 text-center">
                         <Building2 className="mx-auto h-8 w-8 text-gray-300" />
                         <p className="mt-2 text-xs font-semibold text-gray-600">
-                          {searchTerm ? "No companies matched your search" : "No companies registered yet"}
+                          {searchTerm
+                            ? t("noCompaniesMatched")
+                            : t("noCompaniesRegistered")}
                         </p>
                         <p className="text-[11px] text-gray-400 mt-0.5">
-                          Actions performed by this agent will appear here
+                          {t("companiesEmptyHint")}
                         </p>
                       </div>
                     ) : (
@@ -528,7 +550,9 @@ export default function AgentAuditModal({
                               )}
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h5 className="text-xs font-bold text-gray-900">{company.name}</h5>
+                                  <h5 className="text-xs font-bold text-gray-900">
+                                    {company.name}
+                                  </h5>
                                   {company.business_type && (
                                     <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 capitalize">
                                       {company.business_type}
@@ -536,7 +560,9 @@ export default function AgentAuditModal({
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                                  <span>Slug: {company.slug}</span>
+                                  <span>
+                                    {t("slugLabel")} {company.slug}
+                                  </span>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">
                                     <Calendar className="h-3 w-3 text-gray-400" />
@@ -554,7 +580,9 @@ export default function AgentAuditModal({
                                     : "bg-gray-100 text-gray-600 border border-gray-200"
                                 }`}
                               >
-                                {company.is_active ? "Active" : "Inactive"}
+                                {company.is_active
+                                  ? t("statusActive")
+                                  : t("statusInactive")}
                               </span>
                               <span className="text-[11px] font-mono text-gray-400">
                                 #{company.id}
@@ -568,10 +596,12 @@ export default function AgentAuditModal({
                     <div className="py-12 text-center">
                       <Layers className="mx-auto h-8 w-8 text-gray-300" />
                       <p className="mt-2 text-xs font-semibold text-gray-600">
-                        {searchTerm ? "No subscriptions matched your search" : "No subscriptions started yet"}
+                        {searchTerm
+                          ? t("noSubsMatched")
+                          : t("noSubsStarted")}
                       </p>
                       <p className="text-[11px] text-gray-400 mt-0.5">
-                        Client subscriptions initiated by this agent will appear here
+                        {t("subsEmptyHint")}
                       </p>
                     </div>
                   ) : (
@@ -587,7 +617,9 @@ export default function AgentAuditModal({
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <h5 className="text-xs font-bold text-gray-900">{sub.company_name}</h5>
+                                <h5 className="text-xs font-bold text-gray-900">
+                                  {sub.company_name}
+                                </h5>
                                 <span className="rounded bg-secondary/10 px-2 py-0.5 text-[10px] font-bold text-secondary">
                                   {sub.plan_name}
                                 </span>
@@ -595,14 +627,17 @@ export default function AgentAuditModal({
                               <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
                                 <span>{sub.company_slug}</span>
                                 <span>•</span>
-                                <span>Started: {formatDateTime(sub.start_date)}</span>
+                                <span>
+                                  {t("startedLabel")}{" "}
+                                  {formatDateTime(sub.start_date)}
+                                </span>
                               </div>
                             </div>
                           </div>
 
                           <div className="text-right">
                             <div className="text-xs font-black text-gray-900">
-                              {sub.price.toLocaleString()} ETB
+                              {sub.price.toLocaleString()} {t("etbSuffix")}
                             </div>
                             <span
                               className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold mt-0.5 ${
@@ -611,7 +646,9 @@ export default function AgentAuditModal({
                                   : "bg-gray-100 text-gray-600"
                               }`}
                             >
-                              {sub.is_active ? "Active" : "Expired"}
+                              {sub.is_active
+                                ? t("subStatusActive")
+                                : t("subStatusExpired")}
                             </span>
                           </div>
                         </div>
@@ -624,18 +661,16 @@ export default function AgentAuditModal({
           ) : null}
         </div>
 
-        {/* ======================================================== */}
-        {/* MODAL FOOTER */}
-        {/* ======================================================== */}
+        {/* Footer */}
         <div className="sticky bottom-0 z-10 flex items-center justify-between border-t border-gray-200 bg-white px-5 py-3">
           <span className="text-[11px] text-gray-400">
-            Agent Performance &amp; Actions Audit
+            {t("footerAuditLabel")}
           </span>
           <button
             onClick={onClose}
             className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95"
           >
-            Close
+            {t("closeBtn")}
           </button>
         </div>
       </div>

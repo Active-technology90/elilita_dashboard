@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -14,7 +15,6 @@ import {
 } from "lucide-react";
 import type { User, Membership } from "../../../types";
 
-// Extended User type for additional fields
 interface ExtendedUser extends User {
   gender?: string;
   date_joined?: string;
@@ -34,12 +34,25 @@ interface ExtendedUser extends User {
 // };
 
 // Unified gray-only badge style for roles (Stripe/Linear inspired)
-const roleBadgeClass = "bg-gray-100 text-gray-700 border border-gray-200";
-
-// Premium Membership Card with hover lift and soft shadow
+// const roleBadgeClass = "bg-gray-100 text-gray-700 border border-gray-200";
 const MembershipCard: React.FC<{ membership: Membership }> = ({
   membership,
 }) => {
+  const { t } = useTranslation("users");
+
+  const roleLabel = (role: string) => {
+    const map: Record<string, string> = {
+      owner: t("roleOwner"),
+      admin: t("roleAdmin"),
+      staff: t("roleDispatcher"),
+      viewer: t("roleViewer"),
+      delivery: t("roleDelivery"),
+    };
+    return map[role] ?? role;
+  };
+
+  const roleBadgeClass = "bg-gray-100 text-gray-700 border border-gray-200";
+
   return (
     <motion.div
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
@@ -57,7 +70,7 @@ const MembershipCard: React.FC<{ membership: Membership }> = ({
             <span
               className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] xs:text-xs font-medium ${roleBadgeClass}`}
             >
-              {membership.role}
+              {roleLabel(membership.role)}
             </span>
           </div>
         </div>
@@ -129,6 +142,8 @@ const MembershipCard: React.FC<{ membership: Membership }> = ({
 
 // User Profile Header (Avatar, Name, Status)
 const UserProfileHeader: React.FC<{ user: ExtendedUser }> = ({ user }) => {
+  const { t } = useTranslation("users");
+
   const initials =
     `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase() ||
     user.username[0].toUpperCase();
@@ -137,19 +152,7 @@ const UserProfileHeader: React.FC<{ user: ExtendedUser }> = ({ user }) => {
 
   return (
     <div className="flex items-center gap-4">
-      {/* Avatar */}
-      <div
-        className="
-          relative
-          h-14 w-14 sm:h-16 sm:w-16
-          shrink-0
-          overflow-hidden
-          rounded-2xl
-          border border-gray-200
-          bg-gray-100
-          shadow-sm
-        "
-      >
+      <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 shadow-sm">
         {user.profile_image ? (
           <img
             src={user.profile_image}
@@ -157,79 +160,46 @@ const UserProfileHeader: React.FC<{ user: ExtendedUser }> = ({ user }) => {
             className="h-full w-full object-cover"
           />
         ) : (
-          <div
-            className="
-              flex h-full w-full items-center justify-center
-              text-base sm:text-lg
-              font-semibold
-              text-gray-700
-            "
-          >
+          <div className="flex h-full w-full items-center justify-center text-base sm:text-lg font-semibold text-gray-700">
             {initials}
           </div>
         )}
 
-        {/* Status Dot */}
         <div
-          className={`
-            absolute bottom-0 right-0
-            h-3.5 w-3.5 rounded-full border-2 border-white
-            ${isActive ? "bg-green-500" : "bg-gray-400"}
-          `}
+          className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
+            isActive ? "bg-green-500" : "bg-gray-400"
+          }`}
         />
       </div>
 
-      {/* User Info */}
       <div className="min-w-0 flex-1">
-        {/* Name + Badge */}
         <div className="flex items-center gap-2 flex-wrap">
-          <h2
-            className="
-              truncate
-              text-base sm:text-lg
-              font-semibold
-              text-gray-900
-            "
-          >
+          <h2 className="truncate text-base sm:text-lg font-semibold text-gray-900">
             {user.first_name || user.username} {user.last_name || ""}
           </h2>
 
           <span
-            className={`
-              inline-flex items-center gap-1
-              rounded-full px-2 py-0.5
-              text-[10px] sm:text-xs
-              font-medium
-              ${
-                isActive
-                  ? "bg-green-50 text-green-700"
-                  : "bg-gray-100 text-gray-600"
-              }
-            `}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-medium ${
+              isActive
+                ? "bg-green-50 text-green-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
           >
             {isActive ? (
               <>
                 <CheckCircle className="h-3 w-3" />
-                Active
+                {t("statusActive")}
               </>
             ) : (
               <>
                 <Shield className="h-3 w-3" />
-                Inactive
+                {t("statusInactive")}
               </>
             )}
           </span>
         </div>
 
-        {/* Username */}
-        <p
-          className="
-            mt-1
-            truncate
-            text-xs sm:text-sm
-            text-gray-500
-          "
-        >
+        <p className="mt-1 truncate text-xs sm:text-sm text-gray-500">
           @{user.username}
         </p>
       </div>
@@ -237,104 +207,45 @@ const UserProfileHeader: React.FC<{ user: ExtendedUser }> = ({ user }) => {
   );
 };
 
-// User Information Card
 const UserInfoCard: React.FC<{ user: ExtendedUser }> = ({ user }) => {
+  const { t } = useTranslation("users");
+
   const infoItems = [
-    {
-      icon: Mail,
-      label: "Email",
-      value: user.email,
-    },
+    { icon: Mail, label: t("emailLabel"), value: user.email },
     {
       icon: Phone,
-      label: "Phone",
-      value: user.phone_number || "Not provided",
+      label: t("phoneLabel"),
+      value: user.phone_number || t("phoneNotProvided"),
     },
-    {
-      icon: Shield,
-      label: "User ID",
-      value: `#${user.id}`,
-    },
+    { icon: Shield, label: t("userIdLabel"), value: `#${user.id}` },
   ];
 
   return (
-    <div
-      className="
-        rounded-2xl
-        border border-gray-200
-        bg-white
-        p-4 sm:p-5
-        shadow-sm
-      "
-    >
-      {/* Header */}
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
       <div className="mb-5">
         <h3 className="text-sm font-semibold text-gray-900">
-          User Information
+          {t("userInformation")}
         </h3>
-
         <p className="mt-1 text-xs text-gray-500">
-          Personal and account details
+          {t("userInformationDesc")}
         </p>
       </div>
 
-      {/* Row Layout */}
-      <div
-        className="
-          flex flex-col gap-3
-          lg:flex-row
-        "
-      >
+      <div className="flex flex-col gap-3 lg:flex-row">
         {infoItems.map(({ icon: Icon, label, value }) => (
           <div
             key={label}
-            className="
-              flex items-center gap-3
-              flex-1
-              rounded-xl
-              border border-gray-100
-              bg-gray-50/70
-              px-4 py-3
-              transition-all duration-200
-              hover:border-gray-200
-              hover:bg-gray-50
-            "
+            className="flex items-center gap-3 flex-1 rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3 transition-all duration-200 hover:border-gray-200 hover:bg-gray-50"
           >
-            {/* Icon */}
-            <div
-              className="
-                flex h-10 w-10 shrink-0 items-center justify-center
-                rounded-xl
-                border border-gray-200
-                bg-white
-              "
-            >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white">
               <Icon className="h-4 w-4 text-gray-600" />
             </div>
 
-            {/* Text */}
             <div className="min-w-0 flex-1">
-              <p
-                className="
-                  text-[10px] sm:text-[11px]
-                  font-medium
-                  uppercase
-                  tracking-wide
-                  text-gray-500
-                "
-              >
+              <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wide text-gray-500">
                 {label}
               </p>
-
-              <p
-                className="
-                  mt-0.5
-                  truncate
-                  text-sm
-                  font-semibold
-                  text-gray-900
-                "
-              >
+              <p className="mt-0.5 truncate text-sm font-semibold text-gray-900">
                 {value}
               </p>
             </div>
@@ -344,108 +255,40 @@ const UserInfoCard: React.FC<{ user: ExtendedUser }> = ({ user }) => {
     </div>
   );
 };
-// Statistics Cards (soft gray, no gradients)
+
 const UserStatsCard: React.FC<{ user: ExtendedUser }> = ({ user }) => {
+  const { t } = useTranslation("users");
+
   const totalCompanies = user.memberships.length;
   const uniqueRoles = new Set(user.memberships.map((m) => m.role)).size;
 
   return (
     <div className="grid grid-cols-2 gap-3 xs:gap-4">
-      <div
-        className="
-    flex items-center justify-between
-    rounded-2xl
-    border border-gray-200
-    bg-gray-50/80
-    px-4 py-1
-    transition-all duration-200
-    hover:bg-gray-50
-  "
-      >
-        {/* Left Content */}
+      <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-1 transition-all duration-200 hover:bg-gray-50">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Icon */}
-          <div
-            className="
-        flex h-10 w-10 shrink-0 items-center justify-center
-        rounded-xl
-        border border-gray-200
-        bg-white
-      "
-          >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white">
             <Building2 className="h-5 w-5 text-gray-600" />
           </div>
-
-          {/* Text */}
           <div className="min-w-0">
-            <p
-              className="
-          text-xs
-          font-medium
-          uppercase tracking-wide
-          text-gray-500
-        "
-            >
-              Companies
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              {t("companiesLabel")}
             </p>
-
-            <p
-              className="
-          text-lg sm:text-xl
-          font-semibold
-          text-gray-900
-        "
-            >
+            <p className="text-lg sm:text-xl font-semibold text-gray-900">
               {totalCompanies}
             </p>
           </div>
         </div>
       </div>
-      <div
-        className="
-    flex items-center justify-between
-    rounded-2xl
-    border border-gray-200
-    bg-gray-50/80
-    px-3 py-1
-    transition-all duration-200
-    hover:bg-gray-50
-  "
-      >
-        {/* Left Content */}
+      <div className="flex items-center justify-between rounded-2xl border border-gray-200 bg-gray-50/80 px-3 py-1 transition-all duration-200 hover:bg-gray-50">
         <div className="flex items-center gap-3 min-w-0">
-          {/* Icon */}
-          <div
-            className="
-        flex h-11 w-11 shrink-0 items-center justify-center
-        rounded-xl
-        border border-gray-200
-        bg-white
-      "
-          >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white">
             <Award className="h-5 w-5 text-gray-600" />
           </div>
-
-          {/* Text */}
           <div className="min-w-0">
-            <p
-              className="
-          text-xs
-          font-medium
-          uppercase tracking-wide
-          text-gray-500
-        "
-            >
-              Roles
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              {t("rolesLabel")}
             </p>
-
-            <p
-              className="
-          text-lg sm:text-xl
-          font-semibold
-          text-gray-900
-        "
-            >
+            <p className="text-lg sm:text-xl font-semibold text-gray-900">
               {uniqueRoles}
             </p>
           </div>
@@ -455,15 +298,16 @@ const UserStatsCard: React.FC<{ user: ExtendedUser }> = ({ user }) => {
   );
 };
 
-// Memberships Section with count header
 const MembershipsSection: React.FC<{ memberships: Membership[] }> = ({
   memberships,
 }) => {
+  const { t } = useTranslation("users");
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-3 xs:p-4 sm:p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3 xs:mb-4">
         <h3 className="text-xs xs:text-sm font-semibold text-gray-400 uppercase tracking-wider">
-          Company Memberships
+          {t("companyMemberships")}
         </h3>
         <span className="text-[10px] xs:text-xs font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full">
           {memberships.length}
@@ -472,7 +316,7 @@ const MembershipsSection: React.FC<{ memberships: Membership[] }> = ({
       {memberships.length === 0 ? (
         <div className="text-center py-6 xs:py-8 text-gray-400">
           <Briefcase className="h-8 w-8 xs:h-10 xs:w-10 mx-auto text-gray-300 mb-2" />
-          <p className="text-xs xs:text-sm">No company memberships</p>
+          <p className="text-xs xs:text-sm">{t("noCompanyMemberships")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4">
@@ -485,37 +329,32 @@ const MembershipsSection: React.FC<{ memberships: Membership[] }> = ({
   );
 };
 
-// Modal Footer Actions (sticky, clean gray buttons)
 const ModalActions: React.FC<{
   onEdit: () => void;
   onDelete: () => void;
-  // onClose: () => void;
-}> = ({ onEdit, onDelete }) => (
-  <div className="flex flex-row sm:flex-row justify-end gap-2 xs:gap-3">
-    {/* <button
-      onClick={onClose}
-      className="w-full sm:w-auto px-4 py-2 xs:py-2.5 rounded-lg border border-gray-200 text-gray-600 text-xs xs:text-sm font-medium hover:bg-gray-50 transition-all duration-200"
-    >
-      Cancel
-    </button> */}
-    <button
-      onClick={onDelete}
-      className="w-full sm:w-auto px-4 py-2 xs:py-2.5 rounded-xl border border-red-500 bg-red-500 text-white text-xs xs:text-sm font-medium hover:bg-red-600 transition-all duration-200"
-    >
-      <Trash2 className="h-4 w-4 inline mr-2" />
-      Delete User
-    </button>
-    <button
-      onClick={onEdit}
-      className="w-full sm:w-auto px-4 py-2 xs:py-2.5 rounded-xl bg-secondary text-white text-xs xs:text-sm font-medium hover:bg-secondary-dark transition-all duration-200 shadow-sm"
-    >
-      <Edit className="h-4 w-4 inline mr-2" />
-      Edit User
-    </button>
-  </div>
-);
+}> = ({ onEdit, onDelete }) => {
+  const { t } = useTranslation("users");
 
-// Loading Skeleton
+  return (
+    <div className="flex flex-row sm:flex-row justify-end gap-2 xs:gap-3">
+      <button
+        onClick={onDelete}
+        className="w-full sm:w-auto px-4 py-2 xs:py-2.5 rounded-xl border border-red-500 bg-red-500 text-white text-xs xs:text-sm font-medium hover:bg-red-600 transition-all duration-200"
+      >
+        <Trash2 className="h-4 w-4 inline mr-2" />
+        {t("deleteUser")}
+      </button>
+      <button
+        onClick={onEdit}
+        className="w-full sm:w-auto px-4 py-2 xs:py-2.5 rounded-xl bg-secondary text-white text-xs xs:text-sm font-medium hover:bg-secondary-dark transition-all duration-200 shadow-sm"
+      >
+        <Edit className="h-4 w-4 inline mr-2" />
+        {t("editUser")}
+      </button>
+    </div>
+  );
+};
+
 const LoadingSkeleton: React.FC = () => (
   <div className="bg-white rounded-none xs:rounded-t-[28px] sm:rounded-2xl shadow-xl w-full h-[100dvh] xs:h-[96dvh] sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] flex flex-col overflow-hidden mx-auto">
     <div className="px-4 xs:px-5 sm:px-6 py-3 xs:py-4 border-b border-gray-100 flex justify-between items-center">
@@ -546,7 +385,6 @@ const LoadingSkeleton: React.FC = () => (
   </div>
 );
 
-// Main Modal Component
 interface ViewUserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -564,6 +402,8 @@ const ViewUserModal: React.FC<ViewUserModalProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useTranslation("users");
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -609,14 +449,10 @@ const ViewUserModal: React.FC<ViewUserModalProps> = ({
   const handleEdit = () => onEdit?.(user);
   const handleDelete = () => onDelete?.(user);
 
-  // Responsive modal container classes
   const modalClasses =
     "bg-white shadow-xl w-[95dvw] max-h-[95dvh] flex flex-col overflow-hidden rounded-xl mx-auto " +
-    // Fullscreen on tiny (<320px)
     "max-[319px]:h-[100dvh] max-[319px]:rounded-t-xl " +
-    // XS: bottom sheet style
     "xs:h-[95dvh] xs:rounded-t-xl xs:mt-auto xs:mb-2 " +
-    // SM and up: centered modal
     "sm:h-auto sm:max-h-[90vh] sm:rounded-2xl sm:max-w-xl " +
     "md:max-w-2xl " +
     "lg:max-w-4xl " +
@@ -641,41 +477,33 @@ const ViewUserModal: React.FC<ViewUserModalProps> = ({
             className={modalClasses}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Sticky Header */}
             <div className="flex items-center justify-between px-4 xs:px-5 sm:px-6 py-3 xs:py-4 border-b border-gray-100 bg-white sticky top-0 z-10 backdrop-blur-sm bg-white/90">
               <h1 className="text-sm xs:text-base sm:text-lg font-semibold text-gray-900 truncate">
-                User profile
+                {t("userProfile")}
               </h1>
               <button
                 onClick={onClose}
                 className="p-1.5 xs:p-2 rounded-lg hover:bg-gray-50 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-                aria-label="Close"
+                aria-label={t("cancel")}
               >
                 <X className="h-4 w-4 xs:h-5 xs:w-5 text-gray-500" />
               </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto px-4 xs:px-5 sm:px-6 py-4 xs:py-5 space-y-4 xs:space-y-5 sm:space-y-6">
               <UserProfileHeader user={user} />
               <UserInfoCard user={user} />
               <UserStatsCard user={user} />
               <MembershipsSection memberships={user.memberships} />
-              {/* <PermissionsSection user={user} /> */}
             </div>
 
-            {/* Sticky Footer with safe-area */}
             <div
               className="sticky bottom-0 bg-white border-t border-gray-100 px-4 xs:px-5 sm:px-6 py-3 xs:py-4"
               style={{
                 paddingBottom: `max(env(safe-area-inset-bottom, 1rem), 1rem)`,
               }}
             >
-              <ModalActions
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                // onClose={onClose}
-              />
+              <ModalActions onEdit={handleEdit} onDelete={handleDelete} />
             </div>
           </motion.div>
         </motion.div>

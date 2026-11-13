@@ -43,10 +43,12 @@ import {
   Wallet,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
 import { usePWAInstall } from "../../hooks/usePWAInstall";
 import { HelpVideoModal } from "./help/HelpVideoModal";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 import Overview, { type DashboardTab } from "./overview/Overview";
 import CompanyUsers from "./companyUser/CompanyUsers";
@@ -121,18 +123,18 @@ type Tab =
   | "serviceBookings"
   | "serviceSubscriptions"
   | "portfolio"
-  |"platformfee"
+  | "platformfee"
   | "availability"
   | "serviceStaff";
 
 // ─────────────────────────────────────────────────────────────
-// Read-only Context – tells child components if they are in viewer mode
+// Read-only Context
 // ─────────────────────────────────────────────────────────────
 const ReadOnlyContext = createContext<boolean>(false);
 export const useReadOnly = () => useContext(ReadOnlyContext);
 
 // ─────────────────────────────────────────────────────────────
-// Tabs that are blocked when the company is inactive
+// Blocked tabs for inactive companies
 // ─────────────────────────────────────────────────────────────
 const MANAGEMENT_TABS: Tab[] = [
   "products",
@@ -148,11 +150,11 @@ const MANAGEMENT_TABS: Tab[] = [
   "serviceStaff",
   "add advertisment",
   "users",
-  "platformfee"
+  "platformfee",
 ];
 
 // ─────────────────────────────────────────────────────────────
-// Tabs that are blocked for SERVICE-type companies
+// Blocked tabs for SERVICE-type companies
 // ─────────────────────────────────────────────────────────────
 const SERVICE_BLOCKED_TABS: Tab[] = [
   "products",
@@ -182,6 +184,7 @@ function OrdersMenu({
   onToggleOrdersMenu: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation("dashboard");
   const [collapsedOrdersOpen, setCollapsedOrdersOpen] = useState(false);
   const ordersRef = useRef<HTMLDivElement>(null);
 
@@ -211,26 +214,16 @@ function OrdersMenu({
       <button
         type="button"
         disabled
-        title={collapsed ? "All Orders (Company inactive)" : undefined}
+        title={collapsed ? t("allOrdersInactive") : undefined}
         className={`
-          group
-          flex
-          h-9
-          w-full
-          cursor-not-allowed
-          items-center
-          rounded-lg
-          text-[12px]
-          font-medium
-          opacity-40
-          [&_svg]:h-4
-          [&_svg]:w-4
+          group flex h-9 w-full cursor-not-allowed items-center rounded-lg
+          text-[12px] font-medium opacity-40 [&_svg]:h-4 [&_svg]:w-4
           ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
           text-white/40
         `}
       >
         <ShoppingBag className="shrink-0" />
-        {!collapsed && <span className="truncate">All Orders</span>}
+        {!collapsed && <span className="truncate">{t("allOrders")}</span>}
       </button>
     );
   }
@@ -239,21 +232,11 @@ function OrdersMenu({
     return (
       <button
         type="button"
-        title={collapsed ? "All Orders" : undefined}
+        title={collapsed ? t("allOrders") : undefined}
         onClick={() => onNavigate("companyOrders")}
         className={`
-          group
-          flex
-          h-9
-          w-full
-          items-center
-          rounded-lg
-          text-[12px]
-          font-medium
-          transition-colors
-          duration-150
-          [&_svg]:h-4
-          [&_svg]:w-4
+          group flex h-9 w-full items-center rounded-lg text-[12px] font-medium
+          transition-colors duration-150 [&_svg]:h-4 [&_svg]:w-4
           ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
           ${
             activeTab === "companyOrders"
@@ -263,7 +246,7 @@ function OrdersMenu({
         `}
       >
         <ShoppingBag className="shrink-0" />
-        {!collapsed && <span className="truncate">All Orders</span>}
+        {!collapsed && <span className="truncate">{t("allOrders")}</span>}
       </button>
     );
   }
@@ -275,20 +258,9 @@ function OrdersMenu({
           type="button"
           onClick={onToggleOrdersMenu}
           className={`
-            group
-            flex
-            h-9
-            w-full
-            items-center
-            justify-between
-            rounded-lg
-            px-3
-            text-[12px]
-            font-medium
-            transition-colors
-            duration-150
-            [&_svg]:h-4
-            [&_svg]:w-4
+            group flex h-9 w-full items-center justify-between rounded-lg px-3
+            text-[12px] font-medium transition-colors duration-150
+            [&_svg]:h-4 [&_svg]:w-4
             ${
               isActive
                 ? "bg-white text-secondary shadow-sm"
@@ -298,7 +270,7 @@ function OrdersMenu({
         >
           <div className="flex min-w-0 items-center gap-2.5">
             <ShoppingBag className="shrink-0" />
-            <span className="truncate">Orders</span>
+            <span className="truncate">{t("orders")}</span>
           </div>
           {ordersMenuOpen ? (
             <ChevronUp className="shrink-0" />
@@ -308,34 +280,15 @@ function OrdersMenu({
         </button>
 
         {ordersMenuOpen && (
-          <div
-            className="
-              ml-4
-              mt-1
-              space-y-0.5
-              border-l
-              border-white/20
-              pl-2
-            "
-          >
+          <div className="ml-4 mt-1 space-y-0.5 border-l border-white/20 pl-2">
             {showMasterOrders && (
               <button
                 type="button"
                 onClick={() => onNavigate("masterOrders")}
                 className={`
-                  flex
-                  h-8
-                  w-full
-                  items-center
-                  gap-2
-                  rounded-md
-                  px-2.5
-                  text-left
-                  text-[11px]
-                  transition-colors
-                  duration-150
-                  [&_svg]:h-3.5
-                  [&_svg]:w-3.5
+                  flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+                  text-[11px] transition-colors duration-150
+                  [&_svg]:h-3.5 [&_svg]:w-3.5
                   ${
                     activeTab === "masterOrders"
                       ? "bg-white/15 font-semibold text-white"
@@ -344,7 +297,7 @@ function OrdersMenu({
                 `}
               >
                 <FileText className="shrink-0" />
-                <span className="truncate">Master Orders</span>
+                <span className="truncate">{t("masterOrders")}</span>
               </button>
             )}
 
@@ -352,19 +305,9 @@ function OrdersMenu({
               type="button"
               onClick={() => onNavigate("companyOrders")}
               className={`
-                flex
-                h-8
-                w-full
-                items-center
-                gap-2
-                rounded-md
-                px-2.5
-                text-left
-                text-[11px]
-                transition-colors
-                duration-150
-                [&_svg]:h-3.5
-                [&_svg]:w-3.5
+                flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+                text-[11px] transition-colors duration-150
+                [&_svg]:h-3.5 [&_svg]:w-3.5
                 ${
                   activeTab === "companyOrders"
                     ? "bg-white/15 font-semibold text-white"
@@ -373,7 +316,7 @@ function OrdersMenu({
               `}
             >
               <ListOrdered className="shrink-0" />
-              <span className="truncate">All Orders</span>
+              <span className="truncate">{t("allOrders")}</span>
             </button>
           </div>
         )}
@@ -385,20 +328,11 @@ function OrdersMenu({
     <div className="relative" ref={ordersRef}>
       <button
         type="button"
-        title="Orders"
+        title={t("orders")}
         onClick={() => setCollapsedOrdersOpen(!collapsedOrdersOpen)}
         className={`
-          flex
-          h-9
-          w-full
-          items-center
-          justify-center
-          rounded-lg
-          px-2
-          transition-colors
-          duration-150
-          [&_svg]:h-4
-          [&_svg]:w-4
+          flex h-9 w-full items-center justify-center rounded-lg px-2
+          transition-colors duration-150 [&_svg]:h-4 [&_svg]:w-4
           ${
             isActive
               ? "bg-white text-secondary shadow-sm"
@@ -410,23 +344,7 @@ function OrdersMenu({
       </button>
 
       {collapsedOrdersOpen && (
-        <div
-          className="
-            absolute
-            left-full
-            top-0
-            z-[70]
-            ml-2
-            w-44
-            overflow-hidden
-            rounded-lg
-            border
-            border-secondary/10
-            bg-white
-            p-1
-            shadow-[0_12px_32px_rgba(0,0,0,0.14)]
-          "
-        >
+        <div className="absolute left-full top-0 z-[70] ml-2 w-44 overflow-hidden rounded-lg border border-secondary/10 bg-white p-1 shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
           {showMasterOrders && (
             <button
               type="button"
@@ -435,18 +353,8 @@ function OrdersMenu({
                 setCollapsedOrdersOpen(false);
               }}
               className={`
-                flex
-                h-8
-                w-full
-                items-center
-                gap-2
-                rounded-md
-                px-2.5
-                text-left
-                text-[11px]
-                transition-colors
-                [&_svg]:h-3.5
-                [&_svg]:w-3.5
+                flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+                text-[11px] transition-colors [&_svg]:h-3.5 [&_svg]:w-3.5
                 ${
                   activeTab === "masterOrders"
                     ? "bg-secondary/[0.08] font-semibold text-secondary"
@@ -455,7 +363,7 @@ function OrdersMenu({
               `}
             >
               <FileText />
-              Master Orders
+              {t("masterOrders")}
             </button>
           )}
 
@@ -466,18 +374,8 @@ function OrdersMenu({
               setCollapsedOrdersOpen(false);
             }}
             className={`
-              flex
-              h-8
-              w-full
-              items-center
-              gap-2
-              rounded-md
-              px-2.5
-              text-left
-              text-[11px]
-              transition-colors
-              [&_svg]:h-3.5
-              [&_svg]:w-3.5
+              flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+              text-[11px] transition-colors [&_svg]:h-3.5 [&_svg]:w-3.5
               ${
                 activeTab === "companyOrders"
                   ? "bg-secondary/[0.08] font-semibold text-secondary"
@@ -486,7 +384,7 @@ function OrdersMenu({
             `}
           >
             <Building2 />
-            Company Orders
+            {t("companyDetail")}
           </button>
         </div>
       )}
@@ -498,6 +396,7 @@ function OrdersMenu({
 // Main Dashboard
 // ════════════════════════════════════════════════════════
 export default function AdminDashboard() {
+  const { t } = useTranslation("dashboard");
   const { user, logout } = useAuth();
   const location = useLocation();
   const routerNavigate = useNavigate();
@@ -519,7 +418,6 @@ export default function AdminDashboard() {
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [showInactiveBanner, setShowInactiveBanner] = useState(true);
 
-  // ── Active-status state for the current company ──
   const [currentCompanyActive, setCurrentCompanyActive] = useState<
     boolean | null
   >(null);
@@ -543,7 +441,6 @@ export default function AdminDashboard() {
 
   const showPlatformAdmin = isSuperAdmin || isViewer;
 
-  // ── Is the CURRENT company a service-type business? ────
   const currentCompanyMeta = companiesList.find(
     (c: any) => c.slug === company?.slug,
   );
@@ -559,12 +456,10 @@ export default function AdminDashboard() {
             ?.business_type === "service",
       ));
 
-  // Master Orders is only shown to super admins on non-service companies
   const showMasterOrders = isSuperAdmin && !isServiceCompany;
-
   const showServiceMenu = isSuperAdmin || isServiceCompany;
 
-  // ── Fetch current company details directly (by slug) ────
+  // ── Fetch current company details ──────────────────────
   useEffect(() => {
     if (!company?.slug || isSuperAdmin || isMarketing) {
       setCurrentCompanyActive(null);
@@ -590,26 +485,18 @@ export default function AdminDashboard() {
             try {
               res = await anyApi[name](company.slug);
               if (res) break;
-            } catch {
-              // try next
-            }
+            } catch {}
           }
         }
 
         if (!res && typeof anyApi.getCompanies === "function") {
           try {
             res = await anyApi.getCompanies({ slug: company.slug });
-          } catch {
-            // ignore
-          }
+          } catch {}
         }
 
         const payload =
-          res?.data?.company ??
-          res?.data?.data ??
-          res?.data ??
-          res ??
-          null;
+          res?.data?.company ?? res?.data?.data ?? res?.data ?? res ?? null;
 
         const active =
           payload?.is_active ??
@@ -647,7 +534,6 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company?.slug, isSuperAdmin, isMarketing, currentCompanyMeta?.is_active]);
 
-  // ── Company active check ───────────────────────────────
   const companyIsActive =
     currentCompanyActive ??
     (company as any)?.is_active ??
@@ -666,7 +552,6 @@ export default function AdminDashboard() {
     }
   }, [company?.slug, isCompanyInactive]);
 
-  /* ── Auto-switch to an active membership if current one is inactive ── */
   useEffect(() => {
     if (isSuperAdmin || isMarketing) return;
     if (!company?.slug) return;
@@ -680,7 +565,6 @@ export default function AdminDashboard() {
       (m) => m.company_slug === company.slug,
     );
 
-    // Only act when the CURRENT membership is explicitly inactive
     if (!currentMembership || currentMembership.is_active !== false) return;
 
     const activeAlt = memberships.find(
@@ -694,7 +578,7 @@ export default function AdminDashboard() {
         role: activeAlt.role,
       });
       toast.success(
-        `Switched to active company: ${activeAlt.company_name}`,
+        t("switchedToActive", { name: activeAlt.company_name }),
         { id: "auto-switch-company" },
       );
     }
@@ -703,14 +587,11 @@ export default function AdminDashboard() {
 
   const navigate = (tab: Tab) => {
     if (isCompanyInactive && MANAGEMENT_TABS.includes(tab)) {
-      toast.error(
-        "Your account is inactive. Please contact support to activate your account.",
-        { id: "inactive-company" },
-      );
+      toast.error(t("inactiveCompanyBlocked"), { id: "inactive-company" });
       return;
     }
     if (isServiceCompany && SERVICE_BLOCKED_TABS.includes(tab)) {
-      toast.error("This section isn't available for service businesses.", {
+      toast.error(t("serviceCompanyBlocked"), {
         id: "service-company-blocked",
       });
       return;
@@ -736,7 +617,7 @@ export default function AdminDashboard() {
     if (payload.vendor_order_id) {
       const orderId = Number(payload.vendor_order_id);
       if (!isNaN(orderId)) {
-        const toastId = toast.loading(`Opening order #${orderId}...`);
+        const toastId = toast.loading(t("openingOrder", { id: orderId }));
         try {
           const order = await fetchOrderById(orderId);
           if (order) {
@@ -744,23 +625,21 @@ export default function AdminDashboard() {
             setNotificationOrder(order);
             setNotificationReceipt(order.receipt || null);
           } else {
-            toast.error(`Order #${orderId} not found`, { id: toastId });
+            toast.error(t("orderNotFound", { id: orderId }), { id: toastId });
           }
         } catch {
-          toast.error(`Failed to load order #${orderId}`, { id: toastId });
+          toast.error(t("orderLoadFailed", { id: orderId }), { id: toastId });
         }
       }
     }
   };
 
-  // Cold start
   useEffect(() => {
     const payload = readPushParamsFromUrl();
     if (payload) applyPushNavigation(payload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
-  // Warm start
   useEffect(() => {
     const handler = (event: Event) => {
       applyPushNavigation((event as CustomEvent<PushNavigationPayload>).detail);
@@ -770,9 +649,10 @@ export default function AdminDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
-  // Sync /dashboard/* subpaths triggered by notification routing
   useEffect(() => {
-    const subPath = location.pathname.replace(/^\/dashboard\/?/, "").toLowerCase();
+    const subPath = location.pathname
+      .replace(/^\/dashboard\/?/, "")
+      .toLowerCase();
     if (!subPath) return;
 
     const params = new URLSearchParams(location.search);
@@ -822,7 +702,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch companies list
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -833,10 +712,7 @@ export default function AdminDashboard() {
         const allCompanies: any[] = [];
 
         while (hasNext) {
-          const response = await getCompanies({
-            page,
-            page_size: 100,
-          });
+          const response = await getCompanies({ page, page_size: 100 });
 
           const data = response.data;
           allCompanies.push(...(data.results || []));
@@ -853,7 +729,6 @@ export default function AdminDashboard() {
     fetchCompanies();
   }, []);
 
-  // Update company logo
   useEffect(() => {
     if (!company?.slug || !companiesList.length) {
       setCompanyLogo(null);
@@ -865,7 +740,6 @@ export default function AdminDashboard() {
     setCompanyLogo(foundCompany?.logo || null);
   }, [company, companiesList]);
 
-  // Handle scroll
   useEffect(() => {
     const scrollableElement = scrollableRef.current;
     if (!scrollableElement) return;
@@ -928,9 +802,7 @@ export default function AdminDashboard() {
               (o: any) => o.id === Number(orderId),
             );
             if (match) return match;
-          } catch {
-            // continue
-          }
+          } catch {}
         }
       }
     } catch (error) {
@@ -971,7 +843,7 @@ export default function AdminDashboard() {
 
     if (isServiceCompany) {
       navigate("notifications");
-      toast.error("Order details aren't available for service businesses.", {
+      toast.error(t("orderDetailsBlockedService"), {
         id: "service-company-order-blocked",
       });
       return;
@@ -979,7 +851,7 @@ export default function AdminDashboard() {
 
     navigate(isSuperAdmin ? "masterOrders" : "companyOrders");
 
-    const toastId = toast.loading(`Opening order #${vendorOrderId}...`);
+    const toastId = toast.loading(t("openingOrder", { id: vendorOrderId }));
     try {
       const order = await fetchOrderById(vendorOrderId, companySlug);
       if (order) {
@@ -987,11 +859,15 @@ export default function AdminDashboard() {
         setNotificationOrder(order);
         setNotificationReceipt(order.receipt || null);
       } else {
-        toast.error(`Order #${vendorOrderId} not found`, { id: toastId });
+        toast.error(t("orderNotFound", { id: vendorOrderId }), {
+          id: toastId,
+        });
       }
     } catch (err) {
       console.error("Error opening notification order:", err);
-      toast.error(`Failed to load order #${vendorOrderId}`, { id: toastId });
+      toast.error(t("orderLoadFailed", { id: vendorOrderId }), {
+        id: toastId,
+      });
     }
   };
 
@@ -1004,24 +880,24 @@ export default function AdminDashboard() {
     }
   };
 
-  /* ── Hard block logic ── */
   const membershipsArr: any[] = Array.isArray((user as any)?.memberships)
     ? (user as any).memberships
     : [];
-  
-  const hasAnyActiveMembership = membershipsArr.some((m) => m?.is_active !== false);
-  
+
+  const hasAnyActiveMembership = membershipsArr.some(
+    (m) => m?.is_active !== false,
+  );
+
   const isAllMembershipsInactive =
     !isSuperAdmin &&
     !isMarketing &&
     membershipsArr.length > 0 &&
     !hasAnyActiveMembership;
 
-  // 🛑 HARD BLOCK ONLY FOR NON-OWNERS.
-  // If the user is an owner, we allow them in to view "Company Detail", even if inactive.
-  // If it's a staff/viewer, or if they have no active memberships, we block entirely.
-  const isCompanyOwner = company?.role === "owner" || company?.role === "admin";
-  const shouldRestrictAccess = (isCompanyInactive && !isCompanyOwner) || isAllMembershipsInactive;
+  const isCompanyOwner =
+    company?.role === "owner" || company?.role === "admin";
+  const shouldRestrictAccess =
+    (isCompanyInactive && !isCompanyOwner) || isAllMembershipsInactive;
 
   const renderContent = () => {
     const companyKey = company?.slug || "super";
@@ -1039,7 +915,6 @@ export default function AdminDashboard() {
           return <LeadsManagement key={componentKey} />;
         case "calendar":
           return <CalendarManagement key={componentKey} />;
-
         case "products":
           return <CompanyProducts key={componentKey} />;
         case "users":
@@ -1094,8 +969,7 @@ export default function AdminDashboard() {
         case "serviceStaff":
           return <StaffManagement key={componentKey} />;
         case "platformfee":
-          return <PlatformFeeManager key={componentKey} />;  
-
+          return <PlatformFeeManager key={componentKey} />;
         default:
           return (
             <Overview key={componentKey} onNavigate={navigateFromOverview} />
@@ -1110,7 +984,6 @@ export default function AdminDashboard() {
     );
   };
 
-  /* ── 🛑 HARD BLOCK: Completely prevent the dashboard layout from rendering ── */
   if (shouldRestrictAccess) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-secondary/[0.025] p-4 font-sans">
@@ -1119,11 +992,10 @@ export default function AdminDashboard() {
             <AlertCircle className="h-7 w-7 text-amber-600" />
           </div>
           <h3 className="text-xl font-bold text-gray-900">
-            Company Access Restricted
+            {t("accessRestrictedTitle")}
           </h3>
           <p className="mt-3 text-sm leading-6 text-gray-500">
-            The company linked to your account is currently inactive. Please
-            contact your administrator or support to reactivate access.
+            {t("accessRestrictedDesc")}
           </p>
           <button
             type="button"
@@ -1131,7 +1003,7 @@ export default function AdminDashboard() {
             className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
           >
             <LogOut className="h-4 w-4" />
-            Sign out & try another account
+            {t("signOutTryAnother")}
           </button>
         </div>
       </div>
@@ -1140,7 +1012,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-secondary/[0.025] font-sans text-gray-900">
-      {/* Mobile overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-secondary/25 backdrop-blur-[1px] lg:hidden"
@@ -1151,56 +1022,20 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed
-          left-0
-          top-0
-          z-50
-          flex
-          h-dvh
-          flex-col
-          border-r
-          border-white/15
-          bg-secondary
-          text-white
-          shadow-[4px_0_18px_rgba(0,0,0,0.08)]
-          transition-all
-          duration-200
-          lg:relative
+          fixed left-0 top-0 z-50 flex h-dvh flex-col border-r border-white/15
+          bg-secondary text-white shadow-[4px_0_18px_rgba(0,0,0,0.08)]
+          transition-all duration-200 lg:relative
           ${sidebarCollapsed ? "w-14" : "w-[232px]"}
-          ${
-            isSidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full lg:translate-x-0"
-          }
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
-        {/* Brand */}
         <div
           className={`
-            flex
-            h-16
-            shrink-0
-            items-center
-            border-b
-            border-white/15
-            px-2.5
+            flex h-16 shrink-0 items-center border-b border-white/15 px-2.5
             ${sidebarCollapsed ? "justify-center" : "gap-2.5"}
           `}
         >
-          <div
-            className="
-              h-9
-              w-9
-              shrink-0
-              overflow-hidden
-              rounded-xl
-              border
-              border-white/20
-              bg-white
-              p-0.5
-              shadow-sm
-            "
-          >
+          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-white p-0.5 shadow-sm">
             <img
               src="/elilta1.jpg"
               alt="Elilita Logo"
@@ -1210,16 +1045,7 @@ export default function AdminDashboard() {
 
           {!sidebarCollapsed && (
             <div className="min-w-0 flex-1">
-              <p
-                className="
-                  truncate
-                  text-[14px]
-                  font-bold
-                  leading-none
-                  tracking-[-0.02em]
-                  text-white
-                "
-              >
+              <p className="truncate text-[14px] font-bold leading-none tracking-[-0.02em] text-white">
                 Elilita
               </p>
             </div>
@@ -1229,20 +1055,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
-              className="
-                ml-auto
-                flex
-                h-7
-                w-7
-                items-center
-                justify-center
-                rounded-md
-                text-white/60
-                transition-colors
-                hover:bg-white/10
-                hover:text-white
-                lg:hidden
-              "
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
             >
               <X className="h-4 w-4" />
             </button>
@@ -1254,23 +1067,21 @@ export default function AdminDashboard() {
             <>
               <SidebarItem
                 icon={<LayoutDashboard className="h-5 w-5" />}
-                label="Performance"
+                label={t("performance")}
                 active={activeTab === "overview"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("overview")}
               />
-
               <SidebarItem
                 icon={<Building2 className="h-5 w-5" />}
-                label="Companies"
+                label={t("companies")}
                 active={activeTab === "companies"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("companies")}
               />
-
               <SidebarItem
                 icon={<User className="h-5 w-5" />}
-                label="Profile"
+                label={t("profile")}
                 active={activeTab === "profile"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("profile")}
@@ -1280,7 +1091,7 @@ export default function AdminDashboard() {
             <>
               <SidebarItem
                 icon={<LayoutDashboard className="h-5 w-5" />}
-                label="Dashboard"
+                label={t("dashboard")}
                 active={activeTab === "overview"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("overview")}
@@ -1293,18 +1104,18 @@ export default function AdminDashboard() {
                       sidebarCollapsed ? "hidden" : ""
                     }`}
                   >
-                    Platform Admin
+                    {t("platformAdmin")}
                   </div>
                   <SidebarItem
                     icon={<Layout className="h-5 w-5" />}
-                    label="Categories"
+                    label={t("categories")}
                     active={activeTab === "categories"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("categories")}
                   />
                   <SidebarItem
                     icon={<Proportions className="h-5 w-5" />}
-                    label="SubCategories"
+                    label={t("subcategories")}
                     active={activeTab === "subcategories"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("subcategories")}
@@ -1315,31 +1126,32 @@ export default function AdminDashboard() {
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<Building2 className="h-5 w-5" />}
-                  label="Head Companies"
+                  label={t("headCompanies")}
                   active={activeTab === "headcompanies"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("headcompanies")}
                 />
               )}
-              
-              {/* Company Detail - ENABLED EVEN IF INACTIVE (only for owners) */}
+
               {!isDispatcher && (
                 <SidebarItem
                   icon={<Building2 className="h-5 w-5" />}
                   label={
-                    !user?.memberships?.length ? "Companies" : "Company Detail"
+                    !user?.memberships?.length
+                      ? t("companies")
+                      : t("companyDetail")
                   }
                   active={activeTab === "companies"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("companies")}
-                  disabled={false} // Explicitly allow access even if inactive
+                  disabled={false}
                 />
               )}
 
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<ShieldCheck className="h-5 w-5" />}
-                  label="User Management"
+                  label={t("userManagement")}
                   active={activeTab === "superUsers"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("superUsers")}
@@ -1348,7 +1160,7 @@ export default function AdminDashboard() {
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<Megaphone className="h-5 w-5" />}
-                  label="Marketing Agents"
+                  label={t("marketingAgents")}
                   active={activeTab === "marketingAgents"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("marketingAgents")}
@@ -1358,7 +1170,7 @@ export default function AdminDashboard() {
               {!isDispatcher && !isServiceCompany && (
                 <SidebarItem
                   icon={<Target className="h-5 w-5" />}
-                  label="Ads Management"
+                  label={t("adsManagement")}
                   active={activeTab === "add advertisment"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("add advertisment")}
@@ -1369,7 +1181,7 @@ export default function AdminDashboard() {
               {!isDispatcher && (
                 <SidebarItem
                   icon={<Banknote className="h-5 w-5" />}
-                  label="Bank Accounts"
+                  label={t("bankAccounts")}
                   active={activeTab === "bankAccounts"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("bankAccounts")}
@@ -1378,8 +1190,8 @@ export default function AdminDashboard() {
               )}
               {!isDispatcher && (
                 <SidebarItem
-                 icon={<Wallet className="h-5 w-5" />}
-                  label="Platform Fees"
+                  icon={<Wallet className="h-5 w-5" />}
+                  label={t("platformFees")}
                   active={activeTab === "platformfee"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("platformfee")}
@@ -1392,13 +1204,13 @@ export default function AdminDashboard() {
                   sidebarCollapsed ? "hidden" : ""
                 }`}
               >
-                Management
+                {t("management")}
               </div>
 
               {!isServiceCompany && (
                 <SidebarItem
                   icon={<Package className="h-5 w-5" />}
-                  label="All Products"
+                  label={t("allProducts")}
                   active={activeTab === "products"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("products")}
@@ -1421,7 +1233,7 @@ export default function AdminDashboard() {
               {!isDispatcher && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
-                  label="Payments"
+                  label={t("payments")}
                   active={activeTab === "payments"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("payments")}
@@ -1436,11 +1248,11 @@ export default function AdminDashboard() {
                       sidebarCollapsed ? "hidden" : ""
                     }`}
                   >
-                    Services
+                    {t("services")}
                   </div>
                   <SidebarItem
                     icon={<Wrench className="h-5 w-5" />}
-                    label="My Services"
+                    label={t("myServices")}
                     active={activeTab === "serviceOfferings"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceOfferings")}
@@ -1448,7 +1260,7 @@ export default function AdminDashboard() {
                   />
                   <SidebarItem
                     icon={<CalendarDays className="h-5 w-5" />}
-                    label="Bookings"
+                    label={t("bookings")}
                     active={activeTab === "serviceBookings"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceBookings")}
@@ -1456,7 +1268,7 @@ export default function AdminDashboard() {
                   />
                   <SidebarItem
                     icon={<Repeat className="h-5 w-5" />}
-                    label="Recurring Contracts"
+                    label={t("recurringContracts")}
                     active={activeTab === "serviceSubscriptions"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceSubscriptions")}
@@ -1464,7 +1276,7 @@ export default function AdminDashboard() {
                   />
                   <SidebarItem
                     icon={<Clock className="h-5 w-5" />}
-                    label="Availability"
+                    label={t("availability")}
                     active={activeTab === "availability"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("availability")}
@@ -1472,7 +1284,7 @@ export default function AdminDashboard() {
                   />
                   <SidebarItem
                     icon={<UserCog className="h-5 w-5" />}
-                    label="Staffs & Specialists"
+                    label={t("staffsSpecialists")}
                     active={activeTab === "serviceStaff"}
                     collapsed={sidebarCollapsed}
                     onClick={() => navigate("serviceStaff")}
@@ -1486,12 +1298,12 @@ export default function AdminDashboard() {
                   sidebarCollapsed ? "hidden" : ""
                 }`}
               >
-                Platform
+                {t("platform")}
               </div>
               {!isDispatcher && (
                 <SidebarItem
                   icon={<UsersRound className="h-5 w-5" />}
-                  label="All Users"
+                  label={t("allUsers")}
                   active={activeTab === "users"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("users")}
@@ -1501,7 +1313,7 @@ export default function AdminDashboard() {
 
               <SidebarItem
                 icon={<Bell className="h-5 w-5" />}
-                label="Notifications"
+                label={t("notifications")}
                 active={activeTab === "notifications"}
                 collapsed={sidebarCollapsed}
                 onClick={() => navigate("notifications")}
@@ -1510,7 +1322,7 @@ export default function AdminDashboard() {
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
-                  label="Subscription Plans"
+                  label={t("subscriptionPlans")}
                   active={activeTab === "adminSubscriptions"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("adminSubscriptions")}
@@ -1520,7 +1332,7 @@ export default function AdminDashboard() {
               {!isSuperAdmin && !isDispatcher && (
                 <SidebarItem
                   icon={<CreditCard className="h-5 w-5" />}
-                  label="Subscription"
+                  label={t("subscription")}
                   active={activeTab === "billing"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("billing")}
@@ -1529,7 +1341,7 @@ export default function AdminDashboard() {
               {!isDispatcher && (
                 <SidebarItem
                   icon={<SettingsIcon className="h-5 w-5" />}
-                  label="Settings"
+                  label={t("settings")}
                   active={activeTab === "settings"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("settings")}
@@ -1541,20 +1353,16 @@ export default function AdminDashboard() {
 
         <div
           className={`
-            mx-2
-            mb-2
-            flex
-            shrink-0
-            border-t
-            border-white/15
-            pt-2
+            mx-2 mb-2 flex shrink-0 border-t border-white/15 pt-2
             ${sidebarCollapsed ? "justify-center" : "justify-end"}
           `}
         >
           <button
             onClick={() => setSidebarCollapsed((prev) => !prev)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-white/60 transition-colors hover:bg-white/10 hover:text-white"
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={
+              sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")
+            }
           >
             {sidebarCollapsed ? (
               <PanelLeftOpen className="h-4 w-4" />
@@ -1566,127 +1374,50 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden ">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
           className={`
-            sticky
-            top-0
-            z-30
-            flex
-            h-16
-            shrink-0
-            items-center
-            justify-between
-            border-b
-            border-secondary/10
-            bg-white
-            px-2.5
-            transition-shadow
-            duration-150
-            sm:px-3
-            lg:px-4
+            sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between
+            border-b border-secondary/10 bg-white px-2.5 transition-shadow
+            duration-150 sm:px-3 lg:px-4
             ${isScrolled ? "shadow-[0_2px_8px_rgba(0,0,0,0.04)]" : ""}
           `}
         >
-          {/* Left context */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <button
               type="button"
               onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="
-                flex
-                h-8
-                w-8
-                shrink-0
-                items-center
-                justify-center
-                rounded-md
-                border
-                border-secondary/10
-                bg-secondary
-                text-secondary
-                transition-colors
-                hover:bg-secondary/[0.04]
-                lg:hidden
-              "
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-secondary/10 bg-secondary text-secondary transition-colors hover:bg-secondary/[0.04] lg:hidden"
             >
               <Menu className="h-4 w-4 text-white" />
             </button>
 
             {isSuperAdmin && (
-              <div
-                className="
-                  hidden
-                  h-8
-                  items-center
-                  gap-1.5
-                  rounded-md
-                  border
-                  border-secondary/10
-                  bg-secondary/[0.035]
-                  px-2.5
-                  sm:flex
-                "
-              >
+              <div className="hidden h-8 items-center gap-1.5 rounded-md border border-secondary/10 bg-secondary/[0.035] px-2.5 sm:flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
-                <span
-                  className="
-                    text-[9px]
-                    font-semibold
-                    uppercase
-                    tracking-[0.1em]
-                    text-secondary/65
-                  "
-                >
-                  Role
+                <span className="text-[9px] font-semibold uppercase tracking-[0.1em] text-secondary/65">
+                  {t("role")}
                 </span>
                 <span className="text-[11px] font-bold text-secondary">
                   {user?.role === "super_admin"
-                    ? "Super Admin"
-                    : user?.role || "Super Admin"}
+                    ? t("superAdmin")
+                    : user?.role || t("superAdmin")}
                 </span>
               </div>
             )}
 
             {isMarketing && (
-              <div
-                className="
-                  hidden
-                  h-8
-                  items-center
-                  gap-1.5
-                  rounded-md
-                  border
-                  border-secondary/10
-                  bg-secondary/[0.035]
-                  px-2.5
-                  sm:flex
-                "
-              >
+              <div className="hidden h-8 items-center gap-1.5 rounded-md border border-secondary/10 bg-secondary/[0.035] px-2.5 sm:flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                 <span className="text-[11px] font-bold text-secondary">
-                  Marketing Agent
+                  {t("marketingAgent")}
                 </span>
               </div>
             )}
 
             {company && !isSuperAdmin && !isMarketing && (
               <div className="hidden min-w-0 items-center gap-2 sm:flex">
-                <div
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    overflow-hidden
-                    rounded-lg
-                    border
-                    border-secondary/10
-                    bg-secondary/[0.05]
-                  "
-                >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-secondary/10 bg-secondary/[0.05]">
                   {companyLogo ? (
                     <img
                       src={companyLogo}
@@ -1701,102 +1432,42 @@ export default function AdminDashboard() {
                 <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <p
-                      className="
-                        max-w-[130px]
-                        truncate
-                        text-[11px]
-                        font-bold
-                        leading-none
-                        text-gray-900
-                        md:max-w-[200px]
-                        lg:max-w-[280px]
-                      "
+                      className="max-w-[130px] truncate text-[11px] font-bold leading-none text-gray-900 md:max-w-[200px] lg:max-w-[280px]"
                       title={company.name}
                     >
                       {company.name}
                     </p>
 
-                    <span
-                      className="
-                        shrink-0
-                        rounded-full
-                        border
-                        border-secondary/10
-                        bg-secondary/[0.035]
-                        px-1.5
-                        py-0.5
-                        text-[8px]
-                        font-semibold
-                        capitalize
-                        leading-none
-                        text-secondary
-                      "
-                    >
-                      {company.role === "staff" ? "Dispatcher" : company.role}
+                    <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.035] px-1.5 py-0.5 text-[8px] font-semibold capitalize leading-none text-secondary">
+                      {company.role === "staff"
+                        ? t("dispatcher")
+                        : company.role}
                     </span>
 
                     {isCompanyInactive && (
-                      <span
-                        className="
-                          shrink-0
-                          rounded-full
-                          border
-                          border-red-200
-                          bg-red-50
-                          px-1.5
-                          py-0.5
-                          text-[8px]
-                          font-bold
-                          uppercase
-                          leading-none
-                          tracking-[0.06em]
-                          text-red-600
-                        "
-                      >
-                        Inactive
+                      <span className="shrink-0 rounded-full border border-red-200 bg-red-50 px-1.5 py-0.5 text-[8px] font-bold uppercase leading-none tracking-[0.06em] text-red-600">
+                        {t("inactive")}
                       </span>
                     )}
                   </div>
 
-                  <p
-                    className="
-                      mt-1
-                      text-[8px]
-                      font-medium
-                      uppercase
-                      leading-none
-                      tracking-[0.08em]
-                      text-gray-400
-                    "
-                  >
-                    Active company
+                  <p className="mt-1 text-[8px] font-medium uppercase leading-none tracking-[0.08em] text-gray-400">
+                    {t("activeCompany")}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right actions */}
           <div className="flex shrink-0 items-center gap-1">
+            {/* Language Switcher (new) */}
+            <LanguageSwitcher />
+
             <button
               type="button"
               onClick={() => setHelpModalOpen(true)}
-              title="Help & Video Guides"
-              className="
-                flex
-                h-8
-                w-8
-                items-center
-                justify-center
-                rounded-lg
-                border
-                border-secondary/10
-                bg-secondary/[0.035]
-                text-secondary
-                transition-colors
-                hover:border-secondary/20
-                hover:bg-secondary/[0.08]
-              "
+              title={t("helpVideoGuides")}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-secondary/10 bg-secondary/[0.035] text-secondary transition-colors hover:border-secondary/20 hover:bg-secondary/[0.08]"
             >
               <HelpCircle className="h-4 w-4" />
             </button>
@@ -1813,15 +1484,8 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className={`
-                  flex
-                  h-8
-                  items-center
-                  gap-1.5
-                  rounded-lg
-                  border
-                  px-1
-                  transition-colors
-                  duration-150
+                  flex h-8 items-center gap-1.5 rounded-lg border px-1
+                  transition-colors duration-150
                   ${
                     profileDropdownOpen
                       ? "border-secondary/20 bg-secondary/[0.04]"
@@ -1830,35 +1494,12 @@ export default function AdminDashboard() {
                 `}
               >
                 <div className="hidden min-w-0 text-right md:block">
-                  <p
-                    className="
-                      max-w-[110px]
-                      truncate
-                      text-[10px]
-                      font-bold
-                      leading-none
-                      text-gray-800
-                    "
-                  >
+                  <p className="max-w-[110px] truncate text-[10px] font-bold leading-none text-gray-800">
                     {user?.username || user?.email?.split("@")[0] || "User"}
                   </p>
                 </div>
 
-                <div
-                  className="
-                    flex
-                    h-7
-                    w-7
-                    shrink-0
-                    items-center
-                    justify-center
-                    overflow-hidden
-                    rounded-full
-                    bg-secondary
-                    ring-2
-                    ring-secondary/10
-                  "
-                >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary ring-2 ring-secondary/10">
                   {user?.profile_image ? (
                     <img
                       src={user.profile_image}
@@ -1880,52 +1521,16 @@ export default function AdminDashboard() {
                     onClick={() => setProfileDropdownOpen(false)}
                   />
 
-                  <div
-                    className="
-                      absolute
-                      right-0
-                      z-[70]
-                      mt-1.5
-                      w-52
-                      overflow-hidden
-                      rounded-lg
-                      border
-                      border-secondary/10
-                      bg-white
-                      p-1
-                      shadow-[0_12px_30px_rgba(0,0,0,0.12)]
-                    "
-                  >
-                    <div
-                      className="
-                        border-b
-                        border-secondary/[0.07]
-                        px-2.5
-                        py-2
-                      "
-                    >
-                      <p
-                        className="
-                          truncate
-                          text-[10px]
-                          font-medium
-                          text-gray-700
-                        "
-                      >
+                  <div className="absolute right-0 z-[70] mt-1.5 w-52 overflow-hidden rounded-lg border border-secondary/10 bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
+                    <div className="border-b border-secondary/[0.07] px-2.5 py-2">
+                      <p className="truncate text-[10px] font-medium text-gray-700">
                         {user?.email}
                       </p>
-
                       {company && (
-                        <p
-                          className="
-                            mt-1
-                            text-[9px]
-                            font-semibold
-                            capitalize
-                            text-secondary
-                          "
-                        >
-                          {company.role === "staff" ? "Dispatcher" : company.role}
+                        <p className="mt-1 text-[9px] font-semibold capitalize text-secondary">
+                          {company.role === "staff"
+                            ? t("dispatcher")
+                            : company.role}
                         </p>
                       )}
                     </div>
@@ -1936,26 +1541,10 @@ export default function AdminDashboard() {
                         navigate("profile");
                         setProfileDropdownOpen(false);
                       }}
-                      className="
-                        mt-1
-                        flex
-                        h-8
-                        w-full
-                        items-center
-                        gap-2
-                        rounded-md
-                        px-2.5
-                        text-left
-                        text-[11px]
-                        font-medium
-                        text-gray-700
-                        transition-colors
-                        hover:bg-secondary/[0.04]
-                        hover:text-secondary
-                      "
+                      className="mt-1 flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-[11px] font-medium text-gray-700 transition-colors hover:bg-secondary/[0.04] hover:text-secondary"
                     >
                       <Users className="h-3.5 w-3.5" />
-                      My Profile
+                      {t("myProfile")}
                     </button>
 
                     {isInstallable && (
@@ -1965,50 +1554,20 @@ export default function AdminDashboard() {
                           setProfileDropdownOpen(false);
                           void triggerInstall();
                         }}
-                        className="
-                          mt-0.5
-                          flex
-                          h-8
-                          w-full
-                          items-center
-                          gap-2
-                          rounded-md
-                          px-2.5
-                          text-left
-                          text-[11px]
-                          font-medium
-                          text-secondary
-                          transition-colors
-                          hover:bg-secondary/[0.06]
-                        "
+                        className="mt-0.5 flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-[11px] font-medium text-secondary transition-colors hover:bg-secondary/[0.06]"
                       >
                         <Download className="h-3.5 w-3.5" />
-                        Install App
+                        {t("installApp")}
                       </button>
                     )}
 
                     <button
                       type="button"
                       onClick={handleLogoutClick}
-                      className="
-                        mt-0.5
-                        flex
-                        h-8
-                        w-full
-                        items-center
-                        gap-2
-                        rounded-md
-                        px-2.5
-                        text-left
-                        text-[11px]
-                        font-medium
-                        text-red-600
-                        transition-colors
-                        hover:bg-secondary/[0.04]
-                      "
+                      className="mt-0.5 flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-secondary/[0.04]"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      Sign Out
+                      {t("signOut")}
                     </button>
                   </div>
                 </>
@@ -2021,66 +1580,26 @@ export default function AdminDashboard() {
           ref={scrollableRef}
           className="flex-1 overflow-y-auto p-2.5 sm:p-3 lg:p-4"
         >
-          {/* Inactive Company Banner */}
           {isCompanyInactive && showInactiveBanner && (
-            <div
-              className="
-                relative
-                mb-3
-                flex
-                items-start
-                gap-3
-                rounded-lg
-                border
-                border-amber-200
-                bg-amber-50
-                px-3.5
-                py-3
-                shadow-sm
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-8
-                  w-8
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-lg
-                  bg-amber-100
-                "
-              >
+            <div className="relative mb-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 shadow-sm">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
               </div>
 
               <div className="min-w-0 flex-1">
                 <h3 className="text-[12px] font-bold text-amber-900">
-                  Your Account Is Inactive
+                  {t("accountInactiveTitle")}
                 </h3>
-
                 <p className="mt-1 text-[11px] leading-5 text-amber-800">
-                  Your account is inactive. Please contact support to activate
-                  your account.
+                  {t("accountInactiveDesc")}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowInactiveBanner(false)}
-                className="
-                  flex
-                  h-6
-                  w-6
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-md
-                  text-amber-600
-                  transition-colors
-                  hover:bg-amber-100
-                "
-                title="Dismiss"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-100"
+                title={t("dismiss")}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -2093,110 +1612,41 @@ export default function AdminDashboard() {
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div
-          className="
-            fixed
-            inset-0
-            z-[80]
-            flex
-            items-center
-            justify-center
-            bg-secondary/25
-            p-4
-            backdrop-blur-[1px]
-          "
-        >
-          <div
-            className="
-              w-full
-              max-w-xs
-              overflow-hidden
-              rounded-xl
-              border
-              border-secondary/10
-              bg-white
-              shadow-[0_18px_48px_rgba(0,0,0,0.14)]
-            "
-          >
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-secondary/25 p-4 backdrop-blur-[1px]">
+          <div className="w-full max-w-xs overflow-hidden rounded-xl border border-secondary/10 bg-white shadow-[0_18px_48px_rgba(0,0,0,0.14)]">
             <div className="p-4">
               <div className="flex items-start gap-2.5">
-                <div
-                  className="
-                    flex
-                    h-8
-                    w-8
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-lg
-                    bg-secondary/[0.07]
-                  "
-                >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/[0.07]">
                   <LogOut className="h-4 w-4 text-secondary" />
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Sign out</h3>
-
+                  <h3 className="text-sm font-bold text-gray-900">
+                    {t("signOutTitle")}
+                  </h3>
                   <p className="mt-1 text-[10px] leading-4 text-gray-500">
-                    Are you sure you want to sign out of your account?
+                    {t("signOutConfirm")}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div
-              className="
-                flex
-                justify-end
-                gap-2
-                border-t
-                border-secondary/[0.07]
-                bg-secondary/[0.02]
-                px-4
-                py-2.5
-              "
-            >
+            <div className="flex justify-end gap-2 border-t border-secondary/[0.07] bg-secondary/[0.02] px-4 py-2.5">
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="
-                  h-8
-                  rounded-md
-                  border
-                  border-secondary/10
-                  bg-white
-                  px-3
-                  text-[10px]
-                  font-semibold
-                  text-secondary
-                  transition-colors
-                  hover:bg-secondary/[0.04]
-                "
+                className="h-8 rounded-md border border-secondary/10 bg-white px-3 text-[10px] font-semibold text-secondary transition-colors hover:bg-secondary/[0.04]"
               >
-                Cancel
+                {t("cancel")}
               </button>
 
               <button
                 type="button"
                 onClick={confirmLogout}
-                className="
-                  inline-flex
-                  h-8
-                  items-center
-                  gap-1.5
-                  rounded-md
-                  bg-red-500
-                  px-3
-                  text-[10px]
-                  font-semibold
-                  text-white
-                  transition-opacity
-                  hover:opacity-90
-                "
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-red-500 px-3 text-[10px] font-semibold text-white transition-opacity hover:opacity-90"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                Sign Out
+                {t("signOut")}
               </button>
             </div>
           </div>
@@ -2222,7 +1672,6 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Role-Based Video Help Modal */}
       <HelpVideoModal
         isOpen={helpModalOpen}
         onClose={() => setHelpModalOpen(false)}
@@ -2259,18 +1708,8 @@ function SidebarItem({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={`
-        group
-        flex
-        h-9
-        w-full
-        items-center
-        rounded-lg
-        text-[12px]
-        font-medium
-        transition-colors
-        duration-150
-        [&_svg]:h-4
-        [&_svg]:w-4
+        group flex h-9 w-full items-center rounded-lg text-[12px] font-medium
+        transition-colors duration-150 [&_svg]:h-4 [&_svg]:w-4
         ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
         ${
           disabled

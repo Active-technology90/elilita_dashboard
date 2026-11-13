@@ -1,5 +1,6 @@
 // src/components/admin/SuperAdminView.tsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Edit, Trash2, ImageIcon, Filter } from "lucide-react";
 import { DataTable, type Column } from "../../ui/DataTable";
 import { Pagination } from "../../ui/Pagination";
@@ -10,18 +11,11 @@ import type { CompanyListItem } from "../../../types";
 import MobileCardSkeleton from "../../ui/MobileCardSkeleton";
 import BottomSheet from "../../ui/BottomSheet";
 import { TableControls } from "../../ui/TableControls";
+import { useLocalizedName } from "../../../hooks/useLocalizedName";
 
 interface SuperAdminViewProps {
-  /** Paginated slice — used only for the table + mobile cards. */
   paginatedItems: (CompanyListItem & { rowNumber?: number })[];
-
-  /**
-   * ⬇️ NEW — Full filtered dataset (NOT paginated).
-   * Used for the stat cards so the counts reflect the entire
-   * filtered list, not just the current page.
-   */
   allFilteredItems: CompanyListItem[];
-
   columns: Column<CompanyListItem>[];
   loading: boolean;
   sortField: string;
@@ -46,6 +40,12 @@ interface SuperAdminViewProps {
   businessTypeOptions: string[];
   categoryOptions: string[];
   subCategoryOptions: string[];
+  /** NEW — backend Amharic labels keyed by English business_type */
+  businessTypeLabelsAm?: Record<string, string>;
+  /** NEW — backend Amharic labels keyed by English category_name */
+  categoryLabelsAm?: Record<string, string>;
+  /** NEW — backend Amharic labels keyed by English sub_category_name */
+  subCategoryLabelsAm?: Record<string, string>;
   onClearAll: () => void;
   pageSize: number;
   onPageSizeChange: (size: number) => void;
@@ -76,10 +76,16 @@ export default function SuperAdminView({
   businessTypeOptions,
   categoryOptions,
   subCategoryOptions,
+  businessTypeLabelsAm,
+  categoryLabelsAm,
+  subCategoryLabelsAm,
   onClearAll,
   pageSize,
   onPageSizeChange,
 }: SuperAdminViewProps) {
+  const { t } = useTranslation("company");
+  const { pick, isAmharic } = useLocalizedName();
+
   // ---- Mobile filter sheet ----
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tempBusinessType, setTempBusinessType] = useState(businessTypeFilter);
@@ -126,6 +132,48 @@ export default function SuperAdminView({
   };
 
   /* ──────────────────────────────────────────────────────────────
+     Amharic-aware label helpers
+     ────────────────────────────────────────────────────────────── */
+
+  /** Business type — priority: backend Amharic → static translation → title-case English */
+  const labelForBusinessType = (raw: string): string => {
+    const key = String(raw || "").toLowerCase().trim();
+    if (!key) return "";
+
+    const backendAm =
+      businessTypeLabelsAm?.[raw] ?? businessTypeLabelsAm?.[key];
+    const staticKey: Record<string, string> = {
+      brand: t("btBrand"),
+      factory: t("btFactory"),
+      service: t("btService"),
+      store: t("btStore"),
+      delivery: t("btDelivery"),
+      delivery_service: t("btDeliveryService"),
+      other: t("btOther"),
+    };
+
+    if (isAmharic) {
+      if (backendAm && backendAm.trim() !== "") return backendAm;
+      if (staticKey[key]) return staticKey[key];
+    }
+
+    return (
+      staticKey[key] ??
+      key.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    );
+  };
+
+  const categoryLabel = (name: string) => {
+    const am = categoryLabelsAm?.[name];
+    return pick(name, am);
+  };
+
+  const subCategoryLabel = (name: string) => {
+    const am = subCategoryLabelsAm?.[name];
+    return pick(name, am);
+  };
+
+  /* ──────────────────────────────────────────────────────────────
      Stats — computed from the FULL filtered list, not the page.
      ────────────────────────────────────────────────────────────── */
   const totalCompanies = allFilteredItems.length;
@@ -149,7 +197,7 @@ export default function SuperAdminView({
           isActive ? "bg-emerald-500" : "bg-red-500"
         }`}
       />
-      {isActive ? "Active" : "Inactive"}
+      {isActive ? t("cardStatusActive") : t("cardStatusInactive")}
     </span>
   );
 
@@ -163,7 +211,7 @@ export default function SuperAdminView({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
-                  Total Companies
+                  {t("statTotalCompanies")}
                 </p>
                 <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
                   {totalCompanies}
@@ -180,7 +228,7 @@ export default function SuperAdminView({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
-                  Active
+                  {t("statActive")}
                 </p>
                 <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
                   {activeCompanies}
@@ -197,7 +245,7 @@ export default function SuperAdminView({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
-                  Inactive
+                  {t("statInactive")}
                 </p>
                 <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
                   {inactiveCompanies}
@@ -214,7 +262,7 @@ export default function SuperAdminView({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.07em] text-secondary/50">
-                  Categories
+                  {t("statCategories")}
                 </p>
                 <p className="mt-1 text-2xl font-bold tracking-tight text-secondary">
                   {uniqueCategories}
@@ -234,7 +282,7 @@ export default function SuperAdminView({
           data={paginatedItems}
           columns={columns}
           loading={loading}
-          emptyMessage="No companies found"
+          emptyMessage={t("emptyTable")}
           onEdit={onEdit}
           onDelete={onDelete}
           sortField={sortField}
@@ -258,7 +306,7 @@ export default function SuperAdminView({
                 debounceMs={0}
                 loading={loading}
                 showClearButton={false}
-                placeholder="Search companies..."
+                placeholder={t("searchMobile")}
                 className="rounded-xl border-secondary shadow-sm focus:ring-2 focus:ring-secondary/30"
               />
               <button
@@ -284,9 +332,11 @@ export default function SuperAdminView({
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary/[0.06]">
               <ImageIcon size={28} className="text-secondary/40" />
             </div>
-            <h3 className="font-medium text-secondary">No companies found</h3>
+            <h3 className="font-medium text-secondary">
+              {t("emptyMobileTitle")}
+            </h3>
             <p className="mt-1 text-sm text-secondary/50">
-              Try adjusting your filters or add a new company
+              {t("emptyMobileDesc")}
             </p>
           </div>
         ) : (
@@ -327,7 +377,7 @@ export default function SuperAdminView({
                         <button
                           onClick={() => onEdit(company)}
                           className="rounded-xl p-2.5 text-secondary transition-all duration-200 hover:bg-secondary/[0.06] active:scale-95"
-                          aria-label="Edit company"
+                          aria-label={t("editCompany")}
                         >
                           <Edit className="h-4 w-4" strokeWidth={1.75} />
                         </button>
@@ -336,7 +386,7 @@ export default function SuperAdminView({
                         <button
                           onClick={() => onDelete(company)}
                           className="rounded-xl p-2.5 text-red-600 transition-all duration-200 hover:bg-red-50 active:scale-95"
-                          aria-label="Delete company"
+                          aria-label={t("deleteCompany")}
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </button>
@@ -346,24 +396,26 @@ export default function SuperAdminView({
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     {[
-                      { label: "Category", value: company.category_name || "—" },
                       {
-                        label: "Subcategory",
-                        value: company.sub_category_name || "—",
+                        label: t("cardCategory"),
+                        value: categoryLabel(company.category_name) || "—",
                       },
                       {
-                        label: "Business Type",
-                        value: (company.business_type || "—").toUpperCase(),
+                        label: t("cardSubcategory"),
+                        value:
+                          subCategoryLabel(company.sub_category_name) || "—",
                       },
                       {
-                        label: "Row Number",
+                        label: t("cardBusinessType"),
+                        value:
+                          labelForBusinessType(company.business_type) || "—",
+                      },
+                      {
+                        label: t("cardRowNumber"),
                         value: `#${company.rowNumber ?? "—"}`,
                       },
                     ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-xl  p-2.5"
-                      >
+                      <div key={item.label} className="rounded-xl p-2.5">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/80">
                           {item.label}
                         </p>
@@ -387,7 +439,7 @@ export default function SuperAdminView({
         <BottomSheet
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
-          title="Filters & Sort"
+          title={t("filtersSortTitle")}
           maxHeight="70vh"
           footer={
             <>
@@ -395,13 +447,13 @@ export default function SuperAdminView({
                 onClick={clearAll}
                 className="h-12 flex-1 rounded-2xl bg-secondary/[0.06] text-sm font-semibold text-secondary transition-all active:scale-[0.98]"
               >
-                Clear
+                {t("clearBtn")}
               </button>
               <button
                 onClick={applyFilters}
                 className="h-12 flex-1 rounded-2xl bg-secondary text-sm font-semibold text-white shadow-lg shadow-secondary/20 transition-all active:scale-[0.98]"
               >
-                Apply Filters
+                {t("applyFilters")}
               </button>
             </>
           }
@@ -409,14 +461,14 @@ export default function SuperAdminView({
           <div className="space-y-4 px-2">
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
-                Sort By
+                {t("sortByLabel")}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: "name|asc", label: "Name A-Z" },
-                  { value: "name|desc", label: "Name Z-A" },
-                  { value: "is_active|desc", label: "Active First" },
-                  { value: "is_featured|desc", label: "Featured First" },
+                  { value: "name|asc", label: t("sortNameAsc") },
+                  { value: "name|desc", label: t("sortNameDesc") },
+                  { value: "is_active|desc", label: t("sortActiveFirst") },
+                  { value: "is_featured|desc", label: t("sortFeaturedFirst") },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -438,27 +490,27 @@ export default function SuperAdminView({
             {/* Business Type */}
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
-                Business Type
+                {t("businessTypeLabel")}
               </label>
               {loading ? (
                 <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
-                  <span>Loading...</span>
+                  <span>{t("loadingText")}</span>
                 </div>
               ) : businessTypeOptions.length === 0 ? (
                 <p className="py-2 text-sm italic text-secondary/40">
-                  No types available
+                  {t("noTypes")}
                 </p>
               ) : (
                 <CustomSelect
                   value={tempBusinessType}
                   onChange={setTempBusinessType}
-                  placeholder="All types"
+                  placeholder={t("allTypes")}
                   options={[
-                    { value: "all", label: "All" },
+                    { value: "all", label: t("filterAll") },
                     ...businessTypeOptions.map((type) => ({
                       value: type,
-                      label: type.toUpperCase(),
+                      label: labelForBusinessType(type),
                     })),
                   ]}
                   className="w-full"
@@ -469,27 +521,27 @@ export default function SuperAdminView({
             {/* Category */}
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
-                Category
+                {t("categoryLabel")}
               </label>
               {loading ? (
                 <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
-                  <span>Loading...</span>
+                  <span>{t("loadingText")}</span>
                 </div>
               ) : categoryOptions.length === 0 ? (
                 <p className="py-2 text-sm italic text-secondary/40">
-                  No categories available
+                  {t("noCategories")}
                 </p>
               ) : (
                 <CustomSelect
                   value={tempCategory}
                   onChange={setTempCategory}
-                  placeholder="All categories"
+                  placeholder={t("allCategories")}
                   options={[
-                    { value: "all", label: "All" },
+                    { value: "all", label: t("filterAll") },
                     ...categoryOptions.map((cat) => ({
                       value: cat,
-                      label: cat,
+                      label: categoryLabel(cat),
                     })),
                   ]}
                   className="w-full"
@@ -500,27 +552,27 @@ export default function SuperAdminView({
             {/* Subcategory */}
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
-                Subcategory
+                {t("subcategoryLabel")}
               </label>
               {loading ? (
                 <div className="flex items-center gap-2 py-2 text-sm text-secondary/40">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-secondary border-t-transparent" />
-                  <span>Loading...</span>
+                  <span>{t("loadingText")}</span>
                 </div>
               ) : subCategoryOptions.length === 0 ? (
                 <p className="py-2 text-sm italic text-secondary/40">
-                  No subcategories available
+                  {t("noSubcategories")}
                 </p>
               ) : (
                 <CustomSelect
                   value={tempSubCategory}
                   onChange={setTempSubCategory}
-                  placeholder="All subcategories"
+                  placeholder={t("allSubcategories")}
                   options={[
-                    { value: "all", label: "All" },
+                    { value: "all", label: t("filterAll") },
                     ...subCategoryOptions.map((sub) => ({
                       value: sub,
-                      label: sub,
+                      label: subCategoryLabel(sub),
                     })),
                   ]}
                   className="w-full"

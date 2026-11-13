@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Eye, Package2 } from "lucide-react";
 import {
   getCategories,
@@ -24,12 +25,12 @@ import { useReadOnly } from "./AdminDashboard";
 import CategoryTable from "./category-management/CategoryTable";
 import CategoryFormModal from "./category-management/CategoryFormModal";
 import SortSheet from "../ui/SortSheet";
-// import MobileActionBar from "../ui/MobileActionBar";
 import type { SelectOption } from "../ui/CustomSelect";
 import PageHeader from "../ui/PageHeader";
 
 export default function CategoryManagement() {
-  const readOnly = useReadOnly(); // true for viewers, false otherwise
+  const { t } = useTranslation("category");
+  const readOnly = useReadOnly();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +71,7 @@ export default function CategoryManagement() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tempSort, setTempSort] = useState("name|asc");
 
-  // Filter categories client‑side
+  // Filter categories client-side
   const filteredCategories = useMemo(() => {
     if (!searchTerm.trim()) return categories;
     const term = searchTerm.toLowerCase();
@@ -83,14 +84,12 @@ export default function CategoryManagement() {
     );
   }, [categories, searchTerm]);
 
-  // ---- useSorting hook ----
   const { sortedItems, handleSort, sortField, sortOrder } = useSorting(
     filteredCategories,
     "name",
     "asc",
   );
 
-  // Sync tempSort when sheet opens
   useEffect(() => {
     if (sheetOpen) {
       setTempSort(`${sortField}|${sortOrder}`);
@@ -117,23 +116,6 @@ export default function CategoryManagement() {
     }
     setSheetOpen(false);
   };
-
-  // Current sort label for mobile button
-  // const sortLabel = useMemo(() => {
-  //   const val = `${sortField}|${sortOrder}`;
-  //   const labels: Record<string, string> = {
-  //     "name|asc": "Name A-Z",
-  //     "name|desc": "Name Z-A",
-  //     "order|asc": "Priority ↑",
-  //     "order|desc": "Priority ↓",
-  //     "company_count|desc": "Most Companies",
-  //     "company_count|asc": "Fewest Companies",
-  //   };
-  //   return labels[val] || "Sort";
-  // }, [sortField, sortOrder]);
-
-  // Active filter count (only search active – can be extended)
-  // const activeFilterCount = inputValue.trim() !== "" ? 1 : 0;
 
   const {
     paginatedItems,
@@ -162,7 +144,7 @@ export default function CategoryManagement() {
       const res = await getCategories();
       setCategories(res.data);
     } catch (err: any) {
-      setError(err.message || "Failed to load categories");
+      setError(err.message || t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -170,9 +152,9 @@ export default function CategoryManagement() {
 
   useEffect(() => {
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Only allow edit if not read‑only
   const handleEdit = useCallback(
     (cat: Category) => {
       if (readOnly) return;
@@ -203,11 +185,10 @@ export default function CategoryManagement() {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.name.trim()) errors.name = t("nameRequired");
     if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug))
-      errors.slug =
-        "Slug must contain only lowercase letters, numbers, and hyphens";
-    if (formData.order < 0) errors.order = "Order must be a positive number";
+      errors.slug = t("slugInvalid");
+    if (formData.order < 0) errors.order = t("orderPositive");
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -217,7 +198,6 @@ export default function CategoryManagement() {
     if (readOnly) return;
     if (!validateForm()) return;
 
-    // For edit mode, check if any data actually changed
     if (editingId) {
       const originalCategory = categories.find((c) => c.id === editingId);
       if (originalCategory) {
@@ -230,10 +210,10 @@ export default function CategoryManagement() {
             (formData.description || "") ||
           (originalCategory.order || 0) !== formData.order ||
           (originalCategory.is_active ?? true) !== formData.is_active ||
-          formData.icon !== null; // If new icon uploaded, consider as change
+          formData.icon !== null;
 
         if (!hasChanges) {
-          showToast("info", "No changes detected");
+          showToast("info", t("noChanges"));
           setModalOpen(false);
           resetForm();
           return;
@@ -255,16 +235,16 @@ export default function CategoryManagement() {
 
       if (editingId) {
         await updateCategory(formData.slug, fd);
-        showToast("success", "Category updated");
+        showToast("success", t("categoryUpdated"));
       } else {
         await createCategory(fd);
-        showToast("success", "Category created");
+        showToast("success", t("categoryCreated"));
       }
       setModalOpen(false);
       resetForm();
       fetchCategories();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Failed");
+      showToast("error", err.response?.data?.detail || t("saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -274,11 +254,10 @@ export default function CategoryManagement() {
     if (!deleteTarget || readOnly) return;
     try {
       await deleteCategory(deleteTarget.slug);
-      showToast("success", "Category deleted successfully");
+      showToast("success", t("categoryDeleted"));
       setDeleteTarget(null);
       fetchCategories();
     } catch (err: any) {
-      // If delete fails (category has related data), deactivate it instead
       if (
         err.response?.status === 400 ||
         err.response?.status === 409 ||
@@ -286,17 +265,17 @@ export default function CategoryManagement() {
       ) {
         try {
           await updateCategory(deleteTarget.slug, { is_active: false });
-          showToast("success", "Category deactivated (has related data)");
+          showToast("success", t("categoryDeactivated"));
           setDeleteTarget(null);
           fetchCategories();
         } catch (updateErr: any) {
           showToast(
             "error",
-            updateErr.response?.data?.detail || "Failed to deactivate category",
+            updateErr.response?.data?.detail || t("deactivateFailed"),
           );
         }
       } else {
-        showToast("error", err.response?.data?.detail || "Delete failed");
+        showToast("error", err.response?.data?.detail || t("deleteFailed"));
       }
     }
   };
@@ -319,14 +298,14 @@ export default function CategoryManagement() {
 
   const sortOptions: SelectOption[] = useMemo(
     () => [
-      { label: "Name (A-Z)", value: "name|asc" },
-      { label: "Name (Z-A)", value: "name|desc" },
-      { label: "Priority (Ascending)", value: "order|asc" },
-      { label: "Priority (Descending)", value: "order|desc" },
-      { label: "Most Companies", value: "company_count|desc" },
-      { label: "Fewest Companies", value: "company_count|asc" },
+      { label: t("sortNameAsc"), value: "name|asc" },
+      { label: t("sortNameDesc"), value: "name|desc" },
+      { label: t("sortPriorityAsc"), value: "order|asc" },
+      { label: t("sortPriorityDesc"), value: "order|desc" },
+      { label: t("sortMostCompanies"), value: "company_count|desc" },
+      { label: t("sortFewestCompanies"), value: "company_count|asc" },
     ],
-    [],
+    [t],
   );
 
   if (error) return <ErrorView error={error} onRetry={fetchCategories} />;
@@ -336,14 +315,14 @@ export default function CategoryManagement() {
       <Toast toast={toast} />
 
       <PageHeader
-        title="Categories"
-        description="Create and manage the categories used to organize companies and products."
-          icon={Package2}
+        title={t("pageTitle")}
+        description={t("pageDescription")}
+        icon={Package2}
         badge={
           readOnly ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
               <Eye className="h-3.5 w-3.5" />
-              View Only
+              {t("viewOnly")}
             </span>
           ) : undefined
         }
@@ -356,10 +335,10 @@ export default function CategoryManagement() {
                 setModalOpen(true);
               }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-              aria-label="Create Category"
+              aria-label={t("createCategory")}
             >
               <Plus className="h-4 w-4" />
-              <span>Create Category</span>
+              <span>{t("createCategory")}</span>
             </button>
           ) : undefined
         }
@@ -372,10 +351,10 @@ export default function CategoryManagement() {
                 setModalOpen(true);
               }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-              aria-label="Create Category"
+              aria-label={t("createCategory")}
             >
               <Plus className="h-4 w-4" />
-              <span>Create</span>
+              <span>{t("create")}</span>
             </button>
           ) : undefined
         }
@@ -384,41 +363,31 @@ export default function CategoryManagement() {
 
       <div className="mt-0">
         <CategoryTable
-        loading={loading}
-        readOnly={readOnly}
-        categoriesWithRowNumber={paginatedItemsWithRowNumber}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        sortField={sortField}
-        sortOrder={sortOrder}
-        onSort={handleSort}
-        pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        inputValue={inputValue}
-        onInputChange={handleInputChange}
-        sortOptions={sortOptions}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={goToPage}
-        sheetOpen={sheetOpen}
-        setSheetOpen={setSheetOpen}
-        setTempSort={setTempSort}
-        tempSort={tempSort}
-        applyMobileSort={applyMobileSort}
-        resetMobileSort={resetMobileSort}
-      />
+          loading={loading}
+          readOnly={readOnly}
+          categoriesWithRowNumber={paginatedItemsWithRowNumber}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          sortField={sortField}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          inputValue={inputValue}
+          onInputChange={handleInputChange}
+          sortOptions={sortOptions}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={goToPage}
+          sheetOpen={sheetOpen}
+          setSheetOpen={setSheetOpen}
+          setTempSort={setTempSort}
+          tempSort={tempSort}
+          applyMobileSort={applyMobileSort}
+          resetMobileSort={resetMobileSort}
+        />
       </div>
 
-      {/* Mobile sticky bottom bar (only sort, no filter button) */}
-      {/* <MobileActionBar
-        activeFilterCount={activeFilterCount}
-        sortLabel={sortLabel}
-        onOpenFilters={() => {}}
-        onOpenSort={() => setSheetOpen(true)}
-        showFilterButton={false}
-      /> */}
-
-      {/* Sort sheet */}
       <SortSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -429,12 +398,11 @@ export default function CategoryManagement() {
         onReset={resetMobileSort}
       />
 
-      {/* Modal – only rendered when not read‑only */}
       {!readOnly && (
         <CategoryFormModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          title={editingId ? "Edit Category" : "New Category"}
+          title={editingId ? t("editCategory") : t("newCategory")}
           onSubmit={handleSubmit}
           submitting={submitting}
           formData={formData}
@@ -447,12 +415,11 @@ export default function CategoryManagement() {
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         title={deleteTarget?.name || ""}
-        deleteTitle={"Delete Category"}
+        deleteTitle={t("deleteCategory")}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {/* Safe area padding for mobile filter bar */}
       <style>{`
         .safe-bottom {
           padding-bottom: env(safe-area-inset-bottom, 1rem);

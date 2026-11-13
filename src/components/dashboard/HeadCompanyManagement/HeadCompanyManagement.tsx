@@ -1,5 +1,6 @@
 // src/components/dashboard/HeadCompanyManagement/HeadCompanyManagement.tsx
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Building2, ImageIcon, Edit, Trash2 } from "lucide-react";
 import {
   getHeadCompanies,
@@ -40,6 +41,8 @@ const emptyForm: HeadCompanyFormData = {
 };
 
 export default function HeadCompanyManagement() {
+  const { t } = useTranslation("headcompany");
+
   const [headCompanies, setHeadCompanies] = useState<HeadCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +72,7 @@ export default function HeadCompanyManagement() {
       const data = res.data;
       setHeadCompanies(Array.isArray(data) ? data : (data.results ?? []));
     } catch (err: any) {
-      setError(err.message || "Failed to load head companies");
+      setError(err.message || t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -77,6 +80,7 @@ export default function HeadCompanyManagement() {
 
   useEffect(() => {
     fetchHeadCompanies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
@@ -118,7 +122,7 @@ export default function HeadCompanyManagement() {
 
   const validate = () => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.name.trim()) errors.name = t("nameRequired");
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -139,10 +143,10 @@ export default function HeadCompanyManagement() {
 
       if (editingSlug) {
         await updateHeadCompany(editingSlug, fd);
-        showToast("success", "Head company updated");
+        showToast("success", t("updatedSuccess"));
       } else {
         await createHeadCompany(fd);
-        showToast("success", "Head company created");
+        showToast("success", t("createdSuccess"));
       }
       setModalOpen(false);
       resetForm();
@@ -152,7 +156,7 @@ export default function HeadCompanyManagement() {
         "error",
         err.response?.data?.detail ||
           err.response?.data?.name?.[0] ||
-          "Operation failed",
+          t("operationFailed"),
       );
     } finally {
       setSubmitting(false);
@@ -163,12 +167,11 @@ export default function HeadCompanyManagement() {
     if (!deleteTarget) return;
     try {
       await deleteHeadCompany(deleteTarget.slug);
-      // Backend deactivates instead of deleting when branches still exist.
-      showToast("success", "Head company removed");
+      showToast("success", t("deletedSuccess"));
       setDeleteTarget(null);
       fetchHeadCompanies();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Delete failed");
+      showToast("error", err.response?.data?.detail || t("deleteFailed"));
     }
   };
 
@@ -178,13 +181,13 @@ export default function HeadCompanyManagement() {
     () => [
       {
         key: "rowNumber",
-        header: "No.",
+        header: t("colNo"),
         className: "whitespace-nowrap text-gray-500",
         render: (_head, index) => index + 1,
       },
       {
         key: "logo",
-        header: "Logo",
+        header: t("colLogo"),
         render: (head) =>
           head.logo ? (
             <img
@@ -200,7 +203,7 @@ export default function HeadCompanyManagement() {
       },
       {
         key: "name",
-        header: "Name",
+        header: t("colName"),
         className: "min-w-[140px] font-medium text-gray-900",
         render: (head) => (
           <div className="min-w-0">
@@ -217,12 +220,13 @@ export default function HeadCompanyManagement() {
       },
       {
         key: "slug",
-        header: "Slug",
-        className: "hidden whitespace-nowrap font-mono text-gray-500 sm:table-cell",
+        header: t("colSlug"),
+        className:
+          "hidden whitespace-nowrap font-mono text-gray-500 sm:table-cell",
       },
       {
         key: "branch_count",
-        header: "Branches",
+        header: t("colBranches"),
         className: "whitespace-nowrap",
         render: (head) => (
           <span className="inline-flex items-center gap-1 text-gray-600">
@@ -233,7 +237,7 @@ export default function HeadCompanyManagement() {
       },
       {
         key: "is_active",
-        header: "Active",
+        header: t("colActive"),
         className: "whitespace-nowrap",
         render: (head) => (
           <span
@@ -243,12 +247,12 @@ export default function HeadCompanyManagement() {
                 : "bg-red-100 text-red-800"
             }`}
           >
-            {head.is_active ? "Yes" : "No"}
+            {head.is_active ? t("yes") : t("no")}
           </span>
         ),
       },
     ],
-    [],
+    [t],
   );
 
   return (
@@ -256,8 +260,8 @@ export default function HeadCompanyManagement() {
       <Toast toast={toast} />
 
       <PageHeader
-        title="Head Companies"
-        description="Manage parent companies and the organizations grouped under them."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         icon={Building2}
         actions={
           <button
@@ -266,8 +270,8 @@ export default function HeadCompanyManagement() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create Head Company</span>
-            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">{t("createHeadCompany")}</span>
+            <span className="sm:hidden">{t("create")}</span>
           </button>
         }
         actionMobile={
@@ -277,8 +281,8 @@ export default function HeadCompanyManagement() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create Head Company</span>
-            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">{t("createHeadCompany")}</span>
+            <span className="sm:hidden">{t("create")}</span>
           </button>
         }
         loading={loading}
@@ -293,13 +297,13 @@ export default function HeadCompanyManagement() {
             debounceMs={0}
             loading={loading}
             showClearButton={false}
-            placeholder="Search head companies..."
+            placeholder={t("searchPlaceholder")}
             className="w-full"
           />
         </div>
       </div>
 
-      {/* Mobile card view (below md) */}
+      {/* Mobile card view */}
       <div className="block md:hidden">
         {loading ? (
           <MobileCardSkeleton count={3} metaLinePairs={2} showActions={true} />
@@ -309,12 +313,10 @@ export default function HeadCompanyManagement() {
               <ImageIcon className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">
-              No head companies found
+              {t("emptyTitle")}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              {searchTerm.trim()
-                ? "Try adjusting your search."
-                : "Create a new head company to get started."}
+              {searchTerm.trim() ? t("emptyFiltered") : t("emptyNoData")}
             </p>
           </div>
         ) : (
@@ -324,7 +326,6 @@ export default function HeadCompanyManagement() {
                 key={head.slug}
                 className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3"
               >
-                {/* Header row */}
                 <div className="flex items-center gap-3">
                   {head.logo ? (
                     <img
@@ -359,18 +360,17 @@ export default function HeadCompanyManagement() {
                         head.is_active ? "bg-emerald-500" : "bg-red-500"
                       }`}
                     ></span>
-                    {head.is_active ? "Active" : "Inactive"}
+                    {head.is_active ? t("statusActive") : t("statusInactive")}
                   </span>
                 </div>
 
-                {/* Meta grid */}
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                   <div>
-                    <span className="font-medium">Slug:</span>{" "}
+                    <span className="font-medium">{t("labelSlug")}</span>{" "}
                     <span className="font-mono">{head.slug}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Branches:</span>{" "}
+                    <span className="font-medium">{t("labelBranches")}</span>{" "}
                     <span className="inline-flex items-center gap-1">
                       <Building2 className="h-3 w-3 text-secondary" />
                       {head.branch_count ?? 0}
@@ -378,21 +378,20 @@ export default function HeadCompanyManagement() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => openEdit(head)}
                     className="flex-1 bg-secondary/10 text-secondary text-xs font-medium p-1 rounded-xl hover:bg-secondary/20 min-h-[32px]"
                   >
                     <Edit size={14} className="inline-block mr-1" />
-                    Edit
+                    {t("edit")}
                   </button>
                   <button
                     onClick={() => setDeleteTarget(head)}
                     className="flex-1 bg-red-50 text-red-600 text-xs font-medium p-1 rounded-xl hover:bg-red-100 min-h-[32px]"
                   >
                     <Trash2 size={14} className="inline-block mr-1" />
-                    Delete
+                    {t("delete")}
                   </button>
                 </div>
               </div>
@@ -408,7 +407,7 @@ export default function HeadCompanyManagement() {
           columns={columns}
           loading={loading}
           loadingRows={5}
-          emptyMessage="No head companies found"
+          emptyMessage={t("emptyTable")}
           onEdit={openEdit}
           onDelete={(head) => setDeleteTarget(head)}
           stickyColumns={3}
@@ -419,7 +418,7 @@ export default function HeadCompanyManagement() {
       <FormModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingSlug ? "Edit Head Company" : "New Head Company"}
+        title={editingSlug ? t("editHeadCompany") : t("newHeadCompany")}
         onSubmit={handleSubmit}
         submitting={submitting}
         maxWidth="lg"
@@ -428,16 +427,20 @@ export default function HeadCompanyManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                Name (English) <span className="text-red-500">*</span>
+                {t("nameEnglish")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. MOHA Soft Drinks"
+                placeholder={t("nameEnglishPlaceholder")}
                 value={formData.name}
                 onChange={(e) =>
                   setFormData((p) => ({ ...p, name: e.target.value }))
                 }
-                className={`w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary/20 min-h-[44px] ${formErrors.name ? "border-red-500 bg-red-50" : "border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"}`}
+                className={`w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary/20 min-h-[44px] ${
+                  formErrors.name
+                    ? "border-red-500 bg-red-50"
+                    : "border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
+                }`}
               />
               {formErrors.name && (
                 <p className="text-red-500 text-xs mt-1.5">{formErrors.name}</p>
@@ -445,11 +448,11 @@ export default function HeadCompanyManagement() {
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                Name (Amharic)
+                {t("nameAmharic")}
               </label>
               <input
                 type="text"
-                placeholder="e.g. ሞሐ"
+                placeholder={t("nameAmharicPlaceholder")}
                 value={formData.name_am}
                 onChange={(e) =>
                   setFormData((p) => ({ ...p, name_am: e.target.value }))
@@ -462,25 +465,27 @@ export default function HeadCompanyManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <DragDropImageUpload
-                label="Logo (Square)"
+                label={t("logoLabel")}
                 size="sm"
                 value={formData.logo}
                 onChange={(file) => setFormData((p) => ({ ...p, logo: file }))}
                 previewUrl={formData.logoPreview}
                 required={false}
               />
-              <p className="text-[10px] text-gray-400 mt-1">1:1 ratio</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t("logoHint")}</p>
             </div>
             <div>
               <DragDropImageUpload
-                label="Cover Image (Wide)"
+                label={t("coverLabel")}
                 value={formData.cover_image}
                 onChange={(file) =>
                   setFormData((p) => ({ ...p, cover_image: file }))
                 }
                 previewUrl={formData.coverPreview}
               />
-              <p className="text-[10px] text-gray-400 mt-1">16:9 ratio</p>
+              <p className="text-[10px] text-gray-400 mt-1">
+                {t("coverHint")}
+              </p>
             </div>
           </div>
 
@@ -498,7 +503,7 @@ export default function HeadCompanyManagement() {
               htmlFor="head_is_active"
               className="text-sm font-semibold text-gray-700 cursor-pointer"
             >
-              Active
+              {t("activeLabel")}
             </label>
           </div>
         </div>
@@ -507,7 +512,7 @@ export default function HeadCompanyManagement() {
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         title={deleteTarget?.name || ""}
-        deleteTitle={"Delete Head Company"}
+        deleteTitle={t("deleteHeadCompany")}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />

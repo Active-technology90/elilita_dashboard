@@ -1,4 +1,4 @@
-// src/components/admin/SuperAdminUsers.tsx
+// src/components/admin/UserManagement/SuperAdminUsers.tsx
 import React, {
   useState,
   useEffect,
@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Search,
   MoreVertical,
@@ -46,23 +47,10 @@ import { Toast } from "../../ui/Toast";
 import { CustomSelect } from "../../ui/CustomSelect";
 import BottomSheet from "../../ui/BottomSheet";
 import PageHeader from "../../ui/PageHeader";
-import { CreateCompanyUserModal, type VehicleType } from "../companyUser/CreateCompanyUserModal";
-
-// ============================================================
-// Role display labels — backend stores "staff", UI shows "Dispatcher"
-// ============================================================
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  staff: "Dispatcher",
-  viewer: "Viewer",
-  delivery: "Delivery",
-};
-
-const getRoleLabel = (role: string): string => {
-  if (!role) return "";
-  return ROLE_LABELS[role] ?? role.charAt(0).toUpperCase() + role.slice(1);
-};
+import {
+  CreateCompanyUserModal,
+  type VehicleType,
+} from "../companyUser/CreateCompanyUserModal";
 
 // ============================================================
 // Utility Functions
@@ -113,39 +101,6 @@ const isCreatedToday = (user: User): boolean => {
   return dateStr.startsWith(today);
 };
 
-const roleOptions = [
-  {
-    label: "All roles",
-    value: "all",
-    icon: <Users className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Admin",
-    value: "admin",
-    icon: <Shield className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Dispatcher",
-    value: "staff",
-    icon: <Users className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Viewer",
-    value: "viewer",
-    icon: <Eye className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Delivery",
-    value: "delivery",
-    icon: <Package className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "No company",
-    value: "no_company",
-    icon: <Briefcase className="h-4 w-4 text-secondary" />,
-  },
-];
-
 interface StatCardProps {
   title: string;
   value: number;
@@ -190,14 +145,52 @@ const UserFilters: React.FC<FiltersProps> = ({
   pageSize,
   setPageSize,
 }) => {
+  const { t } = useTranslation("users");
   const [sheetOpen, setSheetOpen] = useState(false);
+
   const pageSizeOptions = [
-    { label: "5 rows", value: "5" },
-    { label: "10 rows", value: "10" },
-    { label: "15 rows", value: "15" },
-    { label: "30 rows", value: "30" },
-    { label: "60 rows", value: "60" },
+    { label: t("pageSize5"), value: "5" },
+    { label: t("pageSize10"), value: "10" },
+    { label: t("pageSize15"), value: "15" },
+    { label: t("pageSize30"), value: "30" },
+    { label: t("pageSize60"), value: "60" },
   ];
+
+  const roleOptions = useMemo(
+    () => [
+      {
+        label: t("allRoles"),
+        value: "all",
+        icon: <Users className="h-4 w-4 text-secondary" />,
+      },
+      {
+        label: t("roleAdmin"),
+        value: "admin",
+        icon: <Shield className="h-4 w-4 text-secondary" />,
+      },
+      {
+        label: t("roleDispatcher"),
+        value: "staff",
+        icon: <Users className="h-4 w-4 text-secondary" />,
+      },
+      {
+        label: t("roleViewer"),
+        value: "viewer",
+        icon: <Eye className="h-4 w-4 text-secondary" />,
+      },
+      {
+        label: t("roleDelivery"),
+        value: "delivery",
+        icon: <Package className="h-4 w-4 text-secondary" />,
+      },
+      {
+        label: t("roleNoCompany"),
+        value: "no_company",
+        icon: <Briefcase className="h-4 w-4 text-secondary" />,
+      },
+    ],
+    [t],
+  );
 
   return (
     <>
@@ -208,7 +201,7 @@ const UserFilters: React.FC<FiltersProps> = ({
               <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search users, email, phone or company"
+                placeholder={t("searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-9 w-full rounded-lg border border-secondary/15 bg-white pl-9 pr-9 text-xs font-medium text-gray-900 outline-none placeholder:text-gray-400 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
@@ -217,7 +210,7 @@ const UserFilters: React.FC<FiltersProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
-                  aria-label="Clear search"
+                  aria-label={t("clearSearch")}
                   className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -230,7 +223,7 @@ const UserFilters: React.FC<FiltersProps> = ({
                 value={roleFilter}
                 onChange={setRoleFilter}
                 options={roleOptions}
-                placeholder="All roles"
+                placeholder={t("allRoles")}
                 className="h-9 text-xs"
               />
             </div>
@@ -240,7 +233,7 @@ const UserFilters: React.FC<FiltersProps> = ({
                 value={pageSize.toString()}
                 onChange={(val) => setPageSize(parseInt(val, 10))}
                 options={pageSizeOptions}
-                placeholder="10 rows"
+                placeholder={t("pageSize10")}
                 className="h-9 text-xs"
               />
             </div>
@@ -248,7 +241,7 @@ const UserFilters: React.FC<FiltersProps> = ({
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              aria-label="Filter users"
+              aria-label={t("filterUsers")}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-white text-secondary transition hover:bg-secondary/[0.05] md:hidden"
             >
               <Filter className="h-3.5 w-3.5" />
@@ -260,12 +253,10 @@ const UserFilters: React.FC<FiltersProps> = ({
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Filter users"
+        title={t("filterUsersTitle")}
       >
         <div className="space-y-3">
-          <p className="text-xs text-gray-500">
-            Choose a role to narrow the user list.
-          </p>
+          <p className="text-xs text-gray-500">{t("filterUsersDesc")}</p>
           <div className="grid grid-cols-2 gap-2">
             {roleOptions.map((opt) => (
               <button
@@ -316,6 +307,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   onRemove,
   onManageMemberships,
 }) => {
+  const { t } = useTranslation("users");
   const [open, setOpen] = useState(false);
   const [isAbove, setIsAbove] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -369,14 +361,14 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   };
 
   const menuItems = [
-    { label: "View profile", icon: Eye, action: () => onView(user) },
-    { label: "Edit user", icon: Edit, action: () => onEdit(user) },
+    { label: t("viewProfile"), icon: Eye, action: () => onView(user) },
+    { label: t("editUser"), icon: Edit, action: () => onEdit(user) },
     {
-      label: "Manage memberships",
+      label: t("manageMemberships"),
       icon: Building2,
       action: () => onManageMemberships(user),
     },
-    { label: "Remove user", icon: Trash2, action: () => onRemove(user) },
+    { label: t("removeUser"), icon: Trash2, action: () => onRemove(user) },
   ];
 
   return (
@@ -385,7 +377,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        aria-label={`Actions for ${user.username}`}
+        aria-label={t("actionsFor", { name: user.username })}
         aria-expanded={open}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-secondary/10 bg-white text-gray-500 transition hover:border-secondary/20 hover:bg-secondary/[0.05] hover:text-secondary focus:outline-none focus:ring-2 focus:ring-secondary/15"
       >
@@ -465,309 +457,353 @@ const UserTable: React.FC<UserTableProps> = ({
   handleRoleChangeFromTable,
   handleRemoveMembershipFromTable,
   ...actionProps
-}) => (
-  <div className="hidden overflow-x-auto lg:block">
-    <div className="overflow-visible rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-      <table className="w-full min-w-[1040px] table-fixed text-left">
-        <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
-          <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">
-            <th className="w-[220px] px-4 py-2.5">User</th>
-            <th className="w-[210px] px-4 py-2.5">Email</th>
-            <th className="w-[150px] px-4 py-2.5">Phone</th>
-            <th className="w-[120px] px-4 py-2.5">Joined</th>
-            <th className="w-[280px] px-4 py-2.5">Companies / roles</th>
-            <th className="w-[105px] px-4 py-2.5">Status</th>
-            <th className="w-[80px] px-4 py-2.5 text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-secondary/[0.08]">
-          {users.map((user) => (
-            <tr
-              key={user.id}
-              className="text-xs text-gray-700 transition hover:bg-secondary/[0.025]"
-            >
-              <td className="px-4 py-3 align-top">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-white">
-                    {user.profile_image ? (
-                      <img
-                        src={user.profile_image}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      getInitials(
-                        user.first_name,
-                        user.last_name,
-                        user.username,
-                      )
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <p className="truncate text-xs font-semibold text-gray-900">
-                        {user.first_name || user.username}
-                        {user.last_name && ` ${user.last_name}`}
-                      </p>
-                      {isCreatedToday(user) && (
-                        <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
-                          New
-                        </span>
+}) => {
+  const { t } = useTranslation("users");
+
+  const getRoleLabel = (role: string): string => {
+    if (!role) return "";
+    const map: Record<string, string> = {
+      owner: t("roleOwner"),
+      admin: t("roleAdmin"),
+      staff: t("roleDispatcher"),
+      viewer: t("roleViewer"),
+      delivery: t("roleDelivery"),
+    };
+    return map[role] ?? role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  return (
+    <div className="hidden overflow-x-auto lg:block">
+      <div className="overflow-visible rounded-xl border border-secondary/10 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <table className="w-full min-w-[1040px] table-fixed text-left">
+          <thead className="border-b border-secondary/10 bg-secondary/[0.035]">
+            <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+              <th className="w-[220px] px-4 py-2.5">{t("colUser")}</th>
+              <th className="w-[210px] px-4 py-2.5">{t("colEmail")}</th>
+              <th className="w-[150px] px-4 py-2.5">{t("colPhone")}</th>
+              <th className="w-[120px] px-4 py-2.5">{t("colJoined")}</th>
+              <th className="w-[280px] px-4 py-2.5">{t("colCompanies")}</th>
+              <th className="w-[105px] px-4 py-2.5">{t("colStatus")}</th>
+              <th className="w-[80px] px-4 py-2.5 text-right">
+                {t("colAction")}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-secondary/[0.08]">
+            {users.map((user) => (
+              <tr
+                key={user.id}
+                className="text-xs text-gray-700 transition hover:bg-secondary/[0.025]"
+              >
+                <td className="px-4 py-3 align-top">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-white">
+                      {user.profile_image ? (
+                        <img
+                          src={user.profile_image}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        getInitials(
+                          user.first_name,
+                          user.last_name,
+                          user.username,
+                        )
                       )}
                     </div>
-                    <p className="mt-0.5 truncate text-[10px] text-gray-500">
-                      @{user.username}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <p className="truncate text-xs font-semibold text-gray-900">
+                          {user.first_name || user.username}
+                          {user.last_name && ` ${user.last_name}`}
+                        </p>
+                        {isCreatedToday(user) && (
+                          <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
+                            {t("newBadge")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 truncate text-[10px] text-gray-500">
+                        @{user.username}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="px-4 py-3 align-top">
-                <p
-                  className="truncate font-medium text-gray-700"
-                  title={user.email}
-                >
-                  {user.email}
-                </p>
-              </td>
-              <td className="px-4 py-3 align-top font-medium text-gray-600">
-                {formatPhone(user.phone_number)}
-              </td>
-              <td className="px-4 py-3 align-top text-gray-500">
-                {formatDate(user)}
-              </td>
-              <td className="px-4 py-3 align-top">
-                {user.memberships.length > 0 ? (
-                  <div className="max-h-[116px] space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
-                    {user.memberships.map(
-                      (membership: Membership, index: number) => (
-                        <div
-                          key={`${membership.company_id}-${index}`}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] bg-white px-2 py-1.5"
-                        >
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
-                            <span className="truncate text-[10px] font-medium text-gray-700">
-                              {membership.company_name}
-                            </span>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-1">
-                            {editingRoleInTable ===
-                            `role-${user.id}-${membership.company_id}` ? (
-                              <select
-                                value={membership.role}
-                                onChange={(event) =>
-                                  handleRoleChangeFromTable(
-                                    membership,
-                                    event.target.value as UserRole,
-                                    user.id,
-                                  )
-                                }
-                                onBlur={() => {
-                                  setEditingRoleInTable(null);
-                                }}
-                                autoFocus
-                                className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-secondary/10"
-                              >
-                                {["admin", "staff", "viewer", "delivery"].map(
-                                  (role) => (
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <p
+                    className="truncate font-medium text-gray-700"
+                    title={user.email}
+                  >
+                    {user.email}
+                  </p>
+                </td>
+                <td className="px-4 py-3 align-top font-medium text-gray-600">
+                  {formatPhone(user.phone_number)}
+                </td>
+                <td className="px-4 py-3 align-top text-gray-500">
+                  {formatDate(user)}
+                </td>
+                <td className="px-4 py-3 align-top">
+                  {user.memberships.length > 0 ? (
+                    <div className="max-h-[116px] space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
+                      {user.memberships.map(
+                        (membership: Membership, index: number) => (
+                          <div
+                            key={`${membership.company_id}-${index}`}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] bg-white px-2 py-1.5"
+                          >
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
+                              <span className="truncate text-[10px] font-medium text-gray-700">
+                                {membership.company_name}
+                              </span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              {editingRoleInTable ===
+                              `role-${user.id}-${membership.company_id}` ? (
+                                <select
+                                  value={membership.role}
+                                  onChange={(event) =>
+                                    handleRoleChangeFromTable(
+                                      membership,
+                                      event.target.value as UserRole,
+                                      user.id,
+                                    )
+                                  }
+                                  onBlur={() => {
+                                    setEditingRoleInTable(null);
+                                  }}
+                                  autoFocus
+                                  className="rounded-md border border-secondary/20 bg-white px-1.5 py-1 text-[9px] font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-secondary/10"
+                                >
+                                  {[
+                                    "admin",
+                                    "staff",
+                                    "viewer",
+                                    "delivery",
+                                  ].map((role) => (
                                     <option key={role} value={role}>
                                       {getRoleLabel(role)}
                                     </option>
-                                  ),
-                                )}
-                              </select>
-                            ) : (
+                                  ))}
+                                </select>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingRoleInTable(
+                                      `role-${user.id}-${membership.company_id}`,
+                                    );
+                                  }}
+                                  className={`rounded-full px-2 py-0.5 text-[9px] font-semibold transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
+                                >
+                                  {getRoleLabel(membership.role)}
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setEditingRoleInTable(
-                                    `role-${user.id}-${membership.company_id}`,
-                                  );
-                                }}
-                                className={`rounded-full px-2 py-0.5 text-[9px] font-semibold transition hover:bg-secondary/[0.1] ${roleStyles[membership.role]}`}
+                                onClick={() =>
+                                  handleRemoveMembershipFromTable(
+                                    membership.company_id,
+                                    membership.company_name,
+                                    user.id,
+                                    user.first_name || user.username,
+                                  )
+                                }
+                                aria-label={`Remove ${membership.company_name}`}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                               >
-                                {getRoleLabel(membership.role)}
+                                <X className="h-3 w-3" />
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemoveMembershipFromTable(
-                                  membership.company_id,
-                                  membership.company_name,
-                                  user.id,
-                                  user.first_name || user.username,
-                                )
-                              }
-                              aria-label={`Remove ${membership.company_name}`}
-                              className="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                            </div>
                           </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-[10px] text-gray-400">
-                    No companies
-                  </span>
-                )}
-              </td>
-              <td className="px-4 py-3 align-top">
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
-                    user.is_active
-                      ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
-                      : "border-gray-200 bg-white text-gray-400"
-                  }`}
-                >
+                        ),
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-gray-400">
+                      {t("noCompanies")}
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3 align-top">
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-gray-300"}`}
-                  />
-                  {user.is_active ? "Active" : "Inactive"}
-                </span>
-              </td>
-              <td className="relative overflow-visible px-4 py-3 text-right align-top">
-                <ActionsDropdown user={user} {...actionProps} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
+                      user.is_active
+                        ? "border-secondary/15 bg-secondary/[0.07] text-secondary"
+                        : "border-gray-200 bg-white text-gray-400"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-secondary" : "bg-gray-300"}`}
+                    />
+                    {user.is_active ? t("statusActive") : t("statusInactive")}
+                  </span>
+                </td>
+                <td className="relative overflow-visible px-4 py-3 text-right align-top">
+                  <ActionsDropdown user={user} {...actionProps} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const UserMobileCards: React.FC<UserMobileCardsProps> = ({
   users,
   ...actionProps
-}) => (
-  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:hidden">
-    {users.map((user) => (
-      <article
-        key={user.id}
-        className="flex flex-col rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-bold text-white">
-              {user.profile_image ? (
-                <img
-                  src={user.profile_image}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                getInitials(user.first_name, user.last_name, user.username)
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <p className="truncate text-xs font-semibold text-gray-900">
-                  {user.first_name || user.username}
-                  {user.last_name && ` ${user.last_name}`}
-                </p>
-                {isCreatedToday(user) && (
-                  <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
-                    New
-                  </span>
+}) => {
+  const { t } = useTranslation("users");
+
+  const getRoleLabel = (role: string): string => {
+    if (!role) return "";
+    const map: Record<string, string> = {
+      owner: t("roleOwner"),
+      admin: t("roleAdmin"),
+      staff: t("roleDispatcher"),
+      viewer: t("roleViewer"),
+      delivery: t("roleDelivery"),
+    };
+    return map[role] ?? role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:hidden">
+      {users.map((user) => (
+        <article
+          key={user.id}
+          className="flex flex-col rounded-xl border border-secondary/10 bg-white p-3 shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-bold text-white">
+                {user.profile_image ? (
+                  <img
+                    src={user.profile_image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  getInitials(user.first_name, user.last_name, user.username)
                 )}
               </div>
-              <p className="mt-0.5 truncate text-[10px] text-gray-500">
-                {user.email}
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="truncate text-xs font-semibold text-gray-900">
+                    {user.first_name || user.username}
+                    {user.last_name && ` ${user.last_name}`}
+                  </p>
+                  {isCreatedToday(user) && (
+                    <span className="shrink-0 rounded-full border border-secondary/10 bg-secondary/[0.06] px-1.5 py-0.5 text-[9px] font-semibold text-secondary">
+                      {t("newBadge")}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-[10px] text-gray-500">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+            <ActionsDropdown user={user} {...actionProps} />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+            <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
+              <p className="font-medium text-gray-500">{t("colPhone")}</p>
+              <p className="mt-0.5 truncate font-semibold text-gray-700">
+                {formatPhone(user.phone_number)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
+              <p className="font-medium text-gray-500">{t("colJoined")}</p>
+              <p className="mt-0.5 truncate font-semibold text-gray-700">
+                {formatDate(user)}
               </p>
             </div>
           </div>
-          <ActionsDropdown user={user} {...actionProps} />
-        </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-          <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
-            <p className="font-medium text-gray-500">Phone</p>
-            <p className="mt-0.5 truncate font-semibold text-gray-700">
-              {formatPhone(user.phone_number)}
+          <div className="mt-3 flex-1">
+            <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+              {t("companiesLabel")}
             </p>
-          </div>
-          <div className="rounded-lg bg-secondary/[0.035] px-2.5 py-2">
-            <p className="font-medium text-gray-500">Joined</p>
-            <p className="mt-0.5 truncate font-semibold text-gray-700">
-              {formatDate(user)}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 flex-1">
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-gray-500">
-            Companies
-          </p>
-          {user.memberships.length > 0 ? (
-            <div className="max-h-24 space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
-              {user.memberships.map((membership: Membership, index: number) => (
-                <div
-                  key={`${membership.company_id}-${index}`}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] px-2 py-1.5"
-                >
-                  <span className="truncate text-[10px] font-medium text-gray-700">
-                    {membership.company_name}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${roleStyles[membership.role]}`}
-                  >
-                    {getRoleLabel(membership.role)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[10px] text-gray-400">
-              No companies assigned
-            </p>
-          )}
-        </div>
-
-        <div className="mt-3 border-t border-secondary/[0.08] pt-2.5">
-          <span
-            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${user.is_active ? "text-secondary" : "text-gray-400"}`}
-          >
-            {user.is_active ? (
-              <CheckCircle className="h-3.5 w-3.5" />
+            {user.memberships.length > 0 ? (
+              <div className="max-h-24 space-y-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-secondary/20 scrollbar-track-transparent">
+                {user.memberships.map(
+                  (membership: Membership, index: number) => (
+                    <div
+                      key={`${membership.company_id}-${index}`}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-secondary/[0.08] px-2 py-1.5"
+                    >
+                      <span className="truncate text-[10px] font-medium text-gray-700">
+                        {membership.company_name}
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${roleStyles[membership.role]}`}
+                      >
+                        {getRoleLabel(membership.role)}
+                      </span>
+                    </div>
+                  ),
+                )}
+              </div>
             ) : (
-              <Minus className="h-3.5 w-3.5" />
+              <p className="text-[10px] text-gray-400">
+                {t("noCompaniesAssigned")}
+              </p>
             )}
-            {user.is_active ? "Active" : "Inactive"}
-          </span>
-        </div>
-      </article>
-    ))}
-  </div>
-);
+          </div>
+
+          <div className="mt-3 border-t border-secondary/[0.08] pt-2.5">
+            <span
+              className={`inline-flex items-center gap-1.5 text-[10px] font-semibold ${
+                user.is_active ? "text-secondary" : "text-gray-400"
+              }`}
+            >
+              {user.is_active ? (
+                <CheckCircle className="h-3.5 w-3.5" />
+              ) : (
+                <Minus className="h-3.5 w-3.5" />
+              )}
+              {user.is_active ? t("statusActive") : t("statusInactive")}
+            </span>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+};
 
 interface EmptyStateProps {
   onReset: () => void;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ onReset }) => (
-  <div className="rounded-xl border border-secondary/10 bg-white px-4 py-14 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
-      <Users className="h-5 w-5" />
+const EmptyState: React.FC<EmptyStateProps> = ({ onReset }) => {
+  const { t } = useTranslation("users");
+  return (
+    <div className="rounded-xl border border-secondary/10 bg-white px-4 py-14 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
+        <Users className="h-5 w-5" />
+      </div>
+      <h3 className="mt-3 text-sm font-semibold text-gray-900">
+        {t("noUsersTitle")}
+      </h3>
+      <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
+        {t("noUsersDesc")}
+      </p>
+      <button
+        type="button"
+        onClick={onReset}
+        className="mt-4 h-9 rounded-lg bg-secondary px-4 text-xs font-semibold text-white transition hover:bg-secondary/90"
+      >
+        {t("resetFilters")}
+      </button>
     </div>
-    <h3 className="mt-3 text-sm font-semibold text-gray-900">
-      No users found
-    </h3>
-    <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-      Try a different search or role filter.
-    </p>
-    <button
-      type="button"
-      onClick={onReset}
-      className="mt-4 h-9 rounded-lg bg-secondary px-4 text-xs font-semibold text-white transition hover:bg-secondary/90"
-    >
-      Reset filters
-    </button>
-  </div>
-);
+  );
+};
 
 const SkeletonBar = ({ className = "" }: { className?: string }) => (
   <div className={`animate-pulse rounded bg-secondary/[0.08] ${className}`} />
@@ -861,9 +897,10 @@ const LoadingSkeleton: React.FC = () => (
 );
 
 // ============================================================
-// Main Component: SuperAdminUsers
+// Main Component
 // ============================================================
 const SuperAdminUsers: React.FC = () => {
+  const { t } = useTranslation("users");
   const { toast, showToast } = useToast();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -897,7 +934,6 @@ const SuperAdminUsers: React.FC = () => {
   const [isRemovingMembership, setIsRemovingMembership] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // ✅ NEW: state for create & edit flows
   const [creatingUser, setCreatingUser] = useState(false);
   const [createUserServerErrors, setCreateUserServerErrors] = useState<
     Record<string, string | string[]>
@@ -907,9 +943,6 @@ const SuperAdminUsers: React.FC = () => {
     Record<string, string | string[]>
   >({});
 
-  console.log('upda',updatingUser)
-  console.log('upda',updateUserServerErrors)
-  
   const fetchAllUsers = useCallback(async (): Promise<User[]> => {
     let page = 1;
     let all: User[] = [];
@@ -930,13 +963,13 @@ const SuperAdminUsers: React.FC = () => {
         const users = await fetchAllUsers();
         setAllUsers(users);
       } catch (err: any) {
-        setError(err.message || "Failed to fetch users");
+        setError(err.message || t("fetchUsersFailed"));
       } finally {
         setLoading(false);
       }
     };
     loadUsers();
-  }, [fetchAllUsers]);
+  }, [fetchAllUsers, t]);
 
   useEffect(() => {
     if (managingUser && allUsers.length) {
@@ -1055,11 +1088,11 @@ const SuperAdminUsers: React.FC = () => {
     try {
       await updateUser(editingUser.id, updatedData);
       await refreshAllUsers();
-      showToast("success", "User updated successfully");
+      showToast("success", t("userUpdated"));
       setIsEditModalOpen(false);
     } catch (err: any) {
       const backendErrors = err?.response?.data;
-      let message = err.message || "Failed to update user";
+      let message = err.message || t("userUpdateFailed");
       if (backendErrors && typeof backendErrors === "object") {
         setUpdateUserServerErrors(backendErrors);
         message = Object.entries(backendErrors)
@@ -1073,7 +1106,6 @@ const SuperAdminUsers: React.FC = () => {
     }
   };
 
-  // ✅ NEW: create user handler
   const handleCreateUser = async (data: {
     first_name: string;
     last_name: string;
@@ -1104,7 +1136,7 @@ const SuperAdminUsers: React.FC = () => {
 
       await registerUser(payload as any);
 
-      showToast("success", "User created successfully");
+      showToast("success", t("userCreated"));
       setIsCreateModalOpen(false);
       await refreshAllUsers();
     } catch (err: any) {
@@ -1112,7 +1144,7 @@ const SuperAdminUsers: React.FC = () => {
       if (backendErrors && typeof backendErrors === "object") {
         setCreateUserServerErrors(backendErrors);
       } else {
-        showToast("error", err?.message || "Failed to create user");
+        showToast("error", err?.message || t("userCreateFailed"));
       }
     } finally {
       setCreatingUser(false);
@@ -1129,6 +1161,17 @@ const SuperAdminUsers: React.FC = () => {
     setIsMembershipModalOpen(true);
   };
 
+  const getRoleLabel = (role: string): string => {
+    const map: Record<string, string> = {
+      owner: t("roleOwner"),
+      admin: t("roleAdmin"),
+      staff: t("roleDispatcher"),
+      viewer: t("roleViewer"),
+      delivery: t("roleDelivery"),
+    };
+    return map[role] ?? role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
   const handleRoleChangeFromTable = async (
     membership: Membership,
     newRole: UserRole,
@@ -1137,10 +1180,10 @@ const SuperAdminUsers: React.FC = () => {
     try {
       await updateUserCompanyRole(membership.company_slug, userId, newRole);
       await refreshAllUsers();
-      showToast("success", `Role updated to ${getRoleLabel(newRole)}`);
+      showToast("success", t("roleUpdated", { role: getRoleLabel(newRole) }));
       setEditingRoleInTable(null);
     } catch (err: any) {
-      showToast("error", err.message || "Failed to update role");
+      showToast("error", err.message || t("roleUpdateFailed"));
     }
   };
 
@@ -1164,7 +1207,7 @@ const SuperAdminUsers: React.FC = () => {
     try {
       const userToRemove = allUsers.find((u) => u.id === userId);
       if (!userToRemove) {
-        showToast("error", "User not found");
+        showToast("error", t("userNotFound"));
         setIsRemovingMembership(false);
         return;
       }
@@ -1173,18 +1216,21 @@ const SuperAdminUsers: React.FC = () => {
         (m) => m.company_id === companyId,
       );
       if (!membership) {
-        showToast("error", "Membership not found");
+        showToast("error", t("membershipNotFound"));
         setIsRemovingMembership(false);
         return;
       }
 
       await removeUserFromCompany(membership.company_slug, userId);
       await refreshAllUsers();
-      showToast("success", `Removed ${userName} from ${companyName}`);
+      showToast(
+        "success",
+        t("userRemoved", { user: userName, company: companyName }),
+      );
       setRemoveMembershipModalOpen(false);
       setRemoveMembershipData(null);
     } catch (err: any) {
-      showToast("error", err.message || "Failed to remove company");
+      showToast("error", err.message || t("removeFailed"));
     } finally {
       setIsRemovingMembership(false);
     }
@@ -1204,7 +1250,7 @@ const SuperAdminUsers: React.FC = () => {
           <Users className="h-5 w-5" />
         </div>
         <p className="mt-3 text-sm font-semibold text-gray-900">
-          Could not load users
+          {t("couldNotLoadUsers")}
         </p>
         <p className="mt-1 max-w-sm text-xs text-gray-500">{error}</p>
         <button
@@ -1212,7 +1258,7 @@ const SuperAdminUsers: React.FC = () => {
           onClick={handleRefresh}
           className="mt-4 h-9 rounded-lg bg-secondary px-4 text-xs font-semibold text-white transition hover:bg-secondary/90"
         >
-          Retry
+          {t("retry")}
         </button>
       </div>
     );
@@ -1222,12 +1268,12 @@ const SuperAdminUsers: React.FC = () => {
     <>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="User Management"
-          description="Manage users, roles, and company access."
+          title={t("pageTitle")}
+          description={t("pageDescription")}
           icon={Users}
           badge={
             <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary sm:text-xs">
-              {allUsers.length} users
+              {t("usersCount", { count: allUsers.length })}
             </span>
           }
           actions={
@@ -1237,7 +1283,7 @@ const SuperAdminUsers: React.FC = () => {
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
             >
               <UserPlus className="h-4 w-4" />
-              Create user
+              {t("createUser")}
             </button>
           }
           actionMobile={
@@ -1247,7 +1293,7 @@ const SuperAdminUsers: React.FC = () => {
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
             >
               <UserPlus className="h-4 w-4" />
-              Create
+              {t("createUserShort")}
             </button>
           }
           className="mb-5 sm:mb-6"
@@ -1255,27 +1301,27 @@ const SuperAdminUsers: React.FC = () => {
 
         <section className="mb-6 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
           <StatCard
-            title="Admins"
+            title={t("statAdmins")}
             value={stats.totalAdmins}
             icon={<Shield className="h-4 w-4" />}
           />
           <StatCard
-            title="Dispatchers"
+            title={t("statDispatchers")}
             value={stats.totalStaff}
             icon={<UserCheck className="h-4 w-4" />}
           />
           <StatCard
-            title="Viewers"
+            title={t("statViewers")}
             value={stats.totalViewers}
             icon={<UserMinus className="h-4 w-4" />}
           />
           <StatCard
-            title="Delivery"
+            title={t("statDelivery")}
             value={stats.totalDelivery}
             icon={<Package className="h-4 w-4" />}
           />
           <StatCard
-            title="No company"
+            title={t("statNoCompany")}
             value={stats.noCompany}
             icon={<Briefcase className="h-4 w-4" />}
           />
@@ -1360,8 +1406,11 @@ const SuperAdminUsers: React.FC = () => {
           setRemoveMembershipData(null);
         }}
         onConfirm={confirmRemoveMembership}
-        title="Remove Membership"
-        message={`Are you sure you want to remove ${removeMembershipData?.companyName} from ${removeMembershipData?.userName}? This will revoke all access to that company.`}
+        title={t("removeMembershipTitle")}
+        message={t("removeMembershipConfirm", {
+          company: removeMembershipData?.companyName || "",
+          user: removeMembershipData?.userName || "",
+        })}
         loading={isRemovingMembership}
       />
 
@@ -1385,20 +1434,20 @@ const SuperAdminUsers: React.FC = () => {
           try {
             await updateUserCompanyRole(companySlug, userId, role);
             await refreshAllUsers();
-            showToast("success", "Role updated successfully");
+            showToast("success", t("roleUpdatedSuccess"));
           } catch (err: any) {
-            showToast("error", "Failed to update role");
+            showToast("error", t("roleUpdateFailed"));
           }
         }}
         onRemoveMembership={async (userId, companyId) => {
           try {
             const company = availableCompanies.find((c) => c.id === companyId);
-            if (!company) throw new Error("Company not found");
+            if (!company) throw new Error(t("companyNotFoundGeneric"));
             await removeUserFromCompany(company.slug, userId);
             await refreshAllUsers();
-            showToast("success", "User removed from company");
+            showToast("success", t("membershipRemoved"));
           } catch (err: any) {
-            showToast("error", err.message || "Failed to remove user");
+            showToast("error", err.message || t("membershipRemoveFailed"));
           }
         }}
         onRefresh={refreshAllUsers}

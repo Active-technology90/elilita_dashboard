@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   Category,
   SubCategory,
@@ -29,10 +30,9 @@ import {
   Palette,
 } from "lucide-react";
 import { CustomSelect } from "../../ui/CustomSelect";
-import MealCategoryIcon, {
-  MEAL_ICON_OPTIONS,
-} from "../../ui/MealCategoryIcon";
+import MealCategoryIcon, { MEAL_ICON_OPTIONS } from "../../ui/MealCategoryIcon";
 import TermsAndConditionsModal from "../../ui/TermsAndConditionsModal";
+
 /* -------------------------------------------------------------------------- */
 /*                                  TYPES                                     */
 /* -------------------------------------------------------------------------- */
@@ -61,17 +61,13 @@ export interface CompanyFormData {
   logo: File | null;
   cover_image: File | null;
   chapa_sub_account_id: string;
-  // theme_primary: string;   // COMMENTED OUT
-  // theme_dark: string;      // COMMENTED OUT
-  // theme_light: string;     // COMMENTED OUT
   tin_number: string;
   vat_registration_number: string;
-  fan_number: string; // Optional 16-digit FAN number
-  tax_type: string; // Always "none" (No Tax)
-  show_vat: boolean; // Show 15% VAT Breakdown to Customers
-  // tax_comment: string;     // COMMENTED OUT
+  fan_number: string;
+  tax_type: string;
+  show_vat: boolean;
   license: File | string | null;
-  moa_file: File | string | null; // MOA document
+  moa_file: File | string | null;
   contact_phone: string;
   contact_email: string;
   terms_signatory_name?: string;
@@ -120,7 +116,7 @@ export interface PhoneValidationResult {
 
 export function validateEthiopianPhone(raw: string): PhoneValidationResult {
   if (!raw || !raw.trim()) {
-    return { valid: false, error: "Phone number is required" };
+    return { valid: false, error: "phoneRequired" };
   }
 
   const cleaned = raw.replace(/[\s\-()]/g, "");
@@ -128,8 +124,7 @@ export function validateEthiopianPhone(raw: string): PhoneValidationResult {
   if (!ETHIOPIAN_PHONE_REGEX.test(cleaned)) {
     return {
       valid: false,
-      error:
-        "Enter a valid Ethiopian phone number (e.g. 0911234567, 0711234567, or +251911234567)",
+      error: "phoneInvalidFormat",
     };
   }
 
@@ -149,8 +144,8 @@ export function validateEthiopianPhone(raw: string): PhoneValidationResult {
     operatorDigit === "9"
       ? "ethio_telecom"
       : operatorDigit === "7"
-      ? "safaricom"
-      : "unknown";
+        ? "safaricom"
+        : "unknown";
 
   return { valid: true, normalized, operator };
 }
@@ -167,24 +162,6 @@ const DEFAULT_MEAL_CATEGORIES: MealPeriodCategory[] = [
   { id: "lunch", name: "Lunch", name_am: "ምሳ", icon: "sun" },
   { id: "dinner", name: "Dinner", name_am: "እራት", icon: "moon" },
 ];
-
-const BUSINESS_TYPE_OPTIONS = [
-  { value: "", label: "Select Business Type" },
-  { value: "brand", label: "Brand" },
-  { value: "store", label: "Store" },
-  { value: "factory", label: "Factory" },
-  { value: "service", label: "Service Provider" },
-  { value: "delivery_service", label: "Delivery Service" },
-  { value: "other", label: "Other" },
-];
-
-// COMMENTED OUT — Tax Type options (always "No Tax" now)
-// const TAX_TYPE_OPTIONS = [
-//   { value: "none", label: "No Tax" },
-//   { value: "vat", label: "VAT (15%)" },
-//   { value: "turnover_goods", label: "Turnover Tax - Goods (2%)" },
-//   { value: "turnover_services", label: "Turnover Tax - Services (10%)" },
-// ];
 
 /* -------------------------------------------------------------------------- */
 /*                                 COMPONENT                                  */
@@ -216,6 +193,8 @@ export default function CompanyForm({
   onSubmit,
   onClose: _onClose,
 }: CompanyFormProps) {
+  const { t } = useTranslation("company");
+
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatNameAm, setNewCatNameAm] = useState("");
@@ -249,7 +228,6 @@ export default function CompanyForm({
   const effectiveIsSuperAdmin = isSuperAdmin || canManageActiveStatus;
   const showVerificationBlock = effectiveIsSuperAdmin && !!editingSlug;
 
-  // Terms agreement is strictly required only when marketing registers a new company
   const isTermsRequired = isMarketing && !editingSlug;
   const blockedByTerms =
     isTermsRequired &&
@@ -257,23 +235,51 @@ export default function CompanyForm({
 
   /* ------------------------------ Option lists ---------------------------- */
 
-  const headCompanyOptions = [
-    { value: "", label: "Select Head Company (Optional)" },
-    ...headCompanies.map((hc) => ({ value: String(hc.id), label: hc.name })),
-  ];
+  const BUSINESS_TYPE_OPTIONS = useMemo(
+    () => [
+      { value: "", label: t("businessTypePlaceholder") },
+      { value: "brand", label: t("btBrand") },
+      { value: "store", label: t("btStore") },
+      { value: "factory", label: t("btFactory") },
+      { value: "service", label: t("btService") },
+      { value: "delivery_service", label: t("btDelivery") },
+      { value: "other", label: t("btOther") },
+    ],
+    [t],
+  );
 
-  const categoryOptions = [
-    { value: "0", label: "Select Category" },
-    ...categories.map((cat) => ({ value: String(cat.id), label: cat.name })),
-  ];
+  const headCompanyOptions = useMemo(
+    () => [
+      { value: "", label: t("headCompanyPlaceholder") },
+      ...headCompanies.map((hc) => ({
+        value: String(hc.id),
+        label: hc.name,
+      })),
+    ],
+    [headCompanies, t],
+  );
 
-  const subcategoryOptions = [
-    { value: "0", label: "Select Subcategory" },
-    ...filteredSubcategories.map((sub) => ({
-      value: String(sub.id),
-      label: sub.name,
-    })),
-  ];
+  const categoryOptions = useMemo(
+    () => [
+      { value: "0", label: t("categoryPlaceholder") },
+      ...categories.map((cat) => ({
+        value: String(cat.id),
+        label: cat.name,
+      })),
+    ],
+    [categories, t],
+  );
+
+  const subcategoryOptions = useMemo(
+    () => [
+      { value: "0", label: t("subcategoryPlaceholder") },
+      ...filteredSubcategories.map((sub) => ({
+        value: String(sub.id),
+        label: sub.name,
+      })),
+    ],
+    [filteredSubcategories, t],
+  );
 
   /* ------------------------------- Helpers -------------------------------- */
 
@@ -320,7 +326,10 @@ export default function CompanyForm({
   };
 
   const handleResetCategories = () => {
-    setFormData((prev) => ({ ...prev, meal_periods: DEFAULT_MEAL_CATEGORIES }));
+    setFormData((prev) => ({
+      ...prev,
+      meal_periods: DEFAULT_MEAL_CATEGORIES,
+    }));
   };
 
   /* ------------------------- Phone input handlers ------------------------- */
@@ -347,7 +356,7 @@ export default function CompanyForm({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert("File must be smaller than 5MB");
+      alert(t("logoHint1"));
       e.target.value = "";
       return;
     }
@@ -368,7 +377,7 @@ export default function CompanyForm({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      alert("File must be smaller than 10MB");
+      alert(t("coverHint1"));
       e.target.value = "";
       return;
     }
@@ -391,30 +400,28 @@ export default function CompanyForm({
 
   const renderStep1 = () => (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
           <Building2 className="h-5 w-5 text-secondary" />
         </div>
         <div>
           <h3 className="text-sm font-bold text-gray-900">
-            Business Information
+            {t("businessInformation")}
           </h3>
           <p className="text-xs text-gray-500">
-            Core company details and classification
+            {t("businessInformationDesc")}
           </p>
         </div>
       </div>
 
-      {/* Name / Name (Amharic) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className={labelClassName}>
-            Company Name <span className="text-red-500">*</span>
+            {t("companyName")} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            placeholder="Enter company name"
+            placeholder={t("companyNamePlaceholder")}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             disabled={!isEditingActive}
@@ -425,10 +432,10 @@ export default function CompanyForm({
           )}
         </div>
         <div>
-          <label className={labelClassName}>Company Name (Amharic)</label>
+          <label className={labelClassName}>{t("companyNameAm")}</label>
           <input
             type="text"
-            placeholder="Enter company name in Amharic"
+            placeholder={t("companyNameAmPlaceholder")}
             value={formData.name_am}
             onChange={(e) =>
               setFormData({ ...formData, name_am: e.target.value })
@@ -439,15 +446,14 @@ export default function CompanyForm({
         </div>
       </div>
 
-      {/* Slug / Business Type */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className={labelClassName}>
-            Slug <span className="text-red-500">*</span>
+            {t("slug")} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            placeholder="e.g., my-company-slug"
+            placeholder={t("slugPlaceholder")}
             value={formData.slug}
             onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
             disabled={!!editingSlug || !isEditingActive}
@@ -459,7 +465,7 @@ export default function CompanyForm({
         </div>
         <div>
           <label className={labelClassName}>
-            Business Type <span className="text-red-500">*</span>
+            {t("businessType")} <span className="text-red-500">*</span>
           </label>
           <CustomSelect
             value={formData.business_type}
@@ -467,7 +473,7 @@ export default function CompanyForm({
               setFormData({ ...formData, business_type: value })
             }
             options={BUSINESS_TYPE_OPTIONS}
-            placeholder="Select Business Type"
+            placeholder={t("businessTypePlaceholder")}
             className={formErrors.business_type ? "border-red-500" : ""}
           />
           {formErrors.business_type && (
@@ -478,9 +484,8 @@ export default function CompanyForm({
         </div>
       </div>
 
-      {/* Head Company */}
       <div>
-        <label className={labelClassName}>Head Company (Optional)</label>
+        <label className={labelClassName}>{t("headCompanyOptional")}</label>
         <CustomSelect
           value={formData.head_company ? String(formData.head_company) : ""}
           onChange={(value) =>
@@ -490,15 +495,14 @@ export default function CompanyForm({
             })
           }
           options={headCompanyOptions}
-          placeholder="Select Head Company (Optional)"
+          placeholder={t("headCompanyPlaceholder")}
         />
       </div>
 
-      {/* Category / Subcategory */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className={labelClassName}>
-            Category <span className="text-red-500">*</span>
+            {t("categoryRequired")} <span className="text-red-500">*</span>
           </label>
           <CustomSelect
             value={String(formData.category)}
@@ -507,7 +511,7 @@ export default function CompanyForm({
               setFormData({ ...formData, category: catId, sub_category: 0 });
             }}
             options={categoryOptions}
-            placeholder="Select Category"
+            placeholder={t("categoryPlaceholder")}
             className={formErrors.category ? "border-red-500" : ""}
           />
           {formErrors.category && (
@@ -516,7 +520,7 @@ export default function CompanyForm({
         </div>
         <div>
           <label className={labelClassName}>
-            Subcategory <span className="text-red-500">*</span>
+            {t("subcategoryRequired")} <span className="text-red-500">*</span>
           </label>
           <CustomSelect
             value={String(formData.sub_category)}
@@ -524,7 +528,7 @@ export default function CompanyForm({
               setFormData({ ...formData, sub_category: Number(value) })
             }
             options={subcategoryOptions}
-            placeholder="Select Subcategory"
+            placeholder={t("subcategoryPlaceholder")}
             className={formErrors.sub_category ? "border-red-500" : ""}
           />
           {formErrors.sub_category && (
@@ -535,12 +539,11 @@ export default function CompanyForm({
         </div>
       </div>
 
-      {/* Description (English / Amharic) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className={labelClassName}>Description</label>
+          <label className={labelClassName}>{t("description")}</label>
           <textarea
-            placeholder="Enter company description"
+            placeholder={t("descriptionPlaceholder")}
             value={formData.description}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
@@ -551,9 +554,9 @@ export default function CompanyForm({
           />
         </div>
         <div>
-          <label className={labelClassName}>Description (Amharic)</label>
+          <label className={labelClassName}>{t("descriptionAm")}</label>
           <textarea
-            placeholder="Enter company description in Amharic"
+            placeholder={t("descriptionAmPlaceholder")}
             value={formData.description_am}
             onChange={(e) =>
               setFormData({ ...formData, description_am: e.target.value })
@@ -565,13 +568,11 @@ export default function CompanyForm({
         </div>
       </div>
 
-      {/* Status toggles — Is Active only shown to super admin */}
       <div
         className={`grid grid-cols-1 gap-4 pt-2 ${
           canManageActiveStatus ? "md:grid-cols-3" : "md:grid-cols-2"
         }`}
       >
-        {/* Is Active — super admin only */}
         {canManageActiveStatus && (
           <div
             className={`flex items-center gap-3 rounded-xl border p-3 ${
@@ -603,19 +604,20 @@ export default function CompanyForm({
               />
             </label>
             <div>
-              <p className="text-sm font-medium text-gray-900">Is Active</p>
+              <p className="text-sm font-medium text-gray-900">
+                {t("isActive")}
+              </p>
               <p className="text-xs text-gray-500">
                 {!isCompanyVerified
-                  ? "Verify the company (Step 4) before activation"
+                  ? t("isActiveVerifyHint")
                   : formData.is_active
-                  ? "Visible to customers"
-                  : "Hidden from customers"}
+                    ? t("isActiveVisible")
+                    : t("isActiveHidden")}
               </p>
             </div>
           </div>
         )}
 
-        {/* Table Service */}
         <div
           className={`flex items-center gap-3 rounded-xl border p-3 ${
             formData.supports_table_service
@@ -650,14 +652,17 @@ export default function CompanyForm({
             />
           </label>
           <div>
-            <p className="text-sm font-medium text-gray-900">Table Service</p>
+            <p className="text-sm font-medium text-gray-900">
+              {t("tableService")}
+            </p>
             <p className="text-xs text-gray-500">
-              {formData.supports_table_service ? "Available" : "Not available"}
+              {formData.supports_table_service
+                ? t("tableServiceAvailable")
+                : t("tableServiceUnavailable")}
             </p>
           </div>
         </div>
 
-        {/* Show Order Queue — only when table service is on */}
         {formData.supports_table_service && (
           <div
             className={`flex items-center gap-3 rounded-xl border p-3 transition-all ${
@@ -687,19 +692,18 @@ export default function CompanyForm({
             </label>
             <div>
               <p className="text-sm font-medium text-gray-900">
-                Show Order Queue
+                {t("showOrderQueue")}
               </p>
               <p className="text-xs text-gray-500">
                 {formData.show_order_queue
-                  ? "Live kitchen queue visible to customers"
-                  : "Hidden from customers"}
+                  ? t("showOrderQueueVisible")
+                  : t("showOrderQueueHidden")}
               </p>
             </div>
           </div>
         )}
       </div>
 
-      {/* Meal periods card */}
       {formData.supports_table_service && (
         <div className="space-y-5 rounded-2xl border border-secondary/20 bg-gradient-to-b from-secondary/[0.02] to-white p-5 shadow-xs">
           <div className="flex flex-col justify-between gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center">
@@ -710,17 +714,17 @@ export default function CompanyForm({
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-bold text-gray-900">
-                    Meal Periods &amp; Menu Schedule
+                    {t("mealPeriodsTitle")}
                   </h4>
                   <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-semibold text-secondary">
                     {activeCategories.length}{" "}
-                    {activeCategories.length === 1 ? "Period" : "Periods"}
+                    {activeCategories.length === 1
+                      ? t("mealPeriodPeriod")
+                      : t("mealPeriodPeriods")}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Define dining shifts and categories (e.g. Breakfast, Lunch,
-                  Dinner, Late Night) so customers can filter products on the
-                  mobile menu.
+                  {t("mealPeriodsDesc")}
                 </p>
               </div>
             </div>
@@ -732,20 +736,20 @@ export default function CompanyForm({
                 className="inline-flex items-center gap-1.5 self-start rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-xs transition-all hover:border-secondary/30 hover:text-secondary sm:self-auto"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset to Defaults
+                {t("resetToDefaults")}
               </button>
             )}
           </div>
 
           <div>
             <label className="mb-2.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Configured Meal Categories
+              {t("configuredMealCategories")}
             </label>
 
             {activeCategories.length === 0 ? (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center">
                 <p className="text-xs font-medium text-gray-500">
-                  No meal categories configured yet.
+                  {t("noMealCategories")}
                 </p>
                 <button
                   type="button"
@@ -753,7 +757,7 @@ export default function CompanyForm({
                   className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-secondary hover:underline"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Load default categories (Breakfast, Lunch, Dinner)
+                  {t("loadDefaultCategories")}
                 </button>
               </div>
             ) : (
@@ -780,7 +784,7 @@ export default function CompanyForm({
                           )}
                         </p>
                         <p className="truncate font-mono text-[10px] text-gray-400">
-                          Catalog ID: {cat.id}
+                          {t("catalogId")}: {cat.id}
                         </p>
                       </div>
                     </div>
@@ -790,7 +794,7 @@ export default function CompanyForm({
                         type="button"
                         onClick={() => handleRemoveCategory(cat.id)}
                         className="rounded-lg p-1.5 text-gray-400 opacity-70 transition-colors hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-                        title={`Remove ${cat.name}`}
+                        title={t("removeCategoryTitle", { name: cat.name })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -806,11 +810,11 @@ export default function CompanyForm({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
                   <Plus className="h-3.5 w-3.5 text-secondary" />
-                  Add Custom Meal Category
+                  {t("addCustomMealCategory")}
                 </span>
                 {calculatedSlug && (
                   <span className="rounded border border-gray-200 bg-white px-2 py-0.5 font-mono text-[10px] text-gray-400">
-                    Catalog ID:{" "}
+                    {t("catalogId")}:{" "}
                     <span className="font-semibold text-secondary">
                       {calculatedSlug}
                     </span>
@@ -821,7 +825,7 @@ export default function CompanyForm({
               <div className="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-12">
                 <div className="sm:col-span-3">
                   <label className="mb-1 block text-[11px] font-medium text-gray-600">
-                    Icon
+                    {t("iconLabel")}
                   </label>
                   <select
                     value={newCatIcon}
@@ -838,11 +842,12 @@ export default function CompanyForm({
 
                 <div className="sm:col-span-4">
                   <label className="mb-1 block text-[11px] font-medium text-gray-600">
-                    Name (English) <span className="text-red-500">*</span>
+                    {t("nameEnglishLabel")}{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Brunch, Late Night"
+                    placeholder={t("mealNamePlaceholder")}
                     value={newCatName}
                     onChange={(e) => setNewCatName(e.target.value)}
                     className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs font-medium text-gray-900 outline-none transition-all focus:border-secondary focus:ring-2 focus:ring-secondary/10"
@@ -851,11 +856,11 @@ export default function CompanyForm({
 
                 <div className="sm:col-span-3">
                   <label className="mb-1 block text-[11px] font-medium text-gray-600">
-                    Name (Amharic - Optional)
+                    {t("nameAmharicOptional")}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. ብራንች, የፆም"
+                    placeholder={t("mealNameAmPlaceholder")}
                     value={newCatNameAm}
                     onChange={(e) => setNewCatNameAm(e.target.value)}
                     className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-900 outline-none transition-all focus:border-secondary focus:ring-2 focus:ring-secondary/10"
@@ -870,7 +875,7 @@ export default function CompanyForm({
                     className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-secondary px-4 text-xs font-bold text-white shadow-xs transition-all hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add
+                    {t("addBtn")}
                   </button>
                 </div>
               </div>
@@ -889,6 +894,13 @@ export default function CompanyForm({
     const showPhoneError =
       (phoneTouched || !!formData.contact_phone) && !phoneCheck.valid;
 
+    const operatorLabel =
+      phoneCheck.operator === "ethio_telecom"
+        ? "ethio telecom"
+        : phoneCheck.operator === "safaricom"
+          ? "safaricom"
+          : phoneCheck.operator || "";
+
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
@@ -897,26 +909,23 @@ export default function CompanyForm({
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900">
-              Location &amp; Contact
+              {t("locationContact")}
             </h3>
-            <p className="text-xs text-gray-500">
-              Address, contact details, and geographical information
-            </p>
+            <p className="text-xs text-gray-500">{t("locationContactDesc")}</p>
           </div>
         </div>
 
-        {/* Address */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className={labelClassName}>
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" /> Address{" "}
+                <MapPin className="h-3.5 w-3.5" /> {t("addressLabel")}{" "}
                 <span className="text-red-500">*</span>
               </span>
             </label>
             <input
               type="text"
-              placeholder="Street, city, area..."
+              placeholder={t("addressPlaceholder")}
               value={formData.address}
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
@@ -929,10 +938,10 @@ export default function CompanyForm({
             )}
           </div>
           <div>
-            <label className={labelClassName}>Address (Amharic)</label>
+            <label className={labelClassName}>{t("addressAm")}</label>
             <input
               type="text"
-              placeholder="Enter address in Amharic"
+              placeholder={t("addressAmPlaceholder")}
               value={formData.address_am}
               onChange={(e) =>
                 setFormData({ ...formData, address_am: e.target.value })
@@ -943,12 +952,11 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Phone / Email */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className={labelClassName}>
               <span className="inline-flex items-center gap-1">
-                <Phone className="h-3.5 w-3.5" /> Phone Number{" "}
+                <Phone className="h-3.5 w-3.5" /> {t("phoneLabel")}{" "}
                 <span className="text-red-500">*</span>
               </span>
             </label>
@@ -956,7 +964,7 @@ export default function CompanyForm({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              placeholder="0911 234 567  or  +251 911 234 567"
+              placeholder={t("phonePlaceholder")}
               value={formData.contact_phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
               onBlur={handlePhoneBlur}
@@ -972,15 +980,20 @@ export default function CompanyForm({
                 {formErrors.contact_phone}
               </p>
             ) : showPhoneError ? (
-              <p className="mt-1 text-xs text-red-500">{phoneCheck.error}</p>
+              <p className="mt-1 text-xs text-red-500">
+                {phoneCheck.error === "phoneRequired"
+                  ? t("phoneRequired")
+                  : phoneCheck.error === "phoneInvalidFormat"
+                    ? t("phoneInvalidFormat")
+                    : phoneCheck.error}
+              </p>
             ) : formData.contact_phone && phoneCheck.valid ? (
               <p className="mt-1 text-xs text-emerald-600">
-                ✓ Valid Ethiopian number (
-                {phoneCheck.operator?.replace("_", " ")})
+                {t("phoneValidHint", { operator: operatorLabel })}
               </p>
             ) : (
               <p className="mt-1 text-xs text-gray-400">
-                Formats: 0911234567 · 0711234567 · +251911234567
+                {t("phoneFormatsHint")}
               </p>
             )}
           </div>
@@ -988,13 +1001,13 @@ export default function CompanyForm({
           <div>
             <label className={labelClassName}>
               <span className="inline-flex items-center gap-1">
-                <Mail className="h-3.5 w-3.5" /> Email Address{" "}
+                <Mail className="h-3.5 w-3.5" /> {t("emailLabel")}{" "}
                 <span className="text-red-500">*</span>
               </span>
             </label>
             <input
               type="email"
-              placeholder="info@company.com"
+              placeholder={t("emailPlaceholder")}
               value={formData.contact_email}
               onChange={(e) =>
                 setFormData({ ...formData, contact_email: e.target.value })
@@ -1010,10 +1023,9 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Order limits */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className={labelClassName}>Minimum Order Total</label>
+            <label className={labelClassName}>{t("minimumOrderTotal")}</label>
             <input
               type="text"
               placeholder="0.00"
@@ -1029,10 +1041,10 @@ export default function CompanyForm({
             />
           </div>
           <div>
-            <label className={labelClassName}>Maximum COD Limit</label>
+            <label className={labelClassName}>{t("maximumCodLimit")}</label>
             <input
               type="text"
-              placeholder="0.00 (0 for unlimited)"
+              placeholder={t("maximumCodPlaceholder")}
               value={formData.maximum_cod_total}
               onChange={(e) =>
                 setFormData({
@@ -1045,7 +1057,7 @@ export default function CompanyForm({
             />
           </div>
           <div>
-            <label className={labelClassName}>Delivery Fee Per KM</label>
+            <label className={labelClassName}>{t("deliveryFeePerKm")}</label>
             <input
               type="text"
               placeholder="0.00"
@@ -1062,75 +1074,14 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* THEME COLORS — COMMENTED OUT                                  */}
-        {/* ============================================================ */}
-        {/* <div>
-          <label className={labelClassName}>
-            <span className="inline-flex items-center gap-1">
-              <Palette className="h-3.5 w-3.5" /> Theme Colors
-            </span>
-          </label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {[
-              {
-                label: "Primary",
-                value: formData.theme_primary,
-                key: "theme_primary" as const,
-              },
-              {
-                label: "Dark",
-                value: formData.theme_dark,
-                key: "theme_dark" as const,
-              },
-              {
-                label: "Light",
-                value: formData.theme_light,
-                key: "theme_light" as const,
-              },
-            ].map((theme) => (
-              <div key={theme.key} className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={theme.value || "#674FA3"}
-                  onChange={(e) =>
-                    setFormData({ ...formData, [theme.key]: e.target.value })
-                  }
-                  disabled={!isEditingActive}
-                  className={`h-10 w-12 flex-shrink-0 rounded-lg border border-gray-300 ${
-                    !isEditingActive
-                      ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer"
-                  }`}
-                />
-                <div className="flex-1">
-                  <p className="mb-0.5 text-[10px] text-gray-500">
-                    {theme.label}
-                  </p>
-                  <input
-                    type="text"
-                    value={theme.value}
-                    onChange={(e) =>
-                      setFormData({ ...formData, [theme.key]: e.target.value })
-                    }
-                    disabled={!isEditingActive}
-                    className={`${inputClassName()} font-mono text-xs`}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div> */}
-
-        {/* GPS */}
         <div>
-          <label className={labelClassName}>📍 Company Location (GPS)</label>
+          <label className={labelClassName}>{t("gpsLocation")}</label>
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
               <input
                 type="number"
                 step="any"
-                placeholder="Latitude"
+                placeholder={t("latitudePlaceholder")}
                 value={formData.latitude}
                 onChange={(e) =>
                   setFormData({ ...formData, latitude: e.target.value })
@@ -1146,7 +1097,7 @@ export default function CompanyForm({
               <input
                 type="number"
                 step="any"
-                placeholder="Longitude"
+                placeholder={t("longitudePlaceholder")}
                 value={formData.longitude}
                 onChange={(e) =>
                   setFormData({ ...formData, longitude: e.target.value })
@@ -1166,7 +1117,7 @@ export default function CompanyForm({
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-secondary/40 py-2.5 text-sm font-bold text-secondary transition-all hover:border-secondary hover:bg-purple-50/30"
             >
               <MapPin className="h-4 w-4" />
-              Choose Location on Map Picker
+              {t("chooseLocationOnMap")}
             </button>
           )}
         </div>
@@ -1179,559 +1130,493 @@ export default function CompanyForm({
   /* ======================================================================== */
 
   const renderStep3 = () => {
-    const isFanEmpty =
-      !formData.fan_number || formData.fan_number.length === 0;
+    const isFanEmpty = !formData.fan_number || formData.fan_number.length === 0;
     const isFanComplete = formData.fan_number.length === 16;
     const fanError = isFanEmpty
       ? undefined
       : !isFanComplete
-      ? "FAN Number must be exactly 16 digits"
-      : formErrors.fan_number !== "FAN Number must be exactly 16 digits"
-      ? formErrors.fan_number
-      : undefined;
+        ? t("fanInvalid")
+        : formErrors.fan_number !== t("fanInvalid")
+          ? formErrors.fan_number
+          : undefined;
 
     return (
       <div className="space-y-6">
-      <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
-          <ImageIcon className="h-5 w-5 text-secondary" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">Company Media</h3>
-          <p className="text-xs text-gray-500">
-            Upload logo, cover image, and license documents
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* LOGO */}
-        <div>
-          <label className={labelClassName}>Company Logo</label>
-          <div
-            className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed bg-gradient-to-br from-gray-50 to-white p-4 ${
-              isEditingActive
-                ? "cursor-pointer border-gray-200 hover:border-secondary hover:bg-gray-50/80"
-                : "border-gray-200"
-            }`}
-          >
-            <input
-              type="file"
-              id="logo-upload"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              disabled={!isEditingActive}
-              onChange={handleLogoChange}
-            />
-            {logoPreview ? (
-              <div className="relative flex w-full flex-col items-center">
-                <div className="relative h-24 w-24 overflow-hidden rounded-2xl shadow-lg ring-2 ring-secondary/20">
-                  <img
-                    src={logoPreview}
-                    alt="Logo Preview"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleLogoRemove();
-                    }}
-                    className="mt-2 rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-red-600"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ) : (
-              <label
-                htmlFor="logo-upload"
-                className={`flex w-full flex-col items-center justify-center py-4 ${
-                  isEditingActive ? "group cursor-pointer" : ""
-                }`}
-              >
-                <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10">
-                  <Camera className="h-6 w-6 text-secondary" />
-                </div>
-                <span className="text-sm font-semibold text-gray-600">
-                  {isEditingActive ? "Upload Logo" : "No logo uploaded"}
-                </span>
-                {isEditingActive && (
-                  <>
-                    <span className="text-xs text-gray-400">
-                      PNG, JPG up to 5MB
-                    </span>
-                    <span className="mt-1 text-xs text-gray-400">
-                      Square image recommended (1:1)
-                    </span>
-                  </>
-                )}
-              </label>
-            )}
-          </div>
-        </div>
-
-        {/* COVER */}
-        <div>
-          <label className={labelClassName}>Cover Image</label>
-          <div
-            className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed bg-gradient-to-br from-gray-50 to-white p-4 ${
-              isEditingActive
-                ? "cursor-pointer border-gray-200 hover:border-secondary hover:bg-gray-50/80"
-                : "border-gray-200"
-            }`}
-          >
-            <input
-              type="file"
-              id="cover-upload"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              disabled={!isEditingActive}
-              onChange={handleCoverChange}
-            />
-            {coverPreview ? (
-              <div className="relative flex w-full flex-col items-center">
-                <div className="max-h-32 w-full overflow-hidden rounded-xl shadow-lg">
-                  <img
-                    src={coverPreview}
-                    alt="Cover Preview"
-                    className="w-full object-cover"
-                  />
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCoverRemove();
-                    }}
-                    className="mt-2 rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-red-600"
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            ) : (
-              <label
-                htmlFor="cover-upload"
-                className={`flex w-full flex-col items-center justify-center py-4 ${
-                  isEditingActive ? "group cursor-pointer" : ""
-                }`}
-              >
-                <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10">
-                  <Camera className="h-6 w-6 text-secondary" />
-                </div>
-                <span className="text-sm font-semibold text-gray-600">
-                  {isEditingActive
-                    ? "Upload Cover Image"
-                    : "No cover image uploaded"}
-                </span>
-                {isEditingActive && (
-                  <>
-                    <span className="text-xs text-gray-400">
-                      PNG, JPG up to 10MB
-                    </span>
-                    <span className="mt-1 text-xs text-gray-400">
-                      Wide banner recommended (16:9)
-                    </span>
-                  </>
-                )}
-              </label>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* LICENSE & TAX */}
-      <div>
-        <div className="mb-4 flex items-center gap-3 border-b border-gray-100 pb-3">
+        <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
-            <FileCheck2 className="h-5 w-5 text-secondary" />
+            <ImageIcon className="h-5 w-5 text-secondary" />
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900">
-              License &amp; Tax Information
+              {t("companyMedia")}
             </h3>
-            <p className="text-xs text-gray-500">
-              Legal documents and tax registration details
-            </p>
+            <p className="text-xs text-gray-500">{t("companyMediaDesc")}</p>
           </div>
         </div>
 
-        {/* TIN / VAT / FAN row */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* TIN */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={labelClassName}>TIN Number</label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <label className={labelClassName}>{t("companyLogo")}</label>
+            <div
+              className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed bg-gradient-to-br from-gray-50 to-white p-4 ${
+                isEditingActive
+                  ? "cursor-pointer border-gray-200 hover:border-secondary hover:bg-gray-50/80"
+                  : "border-gray-200"
+              }`}
+            >
               <input
-                type="text"
-                placeholder="Enter TIN number"
-                value={formData.tin_number}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tin_number: e.target.value,
-                  }))
-                }
+                type="file"
+                id="logo-upload"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
                 disabled={!isEditingActive}
-                className={`${inputClassName(formErrors.tin_number)} pl-10`}
+                onChange={handleLogoChange}
               />
-            </div>
-          </div>
-
-          {/* VAT */}
-          <div>
-            <label className={labelClassName}>VAT Registration Number</label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Enter VAT registration number"
-                value={formData.vat_registration_number}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    vat_registration_number: e.target.value,
-                  }))
-                }
-                disabled={!isEditingActive}
-                className={`${inputClassName()} pl-10`}
-              />
-            </div>
-          </div>
-
-          {/* FAN — 16 digits (Optional) */}
-          <div>
-            <label className={labelClassName}>
-              FAN Number{" "}
-              <span className="text-xs font-normal text-gray-400">
-                (Optional)
-              </span>
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={16}
-                placeholder="Enter 16-digit FAN number"
-                value={formData.fan_number}
-                onChange={(e) => {
-                  const digitsOnly = e.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 16);
-                  setFormData((prev) => ({
-                    ...prev,
-                    fan_number: digitsOnly,
-                  }));
-                }}
-                disabled={!isEditingActive}
-                className={`${inputClassName(fanError)} pl-10 font-mono tracking-wider`}
-              />
-            </div>
-            {fanError ? (
-              <div className="mt-1 flex items-center justify-between text-xs">
-                <p className="text-red-500">{fanError}</p>
-                <span className="font-mono text-red-500">
-                  {formData.fan_number.length}/16
-                </span>
-              </div>
-            ) : formData.fan_number ? (
-              <p className="mt-1 text-xs text-emerald-600">
-                ✓ 16/16 digits entered
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400">
-                Optional · 16 digits if provided
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* SHOW VAT BREAKDOWN TO CUSTOMERS                             */}
-        {/* ============================================================ */}
-        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <label className="text-sm font-semibold text-gray-800">
-                Show 15% VAT Breakdown to Customers
-              </label>
-              {/* <p className="mt-1 text-xs leading-5 text-gray-500">
-                When enabled, checkout screens and customer invoices will show the 15% VAT portion extracted from your product and service prices. When disabled (default), prices are displayed as VAT Inclusive without separate breakdown lines.
-              </p> */}
-            </div>
-            <label className="relative inline-flex cursor-pointer items-center shrink-0 mt-0.5">
-              <input
-                type="checkbox"
-                checked={Boolean(formData.show_vat)}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    show_vat: e.target.checked,
-                  }))
-                }
-                disabled={!isEditingActive}
-                className="peer sr-only"
-              />
-              <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6750A4] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-disabled:cursor-not-allowed peer-disabled:opacity-60" />
-            </label>
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* CHAPA SPLIT SETTLEMENT STATUS                               */}
-        {/* ============================================================ */}
-        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-semibold text-gray-800">
-                  Chapa Split Settlement
+              {logoPreview ? (
+                <div className="relative flex w-full flex-col items-center">
+                  <div className="relative h-24 w-24 overflow-hidden rounded-2xl shadow-lg ring-2 ring-secondary/20">
+                    <img
+                      src={logoPreview}
+                      alt="Logo Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLogoRemove();
+                      }}
+                      className="mt-2 rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-red-600"
+                    >
+                      {t("removeBtn")}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <label
+                  htmlFor="logo-upload"
+                  className={`flex w-full flex-col items-center justify-center py-4 ${
+                    isEditingActive ? "group cursor-pointer" : ""
+                  }`}
+                >
+                  <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10">
+                    <Camera className="h-6 w-6 text-secondary" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-600">
+                    {isEditingActive ? t("uploadLogo") : t("noLogoUploaded")}
+                  </span>
+                  {isEditingActive && (
+                    <>
+                      <span className="text-xs text-gray-400">
+                        {t("logoHint1")}
+                      </span>
+                      <span className="mt-1 text-xs text-gray-400">
+                        {t("logoHint2")}
+                      </span>
+                    </>
+                  )}
                 </label>
-                {formData.chapa_sub_account_id ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Linked
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClassName}>{t("coverImage")}</label>
+            <div
+              className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed bg-gradient-to-br from-gray-50 to-white p-4 ${
+                isEditingActive
+                  ? "cursor-pointer border-gray-200 hover:border-secondary hover:bg-gray-50/80"
+                  : "border-gray-200"
+              }`}
+            >
+              <input
+                type="file"
+                id="cover-upload"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                disabled={!isEditingActive}
+                onChange={handleCoverChange}
+              />
+              {coverPreview ? (
+                <div className="relative flex w-full flex-col items-center">
+                  <div className="max-h-32 w-full overflow-hidden rounded-xl shadow-lg">
+                    <img
+                      src={coverPreview}
+                      alt="Cover Preview"
+                      className="w-full object-cover"
+                    />
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCoverRemove();
+                      }}
+                      className="mt-2 rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white transition hover:bg-red-600"
+                    >
+                      {t("removeBtn")}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <label
+                  htmlFor="cover-upload"
+                  className={`flex w-full flex-col items-center justify-center py-4 ${
+                    isEditingActive ? "group cursor-pointer" : ""
+                  }`}
+                >
+                  <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary/10">
+                    <Camera className="h-6 w-6 text-secondary" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-600">
+                    {isEditingActive
+                      ? t("uploadCoverImage")
+                      : t("noCoverUploaded")}
                   </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    Not Configured
-                  </span>
-                )}
-              </div>
-              <p className="mt-1 text-xs leading-5 text-gray-500">
-                {formData.chapa_sub_account_id
-                  ? `Subaccount ID: ${formData.chapa_sub_account_id}. Vendor payouts are routed automatically by Chapa.`
-                  : "Chapa online payments remain disabled at checkout for this vendor until a bank subaccount is linked in the Bank Accounts section."}
-              </p>
+                  {isEditingActive && (
+                    <>
+                      <span className="text-xs text-gray-400">
+                        {t("coverHint1")}
+                      </span>
+                      <span className="mt-1 text-xs text-gray-400">
+                        {t("coverHint2")}
+                      </span>
+                    </>
+                  )}
+                </label>
+              )}
             </div>
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* TAX TYPE — Fixed to "No Tax"                                  */}
-        {/* ============================================================ */}
-        {/* <div className="mt-4">
-          <label className={labelClassName}>Tax Type</label>
-          <div
-            className={`flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 ${!isEditingActive ? "opacity-70" : ""}`}
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/10">
-              <FileCheck2 className="h-4 w-4 text-secondary" />
+        <div>
+          <div className="mb-4 flex items-center gap-3 border-b border-gray-100 pb-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/10">
+              <FileCheck2 className="h-5 w-5 text-secondary" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">No Tax</p>
-              <p className="text-xs text-gray-500">
-                Tax type is fixed to "No Tax" for this company.
-              </p>
+              <h3 className="text-sm font-bold text-gray-900">
+                {t("licenseTaxInfo")}
+              </h3>
+              <p className="text-xs text-gray-500">{t("licenseTaxDesc")}</p>
             </div>
-           
-            <input type="hidden" value="none" readOnly />
-          </div>
-        </div> */}
-
-        {/* ============================================================ */}
-        {/* TAX COMMENT — COMMENTED OUT                                   */}
-        {/* ============================================================ */}
-        {/* <div className="mt-4">
-          <label className={labelClassName}>
-            <span className="inline-flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" /> Tax Comment
-            </span>
-          </label>
-          <textarea
-            placeholder="Add a comment or note about the tax configuration..."
-            value={formData.tax_comment}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                tax_comment: e.target.value,
-              }))
-            }
-            rows={2}
-            disabled={!isEditingActive}
-            className={`${inputClassName()} resize-none`}
-          />
-        </div> */}
-
-        {/* LICENSE + MOA row */}
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {/* LICENSE */}
-          <div>
-            <label className={labelClassName}>License Document</label>
-            {formData.license && typeof formData.license === "string" ? (
-              <div className="flex items-center gap-3 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-800">
-                    Existing license
-                  </p>
-                  <a
-                    href={formData.license}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 underline"
-                  >
-                    View file
-                  </a>
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, license: null }))
-                    }
-                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
-                  >
-                    <XCircle className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            ) : formData.license instanceof File ? (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                  <FileText className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-800">
-                    {formData.license.name}
-                  </p>
-                  <p className="text-xs text-emerald-600">
-                    ✓ Uploaded ({(formData.license.size / 1024).toFixed(1)} KB)
-                  </p>
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, license: null }))
-                    }
-                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
-                  >
-                    <XCircle className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="file"
-                  id="license-upload"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  disabled={!isEditingActive}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setFormData((prev) => ({ ...prev, license: file }));
-                  }}
-                  className={`w-full rounded-xl border p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-secondary hover:file:bg-secondary/20 ${
-                    formErrors.license ? "border-red-500" : "border-gray-300"
-                  } ${!isEditingActive ? "bg-gray-50" : ""}`}
-                />
-                {isEditingActive && !formData.license && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    PDF, JPG, PNG up to 5MB
-                  </p>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* MOA FILE */}
-          <div>
-            <label className={labelClassName}>
-              <span className="inline-flex items-center gap-1">
-                <ScrollText className="h-3.5 w-3.5" /> MOA Document
-              </span>
-            </label>
-            {formData.moa_file && typeof formData.moa_file === "string" ? (
-              <div className="flex items-center gap-3 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
-                  <ScrollText className="h-5 w-5 text-blue-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-800">
-                    Existing MOU document
-                  </p>
-                  <a
-                    href={formData.moa_file}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 underline"
-                  >
-                    View file
-                  </a>
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, moa_file: null }))
-                    }
-                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
-                  >
-                    <XCircle className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            ) : formData.moa_file instanceof File ? (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
-                  <ScrollText className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-800">
-                    {formData.moa_file.name}
-                  </p>
-                  <p className="text-xs text-emerald-600">
-                    ✓ Uploaded ({(formData.moa_file.size / 1024).toFixed(1)} KB)
-                  </p>
-                </div>
-                {isEditingActive && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, moa_file: null }))
-                    }
-                    className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
-                  >
-                    <XCircle className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-            ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className={labelClassName}>{t("tinNumber")}</label>
               <div className="relative">
+                <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="file"
-                  id="moa-upload"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  type="text"
+                  placeholder={t("tinPlaceholder")}
+                  value={formData.tin_number}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      tin_number: e.target.value,
+                    }))
+                  }
                   disabled={!isEditingActive}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setFormData((prev) => ({ ...prev, moa_file: file }));
-                  }}
-                  className={`w-full rounded-xl border p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-secondary hover:file:bg-secondary/20 ${
-                    formErrors.moa_file ? "border-red-500" : "border-gray-300"
-                  } ${!isEditingActive ? "bg-gray-50" : ""}`}
+                  className={`${inputClassName(formErrors.tin_number)} pl-10`}
                 />
-                {isEditingActive && !formData.moa_file && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    PDF, DOC, DOCX, JPG, PNG up to 10MB
-                  </p>
-                )}
               </div>
-            )}
+            </div>
+
+            <div>
+              <label className={labelClassName}>{t("vatNumber")}</label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder={t("vatPlaceholder")}
+                  value={formData.vat_registration_number}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      vat_registration_number: e.target.value,
+                    }))
+                  }
+                  disabled={!isEditingActive}
+                  className={`${inputClassName()} pl-10`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClassName}>
+                {t("fanNumber")}{" "}
+                <span className="text-xs font-normal text-gray-400">
+                  {t("optionalSuffix")}
+                </span>
+              </label>
+              <div className="relative">
+                <FileText className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={16}
+                  placeholder={t("fanPlaceholder")}
+                  value={formData.fan_number}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 16);
+                    setFormData((prev) => ({
+                      ...prev,
+                      fan_number: digitsOnly,
+                    }));
+                  }}
+                  disabled={!isEditingActive}
+                  className={`${inputClassName(fanError)} pl-10 font-mono tracking-wider`}
+                />
+              </div>
+              {fanError ? (
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <p className="text-red-500">{fanError}</p>
+                  <span className="font-mono text-red-500">
+                    {formData.fan_number.length}/16
+                  </span>
+                </div>
+              ) : formData.fan_number ? (
+                <p className="mt-1 text-xs text-emerald-600">
+                  {t("fanDigitsEntered")}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">
+                  {t("fanOptionalHint")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-semibold text-gray-800">
+                  {t("showVatBreakdown")}
+                </label>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={Boolean(formData.show_vat)}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      show_vat: e.target.checked,
+                    }))
+                  }
+                  disabled={!isEditingActive}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#6750A4] peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-disabled:cursor-not-allowed peer-disabled:opacity-60" />
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/80 p-4 transition-colors">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-semibold text-gray-800">
+                    {t("chapaSplitSettlement")}
+                  </label>
+                  {formData.chapa_sub_account_id ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {t("chapaLinkedTitle2")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      {t("chapaNotConfiguredTitle2")}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  {formData.chapa_sub_account_id
+                    ? t("chapaLinkedDesc", {
+                        id: formData.chapa_sub_account_id,
+                      })
+                    : t("chapaNotConfiguredDesc")}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className={labelClassName}>{t("licenseDocument")}</label>
+              {formData.license && typeof formData.license === "string" ? (
+                <div className="flex items-center gap-3 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-gray-800">
+                      {t("existingLicense")}
+                    </p>
+                    <a
+                      href={formData.license}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      {t("viewFile")}
+                    </a>
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, license: null }))
+                      }
+                      className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ) : formData.license instanceof File ? (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                    <FileText className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-gray-800">
+                      {formData.license.name}
+                    </p>
+                    <p className="text-xs text-emerald-600">
+                      ✓ {t("uploadedLabel")} (
+                      {(formData.license.size / 1024).toFixed(1)} KB)
+                    </p>
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, license: null }))
+                      }
+                      className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="license-upload"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    disabled={!isEditingActive}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setFormData((prev) => ({ ...prev, license: file }));
+                    }}
+                    className={`w-full rounded-xl border p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-secondary hover:file:bg-secondary/20 ${
+                      formErrors.license ? "border-red-500" : "border-gray-300"
+                    } ${!isEditingActive ? "bg-gray-50" : ""}`}
+                  />
+                  {isEditingActive && !formData.license && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      {t("licenseHint")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className={labelClassName}>
+                <span className="inline-flex items-center gap-1">
+                  <ScrollText className="h-3.5 w-3.5" /> {t("moaDocument")}
+                </span>
+              </label>
+              {formData.moa_file && typeof formData.moa_file === "string" ? (
+                <div className="flex items-center gap-3 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100">
+                    <ScrollText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-gray-800">
+                      {t("existingMoa")}
+                    </p>
+                    <a
+                      href={formData.moa_file}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      {t("viewFile")}
+                    </a>
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, moa_file: null }))
+                      }
+                      className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ) : formData.moa_file instanceof File ? (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+                    <ScrollText className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-gray-800">
+                      {formData.moa_file.name}
+                    </p>
+                    <p className="text-xs text-emerald-600">
+                      ✓ {t("uploadedLabel")} (
+                      {(formData.moa_file.size / 1024).toFixed(1)} KB)
+                    </p>
+                  </div>
+                  {isEditingActive && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, moa_file: null }))
+                      }
+                      className="flex-shrink-0 rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="moa-upload"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    disabled={!isEditingActive}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setFormData((prev) => ({ ...prev, moa_file: file }));
+                    }}
+                    className={`w-full rounded-xl border p-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-secondary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-secondary hover:file:bg-secondary/20 ${
+                      formErrors.moa_file ? "border-red-500" : "border-gray-300"
+                    } ${!isEditingActive ? "bg-gray-50" : ""}`}
+                  />
+                  {isEditingActive && !formData.moa_file && (
+                    <p className="mt-1 text-xs text-gray-400">{t("moaHint")}</p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     );
   };
 
@@ -1751,26 +1636,23 @@ export default function CompanyForm({
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900">
-              Review Your Company Details
+              {t("reviewTitle")}
             </h3>
-            <p className="text-xs text-gray-500">
-              Verify all information before submitting
-            </p>
+            <p className="text-xs text-gray-500">{t("reviewDesc")}</p>
           </div>
         </div>
 
-        {/* Business info */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
             <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
               <Building2 className="h-4 w-4 text-secondary" />
-              Business Information
+              {t("businessInformation")}
             </h4>
           </div>
           <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Company Name
+                {t("companyName")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.name || "—"}
@@ -1778,7 +1660,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Slug
+                {t("slug")}
               </p>
               <p className="font-mono text-sm text-gray-700">
                 {formData.slug || "—"}
@@ -1786,7 +1668,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Business Type
+                {t("businessType")}
               </p>
               <p className="text-sm font-semibold capitalize text-gray-900">
                 {formData.business_type || "—"}
@@ -1794,7 +1676,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Category
+                {t("labelCategoryShort")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {categories.find((c) => c.id === formData.category)?.name ||
@@ -1803,7 +1685,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Subcategory
+                {t("labelSubcategoryShort")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {subcategories.find((s) => s.id === formData.sub_category)
@@ -1812,7 +1694,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Head Company
+                {t("labelHeadCompany")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {headCompanies.find((hc) => hc.id === formData.head_company)
@@ -1823,7 +1705,7 @@ export default function CompanyForm({
             </div>
             <div className="col-span-2">
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Description
+                {t("labelDescription")}
               </p>
               <p className="text-sm text-gray-700">
                 {formData.description || "—"}
@@ -1832,7 +1714,7 @@ export default function CompanyForm({
             {formData.description_am && (
               <div className="col-span-2">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                  Description (Amharic)
+                  {t("descriptionAm")}
                 </p>
                 <p className="text-sm text-gray-700">
                   {formData.description_am}
@@ -1842,18 +1724,17 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Location */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
             <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
               <MapPinned className="h-4 w-4 text-secondary" />
-              Location &amp; Contact
+              {t("locationContact")}
             </h4>
           </div>
           <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
             <div className="col-span-2">
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Address
+                {t("labelAddress")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.address || "—"}
@@ -1862,14 +1743,14 @@ export default function CompanyForm({
             {formData.address_am && (
               <div className="col-span-2">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                  Address (Amharic)
+                  {t("addressAm")}
                 </p>
                 <p className="text-sm text-gray-700">{formData.address_am}</p>
               </div>
             )}
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Phone
+                {t("labelPhone")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.contact_phone || "—"}
@@ -1877,7 +1758,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Email
+                {t("labelEmail")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.contact_email || "—"}
@@ -1885,7 +1766,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Minimum Order Total
+                {t("labelMinOrder")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.minimum_order_total || "0.00"}
@@ -1893,15 +1774,15 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Maximum COD Limit
+                {t("labelMaxCod")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
-                {formData.maximum_cod_total || "0.00 (Unlimited)"}
+                {formData.maximum_cod_total || "0.00"}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Delivery Fee/KM
+                {t("labelDeliveryFee")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.delivery_fee_per_km || "0.00"}
@@ -1910,7 +1791,7 @@ export default function CompanyForm({
             {formData.latitude && formData.longitude && (
               <div className="col-span-2">
                 <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                  GPS Coordinates
+                  {t("labelGps")}
                 </p>
                 <p className="text-sm font-semibold text-gray-900">
                   {formData.latitude}, {formData.longitude}
@@ -1920,18 +1801,17 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Media */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
             <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
               <ImageIcon className="h-4 w-4 text-secondary" />
-              Media &amp; Documents
+              {t("companyMedia")}
             </h4>
           </div>
           <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
-                Logo
+                {t("labelLogo")}
               </p>
               {logoPreview ? (
                 <img
@@ -1940,12 +1820,12 @@ export default function CompanyForm({
                   className="h-20 w-20 rounded-xl border border-gray-200 object-cover"
                 />
               ) : (
-                <p className="text-sm text-gray-500">No logo uploaded</p>
+                <p className="text-sm text-gray-500">{t("noLogoUploaded")}</p>
               )}
             </div>
             <div>
               <p className="mb-2 text-[10px] uppercase tracking-wider text-gray-400">
-                Cover Image
+                {t("labelCover")}
               </p>
               {coverPreview ? (
                 <img
@@ -1954,12 +1834,12 @@ export default function CompanyForm({
                   className="h-24 w-full rounded-xl border border-gray-200 object-cover"
                 />
               ) : (
-                <p className="text-sm text-gray-500">No cover image uploaded</p>
+                <p className="text-sm text-gray-500">{t("noCoverUploaded")}</p>
               )}
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                TIN Number
+                {t("labelTin")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.tin_number || "—"}
@@ -1967,7 +1847,7 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                VAT Number
+                {t("labelVat")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.vat_registration_number || "—"}
@@ -1975,39 +1855,42 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Show 15% VAT Breakdown
+                {t("labelShowVat")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
-                {formData.show_vat ? "Yes (Breakdown Shown)" : "No (VAT Inclusive)"}
+                {formData.show_vat ? t("showVatYes") : t("showVatNo")}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                FAN Number
+                {t("labelFan")}
               </p>
               <p
                 className={`font-mono text-sm font-semibold tracking-wider ${
                   !formData.fan_number
                     ? "text-gray-500"
                     : isFanValid
-                    ? "text-gray-900"
-                    : "text-red-500"
+                      ? "text-gray-900"
+                      : "text-red-500"
                 }`}
               >
-                {formData.fan_number || "— (Optional)"}
+                {formData.fan_number || t("fanOptionalDash")}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Chapa Split Settlement
+                {t("chapaSplitSettlement")}
               </p>
               {formData.chapa_sub_account_id ? (
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Linked
+                    {t("chapaLinkedTitle2")}
                   </span>
-                  <span className="font-mono text-xs text-gray-600 truncate" title={formData.chapa_sub_account_id}>
+                  <span
+                    className="font-mono text-xs text-gray-600 truncate"
+                    title={formData.chapa_sub_account_id}
+                  >
                     {formData.chapa_sub_account_id}
                   </span>
                 </div>
@@ -2015,66 +1898,46 @@ export default function CompanyForm({
                 <div className="mt-0.5">
                   <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    Not Configured
+                    {t("chapaNotConfiguredTitle2")}
                   </span>
                   <p className="text-[10px] text-gray-400 mt-0.5">
-                    Configure via Bank Accounts
+                    {t("notConfiguredViaBank")}
                   </p>
                 </div>
               )}
             </div>
-            {/* <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Tax Type
-              </p>
-              <p className="text-sm font-semibold text-gray-900">No Tax</p>
-            </div> */}
-
-            {/* TAX COMMENT — COMMENTED OUT */}
-            {/* <div className="col-span-2">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                Tax Comment
-              </p>
-              <p className="text-sm text-gray-700">
-                {formData.tax_comment || "—"}
-              </p>
-            </div> */}
-
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                License
+                {t("labelLicense")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.license
                   ? formData.license instanceof File
                     ? formData.license.name
-                    : "Uploaded"
+                    : t("uploadedLabel")
                   : "—"}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">
-                MOU Document
+                {t("labelMoa")}
               </p>
               <p className="text-sm font-semibold text-gray-900">
                 {formData.moa_file
                   ? formData.moa_file instanceof File
                     ? formData.moa_file.name
-                    : "Uploaded"
+                    : t("uploadedLabel")
                   : "—"}
               </p>
             </div>
           </div>
         </div>
 
-        {/* ============================================================ */}
-        {/* THEME & STATUS — Theme colors removed                         */}
-        {/* ============================================================ */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
             <h4 className="flex items-center gap-2 text-xs font-bold text-gray-700">
               <Palette className="h-4 w-4 text-secondary" />
-              Status
+              {t("reviewStatusTitle")}
             </h4>
           </div>
           <div className="p-4">
@@ -2086,7 +1949,7 @@ export default function CompanyForm({
                     : "border border-gray-200 bg-gray-50 text-gray-500"
                 }`}
               >
-                {formData.is_active ? "Active" : "Inactive"}
+                {formData.is_active ? t("reviewActive") : t("reviewInactive")}
               </span>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -2096,8 +1959,8 @@ export default function CompanyForm({
                 }`}
               >
                 {formData.supports_table_service
-                  ? "Table Service"
-                  : "No Table Service"}
+                  ? t("reviewTableService")
+                  : t("reviewNoTableService")}
               </span>
               {formData.supports_table_service && (
                 <span
@@ -2108,15 +1971,15 @@ export default function CompanyForm({
                   }`}
                 >
                   {formData.show_order_queue
-                    ? "Queue Visible"
-                    : "Queue Hidden"}
+                    ? t("reviewQueueVisible")
+                    : t("reviewQueueHidden")}
                 </span>
               )}
               {formData.supports_table_service &&
                 activeCategories.length > 0 && (
                   <div className="mt-2 flex w-full flex-wrap items-center gap-2 border-t border-gray-100 pt-2.5">
                     <span className="text-xs font-semibold text-gray-500">
-                      Meal Periods:
+                      {t("reviewMealPeriods")}
                     </span>
                     {activeCategories.map((c) => (
                       <span
@@ -2136,7 +1999,6 @@ export default function CompanyForm({
           </div>
         </div>
 
-        {/* Company Verification & Activation — super admin only */}
         {showVerificationBlock && (
           <div
             className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors ${
@@ -2159,12 +2021,12 @@ export default function CompanyForm({
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900">
-                  Company Verification & Activation
+                  {t("verificationTitle")}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
                   {isCompanyVerified
-                    ? "Verified & Active. Saving will activate this company and dispatch access instructions to the owner."
-                    : "Verify this company to make it active and notify the owner."}
+                    ? t("verificationVerifiedDesc")
+                    : t("verificationUnverifiedDesc")}
                 </p>
               </div>
             </div>
@@ -2190,7 +2052,6 @@ export default function CompanyForm({
           </div>
         )}
 
-        {/* Informative Notice for Marketing Registration */}
         {isTermsRequired && (
           <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
@@ -2198,18 +2059,16 @@ export default function CompanyForm({
             </div>
             <div>
               <p className="text-sm font-bold text-gray-950">
-                Registration Status: Pending Superadmin Verification
+                {t("marketingPendingTitle")}
               </p>
               <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
-                As a marketing agent, submitting this form registers the company in an inactive onboarding state. Platform Superadmins will review the submitted Trade License, FAN, and TIN to verify and activate the company on the marketplace.
+                {t("marketingPendingDesc")}
               </p>
             </div>
           </div>
         )}
 
-        {/* Terms Agreement — Pattern A Role-Tailored */}
         {effectiveIsSuperAdmin ? (
-          /* Superadmin: Review owner agreement status, read-only view */
           <div
             className={`rounded-xl border p-4 transition-colors ${
               agreedToTerms
@@ -2234,12 +2093,15 @@ export default function CompanyForm({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">
-                    Terms & Conditions Agreement
+                    {t("termsTitle")}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-600">
                     {agreedToTerms
-                      ? `Accepted by ${formData.terms_signatory_name || "Owner"} (${formData.terms_signatory_role || "Owner"}).`
-                      : "Company owner terms agreement is pending."}
+                      ? t("termsAcceptedBy", {
+                          name: formData.terms_signatory_name || t("roleOwner"),
+                          role: formData.terms_signatory_role || t("roleOwner"),
+                        })
+                      : t("termsPending")}
                   </p>
                 </div>
               </div>
@@ -2249,12 +2111,11 @@ export default function CompanyForm({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/5"
               >
                 <ScrollText className="h-3.5 w-3.5" />
-                Read Terms
+                {t("readTerms")}
               </button>
             </div>
           </div>
         ) : !isMarketing && agreedToTerms ? (
-          /* Company Admin / Staff: Terms already agreed, clean read-only view */
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-3">
@@ -2263,10 +2124,10 @@ export default function CompanyForm({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">
-                    Elilita Terms and Conditions
+                    {t("termsElilitaTitle")}
                   </p>
                   <p className="mt-0.5 text-xs text-emerald-700">
-                    Accepted. You can review the full terms at any time.
+                    {t("termsAcceptedReview")}
                   </p>
                 </div>
               </div>
@@ -2276,12 +2137,11 @@ export default function CompanyForm({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-secondary/5"
               >
                 <ScrollText className="h-3.5 w-3.5" />
-                Read Terms
+                {t("readTerms")}
               </button>
             </div>
           </div>
         ) : (
-          /* Marketing registration flow: Pattern A In-Person Signatory Agreement Card */
           <div
             className={`rounded-xl border p-5 transition-colors ${
               agreedToTerms && formData.terms_signatory_name?.trim()
@@ -2296,11 +2156,11 @@ export default function CompanyForm({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-gray-900">
-                    Owner / Authorized Signatory Agreement{" "}
+                    {t("termsSignatoryTitle")}{" "}
                     {isTermsRequired && <span className="text-red-500">*</span>}
                   </h4>
                   <p className="text-xs text-gray-500">
-                    Enter the legal representative's details and present the merchant terms to accept.
+                    {t("termsSignatoryDesc")}
                   </p>
                 </div>
               </div>
@@ -2310,62 +2170,74 @@ export default function CompanyForm({
                 className="inline-flex items-center gap-1.5 rounded-lg border border-secondary/30 bg-white px-3 py-1.5 text-xs font-semibold text-secondary shadow-sm hover:bg-secondary/5 transition-colors"
               >
                 <ScrollText className="h-3.5 w-3.5" />
-                Read Full Terms
+                {t("readFullTerms")}
               </button>
             </div>
 
-            {/* Signatory Inputs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Signatory Legal Full Name <span className="text-red-500">*</span>
+                  {t("signatoryName")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.terms_signatory_name || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, terms_signatory_name: e.target.value })
+                    setFormData({
+                      ...formData,
+                      terms_signatory_name: e.target.value,
+                    })
                   }
-                  placeholder="e.g. Abebe Bikila"
+                  placeholder={t("signatoryNamePlaceholder")}
                   className={inputClassName(
                     formErrors.terms_signatory_name ||
                       (!formData.terms_signatory_name?.trim() && agreedToTerms
-                        ? "Signatory name is required"
+                        ? t("signatoryRequired")
                         : undefined),
                   )}
                   disabled={!isEditingActive}
                 />
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Full name of the company owner, manager, or authorized agent.
+                  {t("signatoryNameHint")}
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Signatory Title / Capacity <span className="text-red-500">*</span>
+                  {t("signatoryRole")} <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.terms_signatory_role || "Owner"}
+                  value={formData.terms_signatory_role || t("roleOwner")}
                   onChange={(e) =>
-                    setFormData({ ...formData, terms_signatory_role: e.target.value })
+                    setFormData({
+                      ...formData,
+                      terms_signatory_role: e.target.value,
+                    })
                   }
                   className={inputClassName()}
                   disabled={!isEditingActive}
                 >
-                  <option value="Owner">Owner</option>
-                  <option value="General Manager">General Manager</option>
-                  <option value="Managing Director">Managing Director</option>
-                  <option value="CEO">CEO</option>
-                  <option value="Authorized Representative">Authorized Representative</option>
-                  <option value="Branch Manager">Branch Manager</option>
+                  <option value="Owner">{t("roleOwner")}</option>
+                  <option value="General Manager">
+                    {t("roleGeneralManager")}
+                  </option>
+                  <option value="Managing Director">
+                    {t("roleManagingDirector")}
+                  </option>
+                  <option value="CEO">{t("roleCEO")}</option>
+                  <option value="Authorized Representative">
+                    {t("roleAuthorizedRep")}
+                  </option>
+                  <option value="Branch Manager">
+                    {t("roleBranchManager")}
+                  </option>
                 </select>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Legal capacity authorized under business registration.
+                  {t("signatoryRoleHint")}
                 </p>
               </div>
             </div>
 
-            {/* Legal Binding Checkbox */}
             <label className="flex items-start gap-3 cursor-pointer rounded-xl border border-secondary/20 bg-secondary/[0.04] p-3.5 hover:bg-secondary/[0.08] transition-colors">
               <input
                 type="checkbox"
@@ -2374,23 +2246,28 @@ export default function CompanyForm({
                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
               />
               <div className="text-xs text-gray-800 leading-relaxed">
-                <span className="font-bold text-gray-900">Binding Legal Declaration:</span>{" "}
-                I confirm that{" "}
+                <span className="font-bold text-gray-900">
+                  {t("bindingDeclaration")}
+                </span>{" "}
+                {t("bindingConfirm1")}{" "}
                 <strong className="text-secondary font-bold">
-                  {formData.terms_signatory_name?.trim() || "the authorized representative"}
+                  {formData.terms_signatory_name?.trim() ||
+                    t("bindingAuthorizedRep")}
                 </strong>{" "}
-                acting as{" "}
+                {t("bindingConfirm2")}{" "}
                 <strong className="text-gray-900">
-                  {formData.terms_signatory_role || "Owner"}
+                  {formData.terms_signatory_role || t("roleOwner")}
                 </strong>{" "}
-                has reviewed the Elilita Merchant Terms & Conditions and legally agreed to bind{" "}
-                <strong className="text-gray-900">{formData.name || "this company"}</strong> to the Elilita Merchant Agreement.
+                {t("bindingConfirm3")}{" "}
+                <strong className="text-gray-900">
+                  {formData.name || t("bindingThisCompany")}
+                </strong>{" "}
+                {t("bindingConfirm4")}
               </div>
             </label>
           </div>
         )}
 
-        {/* Ready footer */}
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
             blockedByTerms
@@ -2405,10 +2282,10 @@ export default function CompanyForm({
               }`}
             >
               {blockedByTerms
-                ? "⚠️ Please complete the owner agreement & signatory name above to submit"
+                ? t("blockedReadyTitle")
                 : editingSlug
-                ? "✅ Ready to Save Changes"
-                : "✅ Ready to Submit"}
+                  ? t("readyToSave")
+                  : t("readyToSubmit")}
             </span>
             <span
               className={`text-xs ${
@@ -2416,46 +2293,48 @@ export default function CompanyForm({
               }`}
             >
               {blockedByTerms
-                ? "Enter signatory full name and check the legal agreement declaration"
+                ? t("blockedReadyDesc")
                 : effectiveIsSuperAdmin && isCompanyVerified
-                ? "Company will be verified and activated upon saving"
-                : isMarketing && !editingSlug
-                ? "Company will be submitted for Superadmin verification"
-                : "All steps completed"}
+                  ? t("readyVerified")
+                  : isMarketing && !editingSlug
+                    ? t("readyMarketing")
+                    : t("readyComplete")}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs text-gray-600">
-              {formData.name ? "✅" : "❌"} Name
+              {formData.name ? "✅" : "❌"} {t("checkName")}
             </span>
             <span className="text-xs text-gray-600">
-              {formData.slug ? "✅" : "❌"} Slug
+              {formData.slug ? "✅" : "❌"} {t("checkSlug")}
             </span>
             <span className="text-xs text-gray-600">
               {isValidEthiopianPhone(formData.contact_phone) ? "✅" : "❌"}{" "}
-              Phone
+              {t("checkPhone")}
             </span>
             <span className="text-xs text-gray-600">
-              {isFanValid ? "✅" : "❌"} FAN (16 digits)
+              {isFanValid ? "✅" : "❌"} {t("checkFan")}
             </span>
             <span className="text-xs text-gray-600">
-              {formData.contact_email ? "✅" : "❌"} Email
+              {formData.contact_email ? "✅" : "❌"} {t("checkEmail")}
             </span>
             {isTermsRequired && (
               <span className="text-xs text-gray-600">
-                {formData.terms_signatory_name?.trim() ? "✅" : "❌"} Signatory
+                {formData.terms_signatory_name?.trim() ? "✅" : "❌"}{" "}
+                {t("checkSignatory")}
               </span>
             )}
             <span className="text-xs text-gray-600">
-              {agreedToTerms ? "✅" : isTermsRequired ? "❌" : "⚪"} Terms
+              {agreedToTerms ? "✅" : isTermsRequired ? "❌" : "⚪"}{" "}
+              {t("checkTerms")}
             </span>
             {showVerificationBlock ? (
               <span className="text-xs text-gray-600">
-                {isCompanyVerified ? "✅" : "⚪"} Verified
+                {isCompanyVerified ? "✅" : "⚪"} {t("checkVerified")}
               </span>
             ) : (
               <span className="text-xs text-blue-600 font-medium">
-                ⏳ Pending Verification
+                {t("checkPendingVerification")}
               </span>
             )}
           </div>
@@ -2478,7 +2357,7 @@ export default function CompanyForm({
           <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
             <Eye className="h-4 w-4 text-blue-600" />
             <span className="text-xs font-medium text-blue-700">
-              You are viewing this company in read-only mode
+              {t("readOnlyNotice")}
             </span>
           </div>
         )}
@@ -2511,12 +2390,11 @@ export default function CompanyForm({
         />
       )}
       <TermsAndConditionsModal
-  isOpen={showTermsModal}
-  onClose={() => setShowTermsModal(false)}
-  onAccept={() => onAgreedToTermsChange?.(true)}
-  alreadyAgreed={agreedToTerms}
-/>
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => onAgreedToTermsChange?.(true)}
+        alreadyAgreed={agreedToTerms}
+      />
     </form>
-    
   );
 }

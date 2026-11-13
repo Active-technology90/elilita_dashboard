@@ -1,5 +1,6 @@
 // src/components/admin/category-management/CategoryFormModal.tsx
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FormModal } from "../../ui/FormModal";
 
 interface CategoryFormData {
@@ -37,6 +38,8 @@ export default function CategoryFormModal({
   formErrors,
   editingId,
 }: CategoryFormModalProps) {
+  const { t } = useTranslation("category");
+
   return (
     <FormModal
       isOpen={isOpen}
@@ -47,16 +50,16 @@ export default function CategoryFormModal({
       maxWidth="lg"
     >
       <div className="space-y-5">
-        {/* Row 1: Name and Name Amharic - 2 columns */}
+        {/* Row 1: Name and Name Amharic */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Name (English) */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Name (English) <span className="text-red-500">*</span>
+              {t("nameEnglish")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. Agro"
+              placeholder={t("nameEnglishPlaceholder")}
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -79,12 +82,12 @@ export default function CategoryFormModal({
           {/* Name (Amharic) */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Name (Amharic)
+              {t("nameAmharic")}
             </label>
             <input
               type="text"
               value={formData.name_am}
-              placeholder="e.g. አግሮ"
+              placeholder={t("nameAmharicPlaceholder")}
               onChange={(e) =>
                 setFormData({ ...formData, name_am: e.target.value })
               }
@@ -93,16 +96,16 @@ export default function CategoryFormModal({
           </div>
         </div>
 
-        {/* Row 2: Slug and Item Code - 2 columns */}
+        {/* Row 2: Slug and Item Code */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Slug */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Slug <span className="text-red-500">*</span>
+              {t("slug")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. agro"
+              placeholder={t("slugPlaceholder")}
               value={formData.slug}
               onChange={(e) =>
                 setFormData({ ...formData, slug: e.target.value })
@@ -125,11 +128,11 @@ export default function CategoryFormModal({
           {/* Item Code */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Item Code
+              {t("itemCode")}
             </label>
             <input
               type="text"
-              placeholder="e.g. 01"
+              placeholder={t("itemCodePlaceholder")}
               value={formData.code}
               onChange={(e) =>
                 setFormData({ ...formData, code: e.target.value })
@@ -139,10 +142,10 @@ export default function CategoryFormModal({
           </div>
         </div>
 
-        {/* Row 3: Priority Order - FULL WIDTH (spans both columns) */}
+        {/* Row 3: Priority Order */}
         <div className="group">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-            Priority Order
+            {t("priorityOrder")}
           </label>
           <input
             type="number"
@@ -175,16 +178,16 @@ export default function CategoryFormModal({
                 d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
               />
             </svg>
-            Lower number = higher priority
+            {t("priorityHint")}
           </p>
         </div>
 
-        {/* Row 4: Icon and Description - 2 columns (side by side) */}
+        {/* Row 4: Icon and Description */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Category Icon */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Category Icon
+              {t("categoryIcon")}
             </label>
             <div
               className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-200 p-2 flex flex-col items-center justify-center transition-all duration-300 hover:border-secondary hover:bg-gray-50/80"
@@ -199,7 +202,7 @@ export default function CategoryFormModal({
                   const file = e.target.files?.[0];
                   if (file) {
                     if (file.size > 5 * 1024 * 1024) {
-                      alert("File must be smaller than 5MB");
+                      alert(t("fileTooLarge"));
                       return;
                     }
                     setFormData({
@@ -215,12 +218,12 @@ export default function CategoryFormModal({
                   <div className="relative group/preview">
                     <img
                       src={formData.iconPreview}
-                      alt="Preview"
+                      alt={t("preview")}
                       className="w-16 h-16 rounded-xl object-cover shadow-lg ring-2 ring-secondary/20"
                     />
                     <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="text-white text-[10px] font-medium">
-                        Preview
+                        {t("preview")}
                       </span>
                     </div>
                   </div>
@@ -238,7 +241,7 @@ export default function CategoryFormModal({
                       if (fileInput) fileInput.value = "";
                     }}
                     className="mt-2 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
-                    title="Remove image"
+                    title={t("removeImage")}
                   >
                     <svg
                       className="w-3.5 h-3.5 text-white"
@@ -276,10 +279,10 @@ export default function CategoryFormModal({
                     </svg>
                   </div>
                   <span className="text-[11px] font-semibold text-gray-600">
-                    Upload Icon
+                    {t("uploadIcon")}
                   </span>
                   <span className="text-[10px] text-gray-400 mt-0.5">
-                    PNG, JPG up to 5MB
+                    {t("uploadHint")}
                   </span>
                 </label>
               )}
@@ -289,10 +292,10 @@ export default function CategoryFormModal({
           {/* Description */}
           <div className="group">
             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-              Description
+              {t("description")}
             </label>
             <textarea
-              placeholder="Describe this category..."
+              placeholder={t("descriptionPlaceholder")}
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
@@ -303,7 +306,7 @@ export default function CategoryFormModal({
           </div>
         </div>
 
-        {/* Row 5: Active Category - FULL WIDTH */}
+        {/* Row 5: Active Category */}
         <div className="p-2">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center space-x-3">
@@ -325,7 +328,7 @@ export default function CategoryFormModal({
                 htmlFor="is_active"
                 className="text-sm font-semibold text-gray-700 cursor-pointer"
               >
-                Active Category
+                {t("activeCategory")}
               </label>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -343,10 +346,10 @@ export default function CategoryFormModal({
                       : "bg-gray-400"
                   }`}
                 ></span>
-                {formData.is_active ? "Visible" : "Hidden"}
+                {formData.is_active ? t("statusVisible") : t("statusHidden")}
               </span>
               <span className="text-xs text-gray-400">
-                Visible to all companies
+                {t("visibleToAll")}
               </span>
             </div>
           </div>

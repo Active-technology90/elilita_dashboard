@@ -1,5 +1,6 @@
 // src/components/admin/CompanyManagement/NonSuperAdminView.tsx
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import CompanyCard from "./CompanyCard";
 import CompanyForm, { type CompanyFormData } from "./CompanyForm";
 import CompanyFormSkeleton from "./CompanyFormSkeleton";
@@ -90,7 +91,6 @@ interface NonSuperAdminViewProps {
 export default function NonSuperAdminView({
   companies,
   userCompanyRole,
-
   headCompanies,
   onEdit,
   loading = false,
@@ -112,6 +112,7 @@ export default function NonSuperAdminView({
   onSubmit,
   onCloseForm,
 }: NonSuperAdminViewProps) {
+  const { t } = useTranslation("company");
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
@@ -150,7 +151,7 @@ export default function NonSuperAdminView({
       if (validateStep(currentStep)) {
         setCurrentStep(Math.min(3, currentStep + 1));
       } else {
-        alert("Please fill in all required fields before proceeding.");
+        alert(t("pleaseFillRequired"));
       }
     } else {
       setCurrentStep(Math.min(2, currentStep + 1));
@@ -170,12 +171,12 @@ export default function NonSuperAdminView({
   // In Edit Mode: show all 4 steps including Review
   const visibleStepLabels = isEditingActive
     ? [
-        "Basic Information",
-        "Location & Contact",
-        "Media & Documents",
-        "Review & Submit",
+        t("step1Title"),
+        t("step2Title"),
+        t("step3Title"),
+        t("step4Title"),
       ]
-    : ["Basic Information", "Location & Contact", "Media & Documents"];
+    : [t("step1Title"), t("step2Title"), t("step3Title")];
 
   const maxStep = isEditingActive ? 3 : 2;
 
@@ -323,12 +324,12 @@ export default function NonSuperAdminView({
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-base font-semibold text-gray-900 truncate">
-                        Company Information
+                        {t("workspaceTitle")}
                       </h2>
                       <p className="text-xs text-gray-500 truncate">
                         {isEditingActive
-                          ? "Editing company profile"
-                          : "Review your company details and settings"}
+                          ? t("workspaceEditDesc")
+                          : t("workspaceViewDesc")}
                       </p>
                     </div>
                   </div>
@@ -341,7 +342,7 @@ export default function NonSuperAdminView({
                           onClick={onCloseForm}
                           className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors duration-150"
                         >
-                          Cancel
+                          {t("cancelBtn")}
                         </button>
                       </>
                     ) : (
@@ -369,7 +370,7 @@ export default function NonSuperAdminView({
                               />
                               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                             </svg>
-                            View Only
+                            {t("viewOnly")}
                           </span>
                         )}
                         {canEdit && (
@@ -394,7 +395,7 @@ export default function NonSuperAdminView({
                               <path d="M17 3l4 4-7 7H10v-4l7-7z" />
                               <path d="M4 20h16" />
                             </svg>
-                            Edit Company
+                            {t("editCompanyBtn")}
                           </button>
                         )}
                       </>
@@ -468,7 +469,10 @@ export default function NonSuperAdminView({
                   <div className="md:hidden">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-gray-500">
-                        Step {currentStep + 1} of {visibleStepLabels.length}
+                        {t("stepOf", {
+                          current: currentStep + 1,
+                          total: visibleStepLabels.length,
+                        })}
                       </span>
                       <span className="text-xs font-semibold text-gray-700 flex items-center gap-1">
                         {stepIcons[currentStep]}
@@ -501,128 +505,128 @@ export default function NonSuperAdminView({
                   {/* Form Container */}
                   <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                     <CompanyForm
-                  formData={formData}
-                  setFormData={setFormData}
-                  formErrors={formErrors}
-                  categories={categories}
-                  subcategories={subcategories}
-                  logoPreview={logoPreview}
-                  coverPreview={coverPreview}
-                  onLogoFileChange={onLogoFileChange}
-                  onCoverFileChange={onCoverFileChange}
-                  isEditingActive={isEditingActive}
-                  canManageActiveStatus={false}
-                  isSuperAdmin={false}
-                  isMarketing={false}
-                  headCompanies={headCompanies}
-                  submitting={submitting}
-                  editingSlug={editingSlug}
-                  headCompanyName={headCompanyName}
-                  currentStep={currentStep}
-                  agreedToTerms={agreedToTerms}
-                  onAgreedToTermsChange={onAgreedToTermsChange}
-                  onSubmit={onSubmit}
-                  onClose={onCloseForm}
+                      formData={formData}
+                      setFormData={setFormData}
+                      formErrors={formErrors}
+                      categories={categories}
+                      subcategories={subcategories}
+                      logoPreview={logoPreview}
+                      coverPreview={coverPreview}
+                      onLogoFileChange={onLogoFileChange}
+                      onCoverFileChange={onCoverFileChange}
+                      isEditingActive={isEditingActive}
+                      canManageActiveStatus={false}
+                      isSuperAdmin={false}
+                      isMarketing={false}
+                      headCompanies={headCompanies}
+                      submitting={submitting}
+                      editingSlug={editingSlug}
+                      headCompanyName={headCompanyName}
+                      currentStep={currentStep}
+                      agreedToTerms={agreedToTerms}
+                      onAgreedToTermsChange={onAgreedToTermsChange}
+                      onSubmit={onSubmit}
+                      onClose={onCloseForm}
                     />
                   </div>
 
-                  {/* Navigation Footer - normal content, not sticky */}
+                  {/* Navigation Footer */}
                   <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePrevStep}
-                    disabled={currentStep === 0}
-                    className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex items-center justify-center gap-1.5"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="19" y1="12" x2="5" y2="12" />
-                      <polyline points="12 19 5 12 12 5" />
-                    </svg>
-                    Previous
-                  </button>
+                      <button
+                        type="button"
+                        onClick={handlePrevStep}
+                        disabled={currentStep === 0}
+                        className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex items-center justify-center gap-1.5"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="19" y1="12" x2="5" y2="12" />
+                          <polyline points="12 19 5 12 12 5" />
+                        </svg>
+                        {t("previous")}
+                      </button>
 
-                  {isEditingActive ? (
-                    currentStep === 3 ? (
-                      <button
-                        type="button"
-                        onClick={onSubmit}
-                        disabled={submitting}
-                        className="flex-1 sm:flex-none px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors duration-150 disabled:opacity-50 shadow-sm flex items-center justify-center gap-1.5"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                      {isEditingActive ? (
+                        currentStep === 3 ? (
+                          <button
+                            type="button"
+                            onClick={onSubmit}
+                            disabled={submitting}
+                            className="flex-1 sm:flex-none px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-colors duration-150 disabled:opacity-50 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34" />
+                              <polygon points="18 2 22 6 12 16 8 16 8 12 18 2" />
+                            </svg>
+                            {submitting ? t("saving") : t("updateCompany")}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleNextStep}
+                            className="flex-1 sm:flex-none px-6 py-2 rounded-lg bg-secondary hover:bg-secondary-light text-white text-xs font-semibold transition-colors duration-150 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            {t("nextStep")}
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                              <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                          </button>
+                        )
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleNextStep}
+                          disabled={currentStep === maxStep}
+                          className="flex-1 sm:flex-none px-6 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex items-center justify-center gap-1.5"
                         >
-                          <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34" />
-                          <polygon points="18 2 22 6 12 16 8 16 8 12 18 2" />
-                        </svg>
-                        {submitting ? "Saving..." : "Update Company"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleNextStep}
-                        className="flex-1 sm:flex-none px-6 py-2 rounded-lg bg-secondary hover:bg-secondary-light text-white text-xs font-semibold transition-colors duration-150 shadow-sm flex items-center justify-center gap-1.5"
-                      >
-                        Next Step
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                          <polyline points="12 5 19 12 12 19" />
-                        </svg>
-                      </button>
-                    )
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      disabled={currentStep === maxStep}
-                      className="flex-1 sm:flex-none px-6 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150 flex items-center justify-center gap-1.5"
-                    >
-                      Next
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                        <polyline points="12 5 19 12 12 19" />
-                      </svg>
-                    </button>
-                  )}
+                          {t("next")}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Building2, Plus } from "lucide-react";
 import api from "../../../services/api";
 import {
@@ -33,6 +34,7 @@ import { usePagination } from "../../../hooks/usePagination";
 import { useSorting } from "../../../hooks/useSorting";
 import { useAuth } from "../../../hooks/useAuth";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
+import { useLocalizedName } from "../../../hooks/useLocalizedName";
 import type { Column } from "../../ui/DataTable";
 import { ImageIcon } from "lucide-react";
 
@@ -180,20 +182,7 @@ const SkeletonTable: React.FC<{ rowCount?: number }> = ({ rowCount = 5 }) => (
       <table className="w-full">
         <thead>
           <tr className="border-b border-secondary/10 bg-secondary/[0.03]">
-            {[
-              "No.",
-              "Logo",
-              "Name",
-              "Slug",
-              "Category",
-              "Subcategory",
-              "Type",
-              "Address",
-              "TIN",
-              "Tax Type",
-              "Active",
-              "Actions",
-            ].map((_h, i) => (
+            {[...Array(12)].map((_h, i) => (
               <th key={i} className="px-5 py-3.5 text-left">
                 <div className="h-4 w-12 rounded bg-secondary/[0.08]"></div>
               </th>
@@ -241,7 +230,7 @@ const SkeletonDetailCard: React.FC = () => (
 );
 
 /* ──────────────────────────────────────────────────────────────────
-   Empty form — theme colors & tax_comment removed/commented
+   Empty form
    ────────────────────────────────────────────────────────────────── */
 
 const EMPTY_COMPANY_FORM: CompanyFormData = {
@@ -268,15 +257,11 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   logo: null,
   cover_image: null,
   chapa_sub_account_id: "",
-  // theme_primary: "#674FA3",   // COMMENTED OUT
-  // theme_dark: "#6750A4",      // COMMENTED OUT
-  // theme_light: "#8B6BB5",     // COMMENTED OUT
   tin_number: "",
   vat_registration_number: "",
   fan_number: "",
-  tax_type: "none", // always No Tax
+  tax_type: "none",
   show_vat: false,
-  // tax_comment: "",            // COMMENTED OUT
   license: null,
   moa_file: null,
   contact_phone: "",
@@ -285,13 +270,14 @@ const EMPTY_COMPANY_FORM: CompanyFormData = {
   terms_signatory_role: "Owner",
 };
 
-
-
 /* ──────────────────────────────────────────────────────────────────
    Main component
    ────────────────────────────────────────────────────────────────── */
 
 export default function CompanyManagement() {
+  const { t } = useTranslation("company");
+  const { pick: pickName, isAmharic } = useLocalizedName();
+
   const [pageSize, setPageSize] = useState(10);
   const { user } = useAuth();
   const { company: currentCompany } = useCurrentCompany();
@@ -368,15 +354,14 @@ export default function CompanyManagement() {
     ...EMPTY_COMPANY_FORM,
   });
   const [originalFormData, setOriginalFormData] =
-  useState<CompanyFormData | null>(null);
+    useState<CompanyFormData | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  
+
   // Terms agreement
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  
-  console.log('current', currentStep)
+
   const handleLogoChange = useCallback(
     (file: File | null) => {
       if (logoPreview && logoPreview.startsWith("blob:")) {
@@ -497,6 +482,37 @@ export default function CompanyManagement() {
     [companies],
   );
 
+  /* ── NEW: Amharic label maps (backend-provided names keyed by English) ── */
+  const businessTypeLabelsAm = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of companies) {
+      const english = c.business_type?.trim();
+      const amharic = (c as any).business_type_am?.trim?.();
+      if (english && amharic && !map[english]) map[english] = amharic;
+    }
+    return map;
+  }, [companies]);
+
+  const categoryLabelsAm = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of companies) {
+      const english = c.category_name?.trim();
+      const amharic = (c as any).category_name_am?.trim?.();
+      if (english && amharic && !map[english]) map[english] = amharic;
+    }
+    return map;
+  }, [companies]);
+
+  const subCategoryLabelsAm = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of companies) {
+      const english = c.sub_category_name?.trim();
+      const amharic = (c as any).sub_category_name_am?.trim?.();
+      if (english && amharic && !map[english]) map[english] = amharic;
+    }
+    return map;
+  }, [companies]);
+
   const hasActiveFilters =
     !!inputValue.trim() ||
     businessTypeFilter !== "all" ||
@@ -535,20 +551,20 @@ export default function CompanyManagement() {
   ]);
 
   /* ──────────────────────────────────────────────────────────────
-     Table columns — Tax Type shows "No Tax" always
+     Table columns — language-aware display
      ────────────────────────────────────────────────────────────── */
   const columns: Column<CompanyListItem>[] = useMemo(
     () => [
       {
         key: "rowNumber",
-        header: "No.",
+        header: t("colNo"),
         sortable: false,
         render: (item: CompanyListItem & { rowNumber?: number }) =>
           item.rowNumber,
       },
       {
         key: "logo",
-        header: "Logo",
+        header: t("colLogo"),
         sortable: false,
         render: (comp) =>
           comp.logo ? (
@@ -566,29 +582,59 @@ export default function CompanyManagement() {
       },
       {
         key: "name",
-        header: "Name",
+        header: t("colName"),
         sortable: true,
         className:
           "font-medium text-gray-900 max-w-[120px] sm:max-w-[200px] break-words",
       },
       {
         key: "slug",
-        header: "Slug",
+        header: t("colSlug"),
         sortable: true,
         className:
           "font-mono text-gray-500 max-w-[100px] sm:max-w-[150px] break-words",
       },
-      { key: "category_name", header: "Category", sortable: true },
-      { key: "sub_category_name", header: "Subcategory", sortable: true },
+      {
+        key: "category_name",
+        header: t("colCategory"),
+        sortable: true,
+        render: (comp) =>
+          pickName(comp.category_name, (comp as any).category_name_am),
+      },
+      {
+        key: "sub_category_name",
+        header: t("colSubcategory"),
+        sortable: true,
+        render: (comp) =>
+          pickName(comp.sub_category_name, (comp as any).sub_category_name_am),
+      },
       {
         key: "business_type",
-        header: "Type",
+        header: t("colType"),
         sortable: true,
-        render: (comp) => comp.business_type?.toUpperCase() || "-",
+        render: (comp) => {
+          const english = comp.business_type || "";
+          if (!english) return "-";
+          const backendAm = (comp as any).business_type_am;
+          if (isAmharic && backendAm && String(backendAm).trim() !== "") {
+            return String(backendAm);
+          }
+          const key = english.toLowerCase();
+          const staticMap: Record<string, string> = {
+            brand: t("btBrand"),
+            factory: t("btFactory"),
+            service: t("btService"),
+            store: t("btStore"),
+            delivery: t("btDelivery"),
+            delivery_service: t("btDeliveryService"),
+            other: t("btOther"),
+          };
+          return staticMap[key] ?? english.toUpperCase();
+        },
       },
       {
         key: "address",
-        header: "Address",
+        header: t("colAddress"),
         sortable: true,
         className: "w-[190px] max-w-[190px]",
         render: (comp) => {
@@ -605,20 +651,19 @@ export default function CompanyManagement() {
       },
       {
         key: "tin_number",
-        header: "TIN",
+        header: t("colTin"),
         sortable: true,
         render: (comp) => comp.tin_number || "-",
       },
       {
         key: "tax_type",
-        header: "Tax Type",
+        header: t("colTaxType"),
         sortable: true,
-        // Always show "No Tax"
-        render: () => "No Tax",
+        render: () => t("noTax"),
       },
       {
         key: "is_active",
-        header: "Is Active",
+        header: t("colActive"),
         sortable: true,
         render: (comp) => (
           <span
@@ -628,35 +673,37 @@ export default function CompanyManagement() {
                 : "border-red-200 bg-red-50 text-red-700"
             }`}
           >
-            {comp.is_active ? "Yes" : "No"}
+            {comp.is_active ? t("yes") : t("no")}
           </span>
         ),
       },
       {
         key: "chapa_sub_account_id",
-        header: "Chapa Split",
+        header: t("colChapaSplit"),
         sortable: false,
         render: (comp: any) =>
           comp.chapa_sub_account_id ? (
             <span
               className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
-              title={`Chapa Subaccount: ${comp.chapa_sub_account_id}`}
+              title={t("chapaLinkedTitle", {
+                id: comp.chapa_sub_account_id,
+              })}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Linked
+              {t("chapaLinked")}
             </span>
           ) : (
             <span
               className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
-              title="Online payment disabled until subaccount is linked in Bank Accounts"
+              title={t("chapaNotConfiguredTitle")}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              Not Configured
+              {t("chapaNotConfigured")}
             </span>
           ),
       },
     ],
-    [],
+    [t, pickName, isAmharic],
   );
 
   const onSortChange = useCallback(
@@ -696,9 +743,12 @@ export default function CompanyManagement() {
           head_company_detail: company.head_company_detail ?? null,
           category: company.category,
           category_name: company.category_name,
+          category_name_am: (company as any).category_name_am || "",
           sub_category: company.sub_category,
           sub_category_name: company.sub_category_name,
+          sub_category_name_am: (company as any).sub_category_name_am || "",
           business_type: company.business_type,
+          business_type_am: (company as any).business_type_am || "",
           minimum_order_total: company.minimum_order_total || "0.00",
           maximum_cod_total: company.maximum_cod_total || "0.00",
           latitude: company.latitude || "",
@@ -723,7 +773,7 @@ export default function CompanyManagement() {
           vat_registration_number:
             (company as any).vat_registration_number || "",
           fan_number: (company as any).fan_number || "",
-          tax_type: "none", // always No Tax
+          tax_type: "none",
           license: (company as any).license || null,
           moa_file: (company as any).moa_file || null,
           chapa_sub_account_id: (company as any).chapa_sub_account_id || "",
@@ -768,8 +818,10 @@ export default function CompanyManagement() {
           show_vat: Boolean((companyListItem as any).show_vat),
           chapa_sub_account_id:
             (companyListItem as any).chapa_sub_account_id || "",
-          terms_signatory_name: (companyListItem as any).terms_signatory_name || "",
-          terms_signatory_role: (companyListItem as any).terms_signatory_role || "Owner",
+          terms_signatory_name:
+            (companyListItem as any).terms_signatory_name || "",
+          terms_signatory_role:
+            (companyListItem as any).terms_signatory_role || "Owner",
         };
 
         setFormData(newFormData);
@@ -781,10 +833,9 @@ export default function CompanyManagement() {
         if (companyListItem.logo) setLogoPreview(companyListItem.logo);
         if (companyListItem.cover_image)
           setCoverPreview(companyListItem.cover_image);
-      }
+      } else if (isSuperAdmin || isMarketing) {
 
       /* ─── SUPER-ADMIN / MARKETING PATH ─── */
-      else if (isSuperAdmin || isMarketing) {
         let allCompanies: CompanyListItem[] = [];
         const extraParam = isMarketing ? "&my_registrations=true" : "";
         let nextUrl: string | null =
@@ -828,7 +879,7 @@ export default function CompanyManagement() {
                   "vat",
                 ),
                 fan_number: pickString(detail, "fan_number", "fan"),
-                tax_type: "none", // always No Tax
+                tax_type: "none",
                 license: detail.license ?? null,
                 moa_file: detail.moa_file ?? null,
                 chapa_sub_account_id: pickString(
@@ -852,9 +903,21 @@ export default function CompanyManagement() {
                   : (company as any).meal_periods || [],
                 created_at:
                   (detail as any).created_at ?? (company as any).created_at,
+                // ── Amharic names ──
+                category_name_am:
+                  pickString(detail, "category_name_am") ||
+                  (company as any).category_name_am ||
+                  "",
+                sub_category_name_am:
+                  pickString(detail, "sub_category_name_am") ||
+                  (company as any).sub_category_name_am ||
+                  "",
+                business_type_am:
+                  pickString(detail, "business_type_am") ||
+                  (company as any).business_type_am ||
+                  "",
               } as CompanyListItem;
             } catch (err) {
-              // eslint-disable-next-line no-console
               console.warn(
                 "[fetchData] Detail fetch failed for",
                 company.slug,
@@ -903,7 +966,8 @@ export default function CompanyManagement() {
             show_vat: Boolean((first as any).show_vat),
             chapa_sub_account_id: (first as any).chapa_sub_account_id || "",
             terms_signatory_name: (first as any).terms_signatory_name || "",
-            terms_signatory_role: (first as any).terms_signatory_role || "Owner",
+            terms_signatory_role:
+              (first as any).terms_signatory_role || "Owner",
           };
           setFormData(newFormData);
           setOriginalFormData({
@@ -928,12 +992,11 @@ export default function CompanyManagement() {
       setSubcategories(subcategoriesRes.data);
       const headData = headCompaniesRes.data;
       setHeadCompanies(
-        Array.isArray(headData) ? headData : headData.results ?? [],
+        Array.isArray(headData) ? headData : (headData.results ?? []),
       );
     } catch (err: any) {
-      // eslint-disable-next-line no-console
       console.error("[fetchData] Failed:", err);
-      setError(err.message || "Failed to load data");
+      setError(err.message || t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -950,17 +1013,15 @@ export default function CompanyManagement() {
   const validateBasicInfo = () => {
     const errors: Record<string, string> = {};
     if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug)) {
-      errors.slug =
-        "Slug must contain only lowercase letters, numbers, and hyphens";
+      errors.slug = t("slugInvalid");
     }
-    if (!formData.name.trim()) errors.name = "Company name is required";
-    if (formData.category === 0)
-      errors.category = "Please select a category";
+    if (!formData.name.trim()) errors.name = t("nameRequired");
+    if (formData.category === 0) errors.category = t("categoryRequiredError");
     if (formData.sub_category === 0)
-      errors.sub_category = "Please select a subcategory";
+      errors.sub_category = t("subcategoryRequiredError");
     if (!formData.business_type)
-      errors.business_type = "Please select a business type";
-    if (!formData.slug.trim()) errors.slug = "Slug is required";
+      errors.business_type = t("businessTypeRequiredError");
+    if (!formData.slug.trim()) errors.slug = t("slugRequired");
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -968,14 +1029,14 @@ export default function CompanyManagement() {
   const validateLocation = () => {
     const errors: Record<string, string> = {};
     if (!formData.contact_phone.trim()) {
-      errors.contact_phone = "Phone Number is required";
+      errors.contact_phone = t("phoneRequired");
     }
     if (!formData.contact_email.trim()) {
-      errors.contact_email = "Email Address is required";
+      errors.contact_email = t("emailRequired");
     } else if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email.trim())
     ) {
-      errors.contact_email = "Please enter a valid email address";
+      errors.contact_email = t("emailInvalid");
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -984,7 +1045,7 @@ export default function CompanyManagement() {
   const validateDocuments = () => {
     const errors: Record<string, string> = {};
     if (formData.fan_number && !/^\d{16}$/.test(formData.fan_number)) {
-      errors.fan_number = "FAN Number must be exactly 16 digits";
+      errors.fan_number = t("fanInvalid");
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -1012,22 +1073,16 @@ export default function CompanyManagement() {
 
     if (isMarketing && !editingSlug) {
       if (!agreedToTerms) {
-        showToast(
-          "error",
-          "The company owner must agree to the terms and conditions before registration.",
-        );
+        showToast("error", t("termsRequiredOwner"));
         return;
       }
       if (!formData.terms_signatory_name?.trim()) {
-        showToast(
-          "error",
-          "Please enter the legal name of the owner or authorized signatory who agreed to the terms.",
-        );
+        showToast("error", t("signatoryRequired"));
         return;
       }
     }
 
-    // ─── CHANGE DETECTION ───
+    // CHANGE DETECTION
     if (editingSlug && originalFormData) {
       const hasChanges = () => {
         const cleanString = (val: any) =>
@@ -1045,7 +1100,8 @@ export default function CompanyManagement() {
         if (cleanString(formData.name) !== cleanString(originalFormData.name))
           return true;
         if (
-          cleanString(formData.name_am) !== cleanString(originalFormData.name_am)
+          cleanString(formData.name_am) !==
+          cleanString(originalFormData.name_am)
         )
           return true;
         if (Number(formData.category) !== Number(originalFormData.category))
@@ -1061,7 +1117,8 @@ export default function CompanyManagement() {
         )
           return true;
         if (
-          cleanString(formData.address) !== cleanString(originalFormData.address)
+          cleanString(formData.address) !==
+          cleanString(originalFormData.address)
         )
           return true;
         if (
@@ -1126,10 +1183,7 @@ export default function CompanyManagement() {
           Boolean(originalFormData.show_order_queue)
         )
           return true;
-        if (
-          Boolean(formData.show_vat) !==
-          Boolean(originalFormData.show_vat)
-        )
+        if (Boolean(formData.show_vat) !== Boolean(originalFormData.show_vat))
           return true;
         if (
           cleanString(formData.tin_number) !==
@@ -1198,7 +1252,7 @@ export default function CompanyManagement() {
       const changesExist = hasChanges();
 
       if (!changesExist) {
-        showToast("info", "No changes detected. Update canceled.");
+        showToast("info", t("noChangesDetected"));
         if (!isSuperAdmin && !isMarketing) {
           setIsEditingActive(false);
           resetForm();
@@ -1258,17 +1312,20 @@ export default function CompanyManagement() {
         }
         formPayload.append("terms_agreed", String(agreedToTerms));
       }
-      formPayload.append("terms_signatory_name", formData.terms_signatory_name?.trim() || "");
-      formPayload.append("terms_signatory_role", formData.terms_signatory_role || "Owner");
+      formPayload.append(
+        "terms_signatory_name",
+        formData.terms_signatory_name?.trim() || "",
+      );
+      formPayload.append(
+        "terms_signatory_role",
+        formData.terms_signatory_role || "Owner",
+      );
 
       formPayload.append(
         "supports_table_service",
         String(formData.supports_table_service),
       );
-      formPayload.append(
-        "show_order_queue",
-        String(formData.show_order_queue),
-      );
+      formPayload.append("show_order_queue", String(formData.show_order_queue));
 
       if (
         formData.supports_table_service ||
@@ -1301,7 +1358,6 @@ export default function CompanyManagement() {
         formData.vat_registration_number || "",
       );
       formPayload.append("fan_number", formData.fan_number || "");
-      // Tax type — always "none" (No Tax)
       formPayload.append("tax_type", "none");
       formPayload.append("show_vat", String(Boolean(formData.show_vat)));
       formPayload.append(
@@ -1318,7 +1374,11 @@ export default function CompanyManagement() {
       }
 
       if (formData.moa_file instanceof File) {
-        formPayload.append("moa_file", formData.moa_file, formData.moa_file.name);
+        formPayload.append(
+          "moa_file",
+          formData.moa_file,
+          formData.moa_file.name,
+        );
       } else if (formData.moa_file === null && originalFormData?.moa_file) {
         formPayload.append("moa_file", "");
       }
@@ -1388,9 +1448,7 @@ export default function CompanyManagement() {
 
       showToast(
         "success",
-        editingSlug
-          ? "Company updated successfully"
-          : "Company created as inactive. Super admin verification is required before activation.",
+        editingSlug ? t("updateSuccess") : t("createSuccess"),
       );
 
       setModalOpen(false);
@@ -1399,11 +1457,10 @@ export default function CompanyManagement() {
       await fetchData();
       resetForm();
     } catch (err: any) {
-      // eslint-disable-next-line no-console
       console.error("[handleSubmit] Failed:", err);
 
       if (err?.response?.status === 401) {
-        showToast("error", "Session expired. Please refresh the page.");
+        showToast("error", t("sessionExpired"));
       } else {
         const msg =
           err?.response?.data?.message ||
@@ -1411,7 +1468,7 @@ export default function CompanyManagement() {
           (typeof err?.response?.data === "object"
             ? JSON.stringify(err.response.data)
             : null) ||
-          "Operation failed";
+          t("operationFailed");
         showToast("error", msg);
       }
     } finally {
@@ -1448,7 +1505,7 @@ export default function CompanyManagement() {
     () => [
       {
         id: "basic",
-        title: <span className="text-secondary">Basic Information</span>,
+        title: <span className="text-secondary">{t("step1Title")}</span>,
         content: (
           <CompanyForm
             formData={formData}
@@ -1484,7 +1541,7 @@ export default function CompanyManagement() {
       },
       {
         id: "location",
-        title: <span className="text-secondary">Location & Contact</span>,
+        title: <span className="text-secondary">{t("step2Title")}</span>,
         content: (
           <CompanyForm
             formData={formData}
@@ -1520,7 +1577,7 @@ export default function CompanyManagement() {
       },
       {
         id: "documents",
-        title: <span className="text-secondary">Media & Documents</span>,
+        title: <span className="text-secondary">{t("step3Title")}</span>,
         content: (
           <CompanyForm
             formData={formData}
@@ -1556,7 +1613,7 @@ export default function CompanyManagement() {
       },
       {
         id: "summary",
-        title: <span className="text-secondary">Review</span>,
+        title: <span className="text-secondary">{t("step4Title")}</span>,
         content: (
           <CompanyForm
             formData={formData}
@@ -1608,8 +1665,18 @@ export default function CompanyManagement() {
       handleVerificationChange,
       agreedToTerms,
       handleCloseModal,
+      t,
     ],
   );
+  // TEMP DEBUG — remove after verifying
+useEffect(() => {
+  if (companies.length > 0) {
+    console.log("[CompanyManagement] companies[0] raw:", companies[0]);
+    console.log("[CompanyManagement] categoryLabelsAm:", categoryLabelsAm);
+    console.log("[CompanyManagement] subCategoryLabelsAm:", subCategoryLabelsAm);
+    console.log("[CompanyManagement] businessTypeLabelsAm:", businessTypeLabelsAm);
+  }
+}, [companies, categoryLabelsAm, subCategoryLabelsAm, businessTypeLabelsAm]);
 
   /* ──────────────────────────────────────────────────────────────
      openEdit
@@ -1617,7 +1684,7 @@ export default function CompanyManagement() {
   const openEdit = useCallback(
     async (company: CompanyListItem) => {
       if (!canEditCompany(company.slug)) {
-        showToast("error", "You don't have permission to edit this company");
+        showToast("error", t("permissionDenied"));
         return;
       }
 
@@ -1626,7 +1693,6 @@ export default function CompanyManagement() {
         const res = await getCompanyDetail(company.slug);
         detail = res.data;
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn("[openEdit] detail fetch failed, using list item", err);
       }
 
@@ -1673,9 +1739,7 @@ export default function CompanyManagement() {
         latitude: detail.latitude ?? company.latitude ?? "",
         longitude: detail.longitude ?? company.longitude ?? "",
         delivery_fee_per_km:
-          detail.delivery_fee_per_km ??
-          company.delivery_fee_per_km ??
-          "0.00",
+          detail.delivery_fee_per_km ?? company.delivery_fee_per_km ?? "0.00",
         is_active: detail.is_active ?? company.is_active ?? false,
         supports_table_service:
           detail.supports_table_service ??
@@ -1739,7 +1803,7 @@ export default function CompanyManagement() {
         setIsEditingActive(true);
       }
     },
-    [canEditCompany, isSuperAdmin, isMarketing, showToast],
+    [canEditCompany, isSuperAdmin, isMarketing, showToast, t],
   );
 
   const closeInlineEdit = useCallback(() => {
@@ -1765,11 +1829,11 @@ export default function CompanyManagement() {
     if (!deleteTarget) return;
     try {
       await deleteCompany(deleteTarget.slug);
-      showToast("success", "Company deleted successfully");
+      showToast("success", t("deleteSuccess"));
       setDeleteTarget(null);
       fetchData();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Delete failed");
+      showToast("error", err.response?.data?.detail || t("deleteFailed"));
     }
   };
 
@@ -1785,13 +1849,15 @@ export default function CompanyManagement() {
         }`}
       >
         <PageHeader
-          title={isSuperAdmin || isMarketing ? "Companies" : "Company Detail"}
+          title={
+            isSuperAdmin || isMarketing ? t("pageTitle") : t("pageTitleDetail")
+          }
           description={
             isSuperAdmin
-              ? "Manage company access, status, and operational settings."
+              ? t("pageDescSuperAdmin")
               : isMarketing
-              ? "Manage company profiles and marketing information."
-              : "Manage your company details and settings."
+                ? t("pageDescMarketing")
+                : t("pageDescCompany")
           }
           icon={Building2}
           loading
@@ -1821,13 +1887,15 @@ export default function CompanyManagement() {
         }
       >
         <PageHeader
-          title={isSuperAdmin || isMarketing ? "Companies" : "Company Detail"}
+          title={
+            isSuperAdmin || isMarketing ? t("pageTitle") : t("pageTitleDetail")
+          }
           description={
             isSuperAdmin
-              ? "Manage company activation, access, and operational settings. Inactive companies remain visible in view-only mode."
+              ? t("pageDescSuperAdmin")
               : isMarketing
-              ? "Manage company profiles and marketing information."
-              : "Manage your company details and settings."
+                ? t("pageDescMarketing")
+                : t("pageDescCompany")
           }
           icon={Building2}
           className={
@@ -1847,8 +1915,8 @@ export default function CompanyManagement() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Company</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t("addCompany")}</span>
+                <span className="sm:hidden">{t("add")}</span>
               </button>
             ) : undefined
           }
@@ -1864,8 +1932,8 @@ export default function CompanyManagement() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#5b4694] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Company</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t("addCompany")}</span>
+                <span className="sm:hidden">{t("add")}</span>
               </button>
             ) : undefined
           }
@@ -1886,12 +1954,15 @@ export default function CompanyManagement() {
                 businessTypeFilter={businessTypeFilter}
                 onBusinessTypeChange={setBusinessTypeFilter}
                 businessTypeOptions={businessTypeOptions}
+                businessTypeLabelsAm={businessTypeLabelsAm}
                 categoryFilter={categoryFilter}
                 onCategoryChange={setCategoryFilter}
                 categoryOptions={categoryOptions}
+                categoryLabelsAm={categoryLabelsAm}
                 subCategoryFilter={subCategoryFilter}
                 onSubCategoryChange={setSubCategoryFilter}
                 subCategoryOptions={subCategoryOptions}
+                subCategoryLabelsAm={subCategoryLabelsAm}
                 createdAtFilter={createdAtFilter}
                 onCreatedAtChange={setCreatedAtFilter}
                 hasActiveFilters={hasActiveFilters}
@@ -1926,8 +1997,11 @@ export default function CompanyManagement() {
               subCategoryFilter={subCategoryFilter}
               onSubCategoryChange={setSubCategoryFilter}
               businessTypeOptions={businessTypeOptions}
+              businessTypeLabelsAm={businessTypeLabelsAm}
               categoryOptions={categoryOptions}
+              categoryLabelsAm={categoryLabelsAm}
               subCategoryOptions={subCategoryOptions}
+              subCategoryLabelsAm={subCategoryLabelsAm}
               onClearAll={clearAllFilters}
               pageSize={pageSize}
               onPageSizeChange={setPageSize}
@@ -1977,8 +2051,8 @@ export default function CompanyManagement() {
           submitting={submitting}
           disableSubmit={Boolean(
             isMarketing &&
-              !editingSlug &&
-              (!agreedToTerms || !formData.terms_signatory_name?.trim()),
+            !editingSlug &&
+            (!agreedToTerms || !formData.terms_signatory_name?.trim()),
           )}
           maxWidth="2xl"
         />
@@ -1987,7 +2061,7 @@ export default function CompanyManagement() {
           isOpen={!!deleteTarget}
           title={deleteTarget?.name || ""}
           onConfirm={handleDelete}
-          deleteTitle={"Delete Company"}
+          deleteTitle={t("deleteCompanyTitle")}
           onCancel={() => setDeleteTarget(null)}
         />
       </div>

@@ -1,5 +1,6 @@
 // src/components/dashboard/bank/BankManagement.tsx
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   Building2,
@@ -44,22 +45,17 @@ import type { BankInfo } from "../../../types";
 import PageHeader from "../../ui/PageHeader";
 import { CompanySelect } from "../overview/dropdowncompanyselector";
 import ChapaDirectSettlementCard from "./ChapaDirectSettlementCard";
-import { CustomSelect, type SelectOption } from "../../ui/CustomSelect"; // 👈 adjust path if your CustomSelect lives elsewhere
+import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 
-// ------------------------------------------------------------------
-// Types
-// ------------------------------------------------------------------
+/* ---------------- Types ---------------- */
 interface AvailableBank {
   id: string;
   bank_name: string;
   logo: string | null;
 }
-
 type ChapaStatus = "connected" | "not_connected" | "unknown";
 
-// ------------------------------------------------------------------
-// Bank name normalisation
-// ------------------------------------------------------------------
+/* ---------------- Bank name helpers ---------------- */
 const normalizeBankName = (name: string) =>
   name
     .toLowerCase()
@@ -110,9 +106,7 @@ const getBankIdentityKey = (name: string) => {
     .trim();
 };
 
-// ------------------------------------------------------------------
-// Chapa status helpers (fallback heuristics)
-// ------------------------------------------------------------------
+/* ---------------- Chapa status heuristics ---------------- */
 const CHAPA_CONNECTED_VALUES = [
   "active",
   "connected",
@@ -123,7 +117,6 @@ const CHAPA_CONNECTED_VALUES = [
   "complete",
   "completed",
 ];
-
 const CHAPA_NOT_CONNECTED_VALUES = [
   "inactive",
   "not_connected",
@@ -136,14 +129,12 @@ const CHAPA_NOT_CONNECTED_VALUES = [
 
 const readChapaStatusFromObject = (obj: any): ChapaStatus | null => {
   if (!obj) return null;
-
   const raw =
     obj.chapa_subaccount_status ??
     obj.chapa_status ??
     obj.chapa_direct_settlement_status ??
     obj.chapa_subaccount_state ??
     obj.chapa_linked;
-
   if (typeof raw === "string") {
     const s = raw.toLowerCase();
     if (CHAPA_CONNECTED_VALUES.includes(s)) return "connected";
@@ -151,11 +142,9 @@ const readChapaStatusFromObject = (obj: any): ChapaStatus | null => {
   }
   if (raw === true) return "connected";
   if (raw === false) return "not_connected";
-
   if (obj.has_chapa_subaccount === true) return "connected";
   if (obj.has_chapa_subaccount === false) return "not_connected";
   if (obj.chapa_direct_settlement_enabled === true) return "connected";
-
   return null;
 };
 
@@ -164,12 +153,10 @@ const getChapaStatus = (
   allCompanies: any[] = [],
   chapaStatusMap: Record<string, boolean> = {},
 ): ChapaStatus => {
-  // If called for a pure company object (no bank id), check company-level status for dropdowns
   if (!bank.id && (bank as any).company_slug) {
     const slug = (bank as any).company_slug as string;
-    if (slug in chapaStatusMap) {
+    if (slug in chapaStatusMap)
       return chapaStatusMap[slug] ? "connected" : "not_connected";
-    }
     const company = allCompanies.find((c: any) => c?.slug === slug);
     if (company) {
       const fromCompany = readChapaStatusFromObject(company);
@@ -177,22 +164,17 @@ const getChapaStatus = (
     }
     return "not_connected";
   }
-
-  // Per-Bank Tracking: only the specific bank account holding the active subaccount is "connected"
   if (bank.is_chapa_linked === true) return "connected";
-  if (typeof bank.chapa_sub_account_id === "string") {
-    return bank.chapa_sub_account_id.trim().length > 0 ? "connected" : "not_connected";
-  }
-
+  if (typeof bank.chapa_sub_account_id === "string")
+    return bank.chapa_sub_account_id.trim().length > 0
+      ? "connected"
+      : "not_connected";
   const fromBank = readChapaStatusFromObject(bank as any);
   if (fromBank) return fromBank;
-
   return "not_connected";
 };
 
-// ------------------------------------------------------------------
-// Ethiopian banks
-// ------------------------------------------------------------------
+/* ---------------- Ethiopian banks ---------------- */
 const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   { id: "cbe", bank_name: "Commercial Bank of Ethiopia", logo: "/cbe.png" },
   {
@@ -249,9 +231,7 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   { id: "rammis-bank", bank_name: "Rammis Bank", logo: "/rammis.jfif" },
 ];
 
-// ------------------------------------------------------------------
-// URL to File helper
-// ------------------------------------------------------------------
+/* ---------------- URL to File ---------------- */
 const urlToFile = async (
   url: string,
   filename: string,
@@ -259,18 +239,11 @@ const urlToFile = async (
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
-
     const blob = await response.blob();
     if (!blob || blob.size === 0) return null;
-
-    if (blob.type.includes("text/html")) {
-      console.warn("Received HTML instead of an image from:", url);
-      return null;
-    }
-
+    if (blob.type.includes("text/html")) return null;
     let mimeType = blob.type;
     let extension = "jpg";
-
     if (!mimeType || mimeType === "application/octet-stream") {
       mimeType = "image/jpeg";
     } else {
@@ -281,17 +254,13 @@ const urlToFile = async (
           extension = "jpg";
       }
     }
-
     return new File([blob], `${filename}.${extension}`, { type: mimeType });
-  } catch (error) {
-    console.warn("Could not fetch logo file from url:", url, error);
+  } catch {
     return null;
   }
 };
 
-// ------------------------------------------------------------------
-// Bank Logo
-// ------------------------------------------------------------------
+/* ---------------- BankLogo ---------------- */
 const BankLogo = ({
   logo,
   name,
@@ -302,17 +271,13 @@ const BankLogo = ({
   size?: "sm" | "md" | "lg";
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [logo]);
+  useEffect(() => setImageFailed(false), [logo]);
 
   const sizeClasses = {
     sm: "h-9 w-9 sm:h-10 sm:w-10",
     md: "h-11 w-11 sm:h-12 sm:w-12",
     lg: "h-14 w-14",
   };
-
   const imageSizeClasses = {
     sm: "h-6 w-6 sm:h-7 sm:w-7",
     md: "h-8 w-8 sm:h-9 sm:w-9",
@@ -337,29 +302,26 @@ const BankLogo = ({
   );
 };
 
-// ------------------------------------------------------------------
-// Status Badge
-// ------------------------------------------------------------------
+/* ---------------- StatusBadge ---------------- */
 const StatusBadge = ({ isActive }: { isActive: boolean }) => {
+  const { t } = useTranslation("bankManagement");
   if (isActive) {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        Active
+        {t("statusActive")}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200/80">
       <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-      Inactive
+      {t("statusInactive")}
     </span>
   );
 };
 
-// ------------------------------------------------------------------
-// Company Chapa badge
-// ------------------------------------------------------------------
+/* ---------------- CompanyChapaBadge ---------------- */
 const CompanyChapaBadge = ({
   status,
   onClick,
@@ -369,50 +331,46 @@ const CompanyChapaBadge = ({
   onClick?: () => void;
   canConfigure?: boolean;
 }) => {
+  const { t } = useTranslation("bankManagement");
   if (status === "connected") {
     return (
       <span
-        title="Chapa subaccount linked — click to manage"
+        title={t("chapaLinkedTitle")}
         className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-300 shadow-sm"
       >
         <CheckCircle className="h-3 w-3" />
-        Linked
+        {t("chapaLinked")}
       </span>
     );
   }
-
   if (!canConfigure || !onClick) return null;
-
   if (status === "not_connected") {
     return (
       <button
         type="button"
         onClick={onClick}
-        title="Connect a Chapa subaccount for this company"
+        title={t("chapaConnectTitle")}
         className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200 transition hover:bg-amber-100 hover:border-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
       >
         <Link2 className="h-3 w-3" />
-        Connect
+        {t("chapaConnect")}
       </button>
     );
   }
-
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Link a Chapa subaccount for this company"
+      title={t("chapaLinkTitle")}
       className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-600 border border-gray-200 transition hover:bg-secondary/10 hover:text-secondary hover:border-secondary/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
     >
       <Link2 className="h-3 w-3" />
-      Link
+      {t("chapaLink")}
     </button>
   );
 };
 
-// ------------------------------------------------------------------
-// Bank Selector
-// ------------------------------------------------------------------
+/* ---------------- BankSelector ---------------- */
 const BankSelector = ({
   banks,
   selectedBankId,
@@ -428,6 +386,7 @@ const BankSelector = ({
   loading: boolean;
   error?: string | null;
 }) => {
+  const { t } = useTranslation("bankManagement");
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -482,20 +441,18 @@ const BankSelector = ({
   }, []);
 
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    if (isOpen && searchInputRef.current) searchInputRef.current.focus();
   }, [isOpen]);
 
   return (
     <div className="relative" ref={dropdownRef}>
       <div className="mb-2 flex items-center justify-between gap-3">
         <label className="block text-sm font-semibold text-gray-800">
-          Select Bank <span className="text-red-500">*</span>
+          {t("selectBank")} <span className="text-red-500">*</span>
         </label>
         {!loading && banks.length > 0 && (
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium text-gray-500">
-            {banks.length} banks
+            {t("banksCount", { count: banks.length })}
           </span>
         )}
       </div>
@@ -520,7 +477,7 @@ const BankSelector = ({
               <Loader2 className="h-5 w-5 animate-spin" />
             </span>
             <span className="text-sm font-semibold text-gray-600">
-              Loading banks...
+              {t("loadingBanks")}
             </span>
           </span>
         ) : selectedBank ? (
@@ -536,7 +493,7 @@ const BankSelector = ({
               </span>
               <span className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
                 <CheckCircle className="h-3.5 w-3.5" />
-                Selected
+                {t("selectedLabel")}
               </span>
             </span>
           </span>
@@ -547,10 +504,10 @@ const BankSelector = ({
             </span>
             <span>
               <span className="block text-sm font-semibold text-gray-700">
-                Choose a bank
+                {t("chooseBank")}
               </span>
               <span className="block text-xs text-gray-400 mt-0.5">
-                Search or browse available banks
+                {t("chooseBankHint")}
               </span>
             </span>
           </span>
@@ -582,7 +539,7 @@ const BankSelector = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search CBE, Awash, Dashen..."
+                placeholder={t("searchBankPlaceholder")}
                 className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-9 text-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-secondary/10"
               />
               {searchTerm && (
@@ -604,10 +561,10 @@ const BankSelector = ({
             {filteredBanks.length === 0 ? (
               <div className="px-6 py-8 text-center">
                 <p className="text-sm font-semibold text-gray-800">
-                  No matching bank
+                  {t("noMatchingBank")}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">
-                  Try a different name.
+                  {t("noMatchingBankHint")}
                 </p>
               </div>
             ) : (
@@ -656,9 +613,7 @@ const BankSelector = ({
   );
 };
 
-// ------------------------------------------------------------------
-// Mobile Bank Card
-// ------------------------------------------------------------------
+/* ---------------- BankCard ---------------- */
 const BankCard: React.FC<{
   bank: BankInfo;
   rowNumber: number;
@@ -680,6 +635,7 @@ const BankCard: React.FC<{
   onDelete,
   onConfigureChapa,
 }) => {
+  const { t } = useTranslation("bankManagement");
   const [showAccount, setShowAccount] = useState(false);
   const isActive = bank.is_active ?? true;
   const chapaStatus = getChapaStatus(bank, allCompanies, chapaStatusMap);
@@ -701,16 +657,16 @@ const BankCard: React.FC<{
             </h3>
             {chapaStatus === "connected" && (
               <span
-                title="Active Chapa Direct Split Settlement account"
+                title={t("chapaLinkedTitle")}
                 className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-300 shadow-sm"
               >
                 <CheckCircle className="h-3 w-3 text-emerald-600" />
-                Linked
+                {t("chapaLinked")}
               </span>
             )}
           </div>
           <p className="text-[11px] text-gray-400 mt-0.5">
-            #{rowNumber} · {bank.bank_id || "Bank"}
+            #{rowNumber} · {bank.bank_id || t("colBank")}
           </p>
         </div>
         <StatusBadge isActive={isActive} />
@@ -720,7 +676,9 @@ const BankCard: React.FC<{
         <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <Hash className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-            <span className="font-medium text-gray-500">Account</span>
+            <span className="font-medium text-gray-500">
+              {t("accountLabel")}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-mono text-gray-800 truncate">
@@ -730,9 +688,7 @@ const BankCard: React.FC<{
               type="button"
               onClick={() => setShowAccount((s) => !s)}
               className="text-gray-400 hover:text-gray-700 transition flex-shrink-0"
-              aria-label={
-                showAccount ? "Hide account number" : "Show account number"
-              }
+              aria-label={showAccount ? t("hideAccount") : t("showAccount")}
             >
               {showAccount ? (
                 <EyeOff className="h-3.5 w-3.5" />
@@ -746,7 +702,9 @@ const BankCard: React.FC<{
         <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <User className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-            <span className="font-medium text-gray-500">Holder</span>
+            <span className="font-medium text-gray-500">
+              {t("holderLabel")}
+            </span>
           </div>
           <span className="text-gray-800 truncate max-w-[60%] text-right">
             {bank.account_name}
@@ -757,7 +715,9 @@ const BankCard: React.FC<{
           <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <Building2 className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-              <span className="font-medium text-gray-500">Company</span>
+              <span className="font-medium text-gray-500">
+                {t("companyLabel")}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 min-w-0 max-w-[60%] justify-end">
               <span
@@ -783,14 +743,14 @@ const BankCard: React.FC<{
             className="flex-1 bg-secondary/10 text-secondary text-xs font-medium py-2 rounded-xl hover:bg-secondary/20 min-h-[36px] inline-flex items-center justify-center gap-1.5"
           >
             <Edit size={14} />
-            Edit
+            {t("edit")}
           </button>
           <button
             onClick={() => onDelete(bank)}
             className="flex-1 bg-red-50 text-red-600 text-xs font-medium py-2 rounded-xl hover:bg-red-100 min-h-[36px] inline-flex items-center justify-center gap-1.5"
           >
             <Trash2 size={14} />
-            Delete
+            {t("delete")}
           </button>
         </div>
       )}
@@ -798,10 +758,9 @@ const BankCard: React.FC<{
   );
 };
 
-// ------------------------------------------------------------------
-// Main Component
-// ------------------------------------------------------------------
+/* ---------------- Main Component ---------------- */
 export default function BankManagement() {
+  const { t } = useTranslation("bankManagement");
   const { company } = useCurrentCompany();
   const { user } = useAuth();
   const { toast, showToast } = useToast();
@@ -817,7 +776,6 @@ export default function BankManagement() {
   const [editingBank, setEditingBank] = useState<BankInfo | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BankInfo | null>(null);
 
-  // ── Filters ──
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "inactive"
   >("all");
@@ -833,7 +791,6 @@ export default function BankManagement() {
   const [allCompanies, setAllCompanies] = useState<any[]>([]);
   const [selectedFilterCompanySlug] = useState<string>("");
 
-  // ── Chapa Direct Split Settlement ──
   const [showChapaDropdown, setShowChapaDropdown] = useState(false);
   const [showChapaCard, setShowChapaCard] = useState(false);
   const [chapaCompanySearch, setChapaCompanySearch] = useState("");
@@ -885,9 +842,7 @@ export default function BankManagement() {
   }, [allCompanies, chapaCompanySearch]);
 
   useEffect(() => {
-    if (!isSuperAdmin && companySlug) {
-      setChapaCompanySlug(companySlug);
-    }
+    if (!isSuperAdmin && companySlug) setChapaCompanySlug(companySlug);
   }, [isSuperAdmin, companySlug]);
 
   useEffect(() => {
@@ -943,11 +898,11 @@ export default function BankManagement() {
     } catch (error) {
       console.error("Failed to load banks:", error);
       setBanks([]);
-      showToast("error", "Failed to load bank accounts");
+      showToast("error", t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [isSuperAdmin, companySlug, selectedFilterCompanySlug, showToast]);
+  }, [isSuperAdmin, companySlug, selectedFilterCompanySlug, showToast, t]);
 
   useEffect(() => {
     fetchBanks();
@@ -958,17 +913,13 @@ export default function BankManagement() {
       if (!isSuperAdmin) return;
       const unique = Array.from(new Set(slugs.filter(Boolean)));
       if (unique.length === 0) return;
-
-      // Avoid redundant queries: filter out slugs already resolved from allCompanies or already cached
       const toFetch = unique.filter((slug) => {
         if (slug in chapaStatusMap) return false;
         const comp = allCompanies.find((c: any) => c?.slug === slug);
         if (comp && readChapaStatusFromObject(comp) !== null) return false;
         return true;
       });
-
       if (toFetch.length === 0) return;
-
       const entries = await Promise.all(
         toFetch.map(async (slug) => {
           try {
@@ -979,7 +930,10 @@ export default function BankManagement() {
           }
         }),
       );
-      setChapaStatusMap((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      setChapaStatusMap((prev) => ({
+        ...prev,
+        ...Object.fromEntries(entries),
+      }));
     },
     [isSuperAdmin, chapaStatusMap, allCompanies],
   );
@@ -992,59 +946,56 @@ export default function BankManagement() {
     fetchChapaStatuses(slugs);
   }, [banks, isSuperAdmin, fetchChapaStatuses]);
 
-  // ── Filter option configs for CustomSelect ──
   const statusFilterOptions: SelectOption[] = useMemo(
     () => [
       {
         value: "all",
-        label: "All Status",
+        label: t("filterAllStatus"),
         icon: <Filter className="h-3.5 w-3.5" />,
       },
       {
         value: "active",
-        label: "Active",
+        label: t("filterActive"),
         icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />,
       },
       {
         value: "inactive",
-        label: "Inactive",
+        label: t("filterInactive"),
         icon: <AlertCircle className="h-3.5 w-3.5 text-amber-600" />,
       },
     ],
-    [],
+    [t],
   );
 
   const chapaFilterOptions: SelectOption[] = useMemo(
     () => [
       {
         value: "all",
-        label: "All Chapa",
+        label: t("filterAllChapa"),
         icon: <Split className="h-3.5 w-3.5" />,
       },
       {
         value: "linked",
-        label: "Linked",
+        label: t("filterLinked"),
         icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />,
       },
       {
         value: "not_linked",
-        label: "Not Linked",
+        label: t("filterNotLinked"),
         icon: <Link2 className="h-3.5 w-3.5 text-gray-500" />,
       },
     ],
-    [],
+    [t],
   );
 
   const filteredBanks = useMemo(() => {
     let result = banks;
-
     if (statusFilter !== "all") {
       result = result.filter((b) => {
         const isActive = b.is_active ?? true;
         return statusFilter === "active" ? isActive : !isActive;
       });
     }
-
     if (chapaFilter !== "all") {
       result = result.filter((b) => {
         const status = getChapaStatus(b, allCompanies, chapaStatusMap);
@@ -1053,7 +1004,6 @@ export default function BankManagement() {
           : status !== "connected";
       });
     }
-
     if (!searchTerm.trim()) return result;
     const term = searchTerm.toLowerCase();
     return result.filter(
@@ -1099,7 +1049,6 @@ export default function BankManagement() {
 
       if (!isSuperAdmin) {
         let logoFileToSend: File | undefined = logoFile;
-
         if (!logoFileToSend && data.logo && typeof data.logo === "string") {
           try {
             const fileName =
@@ -1110,7 +1059,6 @@ export default function BankManagement() {
             console.error("Failed to prepare bank logo:", error);
           }
         }
-
         const fd = new FormData();
         fd.append("bank_name", data.bank_name || "");
         fd.append("account_number", data.account_number || "");
@@ -1128,9 +1076,7 @@ export default function BankManagement() {
 
         showToast(
           "success",
-          editingBank
-            ? "Bank account updated successfully"
-            : "Bank account created successfully",
+          editingBank ? t("updateSuccess") : t("createSuccess"),
         );
         setShowModal(false);
         setEditingBank(null);
@@ -1151,10 +1097,10 @@ export default function BankManagement() {
 
       if (editingBank) {
         await updateAdminBankAccount(editingBank.id, fd);
-        showToast("success", "Bank account updated successfully");
+        showToast("success", t("updateSuccess"));
       } else {
         await createAdminBankAccount(fd);
-        showToast("success", "Bank account created successfully");
+        showToast("success", t("createSuccess"));
       }
 
       setShowModal(false);
@@ -1175,10 +1121,7 @@ export default function BankManagement() {
           msg = `${firstKey}: ${val[0]}`;
         else if (typeof val === "string") msg = `${firstKey}: ${val}`;
       }
-      if (!msg)
-        msg = editingBank
-          ? "Failed to update bank account"
-          : "Failed to create bank account";
+      if (!msg) msg = editingBank ? t("updateFailed") : t("createFailed");
       showToast("error", msg);
     }
   };
@@ -1189,12 +1132,11 @@ export default function BankManagement() {
       if (isSuperAdmin) await deleteAdminBankAccount(deleteTarget.id);
       else if (companySlug)
         await deleteCompanyBankAccount(companySlug, deleteTarget.id);
-      showToast("success", "Bank account deleted successfully");
+      showToast("success", t("deleteSuccess"));
       setDeleteTarget(null);
       fetchBanks();
     } catch (error: any) {
-      const msg =
-        error?.response?.data?.detail || "Failed to delete bank account";
+      const msg = error?.response?.data?.detail || t("deleteFailed");
       showToast("error", msg);
     }
   };
@@ -1204,9 +1146,9 @@ export default function BankManagement() {
     if (!chapaCompanySlug) return "";
     return (
       allCompanies.find((c: any) => c.slug === chapaCompanySlug)?.name ||
-      "Selected Company"
+      t("selectedCompanyFallback")
     );
-  }, [allCompanies, chapaCompanySlug, isSuperAdmin, companyName]);
+  }, [allCompanies, chapaCompanySlug, isSuperAdmin, companyName, t]);
 
   const handleChapaButtonClick = () => {
     if (isSuperAdmin) setShowChapaDropdown((v) => !v);
@@ -1233,12 +1175,10 @@ export default function BankManagement() {
     (bank: BankInfo) => {
       const targetSlug = (bank as any).company_slug || companySlug;
       if (!targetSlug) return;
-
       setChapaCompanySlug(targetSlug);
       setShowChapaCard(true);
       setShowChapaDropdown(false);
       setChapaCompanySearch("");
-
       window.setTimeout(() => {
         chapaCardRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -1256,11 +1196,11 @@ export default function BankManagement() {
       <Toast toast={toast} />
 
       <PageHeader
-        title="Bank Accounts"
+        title={t("pageTitle")}
         description={
           isSuperAdmin
-            ? "Manage all company bank accounts."
-            : `Manage bank accounts for ${companyName}.`
+            ? t("pageDescSuperAdmin")
+            : t("pageDescCompany", { company: companyName })
         }
         icon={Building2}
         actions={
@@ -1271,7 +1211,7 @@ export default function BankManagement() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
-              Add Bank Account
+              {t("addBankAccount")}
             </button>
           ) : undefined
         }
@@ -1283,14 +1223,13 @@ export default function BankManagement() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
-              Add
+              {t("addShort")}
             </button>
           ) : undefined
         }
         className="mb-5 sm:mb-6"
       />
 
-      {/* ─────────── Sticky Search + Filters + Chapa ─────────── */}
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
         <div className="w-full flex flex-col gap-3 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] sm:flex-row sm:items-center">
           <div className="flex-1 w-full min-w-0">
@@ -1300,7 +1239,7 @@ export default function BankManagement() {
                 setSearchTerm(value);
                 setCurrentPage(1);
               }}
-              placeholder="Search bank, account number, or holder..."
+              placeholder={t("searchPlaceholder")}
               loading={loading}
               debounceMs={0}
               showClearButton={true}
@@ -1308,7 +1247,6 @@ export default function BankManagement() {
             />
           </div>
 
-          {/* Status filter (CustomSelect) */}
           <div className="w-full shrink-0 sm:w-[150px]">
             <CustomSelect
               value={statusFilter}
@@ -1317,12 +1255,11 @@ export default function BankManagement() {
                 setCurrentPage(1);
               }}
               options={statusFilterOptions}
-              placeholder="All Status"
+              placeholder={t("filterAllStatus")}
               ariaLabel="Filter by bank status"
             />
           </div>
 
-          {/* Chapa filter (CustomSelect) */}
           <div className="w-full shrink-0 sm:w-[160px]">
             <CustomSelect
               value={chapaFilter}
@@ -1331,7 +1268,7 @@ export default function BankManagement() {
                 setCurrentPage(1);
               }}
               options={chapaFilterOptions}
-              placeholder="All Chapa"
+              placeholder={t("filterAllChapa")}
               ariaLabel="Filter by Chapa connection"
             />
           </div>
@@ -1357,9 +1294,7 @@ export default function BankManagement() {
               } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2`}
             >
               <Split className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                Chapa Direct Split Settlement
-              </span>
+              <span className="truncate">{t("chapaButton")}</span>
               {isSuperAdmin && (
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
@@ -1373,7 +1308,7 @@ export default function BankManagement() {
               <div
                 id="chapa-company-dropdown"
                 role="dialog"
-                aria-label="Select company for Chapa Direct Split Settlement"
+                aria-label={t("chapaDropdownHeader")}
                 className="absolute top-full z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl shadow-gray-900/10 left-0 right-0 sm:left-auto sm:right-0 sm:w-[320px] max-w-[calc(100vw-1rem)] transition-all duration-150 ease-out"
               >
                 <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-secondary/5 to-transparent px-3.5 py-3">
@@ -1383,17 +1318,17 @@ export default function BankManagement() {
                     </span>
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-gray-900">
-                        Chapa Direct Split Settlement
+                        {t("chapaDropdownHeader")}
                       </h3>
                       <p className="mt-0.5 truncate text-[11px] text-gray-500">
-                        Choose a company to configure
+                        {t("chapaDropdownSubtitle")}
                       </p>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowChapaDropdown(false)}
-                    aria-label="Close"
+                    aria-label={t("closeAria")}
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
                   >
                     <X className="h-4 w-4" />
@@ -1407,15 +1342,15 @@ export default function BankManagement() {
                       type="text"
                       value={chapaCompanySearch}
                       onChange={(e) => setChapaCompanySearch(e.target.value)}
-                      placeholder="Search company..."
-                      aria-label="Search company"
+                      placeholder={t("searchCompanyPlaceholder")}
+                      aria-label={t("searchCompanyPlaceholder")}
                       className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-9 text-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-secondary/10"
                     />
                     {chapaCompanySearch && (
                       <button
                         type="button"
                         onClick={() => setChapaCompanySearch("")}
-                        aria-label="Clear search"
+                        aria-label={t("clearSearch")}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -1439,10 +1374,10 @@ export default function BankManagement() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate whitespace-nowrap">
-                        All Companies
+                        {t("allCompanies")}
                       </span>
                       <span className="mt-0.5 block truncate whitespace-nowrap text-[11px] text-gray-400">
-                        Reset selection
+                        {t("allCompaniesHint")}
                       </span>
                     </span>
                     {chapaCompanySlug === "" && (
@@ -1455,10 +1390,10 @@ export default function BankManagement() {
                   {filteredChapaCompanies.length === 0 ? (
                     <div className="px-3 py-6 text-center">
                       <p className="text-sm font-semibold text-gray-800">
-                        No matching company
+                        {t("noMatchingCompany")}
                       </p>
                       <p className="mt-1 text-xs text-gray-400">
-                        Try a different name or slug.
+                        {t("noMatchingCompanyHint")}
                       </p>
                     </div>
                   ) : (
@@ -1510,7 +1445,7 @@ export default function BankManagement() {
                                 {rowStatus === "connected" && (
                                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700 border border-emerald-300">
                                     <CheckCircle className="h-2.5 w-2.5" />
-                                    Linked
+                                    {t("chapaLinked")}
                                   </span>
                                 )}
                               </span>
@@ -1530,11 +1465,10 @@ export default function BankManagement() {
         </div>
       </div>
 
-      {/* ─────────── Active filter chips ─────────── */}
       {(statusFilter !== "all" || chapaFilter !== "all") && (
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-medium text-gray-500">
-            Active filters:
+            {t("activeFiltersLabel")}
           </span>
           {statusFilter !== "all" && (
             <button
@@ -1546,7 +1480,12 @@ export default function BankManagement() {
               className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary border border-secondary/20 transition hover:bg-secondary/20"
             >
               <Filter className="h-3 w-3" />
-              Status: {statusFilter === "active" ? "Active" : "Inactive"}
+              {t("statusChip", {
+                value:
+                  statusFilter === "active"
+                    ? t("filterActive")
+                    : t("filterInactive"),
+              })}
               <X className="h-3 w-3" />
             </button>
           )}
@@ -1560,7 +1499,12 @@ export default function BankManagement() {
               className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-semibold text-secondary border border-secondary/20 transition hover:bg-secondary/20"
             >
               <Link2 className="h-3 w-3" />
-              Chapa: {chapaFilter === "linked" ? "Linked" : "Not linked"}
+              {t("chapaChip", {
+                value:
+                  chapaFilter === "linked"
+                    ? t("filterLinked")
+                    : t("filterNotLinked"),
+              })}
               <X className="h-3 w-3" />
             </button>
           )}
@@ -1573,7 +1517,7 @@ export default function BankManagement() {
             }}
             className="text-[11px] font-semibold text-red-600 hover:text-red-700"
           >
-            Clear all
+            {t("clearAll")}
           </button>
         </div>
       )}
@@ -1589,13 +1533,13 @@ export default function BankManagement() {
                 <Split className="h-3.5 w-3.5" />
               </span>
               <span className="truncate text-sm font-semibold text-gray-900">
-                Chapa Direct Split Settlement
+                {t("chapaButton")}
               </span>
               <span
                 className="hidden truncate rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-semibold text-secondary sm:inline"
-                title={chapaSelectedCompanyName || "Selected Company"}
+                title={chapaSelectedCompanyName || t("selectedCompanyFallback")}
               >
-                {chapaSelectedCompanyName || "Selected Company"}
+                {chapaSelectedCompanyName || t("selectedCompanyFallback")}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -1606,13 +1550,13 @@ export default function BankManagement() {
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-secondary transition hover:bg-secondary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  Change
+                  {t("chapaChangeBtn")}
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setShowChapaCard(false)}
-                aria-label="Close settlement card"
+                aria-label={t("chapaCloseAria")}
                 className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
               >
                 <X className="h-4 w-4" />
@@ -1621,7 +1565,9 @@ export default function BankManagement() {
           </div>
           <ChapaDirectSettlementCard
             companySlug={chapaCompanySlug}
-            companyName={chapaSelectedCompanyName || "Selected Company"}
+            companyName={
+              chapaSelectedCompanyName || t("selectedCompanyFallback")
+            }
             canWrite={canWrite}
             onChanged={() => {
               fetchBanks();
@@ -1658,16 +1604,16 @@ export default function BankManagement() {
               <Building2 className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-base font-semibold text-gray-900">
-              No bank accounts found
+              {t("emptyMobileTitle")}
             </h3>
             <p className="text-sm text-gray-500 mt-1 max-w-xs">
               {searchTerm.trim() ||
               statusFilter !== "all" ||
               chapaFilter !== "all"
-                ? "Try adjusting your search or filters."
+                ? t("emptyMobileWithFilters")
                 : canWrite
-                  ? "Add your first bank account to get started."
-                  : "No accounts available."}
+                  ? t("emptyMobileNoAccounts")
+                  : t("emptyMobileNoAccess")}
             </p>
           </div>
         ) : (
@@ -1703,11 +1649,7 @@ export default function BankManagement() {
           onEdit={handleEdit}
           onDelete={setDeleteTarget}
           onConfigureChapa={handleConfigureChapaFromRow}
-          emptyMessage={
-            canWrite
-              ? "No bank accounts found. Add your first bank account to get started."
-              : "No bank accounts found."
-          }
+          emptyMessage={canWrite ? t("emptyTableAdd") : t("emptyTableDefault")}
         />
       </div>
 
@@ -1739,18 +1681,16 @@ export default function BankManagement() {
 
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
-        title={`Bank Account "${deleteTarget?.bank_name || ""}"`}
+        title={t("deleteBankTitle", { name: deleteTarget?.bank_name || "" })}
         onConfirm={handleDelete}
-        deleteTitle={"Delete Bank Account"}
+        deleteTitle={t("deleteBankAccount")}
         onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );
 }
 
-// ------------------------------------------------------------------
-// Responsive Table (md+)
-// ------------------------------------------------------------------
+/* ---------------- BankTable ---------------- */
 const BankTable: React.FC<{
   banks: BankInfo[];
   loading: boolean;
@@ -1778,6 +1718,8 @@ const BankTable: React.FC<{
   onConfigureChapa,
   emptyMessage,
 }) => {
+  const { t } = useTranslation("bankManagement");
+
   if (loading) {
     return (
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1814,20 +1756,24 @@ const BankTable: React.FC<{
         <table className="w-full min-w-[720px] text-left">
           <thead className="border-b border-gray-100 bg-gray-50/70">
             <tr className="text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-500">
-              <th className="w-12 px-3 py-3 text-left lg:px-4">No.</th>
-              <th className="px-3 py-3 text-left lg:px-4">Bank</th>
+              <th className="w-12 px-3 py-3 text-left lg:px-4">{t("colNo")}</th>
+              <th className="px-3 py-3 text-left lg:px-4">{t("colBank")}</th>
               {isSuperAdmin && (
                 <th className="hidden px-3 py-3 text-left lg:table-cell lg:px-4">
-                  Company
+                  {t("colCompany")}
                 </th>
               )}
-              <th className="px-3 py-3 text-left lg:px-4">Account No.</th>
-              <th className="hidden px-3 py-3 text-left lg:table-cell lg:px-4">
-                Account Holder
+              <th className="px-3 py-3 text-left lg:px-4">
+                {t("colAccountNumber")}
               </th>
-              <th className="px-3 py-3 text-left lg:px-4">Status</th>
+              <th className="hidden px-3 py-3 text-left lg:table-cell lg:px-4">
+                {t("colAccountHolder")}
+              </th>
+              <th className="px-3 py-3 text-left lg:px-4">{t("colStatus")}</th>
               {canWrite && (
-                <th className="w-28 px-3 py-3 text-right lg:px-4">Actions</th>
+                <th className="w-28 px-3 py-3 text-right lg:px-4">
+                  {t("colActions")}
+                </th>
               )}
             </tr>
           </thead>
@@ -1867,11 +1813,11 @@ const BankTable: React.FC<{
                           </p>
                           {chapaStatus === "connected" && (
                             <span
-                              title="Active Chapa Direct Split Settlement account"
+                              title={t("chapaLinkedTitle")}
                               className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-300 shadow-sm"
                             >
                               <CheckCircle className="h-3 w-3 text-emerald-600" />
-                              Linked
+                              {t("chapaLinked")}
                             </span>
                           )}
                         </div>
@@ -1886,9 +1832,9 @@ const BankTable: React.FC<{
                       <div className="flex items-center gap-1.5 max-w-[240px]">
                         <span
                           className="truncate"
-                          title={bank.company_name || "N/A"}
+                          title={bank.company_name || t("naValue")}
                         >
-                          {bank.company_name || "N/A"}
+                          {bank.company_name || t("naValue")}
                         </span>
                         <CompanyChapaBadge
                           status={chapaStatus}
@@ -1921,7 +1867,7 @@ const BankTable: React.FC<{
                           type="button"
                           onClick={() => onEdit(bank)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-secondary transition hover:bg-secondary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-                          aria-label={`Edit ${bank.bank_name}`}
+                          aria-label={t("editAria", { bank: bank.bank_name })}
                         >
                           <Edit className="h-4 w-4" />
                         </button>
@@ -1929,7 +1875,7 @@ const BankTable: React.FC<{
                           type="button"
                           onClick={() => onDelete(bank)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-                          aria-label={`Delete ${bank.bank_name}`}
+                          aria-label={t("deleteAria", { bank: bank.bank_name })}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1946,9 +1892,7 @@ const BankTable: React.FC<{
   );
 };
 
-// ------------------------------------------------------------------
-// Bank Account Form (Add / Edit modal)
-// ------------------------------------------------------------------
+/* ---------------- BankAccountForm ---------------- */
 function BankAccountForm({
   bank,
   isSuperAdmin,
@@ -1968,6 +1912,8 @@ function BankAccountForm({
   onClose: () => void;
   onSave: (data: Partial<BankInfo>, logoFile?: File) => void;
 }) {
+  const { t } = useTranslation("bankManagement");
+
   const [formData, setFormData] = useState({
     account_number: "",
     account_name: "",
@@ -2078,13 +2024,13 @@ function BankAccountForm({
           getBankIdentityKey(availableBank.bank_name) ===
             getBankIdentityKey(formData.bank_name)),
     );
-    if (!selectedCatalogBank) errors.bank_id = "Please select a bank";
+    if (!selectedCatalogBank) errors.bank_id = t("bankRequired");
     if (!formData.account_number.trim())
-      errors.account_number = "Account number is required";
+      errors.account_number = t("accountNumberRequired");
     if (!formData.account_name.trim())
-      errors.account_name = "Account holder name is required";
+      errors.account_name = t("accountHolderRequired");
     if (isSuperAdmin && !bank && !formData.company_slug?.trim()) {
-      errors.company_slug = "Please select a company";
+      errors.company_slug = t("companyRequiredError");
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -2147,19 +2093,17 @@ function BankAccountForm({
         <div className="flex items-start justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 border-b border-gray-200 bg-gray-50/60 flex-shrink-0">
           <div className="min-w-0 flex-1">
             <h3 className="text-base sm:text-lg font-bold text-secondary truncate">
-              {bank ? "Edit Bank Account" : "Add Bank Account"}
+              {bank ? t("editFormTitle") : t("addFormTitle")}
             </h3>
             <p className="mt-0.5 text-[11px] sm:text-xs text-gray-500 truncate">
-              {isSuperAdmin
-                ? "Manage bank account details"
-                : "Add a company bank account"}
+              {isSuperAdmin ? t("formDescSuperAdmin") : t("formDescCompany")}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            aria-label="Close modal"
+            aria-label={t("closeModalAria")}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
           >
             <X className="h-5 w-5" />
@@ -2169,7 +2113,9 @@ function BankAccountForm({
         <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
           <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5 sm:space-y-6">
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Bank</h4>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                {t("bankSectionTitle")}
+              </h4>
               <BankSelector
                 banks={availableBanks}
                 selectedBankId={formData.bank_id}
@@ -2187,10 +2133,10 @@ function BankAccountForm({
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-emerald-900">
-                    Bank selected
+                    {t("bankSelectedTitle")}
                   </p>
                   <p className="mt-0.5 text-xs leading-5 text-emerald-700/80">
-                    The bank name and logo come from the system bank list.
+                    {t("bankSelectedDesc")}
                   </p>
                 </div>
               </div>
@@ -2199,7 +2145,7 @@ function BankAccountForm({
             {isSuperAdmin && !bank && (
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
-                  Company <span className="text-red-500">*</span>
+                  {t("companyRequired")} <span className="text-red-500">*</span>
                 </label>
                 <CompanySelect
                   scopeOptions={modalCompanyScopeOptions}
@@ -2220,19 +2166,19 @@ function BankAccountForm({
                   </p>
                 )}
                 <p className="text-xs text-gray-400 mt-1.5">
-                  Select the vendor company this bank account belongs to.
+                  {t("companyHint")}
                 </p>
               </div>
             )}
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                Account Information
+                {t("accountInfoTitle")}
               </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Account Number <span className="text-red-500">*</span>
+                    {t("accountNumber")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -2252,7 +2198,7 @@ function BankAccountForm({
                         ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                         : "border-gray-200 focus:border-secondary focus:ring-secondary/20"
                     } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
-                    placeholder="e.g. 100013456789"
+                    placeholder={t("accountNumberPlaceholder")}
                   />
                   {validationErrors.account_number && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
@@ -2263,7 +2209,7 @@ function BankAccountForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Account Holder Name <span className="text-red-500">*</span>
+                    {t("accountHolder")} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -2283,7 +2229,7 @@ function BankAccountForm({
                         ? "border-red-300 focus:border-red-400 focus:ring-red-100"
                         : "border-gray-200 focus:border-secondary focus:ring-secondary/20"
                     } focus:outline-none focus:ring-4 transition text-sm placeholder-gray-400`}
-                    placeholder="e.g. ABC Trading PLC"
+                    placeholder={t("accountHolderPlaceholder")}
                   />
                   {validationErrors.account_name && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-xs text-red-600">
@@ -2297,12 +2243,12 @@ function BankAccountForm({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-3">
-                Settings
+                {t("settingsTitle")}
               </h4>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Display Order
+                    {t("displayOrder")}
                   </label>
                   <input
                     type="number"
@@ -2331,7 +2277,7 @@ function BankAccountForm({
                       className="w-4 h-4 rounded border-gray-300 text-secondary focus:ring-secondary/20"
                     />
                     <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
-                      Active
+                      {t("filterActive")}
                     </span>
                   </label>
                 </div>
@@ -2346,7 +2292,7 @@ function BankAccountForm({
               disabled={saving}
               className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-100 transition-colors disabled:opacity-50 focus:outline-none focus:ring-4 focus:ring-gray-200"
             >
-              Cancel
+              {t("cancel")}
             </button>
             <button
               type="submit"
@@ -2354,7 +2300,7 @@ function BankAccountForm({
               className="flex-1 py-2.5 rounded-xl bg-secondary text-white font-medium text-sm hover:bg-secondary/90 transition-colors shadow-sm disabled:opacity-50 inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-secondary/20"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {bank ? "Update" : "Create"} Account
+              {bank ? t("updateAccount") : t("createAccount")}
             </button>
           </div>
         </form>

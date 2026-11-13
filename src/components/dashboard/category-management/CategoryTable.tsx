@@ -1,5 +1,6 @@
 // src/components/admin/category-management/CategoryTable.tsx
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ImageIcon,
   Hash,
@@ -71,11 +72,13 @@ export default function CategoryTable({
   applyMobileSort,
   resetMobileSort,
 }: CategoryTableProps) {
+  const { t } = useTranslation("category");
+
   const columns: Column<Category>[] = useMemo(
     () => [
       {
         key: "rowNumber",
-        header: "No.",
+        header: t("colNo"),
         sortable: false,
         render: (cat) => (
           <span className="text-xs text-gray-500">{cat.rowNumber}</span>
@@ -83,7 +86,7 @@ export default function CategoryTable({
       },
       {
         key: "icon",
-        header: "Icon",
+        header: t("colIcon"),
         sortable: false,
         render: (cat) =>
           cat.icon ? (
@@ -100,7 +103,7 @@ export default function CategoryTable({
       },
       {
         key: "name",
-        header: "Name",
+        header: t("colName"),
         sortable: true,
         render: (cat) => (
           <div className="min-w-0">
@@ -115,7 +118,7 @@ export default function CategoryTable({
       },
       {
         key: "slug",
-        header: "Slug",
+        header: t("colSlug"),
         sortable: true,
         render: (cat) => (
           <span className="inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-50 rounded-lg px-2 py-1">
@@ -126,13 +129,13 @@ export default function CategoryTable({
       },
       {
         key: "code",
-        header: "Code",
+        header: t("colCode"),
         sortable: true,
         render: (cat) => cat.code || <span className="text-gray-400">—</span>,
       },
       {
         key: "order",
-        header: "Priority",
+        header: t("colPriority"),
         sortable: true,
         render: (cat) => (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700">
@@ -143,22 +146,28 @@ export default function CategoryTable({
       },
       {
         key: "is_active",
-        header: "Status",
+        header: t("colStatus"),
         sortable: true,
         render: (cat) => (
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${cat.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
+              cat.is_active
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+            }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${cat.is_active ? "bg-emerald-500" : "bg-red-500"}`}
+              className={`w-1.5 h-1.5 rounded-full ${
+                cat.is_active ? "bg-emerald-500" : "bg-red-500"
+              }`}
             ></span>
-            {cat.is_active ? "Active" : "Inactive"}
+            {cat.is_active ? t("statusActive") : t("statusInactive")}
           </span>
         ),
       },
       {
         key: "company_count",
-        header: "Companies",
+        header: t("colCompanies"),
         sortable: true,
         render: (cat) => (
           <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
@@ -168,7 +177,7 @@ export default function CategoryTable({
         ),
       },
     ],
-    [],
+    [t],
   );
 
   const handleSortChange = (value: string) => {
@@ -190,7 +199,7 @@ export default function CategoryTable({
               value={inputValue}
               onChange={onInputChange}
               loading={loading}
-              placeholder="Search by name, slug, code..."
+              placeholder={t("searchDesktop")}
               debounceMs={0}
               showClearButton={false}
             />
@@ -201,7 +210,7 @@ export default function CategoryTable({
               value={`${sortField}|${sortOrder}`}
               options={sortOptions}
               onChange={handleSortChange}
-              placeholder="Sort"
+              placeholder={t("sortPlaceholder")}
               className="w-full"
             />
           </div>
@@ -211,13 +220,13 @@ export default function CategoryTable({
               value={String(pageSize)}
               onChange={(value) => onPageSizeChange(Number(value))}
               options={[
-                { value: "5", label: "5 / page" },
-                { value: "10", label: "10 / page" },
-                { value: "15", label: "15 / page" },
-                { value: "30", label: "30 / page" },
-                { value: "60", label: "60 / page" },
+                { value: "5", label: t("pageSize5") },
+                { value: "10", label: t("pageSize10") },
+                { value: "15", label: t("pageSize15") },
+                { value: "30", label: t("pageSize30") },
+                { value: "60", label: t("pageSize60") },
               ]}
-              placeholder="10 / page"
+              placeholder={t("pageSize10")}
               className="w-full"
             />
           </div>
@@ -229,7 +238,7 @@ export default function CategoryTable({
               value={inputValue}
               onChange={onInputChange}
               loading={loading}
-              placeholder="Search categories..."
+              placeholder={t("searchMobile")}
               debounceMs={0}
               showClearButton={false}
               className="w-full"
@@ -241,8 +250,8 @@ export default function CategoryTable({
                 setTempSort(`${sortField}|${sortOrder}`);
                 setSheetOpen(true);
               }}
-              aria-label="Open sort options"
-              className="absolute right-1 md:right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center md:rounded-lg md:bg-secondary  md:text-white md:shadow-sm md:transition hover:bg-secondary/90 active:scale-95"
+              aria-label={t("openSortOptions")}
+              className="absolute right-1 md:right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center md:rounded-lg md:bg-secondary md:text-white md:shadow-sm md:transition hover:bg-secondary/90 active:scale-95"
             >
               <FunnelIcon className="h-3.5 w-3.5 text-secondary md:text-white" />
             </button>
@@ -253,13 +262,13 @@ export default function CategoryTable({
               value={String(pageSize)}
               onChange={(value) => onPageSizeChange(Number(value))}
               options={[
-                { value: "5", label: "5 / page" },
-                { value: "10", label: "10 / page" },
-                { value: "15", label: "15 / page" },
-                { value: "30", label: "30 / page" },
-                { value: "60", label: "60 / page" },
+                { value: "5", label: t("pageSize5") },
+                { value: "10", label: t("pageSize10") },
+                { value: "15", label: t("pageSize15") },
+                { value: "30", label: t("pageSize30") },
+                { value: "60", label: t("pageSize60") },
               ]}
-              placeholder="10 / page"
+              placeholder={t("pageSize10")}
               className="w-full text-xs"
             />
           </div>
@@ -276,11 +285,9 @@ export default function CategoryTable({
               <Layers className="h-8 w-8 text-gray-300" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">
-              No categories found
+              {t("emptyTitle")}
             </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Try adjusting your search or create a new category.
-            </p>
+            <p className="text-sm text-gray-500 mt-1">{t("emptyDesc")}</p>
           </div>
         ) : (
           <div className="space-y-3 xs:space-y-4 px-4">
@@ -316,12 +323,18 @@ export default function CategoryTable({
                         )}
                       </div>
                       <span
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] xs:text-xs font-medium rounded-full ${cat.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] xs:text-xs font-medium rounded-full ${
+                          cat.is_active
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-red-50 text-red-700 border border-red-200"
+                        }`}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${cat.is_active ? "bg-emerald-500" : "bg-red-500"}`}
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            cat.is_active ? "bg-emerald-500" : "bg-red-500"
+                          }`}
                         ></span>
-                        {cat.is_active ? "Active" : "Inactive"}
+                        {cat.is_active ? t("statusActive") : t("statusInactive")}
                       </span>
                     </div>
                   </div>
@@ -341,24 +354,26 @@ export default function CategoryTable({
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     <Building2 size={13} className="text-gray-400 shrink-0" />
-                    <span>{cat.company_count ?? 0} companies</span>
+                    <span>
+                      {t("companiesCount", { count: cat.company_count ?? 0 })}
+                    </span>
                   </div>
                 </div>
                 {!readOnly && (
                   <div className="mt-2 flex gap-2 pt-2">
                     <button
                       onClick={() => onEdit(cat)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-1  rounded-xl text-xs font-semibold text-secondary bg-purple-50 hover:bg-purple-100 active:bg-purple-200 transition-colors min-h-[32px]"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 px-1 rounded-xl text-xs font-semibold text-secondary bg-purple-50 hover:bg-purple-100 active:bg-purple-200 transition-colors min-h-[32px]"
                     >
                       <Edit size={14} />
-                      Edit
+                      {t("edit")}
                     </button>
                     <button
                       onClick={() => onDelete(cat)}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 p-1 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 active:bg-red-200 transition-colors min-h-[32px]"
                     >
                       <Trash2 size={14} />
-                      Delete
+                      {t("delete")}
                     </button>
                   </div>
                 )}
@@ -374,7 +389,7 @@ export default function CategoryTable({
           data={categoriesWithRowNumber}
           columns={columns}
           loading={loading}
-          emptyMessage="No categories found"
+          emptyMessage={t("emptyTable")}
           onEdit={readOnly ? undefined : onEdit}
           onDelete={readOnly ? undefined : onDelete}
           sortField={sortField}

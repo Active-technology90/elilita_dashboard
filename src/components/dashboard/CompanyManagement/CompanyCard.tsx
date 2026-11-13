@@ -1,12 +1,9 @@
 // src/components/admin/CompanyManagement/CompanyCard.tsx
 
-import {
-  Building2,
-  Tag,
-  Star,
-  Globe2,
-} from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Building2, Tag, Star, Globe2 } from "lucide-react";
 import type { CompanyListItem } from "../../../types";
+import { useLocalizedName } from "../../../hooks/useLocalizedName";
 
 interface CompanyCardProps {
   company: CompanyListItem;
@@ -14,18 +11,56 @@ interface CompanyCardProps {
   userRole?: string | null;
 }
 
-export default function CompanyCard({
-  company,
-}: CompanyCardProps) {
+export default function CompanyCard({ company }: CompanyCardProps) {
+  const { t } = useTranslation("company");
+  const { pick, isAmharic } = useLocalizedName();
+
   const isActive = company.is_active;
 
-  const formatBusinessType = (value?: string) => {
+  /**
+   * Business type label — priority:
+   *   1. Backend Amharic label (if Amharic UI + provided)
+   *   2. Static translation (btBrand / btStore / etc.)
+   *   3. Title-cased English fallback
+   */
+  const formatBusinessType = (value?: string, amharic?: string) => {
     if (!value) return "N/A";
+
+    if (isAmharic && amharic && String(amharic).trim() !== "") {
+      return String(amharic);
+    }
+
+    const key = value.toLowerCase();
+    const staticMap: Record<string, string> = {
+      brand: t("btBrand"),
+      factory: t("btFactory"),
+      service: t("btService"),
+      store: t("btStore"),
+      delivery: t("btDelivery"),
+      delivery_service: t("btDeliveryService"),
+      other: t("btOther"),
+    };
+
+    if (isAmharic && staticMap[key]) return staticMap[key];
 
     return value
       .replace(/_/g, " ")
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
+
+  const categoryDisplay =
+    pick(company.category_name, (company as any).category_name_am) ||
+    t("notSpecified");
+
+  const subCategoryDisplay = pick(
+    company.sub_category_name,
+    (company as any).sub_category_name_am,
+  );
+
+  const businessTypeDisplay = formatBusinessType(
+    company.business_type,
+    (company as any).business_type_am,
+  );
 
   return (
     <article
@@ -97,7 +132,7 @@ export default function CompanyCard({
             "
           >
             <Building2 className="h-3 w-3" />
-            Company
+            {t("cardCompany")}
           </span>
 
           {/* Active status */}
@@ -122,7 +157,7 @@ export default function CompanyCard({
               `}
             />
 
-            {isActive ? "Active" : "Inactive"}
+            {isActive ? t("cardStatusActive") : t("cardStatusInactive")}
           </span>
         </div>
       </div>
@@ -229,11 +264,11 @@ export default function CompanyCard({
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-gray-400">
-              Business Type
+              {t("cardBusinessType")}
             </p>
 
             <p className="mt-0.5 truncate text-xs font-semibold text-gray-800">
-              {formatBusinessType(company.business_type)}
+              {businessTypeDisplay}
             </p>
           </div>
 
@@ -253,7 +288,7 @@ export default function CompanyCard({
               "
             >
               <Star className="h-3 w-3 fill-amber-400 text-amber-500" />
-              Featured
+              {t("featured")}
             </span>
           )}
         </div>
@@ -293,20 +328,20 @@ export default function CompanyCard({
 
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-                Category
+                {t("cardCategory")}
               </p>
 
               <p
-                title={company.category_name}
+                title={categoryDisplay}
                 className="mt-0.5 truncate text-xs font-semibold text-gray-800"
               >
-                {company.category_name || "Not specified"}
+                {categoryDisplay}
               </p>
             </div>
           </div>
 
           {/* Subcategory */}
-          {company.sub_category_name && (
+          {subCategoryDisplay && (
             <div
               className="
                 flex min-w-0 items-center gap-3
@@ -329,14 +364,14 @@ export default function CompanyCard({
 
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-                  Subcategory
+                  {t("cardSubcategory")}
                 </p>
 
                 <p
-                  title={company.sub_category_name}
+                  title={subCategoryDisplay}
                   className="mt-0.5 truncate text-xs font-medium text-gray-700"
                 >
-                  {company.sub_category_name}
+                  {subCategoryDisplay}
                 </p>
               </div>
             </div>
@@ -365,19 +400,15 @@ export default function CompanyCard({
 
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-                Business Type
+                {t("cardBusinessType")}
               </p>
 
               <p className="mt-0.5 truncate text-xs font-semibold text-gray-800">
-                {formatBusinessType(company.business_type)}
+                {businessTypeDisplay}
               </p>
             </div>
           </div>
         </div>
-
-       
-      
-       
       </div>
     </article>
   );
