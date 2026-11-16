@@ -55,7 +55,8 @@ import DeliveryTrackingMap from "./DeliveryTrackingMap";
 // 🆕 Import Addis Ababa geofence helper (shared with DeliveryTrackingMap)
 import { isWithinAddisAbaba } from "./DeliveryTrackingMap";
 import { CustomSelect } from "../../ui/CustomSelect";
-
+import { useTranslation } from "react-i18next";
+import i18n from "../../../i18n";
 // ---------- Animation Variants ----------
 const containerVariants = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -239,7 +240,13 @@ const resolveCustomerImage = (order: any): string | undefined => {
 const buildOrderTimeline = (order: any) => {
   const events: any[] = [];
 
-  if (order.created_at) {
+  const isValidTimestamp = (v: any) => {
+    if (v == null || v === "") return false;
+    const d = new Date(v);
+    return !isNaN(d.getTime());
+  };
+
+  if (isValidTimestamp(order.created_at)) {
     events.push({
       id: "placed",
       label: "Order Placed",
@@ -254,31 +261,48 @@ const buildOrderTimeline = (order: any) => {
     (h: any) => h.status === "approved",
   );
   if (approvedReceipt) {
-    events.push({
-      id: "payment",
-      label: "Payment Approved",
-      icon: "💳",
-      time: approvedReceipt.updated_at || approvedReceipt.created_at,
-      actor: "Admin",
-      status: "completed",
-    });
+    // ✅ pick whichever timestamp exists on the receipt, then fall back
+    //    to the order's own timestamps, and finally drop the event.
+    const receiptTime =
+      approvedReceipt.updated_at ||
+      approvedReceipt.created_at ||
+      approvedReceipt.reviewed_at ||
+      approvedReceipt.approved_at ||
+      approvedReceipt.timestamp ||
+      approvedReceipt.date;
+
+    const paymentTime = receiptTime || order.updated_at || order.created_at;
+
+    if (isValidTimestamp(paymentTime)) {
+      events.push({
+        id: "payment",
+        label: "Payment Approved",
+        icon: "💳",
+        time: paymentTime,
+        actor: "Admin",
+        status: "completed",
+      });
+    }
   } else if (
     order.payment_method === "chapa" &&
     order.payment_status === "paid"
   ) {
-    events.push({
-      id: "payment",
-      label: "Payment Confirmed",
-      icon: "💳",
-      time: order.created_at,
-      actor: "Chapa",
-      status: "completed",
-    });
+    if (isValidTimestamp(order.created_at)) {
+      events.push({
+        id: "payment",
+        label: "Payment Confirmed",
+        icon: "💳",
+        time: order.created_at,
+        actor: "Chapa",
+        status: "completed",
+      });
+    }
   }
 
   if (
-    order.status?.toLowerCase() === "processing" ||
-    order.status?.toLowerCase() === "fulfilled"
+    (order.status?.toLowerCase() === "processing" ||
+      order.status?.toLowerCase() === "fulfilled") &&
+    isValidTimestamp(order.updated_at || order.created_at)
   ) {
     events.push({
       id: "prepared",
@@ -290,7 +314,10 @@ const buildOrderTimeline = (order: any) => {
     });
   }
 
-  if (order.delivery?.status?.toLowerCase() === "out_for_delivery") {
+  if (
+    order.delivery?.status?.toLowerCase() === "out_for_delivery" &&
+    isValidTimestamp(order.delivery.updated_at || order.delivery.created_at)
+  ) {
     events.push({
       id: "out_for_delivery",
       label: "In Transit",
@@ -301,31 +328,33 @@ const buildOrderTimeline = (order: any) => {
     });
   }
 
-// Prefer the actual delivery completion time, then any order-level
-// timestamp, and finally the created_at as a last resort.
-const deliveredTimestamp =
-  order.delivery?.delivered_at ||
-  order.delivery?.updated_at ||
-  order.delivery?.created_at ||
-  order.updated_at ||
-  order.created_at;
+  const deliveredTimestamp =
+    order.delivery?.delivered_at ||
+    order.delivery?.updated_at ||
+    order.delivery?.created_at ||
+    order.updated_at ||
+    order.created_at;
 
-if (
-  (order.delivery?.status?.toLowerCase() === "delivered" ||
-    order.status?.toLowerCase() === "fulfilled") &&
-  deliveredTimestamp
-) {
-  events.push({
-    id: "delivered",
-    label: "Delivered",
-    icon: "🏁",
-    time: deliveredTimestamp,
-    actor: order.delivery?.delivery_person_name || "System",
-    status: "completed",
-  });
-}
+  if (
+    (order.delivery?.status?.toLowerCase() === "delivered" ||
+      order.status?.toLowerCase() === "fulfilled") &&
+    isValidTimestamp(deliveredTimestamp)
+  ) {
+    events.push({
+      id: "delivered",
+      label: "Delivered",
+      icon: "🏁",
+      time: deliveredTimestamp,
+      actor: order.delivery?.delivery_person_name || "System",
+      status: "completed",
+    });
+  }
 
-  if (order.status?.toLowerCase() === "pending" && !approvedReceipt) {
+  if (
+    order.status?.toLowerCase() === "pending" &&
+    !approvedReceipt &&
+    isValidTimestamp(order.created_at)
+  ) {
     events.push({
       id: "pending",
       label: "Awaiting Payment",
@@ -345,21 +374,26 @@ if (
 
 const getDisplayStatus = (
   status: string,
+  t: ((key: string, opts?: Record<string, any>) => string) | undefined,
   customLabels?: Record<string, string>,
 ) => {
+  const tr = typeof t === "function" ? t : (key: string) => key;
+
   const statusMap: Record<string, string> = {
-    contacted: "Confirmed",
-    processing: "Prepared",
-    shipped: "In Transit",
-    fulfilled: "Delivered",
-    pending: "Assigned",
-    expired: "Offer Expired (Timeout)",
-    declined: "Declined",
-    out_for_delivery: "In Transit",
-    delivered: "Completed",
-    disputed: "Disputed",
-    replacement_in_progress: "Redelivery Required",
-    refunded: "Refunded",
+    contacted: tr("companyOrders.statusBadge.contacted"),
+    processing: tr("companyOrders.statusBadge.processing"),
+    shipped: tr("companyOrders.statusBadge.shipped"),
+    fulfilled: tr("companyOrders.statusBadge.fulfilled"),
+    pending: tr("companyOrders.statusBadge.pending"),
+    expired: tr("companyOrders.statusBadge.expired"),
+    declined: tr("companyOrders.statusBadge.declined"),
+    out_for_delivery: tr("companyOrders.statusBadge.out_for_delivery"),
+    delivered: tr("companyOrders.statusBadge.delivered"),
+    disputed: tr("companyOrders.statusBadge.disputed"),
+    replacement_in_progress: tr(
+      "companyOrders.statusBadge.replacement_in_progress",
+    ),
+    refunded: tr("companyOrders.statusBadge.refunded"),
     ...customLabels,
   };
   return statusMap[status?.toLowerCase()] || status;
@@ -396,60 +430,75 @@ const getStatusBadge = (status: string) => {
 };
 
 // ---------- Sub-Components ----------
-const Card = ({ children, title, icon: Icon, status, className = "" }: any) => (
-  <motion.div
-    variants={itemVariants}
-    className={`bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100/20 p-2 md:p-5 shadow-md hover:shadow-lg transition-shadow duration-300 ${className}`}
-  >
-    <div className="flex flex-row justify-between items-start">
-      <div className="flex items-center gap-2 mb-2 md:mb-4 pb-2 md:pb-3 w-full relative">
-        <div className="p-1.5 bg-gradient-to-br from-secondary/20 to-secondary-light/20 rounded-lg shadow-inner">
-          <Icon className="h-4 w-4 text-secondary" />
+const Card = ({
+  children,
+  title,
+  titleKey,
+  icon: Icon,
+  status,
+  isCOD = false,
+  className = "",
+  t,
+}: {
+  children?: React.ReactNode;
+  title?: string;
+  titleKey?: string;
+  icon: any;
+  status?: string;
+  isCOD?: boolean;
+  className?: string;
+  t?: (key: string, opts?: Record<string, any>) => string; // ← optional now
+}) => {
+  // Defensive: if t is missing, fall back to a passthrough so we don't crash.
+  const tr = typeof t === "function" ? t : (key: string) => title ?? key;
+
+  return (
+    <motion.div
+      variants={itemVariants}
+      className={`bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100/20 p-2 md:p-5 shadow-md hover:shadow-lg transition-shadow duration-300 ${className}`}
+    >
+      <div className="flex flex-row justify-between items-start">
+        <div className="flex items-center gap-2 mb-2 md:mb-4 pb-2 md:pb-3 w-full relative">
+          <div className="p-1.5 bg-gradient-to-br from-secondary/20 to-secondary-light/20 rounded-lg shadow-inner">
+            <Icon className="h-4 w-4 text-secondary" />
+          </div>
+          <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
+            {titleKey ? tr(titleKey) : title}
+          </h4>
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-secondary via-secondary-light to-transparent rounded-full"></div>
         </div>
-        <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-          {title}
-        </h4>
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-secondary via-secondary-light to-transparent rounded-full"></div>
+        {status && (
+          <div className="flex flex-row justify-start">
+            <span className={getStatusBadge(status)}>
+              {isCOD ? status : getDisplayStatus(status, tr)}
+            </span>
+          </div>
+        )}
       </div>
-      {status && (
-        <div className="flex flex-row justify-start">
-          <span className={getStatusBadge(status)}>
-            {title === "Cash on Delivery" ? status : getDisplayStatus(status)}
-          </span>
-        </div>
-      )}
-    </div>
-    {children}
-  </motion.div>
-);
+      {children}
+    </motion.div>
+  );
+};
 
 const StatusBadge = ({
   status,
   customLabels,
+  t,
 }: {
   status: string;
   customLabels?: Record<string, string>;
+  t?: (key: string, opts?: Record<string, any>) => string;
 }) => {
   const s = status?.toLowerCase();
   const styles: Record<string, string> = {
-    completed: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    delivered: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    paid: "bg-violet-100 text-violet-700 border-violet-200",
-    out_for_delivery: "bg-violet-100 text-violet-700 border-violet-200",
-    pending: "bg-amber-100 text-amber-700 border-amber-200",
-    expired: "bg-amber-100 text-amber-800 border-amber-300",
-    declined: "bg-rose-100 text-rose-700 border-rose-200",
-    processing: "bg-sky-100 text-sky-700 border-sky-200",
-    shipped: "bg-sky-100 text-sky-700 border-sky-200",
-    approved: "bg-green-100 text-green-700 border-green-200",
-    rejected: "bg-rose-100 text-rose-700 border-rose-200",
-    cancelled: "bg-rose-100 text-rose-700 border-rose-200",
-    disputed: "bg-amber-100 text-amber-800 border-amber-200",
-    replacement_in_progress: "bg-purple-100 text-purple-800 border-purple-200",
-    refunded: "bg-rose-100 text-rose-800 border-rose-200",
+    /* unchanged */
   };
 
-  const displayStatus = getDisplayStatus(status, customLabels);
+  const tr =
+    typeof t === "function" ? t : (key: string) => customLabels?.[key] ?? key;
+
+  const displayStatus = getDisplayStatus(status, tr, customLabels);
+
   return (
     <span
       className={`px-2 md:px-2.5 py-0.5 md:py-1 text-[8px] md:text-[11px] font-bold uppercase tracking-wider rounded-full border shadow-sm ${
@@ -677,6 +726,7 @@ const DeliveryCard = ({
   onOpenLiveTracking,
   liveDriverLocations = {},
   onViewOnMap,
+  t,
 }: any) => {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
@@ -742,7 +792,6 @@ const DeliveryCard = ({
   >({});
 
   const delivery = order.delivery;
-  // 🆕 FIX: Define terminal statuses to prevent the "Change" button from showing on completed orders
   const isTerminal =
     order.status?.toLowerCase() === "fulfilled" ||
     order.status?.toLowerCase() === "completed" ||
@@ -769,7 +818,6 @@ const DeliveryCard = ({
     new Map(),
   );
 
-  /* ── Close filters popover on outside click / Escape ── */
   useEffect(() => {
     if (!showFilters) return;
 
@@ -778,7 +826,6 @@ const DeliveryCard = ({
       window.matchMedia("(max-width: 639px)").matches;
 
     const handleClickOutside = (e: MouseEvent) => {
-      // Skip on mobile — backdrop handles closing
       if (isMobile()) return;
       if (
         filtersRef.current &&
@@ -901,23 +948,23 @@ const DeliveryCard = ({
   const getVehicleName = (type?: string) => {
     switch (type?.toLowerCase()) {
       case "motorcycle":
-        return "Motorcycle";
+        return t("deliveryCard.motorcycle");
       case "car":
-        return "Car";
+        return t("deliveryCard.car");
       case "bicycle":
-        return "Bicycle";
+        return t("deliveryCard.bicycle");
       case "van":
-        return "Van";
+        return t("deliveryCard.van");
       case "foot":
-        return "On Foot";
+        return t("deliveryCard.onFoot");
       default:
-        return "Vehicle";
+        return t("deliveryCard.vehicle");
     }
   };
 
   const renderRating = (avg?: string, reviews?: number) => {
     if (!avg || avg === "0.00" || !reviews || reviews === 0)
-      return "No reviews";
+      return t("deliveryCard.noReviews");
     const rating = parseFloat(avg).toFixed(1);
     return `⭐ ${rating} (${reviews})`;
   };
@@ -1161,7 +1208,6 @@ const DeliveryCard = ({
           isOnline: liveLoc.is_online !== false,
           live_lat: liveLoc.lat,
           live_lon: liveLoc.lon,
-          // 🆕 Addis Ababa check
           is_in_addis_ababa: isWithinAddisAbaba(liveLoc.lat, liveLoc.lon),
         };
       }
@@ -1181,7 +1227,6 @@ const DeliveryCard = ({
             isOnline: true,
             live_lat: currentLat,
             live_lon: currentLng,
-            // 🆕 Addis Ababa check
             is_in_addis_ababa: isWithinAddisAbaba(currentLat, currentLng),
           };
         }
@@ -1202,7 +1247,6 @@ const DeliveryCard = ({
             isOnline: true,
             live_lat: lastLat,
             live_lon: lastLon,
-            // 🆕 Addis Ababa check
             is_in_addis_ababa: isWithinAddisAbaba(lastLat, lastLon),
           };
         }
@@ -1214,7 +1258,6 @@ const DeliveryCard = ({
           location_source: "api",
           isLive: false,
           isOnline: true,
-          // 🆕 Unknown coords → don't block
           is_in_addis_ababa: true,
         };
       }
@@ -1224,7 +1267,6 @@ const DeliveryCard = ({
         location_source: null,
         isLive: false,
         isOnline: true,
-        // 🆕 Unknown coords → don't block
         is_in_addis_ababa: true,
       };
     });
@@ -1452,7 +1494,7 @@ const DeliveryCard = ({
       });
       setUsernameMap(uMap);
     } catch {
-      showToast("error", "Failed to load delivery personnel");
+      showToast("error", t("deliveryCard.loadStaffFailed"));
     } finally {
       setLoadingStaff(false);
     }
@@ -1469,14 +1511,18 @@ const DeliveryCard = ({
   const handleAssign = async () => {
     setAssigning(true);
     try {
-      // 🆕 Block assignment if the selected driver is outside Addis Ababa
       const selectedDriverObj = staffList.find(
         (s) => s.id === Number(selectedUserId),
       );
-      if (selectedDriverObj && isDriverOutsideAddis(selectedDriverObj, driverLocations)) {
+      if (
+        selectedDriverObj &&
+        isDriverOutsideAddis(selectedDriverObj, driverLocations)
+      ) {
         showToast(
           "error",
-          `${selectedDriverObj.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+          t("deliveryCard.outsideAddisToast", {
+            name: selectedDriverObj.name,
+          }),
         );
         setAssigning(false);
         return;
@@ -1495,21 +1541,15 @@ const DeliveryCard = ({
       }
       await onUpdate();
       if (selectedDriverObj?.is_en_route) {
-        showToast(
-          "success",
-          "Offer sent to en-route delivery person (45s window to respond)",
-        );
+        showToast("success", t("deliveryCard.assignEnRouteSuccess"));
       } else if (selectedDriverObj?.is_at_vendor) {
-        showToast(
-          "success",
-          "Order batched with delivery person currently at store!",
-        );
+        showToast("success", t("deliveryCard.assignAtVendorSuccess"));
       } else {
-        showToast("success", "Delivery person assigned successfully");
+        showToast("success", t("deliveryCard.assignSuccess"));
       }
       setShowAssignForm(false);
     } catch {
-      showToast("error", "Failed to assign delivery person");
+      showToast("error", t("deliveryCard.assignFailed"));
     } finally {
       setAssigning(false);
     }
@@ -1541,10 +1581,7 @@ const DeliveryCard = ({
       sortOrder !== "asc"
     )
       return null;
-    // 🆕 Exclude out-of-bounds drivers from being "best match"
-    const first = filteredStaffList.find(
-      (d) => d.is_in_addis_ababa !== false,
-    );
+    const first = filteredStaffList.find((d) => d.is_in_addis_ababa !== false);
     if (
       first &&
       (first.live_lat != null || first.calculated_distance != null)
@@ -1559,7 +1596,6 @@ const DeliveryCard = ({
     [staffList, selectedUserId],
   );
 
-  // 🆕 Derived flag for the sticky action bar
   const selectedDriverIsOutside = useMemo(
     () =>
       selectedDriver
@@ -1571,13 +1607,11 @@ const DeliveryCard = ({
   const activeFilterCount =
     (filterType !== "all" ? 1 : 0) + (vehicleTypeFilter !== "all" ? 1 : 0);
 
-  // Stats for header
   const inHouseCount = staffWithDistance.filter((s) => s.is_in_house).length;
   const thirdPartyCount = staffWithDistance.filter(
     (s) => !s.is_in_house,
   ).length;
 
-  // Filter counts (based on unfiltered staff list)
   const allCount = staffWithDistance.length;
   const inHouseFilterCount = staffWithDistance.filter(
     (s) => s.is_in_house,
@@ -1605,13 +1639,10 @@ const DeliveryCard = ({
     ).length,
   };
 
-  /* ─────────────────────────────────────────────────────────────
-     RENDER
-     ───────────────────────────────────────────────────────────── */
   return (
     <>
       <Card
-        title="Delivery Details"
+        titleKey="deliveryCard.title"
         icon={Truck}
         status={delivery?.status}
         className={
@@ -1619,12 +1650,10 @@ const DeliveryCard = ({
             ? "border-gray-200 ring-1 ring-gray-100"
             : "border-gray-200"
         }
+        t={t}
       >
         <AnimatePresence mode="wait">
           {!showAssignForm ? (
-            /* ═══════════════════════════════════════════════════════
-               DELIVERY SUMMARY VIEW
-               ═══════════════════════════════════════════════════════ */
             <motion.div
               key="delivery-summary"
               initial={{ opacity: 0, y: 4 }}
@@ -1639,13 +1668,16 @@ const DeliveryCard = ({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
-                            Assigned delivery person
+                            {t("deliveryCard.assignedPerson")}
                           </p>
                           <p className="mt-0.5 text-xs text-gray-500">
-                            Current delivery assignment and contact details
+                            {t("deliveryCard.assignedPersonSubtitle")}
                           </p>
                         </div>
-                        <StatusBadge status={delivery.status || "pending"} />
+                        <StatusBadge
+                          t={t}
+                          status={delivery.status || "pending"}
+                        />
                       </div>
                     </div>
                     <div className="p-4 sm:p-5">
@@ -1687,23 +1719,23 @@ const DeliveryCard = ({
                               </h5>
                               {delivery.logistics_company_name ? (
                                 <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                                  3PL
+                                  {t("deliveryCard.threePL")}
                                 </span>
                               ) : (
                                 <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                  In-house
+                                  {t("deliveryCard.inHouse")}
                                 </span>
                               )}
                             </div>
                             <p className="mt-1 truncate text-xs text-gray-500">
                               {delivery.logistics_company_name ||
-                                "Company delivery team"}
+                                t("deliveryCard.companyDeliveryTeam")}
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-600">
                               <span className="inline-flex items-center gap-1.5">
-                                {/* <PhoneCall className="h-3.5 w-3.5 text-gray-400" /> */}
                                 <span className="font-medium">
-                                  {delivery.delivery_person_phone || "No phone"}
+                                  {delivery.delivery_person_phone ||
+                                    t("deliveryCard.noPhone")}
                                 </span>
                                 <CopyButton
                                   text={delivery.delivery_person_phone}
@@ -1738,7 +1770,7 @@ const DeliveryCard = ({
                                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
                                   <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
                                 </span>
-                                Live tracking
+                                {t("deliveryCard.liveTracking")}
                               </button>
                             )}
                           {getFulfillmentKind(order) === "delivery" && (
@@ -1748,25 +1780,26 @@ const DeliveryCard = ({
                               className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
                             >
                               <MapPin className="h-3.5 w-3.5 text-secondary" />
-                              View map
+                              {t("deliveryCard.viewMap")}
                             </button>
                           )}
-                          {/* 🆕 FIX: Added !isTerminal to ensure change button doesn't show for completed/cancelled orders */}
-                          {!deliveryStatus && (canManage || cod) && !isTerminal && (
-                            <button
-                              type="button"
-                              onClick={() => setShowAssignForm(true)}
-                              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2 text-xs font-semibold transition ${
-                                delivery?.status === "declined" ||
-                                delivery?.status === "expired"
-                                  ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
-                                  : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10"
-                              }`}
-                            >
-                              <RefreshCw className="h-3.5 w-3.5" />
-                              Change
-                            </button>
-                          )}
+                          {!deliveryStatus &&
+                            (canManage || cod) &&
+                            !isTerminal && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAssignForm(true)}
+                                className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-1.5 py-2 text-xs font-semibold transition ${
+                                  delivery?.status === "declined" ||
+                                  delivery?.status === "expired"
+                                    ? "border-amber-500 bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
+                                    : "border-secondary/20 bg-secondary/5 text-secondary hover:bg-secondary/10"
+                                }`}
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                                {t("deliveryCard.change")}
+                              </button>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -1777,7 +1810,7 @@ const DeliveryCard = ({
                       <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-rose-900">
-                          Delivery issue
+                          {t("deliveryCard.deliveryIssue")}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-rose-700">
                           {failureReason}
@@ -1792,14 +1825,14 @@ const DeliveryCard = ({
                         <div className="flex items-center gap-2">
                           <History className="h-4 w-4 text-gray-400" />
                           <p className="text-xs font-semibold text-gray-800">
-                            Dispatch & Reassignment History
+                            {t("deliveryCard.dispatchHistory")}
                           </p>
                         </div>
                         <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-500">
                           {delivery.attempts.length}{" "}
                           {delivery.attempts.length === 1
-                            ? "attempt"
-                            : "attempts"}
+                            ? t("deliveryCard.attemptSingular")
+                            : t("deliveryCard.attemptPlural")}
                         </span>
                       </div>
                       <div className="max-h-52 divide-y divide-gray-100 overflow-y-auto">
@@ -1833,18 +1866,19 @@ const DeliveryCard = ({
                                   )}
                                   {att.logistics_company_name ? (
                                     <span className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
-                                      3PL • {att.logistics_company_name}
+                                      {t("deliveryCard.threePL")} •{" "}
+                                      {att.logistics_company_name}
                                     </span>
                                   ) : (
                                     <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-                                      In-house
+                                      {t("deliveryCard.inHouse")}
                                     </span>
                                   )}
                                 </div>
                                 {att.decline_reason && (
                                   <p className="mt-1 text-[11px] text-gray-600">
                                     <span className="font-medium text-gray-700">
-                                      Reason:
+                                      {t("deliveryCard.deliveryIssue")}:
                                     </span>{" "}
                                     {att.decline_reason}
                                   </p>
@@ -1855,7 +1889,7 @@ const DeliveryCard = ({
                                   className={`rounded-md border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
                                 >
                                   {s === "expired"
-                                    ? "Expired (Timeout)"
+                                    ? t("deliveryCard.expiredTimeout")
                                     : att.status}
                                 </span>
                                 {att.assigned_at && (
@@ -1883,16 +1917,15 @@ const DeliveryCard = ({
                   </div>
                   <h5 className="mt-3 text-sm font-semibold text-gray-900">
                     {delivery?.attempts && delivery.attempts.length > 0
-                      ? "Order Needs Reassignment"
-                      : "No delivery person assigned"}
+                      ? t("deliveryCard.orderNeedsReassignment")
+                      : t("deliveryCard.noDeliveryPerson")}
                   </h5>
                   <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-gray-500">
                     {delivery?.attempts && delivery.attempts.length > 0
-                      ? "Previous delivery person attempt was declined or expired. Choose an available delivery person to reassign this order."
-                      : "Choose an available in-house delivery person or logistics partner to continue this delivery."}
+                      ? t("deliveryCard.reassignHint")
+                      : t("deliveryCard.assignHint")}
                   </p>
                   <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
-                    {/* 🆕 FIX: Added !isTerminal here too */}
                     {!deliveryStatus && canManage && !isTerminal && (
                       <button
                         type="button"
@@ -1901,8 +1934,8 @@ const DeliveryCard = ({
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
                         {delivery?.attempts && delivery.attempts.length > 0
-                          ? "Reassign delivery person"
-                          : "Assign delivery person"}
+                          ? t("deliveryCard.reassignPerson")
+                          : t("deliveryCard.assignPerson")}
                       </button>
                     )}
                     {getFulfillmentKind(order) === "delivery" && (
@@ -1912,7 +1945,7 @@ const DeliveryCard = ({
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
                       >
                         <MapPin className="h-3.5 w-3.5 text-secondary" />
-                        View delivery map
+                        {t("deliveryCard.viewDeliveryMap")}
                       </button>
                     )}
                   </div>
@@ -1921,7 +1954,7 @@ const DeliveryCard = ({
                       <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-600" />
                       <div>
                         <p className="text-xs font-semibold text-rose-900">
-                          Delivery issue
+                          {t("deliveryCard.deliveryIssue")}
                         </p>
                         <p className="mt-1 text-xs leading-5 text-rose-700">
                           {failureReason}
@@ -1934,10 +1967,11 @@ const DeliveryCard = ({
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-800">
                           <History className="h-3.5 w-3.5 text-gray-400" />
-                          <span>Previous Dispatch Attempts</span>
+                          <span>{t("deliveryCard.previousAttempts")}</span>
                         </div>
                         <span className="text-[10px] text-gray-400">
-                          {delivery.attempts.length} attempts
+                          {delivery.attempts.length}{" "}
+                          {t("deliveryCard.attemptPlural")}
                         </span>
                       </div>
                       <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white max-h-48 overflow-y-auto">
@@ -1972,7 +2006,9 @@ const DeliveryCard = ({
                               <span
                                 className={`rounded border px-2 py-0.5 text-[9px] font-semibold uppercase ${statusClass}`}
                               >
-                                {s === "expired" ? "Expired" : att.status}
+                                {s === "expired"
+                                  ? t("deliveryCard.expiredShort")
+                                  : att.status}
                               </span>
                             </div>
                           );
@@ -1984,820 +2020,878 @@ const DeliveryCard = ({
               )}
             </motion.div>
           ) : (
-            /* ═══════════════════════════════════════════════════════
-               ASSIGNMENT VIEW — PREMIUM DISPATCH UI
-               ═══════════════════════════════════════════════════════ */
-           <motion.div
-  key="driver-assignment"
-  initial={{ opacity: 0, y: 4 }}
-  animate={{ opacity: 1, y: 0 }}
-  exit={{ opacity: 0, y: -4 }}
-  className="space-y-4"
->
-  {/* ═══ HEADER: title + subtitle ═══ */}
-  <div className="flex items-center gap-3">
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
-      <Truck className="h-5 w-5" />
-    </div>
-    <div className="min-w-0">
-      <h5 className="text-sm font-bold text-gray-950">
-        {delivery?.delivery_person_name ||
-        (delivery?.attempts && delivery.attempts.length > 0)
-          ? "Reassign delivery person"
-          : "Assign delivery person"}
-      </h5>
-      <p className="mt-0.5 text-[11px] text-gray-500">
-        Choose the best available driver for this order
-      </p>
-    </div>
-  </div>
-
-  {showMapPreview ? (
-    /* ═══ MAP PREVIEW ═══ */
-    <>
-      {/* Row 1 (Map): just the toggle, aligned left */}
-      <div className="flex items-center">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-          <button
-            type="button"
-            onClick={() => setShowMapPreview(false)}
-            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
-          >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowMapPreview(true)}
-            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
-          >
-            Map
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-        <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
-          <div>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
-              <MapPin className="h-5 w-5 text-secondary" />
-            </div>
-            <h6 className="mt-3 text-sm font-semibold text-gray-900">
-              Delivery route map
-            </h6>
-            <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
-              Open the full map to review the order location, live delivery
-              personnel and route context.
-            </p>
-            <button
-              type="button"
-              onClick={handleViewOnMap}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
+            <motion.div
+              key="driver-assignment"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="space-y-4"
             >
-              <Navigation className="h-3.5 w-3.5" />
-              Open full map
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  ) : (
-    /* ═══ LIST VIEW ═══ */
-    <>
-      {/* ═══ ROW 1: List/Map toggle (left) + Sort (right) ═══ */}
-      <div className="flex items-center justify-between gap-2">
-        {/* List / Map toggle */}
-        <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-          <button
-            type="button"
-            onClick={() => setShowMapPreview(false)}
-            className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
-          >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowMapPreview(true)}
-            className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
-          >
-            Map
-          </button>
-        </div>
-
-        {/* Sort dropdown */}
-        <div className="relative z-30 min-w-0 flex-shrink-0 sm:min-w-[180px]">
-          <CustomSelect
-            value={`${sortBy}|${sortOrder}`}
-            onChange={(value: string) => {
-              const [field, order] = value.split("|");
-              setSortBy(field as "distance" | "rating" | "name");
-              setSortOrder(order as "asc" | "desc");
-            }}
-            ariaLabel="Sort"
-            options={[
-              { value: "distance|asc", label: "Distance · Nearest" },
-              { value: "distance|desc", label: "Distance · Farthest" },
-              { value: "rating|desc", label: "Rating · Highest" },
-              { value: "name|asc", label: "Name · A → Z" },
-              { value: "name|desc", label: "Name · Z → A" },
-            ]}
-          />
-        </div>
-      </div>
-
-      {/* ═══ ROW 2: Search (left) + Filters button (right) ═══ */}
-      <div className="flex items-center gap-2">
-        {/* Search */}
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search delivery…"
-            aria-label="Search delivery person"
-            className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
-          />
-        </div>
-
-        {/* Filters button + popover (desktop) / bottom sheet (mobile) */}
-        <div className="relative shrink-0" ref={filtersRef}>
-          <button
-            type="button"
-            onClick={() => setShowFilters((v) => !v)}
-            aria-haspopup="dialog"
-            aria-expanded={showFilters}
-            className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
-              activeFilterCount > 0
-                ? "border-secondary bg-secondary/5 text-secondary"
-                : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Filters</span>
-            {activeFilterCount > 0 && (
-              <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          <AnimatePresence>
-            {showFilters && (
-              <>
-                {/* ── BACKDROP (mobile only) ── */}
-                <motion.div
-                  key="filter-backdrop"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
-                  onClick={() => setShowFilters(false)}
-                  aria-hidden="true"
-                />
-
-                {/* ── BOTTOM SHEET (mobile) / POPOVER (desktop) ── */}
-               
-<motion.div
-  key="filter-panel"
-  initial={{ opacity: 0, y: 12, scale: 0.98 }}
-  animate={{ opacity: 1, y: 0, scale: 1 }}
-  exit={{ opacity: 0, y: 8, scale: 0.98 }}
-  transition={{ duration: 0.16, ease: "easeOut" }}
-  role="dialog"
-  aria-modal="true"
-  aria-label="Filter delivery personnel"
-  className={[
-    // Base
-    "z-50 flex flex-col overflow-hidden",
-    "border border-gray-200/90 bg-white",
-    "shadow-xl shadow-gray-900/10",
-
-    // Mobile: compact bottom sheet
-    "fixed inset-x-0 bottom-0",
-    "max-h-[min(55vh,420px)] rounded-t-2xl",
-
-    // Desktop: compact anchored popover
-    "sm:absolute sm:inset-x-auto sm:bottom-auto",
-    "sm:right-0 sm:top-12",
-    "sm:max-h-[min(70vh,420px)]",
-    "sm:w-[300px] sm:max-w-[calc(100vw-24px)]",
-    "sm:rounded-xl",
-  ].join(" ")}
-  style={{
-    paddingBottom: "env(safe-area-inset-bottom)",
-  }}
->
-  {/* Mobile drag handle */}
-  <div className="flex shrink-0 justify-center pt-2 sm:hidden">
-    <span
-      className="h-1 w-8 rounded-full bg-gray-300"
-      aria-hidden="true"
-    />
-  </div>
-
-  {/* Compact header */}
-  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3.5 py-2.5">
-    <div className="flex min-w-0 items-center gap-2">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
-        <Filter className="h-3.5 w-3.5" />
-      </div>
-
-      <div className="min-w-0">
-        <h3 className="text-xs font-bold text-gray-900">
-          Filter delivery person
-        </h3>
-        <p className="text-[10px] text-gray-500">
-          Refine available delivery persons
-        </p>
-      </div>
-
-      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold text-gray-600">
-        {filteredStaffList.length}
-      </span>
-    </div>
-
-    <div className="flex shrink-0 items-center gap-1">
-      {activeFilterCount > 0 && (
-        <button
-          type="button"
-          onClick={() => {
-            setFilterType("all");
-            setVehicleTypeFilter("all");
-            setSelectedUserId("");
-          }}
-          className="rounded-md px-2 py-1.5 text-[10px] font-semibold text-secondary hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-        >
-          Clear all
-        </button>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setShowFilters(false)}
-        aria-label="Close filters"
-        className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  </div>
-
-  {/* Compact scrollable filters */}
-  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 py-3">
-    <section>
-      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-        Delivery person
-      </label>
-
-      <FilterDropdown
-        variant="type"
-        value={filterType}
-        onChange={(v) => {
-          setFilterType(
-            v as "all" | "in_house" | "third_party",
-          );
-          setSelectedUserId("");
-        }}
-        ariaLabel="Delivery person type"
-        options={[
-          {
-            value: "all",
-            label: "All delivery persons",
-            description: "Every available delivery person",
-            count: allCount,
-            accent: "secondary",
-            icon: <Users className="h-3 w-3" />,
-          },
-          {
-            value: "in_house",
-            label: "In-house",
-            description: "Your company delivery persons",
-            count: inHouseFilterCount,
-            accent: "emerald",
-            icon: <Truck className="h-3 w-3" />,
-          },
-          {
-            value: "third_party",
-            label: "3PL Partners",
-            description: "Third-party logistics",
-            count: thirdPartyFilterCount,
-            accent: "blue",
-            icon: <Building2 className="h-3 w-3" />,
-          },
-        ]}
-      />
-    </section>
-
-    <section>
-      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
-        Vehicle type
-      </label>
-
-      <FilterDropdown
-        variant="vehicle"
-        value={vehicleTypeFilter}
-        onChange={(v) => {
-          setVehicleTypeFilter(
-            v as
-              | "all"
-              | "motorcycle"
-              | "car"
-              | "bicycle"
-              | "van"
-              | "foot",
-          );
-          setSelectedUserId("");
-        }}
-        ariaLabel="Vehicle type"
-        options={[
-          {
-            value: "all",
-            emoji: "🚚",
-            label: "All vehicles",
-            count: vehicleCounts.all,
-          },
-          {
-            value: "motorcycle",
-            emoji: "🏍️",
-            label: "Motorcycle",
-            count: vehicleCounts.motorcycle,
-          },
-          {
-            value: "car",
-            emoji: "🚗",
-            label: "Car",
-            count: vehicleCounts.car,
-          },
-          {
-            value: "bicycle",
-            emoji: "🚲",
-            label: "Bicycle",
-            count: vehicleCounts.bicycle,
-          },
-          {
-            value: "van",
-            emoji: "🚐",
-            label: "Van",
-            count: vehicleCounts.van,
-          },
-          {
-            value: "foot",
-            emoji: "🚶",
-            label: "On Foot",
-            count: vehicleCounts.foot,
-          },
-        ]}
-      />
-    </section>
-  </div>
-
-  {/* Compact sticky footer */}
-  <div className="shrink-0 border-t border-gray-100 bg-white px-3.5 py-2.5">
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        disabled={activeFilterCount === 0}
-        onClick={() => {
-          setFilterType("all");
-          setVehicleTypeFilter("all");
-          setSelectedUserId("");
-        }}
-        className="h-9 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-      >
-        Reset
-      </button>
-
-      <button
-        type="button"
-        onClick={() => setShowFilters(false)}
-        className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
-      >
-        Show {filteredStaffList.length}{" "}
-        {filteredStaffList.length === 1 ? "delivery person" : "delivery persons"}
-        <Check className="h-3.5 w-3.5 shrink-0" />
-      </button>
-    </div>
-  </div>
-</motion.div>
-
-              </>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* ─── SECTION HEADER: "Available drivers" + counts ─── */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
-        <h6 className="text-sm font-bold text-gray-900">Available delivery persons</h6>
-        <p className="text-[11px] text-gray-500">
-          {inHouseCount} in-house · {thirdPartyCount} third-party
-        </p>
-      </div>
-
-      {/* ─── ACTIVE FILTER CHIPS ─── */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {filterType !== "all" && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-              {filterType === "in_house" ? "In-house" : "3PL"}
-              <button
-                type="button"
-                onClick={() => setFilterType("all")}
-                aria-label="Remove type filter"
-                className="rounded-full p-0.5 transition hover:bg-secondary/15"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </span>
-          )}
-          {vehicleTypeFilter !== "all" && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
-              <span>{getVehicleIcon(vehicleTypeFilter)}</span>
-              {getVehicleName(vehicleTypeFilter)}
-              <button
-                type="button"
-                onClick={() => setVehicleTypeFilter("all")}
-                aria-label="Remove vehicle filter"
-                className="rounded-full p-0.5 transition hover:bg-secondary/15"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* ─── DRIVER LIST ─── */}
-      {loadingStaff ? (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
-          <div className="text-center">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
-            <p className="mt-2 text-xs font-medium text-gray-500">
-              Loading delivery persons…
-            </p>
-          </div>
-        </div>
-      ) : filteredStaffList.length === 0 ? (
-        <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
-          <div>
-            <Users className="mx-auto h-7 w-7 text-gray-300" />
-            <p className="mt-2 text-sm font-semibold text-gray-800">
-              No delivery persons found
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {searchTerm ||
-              filterType !== "all" ||
-              vehicleTypeFilter !== "all"
-                ? "Try changing the search or filters."
-                : "There are no available delivery persons right now."}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Driver list */}
-          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
-            {paginatedStaffList.map((staff, index) => {
-              const isSelected = selectedUserId === staff.id;
-              const hasLocation = staff.calculated_distance != null;
-              const globalIndex = (currentPage - 1) * itemsPerPage + index;
-              const isNearest =
-                globalIndex === 0 &&
-                sortBy === "distance" &&
-                sortOrder === "asc" &&
-                hasLocation;
-              const routeInfo = routeData[staff.id];
-              const roadDistance = routeInfo?.distanceKm;
-              const roadDuration = routeInfo?.durationMinutes;
-              const isRouteLoading = routeInfo?.loading;
-              const isBestMatch = bestMatchDriver?.id === staff.id;
-              // 🆕 Addis Ababa check
-              const isOutOfBounds = staff.is_in_addis_ababa === false;
-
-              return (
-                <button
-                  key={staff.id}
-                  type="button"
-                  onClick={() => setSelectedUserId(staff.id)}
-                  aria-pressed={isSelected}
-                  aria-disabled={isOutOfBounds}
-                  aria-label={`${isSelected ? "Deselect" : "Select"} ${staff.name}`}
-                  className={`group relative block w-full px-4 py-4 text-left transition ${
-                    isSelected
-                      ? "bg-secondary/[0.04]"
-                      : isOutOfBounds
-                        ? "bg-rose-50/40 hover:bg-rose-50/60"
-                        : "bg-white hover:bg-gray-50/70"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Avatar tile */}
-                    <div
-                      className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
-                        isSelected
-                          ? "border-secondary/30 bg-secondary/10 text-secondary"
-                          : isOutOfBounds
-                            ? "border-rose-200 bg-rose-50 text-rose-500"
-                            : "border-gray-200 bg-gray-50 text-gray-600"
-                      }`}
-                      aria-hidden="true"
-                    >
-                      {getInitials(staff.name)}
-                    </div>
-
-                    {/* Center: name + meta */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                        <p className="truncate text-sm font-bold text-gray-900">
-                          {staff.name}
-                        </p>
-                        {(isBestMatch || isNearest) && (
-                          <span
-                            title="Closest available match"
-                            className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-                          >
-                            Best match
-                          </span>
-                        )}
-                        {/* 🆕 Out-of-Addis badge */}
-                        {isOutOfBounds && (
-                          <span
-                            title="This driver is outside Addis Ababa and cannot be assigned"
-                            className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
-                          >
-                            Outside Addis
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-                        <span className="font-medium">
-                          {staff.is_in_house
-                            ? "In-house"
-                            : staff.company_name || "3PL partner"}
-                        </span>
-                        <span className="text-gray-300" aria-hidden="true">
-                          ·
-                        </span>
-                        <span>{getVehicleName(staff.vehicle_type)}</span>
-                      </div>
-
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                        {staff.location_source === "live" && (
-                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                            Live
-                          </span>
-                        )}
-                        {staff.is_at_vendor ? (
-                          <span className="font-semibold text-amber-700">
-                            🏬 At Store
-                          </span>
-                        ) : staff.is_en_route ? (
-                          <span className="font-semibold text-indigo-700">
-                            🚗 En Route
-                          </span>
-                        ) : staff.active_orders_count === 0 ? (
-                          <span className="font-semibold text-emerald-700">
-                            ● Available
-                          </span>
-                        ) : (
-                          <span className="font-semibold text-gray-500">
-                            {staff.active_orders_count} active
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: rating + distance + radio */}
-                    <div className="flex flex-shrink-0 items-center gap-3 self-center">
-                      <div className="hidden text-right sm:block">
-                        {staff.average_rating &&
-                        staff.average_rating !== "0.00" ? (
-                          <p className="text-xs font-bold text-gray-800">
-                            ⭐ {parseFloat(staff.average_rating).toFixed(1)}
-                            {staff.total_reviews && (
-                              <span className="ml-1 text-[10px] font-medium text-gray-400">
-                                ({staff.total_reviews})
-                              </span>
-                            )}
-                          </p>
-                        ) : (
-                          <p className="text-xs font-medium text-gray-400">
-                            No reviews
-                          </p>
-                        )}
-
-                        <div className="mt-1 text-[10px] text-gray-500">
-                          {isRouteLoading ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Calculating…
-                            </span>
-                          ) : roadDistance != null ? (
-                            <span>
-                              {formatDistance(roadDistance)}
-                              {roadDuration != null && (
-                                <> · {formatDuration(roadDuration)}</>
-                              )}
-                            </span>
-                          ) : hasLocation ? (
-                            <span>
-                              ~{formatDistance(staff.calculated_distance)}
-                            </span>
-                          ) : (
-                            <span>Distance unavailable</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
-                          isOutOfBounds
-                            ? "border-rose-300 bg-rose-50 text-rose-400"
-                            : isSelected
-                              ? "border-secondary bg-secondary text-white"
-                              : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
-                        }`}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mobile rating / distance line */}
-                  <div className="mt-2 flex items-center justify-between sm:hidden">
-                    <span className="text-[10px] text-gray-500">
-                      {staff.average_rating &&
-                      staff.average_rating !== "0.00"
-                        ? `⭐ ${parseFloat(staff.average_rating).toFixed(1)} (${staff.total_reviews})`
-                        : "No reviews"}
-                    </span>
-                    <span className="text-[10px] text-gray-500">
-                      {isRouteLoading
-                        ? "Calculating…"
-                        : roadDistance != null
-                          ? formatDistance(roadDistance)
-                          : hasLocation
-                            ? `~${formatDistance(staff.calculated_distance)}`
-                            : "Distance unavailable"}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-[10px] font-medium text-gray-400">
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) pageNum = i + 1;
-                  else if (currentPage <= 3) pageNum = i + 1;
-                  else if (currentPage >= totalPages - 2)
-                    pageNum = totalPages - 4 + i;
-                  else pageNum = currentPage - 2 + i;
-                  return (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setCurrentPage(pageNum)}
-                      aria-current={currentPage === pageNum ? "page" : undefined}
-                      className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
-                        currentPage === pageNum
-                          ? "bg-secondary text-white"
-                          : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ═══ STICKY ACTION BAR ═══ */}
-      <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            {selectedDriver ? (
               <div className="flex items-center gap-3">
-                <span
-                  aria-hidden="true"
-                  className={`inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-white ${
-                    selectedDriverIsOutside ? "bg-rose-500" : "bg-secondary"
-                  }`}
-                >
-                  {selectedDriverIsOutside ? (
-                    <AlertCircle className="h-4 w-4" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                </span>
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-secondary/15 bg-secondary/5 text-secondary">
+                  <Truck className="h-5 w-5" />
+                </div>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-gray-900">
-                    {selectedDriver.name} selected
-                  </p>
-                  <p className="truncate text-[10px] text-gray-500">
-                    {selectedDriverIsOutside
-                      ? "Outside Addis Ababa — cannot be assigned"
-                      : `${selectedDriver.is_in_house ? "In-house" : selectedDriver.company_name || "3PL partner"}${
-                          selectedDriver.vehicle_type
-                            ? ` · ${getVehicleName(selectedDriver.vehicle_type)}`
-                            : ""
-                        }`}
+                  <h5 className="text-sm font-bold text-gray-950">
+                    {delivery?.delivery_person_name ||
+                    (delivery?.attempts && delivery.attempts.length > 0)
+                      ? t("deliveryCard.reassignTitle")
+                      : t("deliveryCard.assignTitle")}
+                  </h5>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    {t("deliveryCard.assignSubtitle")}
                   </p>
                 </div>
               </div>
-            ) : (
-              <p className="text-[11px] text-gray-400">
-                Select a driver to continue.
-              </p>
-            )}
-          </div>
 
-          <div className="flex gap-2 sm:flex-shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowAssignForm(false)}
-              className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleAssign}
-              disabled={assigning || !selectedUserId || selectedDriverIsOutside}
-              title={
-                selectedDriverIsOutside
-                  ? "Selected driver is outside Addis Ababa"
-                  : undefined
-              }
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
-            >
-              {assigning ? (
+              {showMapPreview ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Assigning…
-                </>
-              ) : selectedDriverIsOutside ? (
-                <>
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  Outside Addis
+                  <div className="flex items-center">
+                    <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPreview(false)}
+                        className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+                      >
+                        {t("deliveryCard.listToggle")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPreview(true)}
+                        className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+                      >
+                        {t("deliveryCard.mapToggle")}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                    <div className="flex min-h-[280px] items-center justify-center p-8 text-center">
+                      <div>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+                          <MapPin className="h-5 w-5 text-secondary" />
+                        </div>
+                        <h6 className="mt-3 text-sm font-semibold text-gray-900">
+                          {t("deliveryCard.mapPreviewTitle")}
+                        </h6>
+                        <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-gray-500">
+                          {t("deliveryCard.mapPreviewDescription")}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleViewOnMap}
+                          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary-light"
+                        >
+                          <Navigation className="h-3.5 w-3.5" />
+                          {t("deliveryCard.openFullMap")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <>
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  {delivery?.delivery_person_name ||
-                  (delivery?.attempts && delivery.attempts.length > 0)
-                    ? "Reassign "
-                    : "Assign "}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPreview(false)}
+                        className="rounded-md bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-900 shadow-sm transition"
+                      >
+                        {t("deliveryCard.listToggle")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPreview(true)}
+                        className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:text-gray-800"
+                      >
+                        {t("deliveryCard.mapToggle")}
+                      </button>
+                    </div>
+
+                    <div className="relative z-30 min-w-0 flex-shrink-0 sm:min-w-[180px]">
+                      <CustomSelect
+                        value={`${sortBy}|${sortOrder}`}
+                        onChange={(value: string) => {
+                          const [field, order] = value.split("|");
+                          setSortBy(field as "distance" | "rating" | "name");
+                          setSortOrder(order as "asc" | "desc");
+                        }}
+                        ariaLabel={t("deliveryCard.sortAria")}
+                        options={[
+                          {
+                            value: "distance|asc",
+                            label: t("deliveryCard.sortDistanceNearest"),
+                          },
+                          {
+                            value: "distance|desc",
+                            label: t("deliveryCard.sortDistanceFarthest"),
+                          },
+                          {
+                            value: "rating|desc",
+                            label: t("deliveryCard.sortRatingHighest"),
+                          },
+                          {
+                            value: "name|asc",
+                            label: t("deliveryCard.sortNameAsc"),
+                          },
+                          {
+                            value: "name|desc",
+                            label: t("deliveryCard.sortNameDesc"),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative min-w-0 flex-1">
+                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder={t("deliveryCard.searchPlaceholder")}
+                        aria-label={t("deliveryCard.searchAria")}
+                        className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-secondary/50 focus:ring-2 focus:ring-secondary/10"
+                      />
+                    </div>
+
+                    <div className="relative shrink-0" ref={filtersRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilters((v) => !v)}
+                        aria-haspopup="dialog"
+                        aria-expanded={showFilters}
+                        className={`inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition ${
+                          activeFilterCount > 0
+                            ? "border-secondary bg-secondary/5 text-secondary"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Filter className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">
+                          {t("deliveryCard.filters")}
+                        </span>
+                        {activeFilterCount > 0 && (
+                          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-secondary px-1 text-[9px] font-bold text-white">
+                            {activeFilterCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <AnimatePresence>
+                        {showFilters && (
+                          <>
+                            <motion.div
+                              key="filter-backdrop"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.15 }}
+                              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm sm:hidden"
+                              onClick={() => setShowFilters(false)}
+                              aria-hidden="true"
+                            />
+
+                            <motion.div
+                              key="filter-panel"
+                              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                              transition={{ duration: 0.16, ease: "easeOut" }}
+                              role="dialog"
+                              aria-modal="true"
+                              aria-label={t("deliveryCard.filterTitle")}
+                              className={[
+                                "z-50 flex flex-col overflow-hidden",
+                                "border border-gray-200/90 bg-white",
+                                "shadow-xl shadow-gray-900/10",
+                                "fixed inset-x-0 bottom-0",
+                                "max-h-[min(55vh,420px)] rounded-t-2xl",
+                                "sm:absolute sm:inset-x-auto sm:bottom-auto",
+                                "sm:right-0 sm:top-12",
+                                "sm:max-h-[min(70vh,420px)]",
+                                "sm:w-[300px] sm:max-w-[calc(100vw-24px)]",
+                                "sm:rounded-xl",
+                              ].join(" ")}
+                              style={{
+                                paddingBottom: "env(safe-area-inset-bottom)",
+                              }}
+                            >
+                              <div className="flex shrink-0 justify-center pt-2 sm:hidden">
+                                <span
+                                  className="h-1 w-8 rounded-full bg-gray-300"
+                                  aria-hidden="true"
+                                />
+                              </div>
+
+                              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3.5 py-2.5">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
+                                    <Filter className="h-3.5 w-3.5" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h3 className="text-xs font-bold text-gray-900">
+                                      {t("deliveryCard.filterTitle")}
+                                    </h3>
+                                    <p className="text-[10px] text-gray-500">
+                                      {t("deliveryCard.filterSubtitle")}
+                                    </p>
+                                  </div>
+                                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 px-1.5 text-[10px] font-semibold text-gray-600">
+                                    {filteredStaffList.length}
+                                  </span>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  {activeFilterCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setFilterType("all");
+                                        setVehicleTypeFilter("all");
+                                        setSelectedUserId("");
+                                      }}
+                                      className="rounded-md px-2 py-1.5 text-[10px] font-semibold text-secondary hover:bg-secondary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+                                    >
+                                      {t("deliveryCard.clearAll")}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFilters(false)}
+                                    aria-label={t("deliveryCard.closeFilters")}
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3.5 py-3">
+                                <section>
+                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    {t("deliveryCard.deliveryPersonLabel")}
+                                  </label>
+                                  <FilterDropdown
+                                    variant="type"
+                                    value={filterType}
+                                    onChange={(v) => {
+                                      setFilterType(
+                                        v as "all" | "in_house" | "third_party",
+                                      );
+                                      setSelectedUserId("");
+                                    }}
+                                    ariaLabel={t(
+                                      "deliveryCard.deliveryPersonLabel",
+                                    )}
+                                    options={[
+                                      {
+                                        value: "all",
+                                        label: t(
+                                          "deliveryCard.allDeliveryPersons",
+                                        ),
+                                        description: t(
+                                          "deliveryCard.allDeliveryPersonsDesc",
+                                        ),
+                                        count: allCount,
+                                        accent: "secondary",
+                                        icon: <Users className="h-3 w-3" />,
+                                      },
+                                      {
+                                        value: "in_house",
+                                        label: t("deliveryCard.inHouseOption"),
+                                        description: t(
+                                          "deliveryCard.inHouseOptionDesc",
+                                        ),
+                                        count: inHouseFilterCount,
+                                        accent: "emerald",
+                                        icon: <Truck className="h-3 w-3" />,
+                                      },
+                                      {
+                                        value: "third_party",
+                                        label: t(
+                                          "deliveryCard.thirdPartyOption",
+                                        ),
+                                        description: t(
+                                          "deliveryCard.thirdPartyOptionDesc",
+                                        ),
+                                        count: thirdPartyFilterCount,
+                                        accent: "blue",
+                                        icon: <Building2 className="h-3 w-3" />,
+                                      },
+                                    ]}
+                                  />
+                                </section>
+
+                                <section>
+                                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                    {t("deliveryCard.vehicleTypeLabel")}
+                                  </label>
+                                  <FilterDropdown
+                                    variant="vehicle"
+                                    value={vehicleTypeFilter}
+                                    onChange={(v) => {
+                                      setVehicleTypeFilter(
+                                        v as
+                                          | "all"
+                                          | "motorcycle"
+                                          | "car"
+                                          | "bicycle"
+                                          | "van"
+                                          | "foot",
+                                      );
+                                      setSelectedUserId("");
+                                    }}
+                                    ariaLabel={t(
+                                      "deliveryCard.vehicleTypeLabel",
+                                    )}
+                                    options={[
+                                      {
+                                        value: "all",
+                                        emoji: "🚚",
+                                        label: t("deliveryCard.allVehicles"),
+                                        count: vehicleCounts.all,
+                                      },
+                                      {
+                                        value: "motorcycle",
+                                        emoji: "🏍️",
+                                        label: t("deliveryCard.motorcycle"),
+                                        count: vehicleCounts.motorcycle,
+                                      },
+                                      {
+                                        value: "car",
+                                        emoji: "🚗",
+                                        label: t("deliveryCard.car"),
+                                        count: vehicleCounts.car,
+                                      },
+                                      {
+                                        value: "bicycle",
+                                        emoji: "🚲",
+                                        label: t("deliveryCard.bicycle"),
+                                        count: vehicleCounts.bicycle,
+                                      },
+                                      {
+                                        value: "van",
+                                        emoji: "🚐",
+                                        label: t("deliveryCard.van"),
+                                        count: vehicleCounts.van,
+                                      },
+                                      {
+                                        value: "foot",
+                                        emoji: "🚶",
+                                        label: t("deliveryCard.onFoot"),
+                                        count: vehicleCounts.foot,
+                                      },
+                                    ]}
+                                  />
+                                </section>
+                              </div>
+
+                              <div className="shrink-0 border-t border-gray-100 bg-white px-3.5 py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={activeFilterCount === 0}
+                                    onClick={() => {
+                                      setFilterType("all");
+                                      setVehicleTypeFilter("all");
+                                      setSelectedUserId("");
+                                    }}
+                                    className="h-9 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+                                  >
+                                    {t("deliveryCard.reset")}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowFilters(false)}
+                                    className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-3 text-[11px] font-bold text-white shadow-sm transition hover:bg-secondary-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/50 focus-visible:ring-offset-2"
+                                  >
+                                    {filteredStaffList.length === 1
+                                      ? t("deliveryCard.showCountOne", {
+                                          count: filteredStaffList.length,
+                                        })
+                                      : t("deliveryCard.showCountMany", {
+                                          count: filteredStaffList.length,
+                                        })}
+                                    <Check className="h-3.5 w-3.5 shrink-0" />
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 pt-1">
+                    <h6 className="text-sm font-bold text-gray-900">
+                      {t("deliveryCard.availablePersons")}
+                    </h6>
+                    <p className="text-[11px] text-gray-500">
+                      {t("deliveryCard.inHouseThirdPartySummary", {
+                        inHouse: inHouseCount,
+                        thirdParty: thirdPartyCount,
+                      })}
+                    </p>
+                  </div>
+
+                  {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {filterType !== "all" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                          {filterType === "in_house"
+                            ? t("deliveryCard.inHouseShort")
+                            : t("deliveryCard.threePL")}
+                          <button
+                            type="button"
+                            onClick={() => setFilterType("all")}
+                            aria-label={t("deliveryCard.removeTypeFilter")}
+                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      )}
+                      {vehicleTypeFilter !== "all" && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-secondary/25 bg-secondary/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
+                          <span>{getVehicleIcon(vehicleTypeFilter)}</span>
+                          {getVehicleName(vehicleTypeFilter)}
+                          <button
+                            type="button"
+                            onClick={() => setVehicleTypeFilter("all")}
+                            aria-label={t("deliveryCard.removeVehicleFilter")}
+                            className="rounded-full p-0.5 transition hover:bg-secondary/15"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {loadingStaff ? (
+                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-gray-200 bg-white">
+                      <div className="text-center">
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-secondary" />
+                        <p className="mt-2 text-xs font-medium text-gray-500">
+                          {t("deliveryCard.loadingPersons")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : filteredStaffList.length === 0 ? (
+                    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/60 p-6 text-center">
+                      <div>
+                        <Users className="mx-auto h-7 w-7 text-gray-300" />
+                        <p className="mt-2 text-sm font-semibold text-gray-800">
+                          {t("deliveryCard.noPersonsFound")}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {searchTerm ||
+                          filterType !== "all" ||
+                          vehicleTypeFilter !== "all"
+                            ? t("deliveryCard.noPersonsFilterHint")
+                            : t("deliveryCard.noPersonsAvailable")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                        {paginatedStaffList.map((staff, index) => {
+                          const isSelected = selectedUserId === staff.id;
+                          const hasLocation = staff.calculated_distance != null;
+                          const globalIndex =
+                            (currentPage - 1) * itemsPerPage + index;
+                          const isNearest =
+                            globalIndex === 0 &&
+                            sortBy === "distance" &&
+                            sortOrder === "asc" &&
+                            hasLocation;
+                          const routeInfo = routeData[staff.id];
+                          const roadDistance = routeInfo?.distanceKm;
+                          const roadDuration = routeInfo?.durationMinutes;
+                          const isRouteLoading = routeInfo?.loading;
+                          const isBestMatch = bestMatchDriver?.id === staff.id;
+                          const isOutOfBounds =
+                            staff.is_in_addis_ababa === false;
+
+                          return (
+                            <button
+                              key={staff.id}
+                              type="button"
+                              onClick={() => setSelectedUserId(staff.id)}
+                              aria-pressed={isSelected}
+                              aria-disabled={isOutOfBounds}
+                              aria-label={`${
+                                isSelected
+                                  ? t("deliveryCard.deselectAria")
+                                  : t("deliveryCard.selectAria")
+                              } ${staff.name}`}
+                              className={`group relative block w-full px-4 py-4 text-left transition ${
+                                isSelected
+                                  ? "bg-secondary/[0.04]"
+                                  : isOutOfBounds
+                                    ? "bg-rose-50/40 hover:bg-rose-50/60"
+                                    : "bg-white hover:bg-gray-50/70"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div
+                                  className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg border text-[12px] font-bold ${
+                                    isSelected
+                                      ? "border-secondary/30 bg-secondary/10 text-secondary"
+                                      : isOutOfBounds
+                                        ? "border-rose-200 bg-rose-50 text-rose-500"
+                                        : "border-gray-200 bg-gray-50 text-gray-600"
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  {getInitials(staff.name)}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                    <p className="truncate text-sm font-bold text-gray-900">
+                                      {staff.name}
+                                    </p>
+                                    {(isBestMatch || isNearest) && (
+                                      <span
+                                        title={t(
+                                          "deliveryCard.bestMatchTooltip",
+                                        )}
+                                        className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                                      >
+                                        {t("deliveryCard.bestMatch")}
+                                      </span>
+                                    )}
+                                    {isOutOfBounds && (
+                                      <span
+                                        title={t(
+                                          "deliveryCard.outsideAddisTooltip",
+                                        )}
+                                        className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
+                                      >
+                                        {t("deliveryCard.outsideAddis")}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                    <span className="font-medium">
+                                      {staff.is_in_house
+                                        ? t("deliveryCard.inHouseShort")
+                                        : staff.company_name ||
+                                          t("deliveryCard.threePLPartner")}
+                                    </span>
+                                    <span
+                                      className="text-gray-300"
+                                      aria-hidden="true"
+                                    >
+                                      ·
+                                    </span>
+                                    <span>
+                                      {getVehicleName(staff.vehicle_type)}
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                    {staff.location_source === "live" && (
+                                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                                        {t("deliveryCard.live")}
+                                      </span>
+                                    )}
+                                    {staff.is_at_vendor ? (
+                                      <span className="font-semibold text-amber-700">
+                                        {t("deliveryCard.atStore")}
+                                      </span>
+                                    ) : staff.is_en_route ? (
+                                      <span className="font-semibold text-indigo-700">
+                                        {t("deliveryCard.enRoute")}
+                                      </span>
+                                    ) : staff.active_orders_count === 0 ? (
+                                      <span className="font-semibold text-emerald-700">
+                                        {t("deliveryCard.available")}
+                                      </span>
+                                    ) : (
+                                      <span className="font-semibold text-gray-500">
+                                        {t("deliveryCard.activeOrders", {
+                                          count: staff.active_orders_count,
+                                        })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-shrink-0 items-center gap-3 self-center">
+                                  <div className="hidden text-right sm:block">
+                                    {staff.average_rating &&
+                                    staff.average_rating !== "0.00" ? (
+                                      <p className="text-xs font-bold text-gray-800">
+                                        ⭐{" "}
+                                        {parseFloat(
+                                          staff.average_rating,
+                                        ).toFixed(1)}
+                                        {staff.total_reviews && (
+                                          <span className="ml-1 text-[10px] font-medium text-gray-400">
+                                            ({staff.total_reviews})
+                                          </span>
+                                        )}
+                                      </p>
+                                    ) : (
+                                      <p className="text-xs font-medium text-gray-400">
+                                        {t("deliveryCard.noReviews")}
+                                      </p>
+                                    )}
+
+                                    <div className="mt-1 text-[10px] text-gray-500">
+                                      {isRouteLoading ? (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          {t("deliveryCard.calculating")}
+                                        </span>
+                                      ) : roadDistance != null ? (
+                                        <span>
+                                          {formatDistance(roadDistance)}
+                                          {roadDuration != null && (
+                                            <>
+                                              {" "}
+                                              · {formatDuration(roadDuration)}
+                                            </>
+                                          )}
+                                        </span>
+                                      ) : hasLocation ? (
+                                        <span>
+                                          ~
+                                          {formatDistance(
+                                            staff.calculated_distance,
+                                          )}
+                                        </span>
+                                      ) : (
+                                        <span>
+                                          {t(
+                                            "deliveryCard.distanceUnavailable",
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <span
+                                    aria-hidden="true"
+                                    className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition ${
+                                      isOutOfBounds
+                                        ? "border-rose-300 bg-rose-50 text-rose-400"
+                                        : isSelected
+                                          ? "border-secondary bg-secondary text-white"
+                                          : "border-gray-300 bg-white text-transparent group-hover:border-secondary/50"
+                                    }`}
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-2 flex items-center justify-between sm:hidden">
+                                <span className="text-[10px] text-gray-500">
+                                  {staff.average_rating &&
+                                  staff.average_rating !== "0.00"
+                                    ? `⭐ ${parseFloat(
+                                        staff.average_rating,
+                                      ).toFixed(1)} (${staff.total_reviews})`
+                                    : t("deliveryCard.noReviews")}
+                                </span>
+                                <span className="text-[10px] text-gray-500">
+                                  {isRouteLoading
+                                    ? t("deliveryCard.calculating")
+                                    : roadDistance != null
+                                      ? formatDistance(roadDistance)
+                                      : hasLocation
+                                        ? `~${formatDistance(
+                                            staff.calculated_distance,
+                                          )}`
+                                        : t("deliveryCard.distanceUnavailable")}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-[10px] font-medium text-gray-400">
+                            {t("deliveryCard.pageOf", {
+                              current: currentPage,
+                              total: totalPages,
+                            })}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentPage((prev) => Math.max(1, prev - 1))
+                              }
+                              disabled={currentPage === 1}
+                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {t("deliveryCard.previous")}
+                            </button>
+                            {Array.from(
+                              { length: Math.min(5, totalPages) },
+                              (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) pageNum = i + 1;
+                                else if (currentPage <= 3) pageNum = i + 1;
+                                else if (currentPage >= totalPages - 2)
+                                  pageNum = totalPages - 4 + i;
+                                else pageNum = currentPage - 2 + i;
+                                return (
+                                  <button
+                                    key={pageNum}
+                                    type="button"
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    aria-current={
+                                      currentPage === pageNum
+                                        ? "page"
+                                        : undefined
+                                    }
+                                    className={`h-8 w-8 rounded-lg text-[10px] font-semibold transition ${
+                                      currentPage === pageNum
+                                        ? "bg-secondary text-white"
+                                        : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              },
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentPage((prev) =>
+                                  Math.min(totalPages, prev + 1),
+                                )
+                              }
+                              disabled={currentPage === totalPages}
+                              className="h-8 rounded-lg border border-gray-200 bg-white px-3 text-[10px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {t("deliveryCard.next")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="sticky bottom-0 z-10 -mx-2 mt-2 border-t border-gray-200 bg-white/95 px-2 pt-3 backdrop-blur sm:-mx-3 sm:px-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        {selectedDriver ? (
+                          <div className="flex items-center gap-3">
+                            <span
+                              aria-hidden="true"
+                              className={`inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-white ${
+                                selectedDriverIsOutside
+                                  ? "bg-rose-500"
+                                  : "bg-secondary"
+                              }`}
+                            >
+                              {selectedDriverIsOutside ? (
+                                <AlertCircle className="h-4 w-4" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-gray-900">
+                                {t("deliveryCard.selected", {
+                                  name: selectedDriver.name,
+                                })}
+                              </p>
+                              <p className="truncate text-[10px] text-gray-500">
+                                {selectedDriverIsOutside
+                                  ? t("deliveryCard.outsideAddisCannotAssign")
+                                  : `${
+                                      selectedDriver.is_in_house
+                                        ? t("deliveryCard.inHouseShort")
+                                        : selectedDriver.company_name ||
+                                          t("deliveryCard.threePLPartner")
+                                    }${
+                                      selectedDriver.vehicle_type
+                                        ? ` · ${getVehicleName(
+                                            selectedDriver.vehicle_type,
+                                          )}`
+                                        : ""
+                                    }`}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-gray-400">
+                            {t("deliveryCard.selectDriverHint")}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 sm:flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowAssignForm(false)}
+                          className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-50 sm:flex-none"
+                        >
+                          {t("deliveryCard.cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAssign}
+                          disabled={
+                            assigning ||
+                            !selectedUserId ||
+                            selectedDriverIsOutside
+                          }
+                          title={
+                            selectedDriverIsOutside
+                              ? t("deliveryCard.outsideAddisTitle")
+                              : undefined
+                          }
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-secondary px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-secondary-light disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none sm:min-w-[140px]"
+                        >
+                          {assigning ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              {t("deliveryCard.assigning")}
+                            </>
+                          ) : selectedDriverIsOutside ? (
+                            <>
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {t("deliveryCard.outsideAddisShort")}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-3.5 w-3.5" />
+                              {delivery?.delivery_person_name ||
+                              (delivery?.attempts &&
+                                delivery.attempts.length > 0)
+                                ? t("deliveryCard.reassignButton")
+                                : t("deliveryCard.assignButton")}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </>
               )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  )}
-</motion.div>
-
-              
+            </motion.div>
           )}
         </AnimatePresence>
       </Card>
 
-      {/* Fullscreen delivery person image */}
       <AnimatePresence>
         {showFullscreenImage && delivery?.delivery_person_image && (
           <motion.div
@@ -2806,25 +2900,25 @@ const DeliveryCard = ({
             exit={{ opacity: 0 }}
             role="dialog"
             aria-modal="true"
-            aria-label="Delivery person image"
+            aria-label={t("deliveryCard.imageAria")}
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-lg"
             onClick={() => setShowFullscreenImage(false)}
           >
             <button
               type="button"
               onClick={() => setShowFullscreenImage(false)}
-              aria-label="Close image preview"
+              aria-label={t("deliveryCard.closeImageAria")}
               className="absolute right-6 top-6 z-10 rounded-full bg-white/10 p-3 text-white backdrop-blur-sm transition hover:scale-110 hover:bg-white/20"
             >
               <X className="h-6 w-6" />
             </button>
             <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-4 py-2 text-xs font-medium text-white/70 backdrop-blur-sm">
               <ZoomIn className="h-3.5 w-3.5" />
-              <span>Click anywhere to close</span>
+              <span>{t("deliveryCard.clickToClose")}</span>
             </div>
             <motion.img
               src={delivery.delivery_person_image}
-              alt="Delivery Person"
+              alt={t("deliveryCard.imageAria")}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -2838,7 +2932,6 @@ const DeliveryCard = ({
     </>
   );
 };
-
 // ─── RECEIPT REVIEW CARD ──────────────────────────────────────────
 const ReceiptReviewCard = ({
   receipt,
@@ -2851,6 +2944,7 @@ const ReceiptReviewCard = ({
   orderStatus,
   receiptHistory,
   fulfillmentType,
+  t,
 }: {
   receipt?: any | null;
   paymentMethod?: string;
@@ -2862,6 +2956,7 @@ const ReceiptReviewCard = ({
   orderStatus?: string;
   receiptHistory?: any[];
   fulfillmentType?: string;
+  t: (key: string, opts?: Record<string, any>) => string;
 }) => {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -2891,7 +2986,7 @@ const ReceiptReviewCard = ({
     setCodConfirming(true);
     try {
       await confirmCODPayment(companySlug, Number(orderId));
-      showToast("success", "COD payment confirmed successfully");
+      showToast("success", t("receiptCard.codConfirmSuccess"));
       setShowCODConfirm(false);
       await onUpdate();
     } catch (err: any) {
@@ -2899,7 +2994,7 @@ const ReceiptReviewCard = ({
         "error",
         err.response?.data?.detail ||
           err.message ||
-          "Failed to confirm COD payment",
+          t("receiptCard.codConfirmFailed"),
       );
     } finally {
       setCodConfirming(false);
@@ -2908,18 +3003,22 @@ const ReceiptReviewCard = ({
 
   if (paymentMethod === "chapa") {
     return (
+      // Telebirr
       <Card
-        title="Payment Information"
+        titleKey="receiptCard.paymentInformation"
         icon={CreditCard}
         status="approved"
         className="ring-1 ring-indigo-100"
+        t={t}
       >
         <div className="flex flex-col items-center ">
           <div className="flex items-center gap-2 bg-white px-4 ">
             <div className="w-9 md:w-12 h-9 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-2 shadow-inner">
               <ShieldCheck className="h-5 w-5 md:h-8 md:w-8 text-indigo-600" />
             </div>
-            <p className="text-sm font-semibold text-gray-700">Verified by</p>
+            <p className="text-sm font-semibold text-gray-700">
+              {t("receiptCard.verifiedBy")}
+            </p>
             <img src="/chapa.png" alt="Chapa" className="h-8 object-contain" />
           </div>
         </div>
@@ -2928,18 +3027,22 @@ const ReceiptReviewCard = ({
   }
   if (paymentMethod === "telebirr") {
     return (
+      // Telebirr
       <Card
-        title="Payment Information"
+        titleKey="receiptCard.paymentInformation"
         icon={CreditCard}
         status="approved"
         className="ring-1 ring-indigo-100"
+        t={t}
       >
         <div className="flex flex-col items-center ">
           <div className="flex items-center gap-2 bg-white px-4 ">
             <div className="w-9 md:w-12 h-9 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-2 shadow-inner">
               <ShieldCheck className="h-5 w-5 md:h-8 md:w-8 text-indigo-600" />
             </div>
-            <p className="text-sm font-semibold text-gray-700">Verified by</p>
+            <p className="text-sm font-semibold text-gray-700">
+              {t("receiptCard.verifiedBy")}
+            </p>
             <img
               src="/telebirr.png"
               alt="Telebirr"
@@ -2964,10 +3067,11 @@ const ReceiptReviewCard = ({
     return (
       <>
         <Card
-          title="Cash on Delivery"
+          titleKey="receiptCard.codTitle"
           icon={Banknote}
           status={isPaid ? "approved" : "pending"}
           className={`ring-1 ${isPaid ? "ring-emerald-100 border-emerald-200" : "ring-amber-100"}`}
+          t={t}
         >
           <div className="flex flex-col items-center text-center">
             {isPaid ? (
@@ -2976,7 +3080,7 @@ const ReceiptReviewCard = ({
                   <ShieldCheck className="h-6 w-6 text-emerald-600" />
                 </div>
                 <p className="text-sm font-black text-emerald-700 uppercase tracking-wide">
-                  Payment Collected
+                  {t("receiptCard.paymentCollected")}
                 </p>
               </div>
             ) : (
@@ -2984,13 +3088,13 @@ const ReceiptReviewCard = ({
                 <p className="text-xs text-gray-500 mb-4 max-w-xs leading-relaxed">
                   {canCollect
                     ? isOnspot
-                      ? "Confirm physical collection of cash for this on-spot table order."
+                      ? t("receiptCard.codHintOnspot")
                       : isPickup
-                        ? "Confirm physical collection of cash once the customer picks up the items."
-                        : "Confirm physical collection of cash once the delivery person delivers the items and returns with the cash."
+                        ? t("receiptCard.codHintPickup")
+                        : t("receiptCard.codHintDelivery")
                     : isInStoreOrder
-                      ? "Payment collection is disabled until the order is Prepared."
-                      : "Payment collection is disabled until the order is Delivered."}
+                      ? t("receiptCard.codDisabledPrepared")
+                      : t("receiptCard.codDisabledDelivered")}
                 </p>
                 {!readOnly && (
                   <button
@@ -3005,12 +3109,12 @@ const ReceiptReviewCard = ({
                     {codConfirming ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
+                        {t("receiptCard.processing")}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4" />
-                        Confirm Payment Collected
+                        {t("receiptCard.confirmPaymentCollected")}
                       </>
                     )}
                   </button>
@@ -3024,9 +3128,13 @@ const ReceiptReviewCard = ({
           isOpen={showCODConfirm}
           onClose={() => setShowCODConfirm(false)}
           onConfirm={handleConfirmCOD}
-          title="Confirm COD Payment"
-          description="Are you sure you have collected the payment for this order?"
-          confirmText={codConfirming ? "Processing..." : "Yes, Confirm Payment"}
+          title={t("receiptCard.codConfirmTitle")}
+          description={t("receiptCard.codConfirmDescription")}
+          confirmText={
+            codConfirming
+              ? t("receiptCard.processing")
+              : t("receiptCard.codConfirmYes")
+          }
           confirmVariant="primary"
           loading={codConfirming}
           autoClose={false}
@@ -3041,14 +3149,14 @@ const ReceiptReviewCard = ({
         <div className="flex items-center gap-2 mb-4">
           <Banknote className="h-5 w-5 text-gray-400" />
           <h4 className="text-sm sm:text-base font-semibold text-gray-800">
-            Payment Receipt
+            {t("receiptCard.paymentReceipt")}
           </h4>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-secondary via-secondary-light to-transparent rounded-full"></div>
         <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl">
           <AlertCircle className="h-6 w-6 text-gray-300 mx-auto mb-2" />
           <p className="text-gray-500 text-sm">
-            Waiting for customer to upload receipt...
+            {t("receiptCard.waitingForUpload")}
           </p>
         </div>
       </div>
@@ -3076,12 +3184,20 @@ const ReceiptReviewCard = ({
         status: pendingAction,
         admin_notes: notes || undefined,
       });
-      showToast("success", `Receipt ${pendingAction}`);
+      showToast(
+        "success",
+        pendingAction === "approved"
+          ? t("receiptCard.approvedSuccess")
+          : t("receiptCard.rejectedSuccess"),
+      );
       setNotes("");
       setPendingAction(null);
       await onUpdate();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Review failed");
+      showToast(
+        "error",
+        err.response?.data?.detail || t("receiptCard.reviewFailed"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -3096,7 +3212,7 @@ const ReceiptReviewCard = ({
               <Banknote className="h-4 w-4 text-secondary" />
             </div>
             <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-              Payment Receipt
+              {t("receiptCard.paymentReceipt")}
             </h4>
             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-secondary via-secondary-light to-transparent rounded-full"></div>
           </div>
@@ -3121,7 +3237,7 @@ const ReceiptReviewCard = ({
             >
               <img
                 src={receipt.receipt_image}
-                alt="Receipt"
+                alt={t("receiptCard.receiptAlt")}
                 className="w-full h-full object-cover group-hover:scale-105 transition"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
@@ -3132,10 +3248,10 @@ const ReceiptReviewCard = ({
         )}
         <div className="bg-gradient-to-r from-purple-50/50 to-indigo-50/50 p-4 rounded-xl border border-purple-100">
           <p className="text-[10px] text-secondary font-bold uppercase tracking-widest mb-1">
-            Bank Details
+            {t("receiptCard.bankDetails")}
           </p>
           <p className="font-semibold text-sm text-gray-900">
-            {receipt.bank_name || "Not Specified"}
+            {receipt.bank_name || t("receiptCard.notSpecified")}
           </p>
         </div>
 
@@ -3144,7 +3260,7 @@ const ReceiptReviewCard = ({
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add review notes..."
+              placeholder={t("receiptCard.addReviewNotes")}
               rows={2}
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-secondary transition resize-none"
             />
@@ -3157,10 +3273,10 @@ const ReceiptReviewCard = ({
                 {submittingAction === "approved" ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Approving...
+                    {t("receiptCard.approving")}
                   </>
                 ) : (
-                  "Approve"
+                  t("receiptCard.approve")
                 )}
               </button>
               <button
@@ -3178,10 +3294,10 @@ const ReceiptReviewCard = ({
                 {submittingAction === "rejected" ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Rejecting...
+                    {t("receiptCard.rejecting")}
                   </>
                 ) : (
-                  "Reject"
+                  t("receiptCard.reject")
                 )}
               </button>
             </div>
@@ -3191,7 +3307,9 @@ const ReceiptReviewCard = ({
         {displayHistory.length > 0 && (
           <div className="mt-5 pt-4 border-t border-gray-100">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">
-              Receipt History ({displayHistory.length})
+              {t("receiptCard.receiptHistory", {
+                count: displayHistory.length,
+              })}
             </p>
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
               {displayHistory.map((h: any) => {
@@ -3203,7 +3321,7 @@ const ReceiptReviewCard = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-bold text-gray-700">
-                          {h.bank_name || "Unknown Bank"}
+                          {h.bank_name || t("receiptCard.unknownBank")}
                         </span>
                         <span
                           className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${
@@ -3220,7 +3338,7 @@ const ReceiptReviewCard = ({
                       {h.admin_notes && (
                         <p className="text-[9px] text-rose-600 bg-rose-50/50 px-2 py-0.5 rounded border border-rose-100 mt-1 italic">
                           <span className="text-amber-600 font-semibold">
-                            Remark:
+                            {t("receiptCard.remark")}
                           </span>{" "}
                           "{h.admin_notes}"
                         </p>
@@ -3234,7 +3352,7 @@ const ReceiptReviewCard = ({
                       >
                         <img
                           src={h.receipt_image}
-                          alt="Prior Receipt"
+                          alt={t("receiptCard.priorReceiptAlt")}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -3258,13 +3376,14 @@ const ReceiptReviewCard = ({
           >
             <button
               onClick={() => setPreviewImage(null)}
+              aria-label={t("receiptCard.closePreviewAria")}
               className="absolute top-3 right-3 bg-white/90 backdrop-blur rounded-full p-2 shadow"
             >
               <X className="h-5 w-5 text-gray-700" />
             </button>
             <img
               src={previewImage}
-              alt="Receipt Full"
+              alt={t("receiptCard.receiptFullAlt")}
               className="w-full max-h-[90vh] object-contain rounded-xl"
             />
           </div>
@@ -3279,10 +3398,16 @@ const ReceiptReviewCard = ({
         }}
         onConfirm={handleConfirm}
         title={
-          pendingAction === "approved" ? "Approve Receipt" : "Reject Receipt"
+          pendingAction === "approved"
+            ? t("receiptCard.approveTitle")
+            : t("receiptCard.rejectTitle")
         }
-        description="This action will notify the customer and update the order workflow. Are you sure?"
-        confirmText={submitting ? "Processing..." : "Confirm Action"}
+        description={t("receiptCard.confirmDescription")}
+        confirmText={
+          submitting
+            ? t("receiptCard.processing")
+            : t("receiptCard.confirmAction")
+        }
         confirmVariant={pendingAction === "approved" ? "primary" : "danger"}
         loading={false}
         autoClose={false}
@@ -3292,7 +3417,7 @@ const ReceiptReviewCard = ({
 };
 
 // ─── PREPARATION CARD ──────────────────────────────────────────────
-const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
+const PreparationCard = ({ order, onUpdate, readOnly, t }: any) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showOutOfStockModal, setShowOutOfStockModal] = useState(false);
   const [outOfStockReason, setOutOfStockReason] = useState("out_of_stock");
@@ -3319,13 +3444,13 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
       showToast(
         "success",
         isReplacement
-          ? "Replacement marked as Prepared!"
-          : "Order marked as Prepared!",
+          ? t("preparationCard.replacementPreparedSuccess")
+          : t("preparationCard.orderPreparedSuccess"),
       );
     } catch (err: any) {
       showToast(
         "error",
-        err.response?.data?.detail || "Failed to prepare order",
+        err.response?.data?.detail || t("preparationCard.prepareFailed"),
       );
     } finally {
       setPreparing(false);
@@ -3334,7 +3459,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
 
   const handleOutOfStockSubmit = async () => {
     if (!outOfStockExplanation.trim()) {
-      showToast("error", "Please provide a reason or note for the customer.");
+      showToast("error", t("preparationCard.provideReason"));
       return;
     }
     setSubmittingRefundRequest(true);
@@ -3345,11 +3470,11 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
       });
       await onUpdate();
       setShowOutOfStockModal(false);
-      showToast("success", "Refund request sent to Superadmin for approval.");
+      showToast("success", t("preparationCard.refundSentSuccess"));
     } catch (err: any) {
       showToast(
         "error",
-        err.response?.data?.detail || "Failed to submit refund request",
+        err.response?.data?.detail || t("preparationCard.refundSubmitFailed"),
       );
     } finally {
       setSubmittingRefundRequest(false);
@@ -3373,7 +3498,11 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
   return (
     <>
       <Card
-        title={isReplacement ? "Replacement Preparation" : "Order Preparation"}
+        title={
+          isReplacement
+            ? t("preparationCard.replacementPreparation")
+            : t("preparationCard.orderPreparation")
+        }
         icon={Package}
         status={status}
         className={canPrepare ? "ring-2 ring-purple-100 border-purple-200" : ""}
@@ -3388,14 +3517,14 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
               {preparing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Marking...
+                  {t("preparationCard.marking")}
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4" />
                   {isReplacement
-                    ? "Mark Replacement as Prepared"
-                    : "Mark as Prepared"}
+                    ? t("preparationCard.markReplacementPrepared")
+                    : t("preparationCard.markPrepared")}
                 </>
               )}
             </button>
@@ -3408,8 +3537,8 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
             >
               <AlertCircle className="h-4 w-4 text-rose-600" />
               {isReplacement
-                ? "Cannot Replace / Request Refund"
-                : "Out of Stock / Request Refund"}
+                ? t("preparationCard.cannotReplaceRequestRefund")
+                : t("preparationCard.outOfStockRequestRefund")}
             </button>
           )} */}
         </div>
@@ -3421,15 +3550,19 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
         onConfirm={handlePrepare}
         title={
           isReplacement
-            ? "Mark Replacement as Prepared"
-            : "Mark Order as Prepared"
+            ? t("preparationCard.markReplacementTitle")
+            : t("preparationCard.markOrderTitle")
         }
         description={
           isReplacement
-            ? "Are you sure the replacement items are prepared and ready for dispatch?"
-            : "Are you sure you want to mark this order as prepared and ready for dispatch?"
+            ? t("preparationCard.replacementDescription")
+            : t("preparationCard.orderDescription")
         }
-        confirmText={preparing ? "Marking..." : "Yes, Prepared"}
+        confirmText={
+          preparing
+            ? t("preparationCard.marking")
+            : t("preparationCard.yesPrepared")
+        }
         confirmVariant="primary"
         loading={false}
         autoClose={false}
@@ -3446,41 +3579,43 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
             >
               <div className="flex items-center gap-3 mb-4 text-rose-700 font-bold text-base">
                 <AlertCircle className="h-5 w-5" />
-                Request Customer Refund
+                {t("preparationCard.requestRefundTitle")}
               </div>
               <p className="text-xs text-gray-500 mb-4">
-                If items are unavailable or cannot be replaced, submit a refund
-                request. A Superadmin will review and disburse funds back to the
-                customer.
+                {t("preparationCard.requestRefundDescription")}
               </p>
 
               <div className="space-y-3 mb-5">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Reason
+                    {t("preparationCard.reasonLabel")}
                   </label>
                   <select
                     value={outOfStockReason}
                     onChange={(e) => setOutOfStockReason(e.target.value)}
                     className="w-full text-xs rounded-xl border border-gray-300 p-2.5 focus:ring-2 focus:ring-secondary/20 focus:outline-none"
                   >
-                    <option value="out_of_stock">Item Out of Stock</option>
-                    <option value="damaged_item">
-                      Ingredients/Items Damaged
+                    <option value="out_of_stock">
+                      {t("preparationCard.reasonOutOfStock")}
                     </option>
-                    <option value="other">Store Closed / Cannot Fulfill</option>
+                    <option value="damaged_item">
+                      {t("preparationCard.reasonDamaged")}
+                    </option>
+                    <option value="other">
+                      {t("preparationCard.reasonOther")}
+                    </option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Explanation for Customer & Admin
+                    {t("preparationCard.explanationLabel")}
                   </label>
                   <textarea
                     rows={3}
                     value={outOfStockExplanation}
                     onChange={(e) => setOutOfStockExplanation(e.target.value)}
-                    placeholder="e.g. Current batch of item is unavailable. Requesting refund for customer."
+                    placeholder={t("preparationCard.explanationPlaceholder")}
                     className="w-full text-xs rounded-xl border border-gray-300 p-2.5 focus:ring-2 focus:ring-secondary/20 focus:outline-none resize-none"
                   />
                 </div>
@@ -3492,7 +3627,7 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
                   onClick={() => setShowOutOfStockModal(false)}
                   className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {t("preparationCard.cancel")}
                 </button>
                 <button
                   type="button"
@@ -3503,10 +3638,10 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
                   {submittingRefundRequest ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Submitting...
+                      {t("preparationCard.submitting")}
                     </>
                   ) : (
-                    "Submit Refund Request"
+                    t("preparationCard.submitRefundRequest")
                   )}
                 </button>
               </div>
@@ -3517,7 +3652,6 @@ const PreparationCard = ({ order, onUpdate, readOnly }: any) => {
     </>
   );
 };
-
 // ════════════════════════════════════════
 // MAIN MODAL COMPONENT
 // ════════════════════════════════════════
@@ -3532,21 +3666,24 @@ export function VendorOrderDetailModal({
   allOrders = [],
   onSelectOrder,
 }: any) {
+  const { t } = useTranslation("companyOrders");
+  const isAmharic = i18n.language === "am";
   const { showToast } = useToast();
+
   const [approvingRedelivery, setApprovingRedelivery] = useState(false);
 
   const handleApproveRedelivery = async (disputeId: number) => {
     try {
       setApprovingRedelivery(true);
       await approveDisputeRedelivery(disputeId, {
-        admin_notes: "Redelivery approved by store/admin for replacement items.",
+        admin_notes: t("vendorOrderDetail.redeliveryApprovedNote"),
       });
       await onUpdate();
-      showToast("success", "Redelivery approved! Please prepare replacement items.");
+      showToast("success", t("vendorOrderDetail.redeliveryApprovedToast"));
     } catch (err: any) {
       showToast(
         "error",
-        err.response?.data?.detail || "Failed to approve redelivery",
+        err.response?.data?.detail || t("vendorOrderDetail.redeliveryFailed"),
       );
     } finally {
       setApprovingRedelivery(false);
@@ -3577,11 +3714,11 @@ export function VendorOrderDetailModal({
     if (
       localDeliveryOverride &&
       order?.delivery?.delivery_person_name &&
-      order.delivery.delivery_person_name !== "Unassigned"
+      order.delivery.delivery_person_name !== t("vendorOrderDetail.unassigned")
     ) {
       setLocalDeliveryOverride(null);
     }
-  }, [order?.delivery?.delivery_person_name, localDeliveryOverride]);
+  }, [order?.delivery?.delivery_person_name, localDeliveryOverride, t]);
 
   useEffect(() => {
     setLocalDeliveryOverride(null);
@@ -3627,7 +3764,7 @@ export function VendorOrderDetailModal({
           delivery_person_name:
             updatedDelivery?.delivery_person_name ??
             prev?.delivery_person_name ??
-            "Assigned delivery person",
+            t("vendorOrderDetail.assignedDeliveryPersonFallback"),
           delivery_person_phone:
             updatedDelivery?.delivery_person_phone ??
             prev?.delivery_person_phone ??
@@ -3643,7 +3780,7 @@ export function VendorOrderDetailModal({
         throw err;
       }
     },
-    [effectiveOrder, onUpdate],
+    [effectiveOrder, onUpdate, t],
   );
 
   const handleAssignmentComplete = useCallback(() => {
@@ -3703,14 +3840,17 @@ export function VendorOrderDetailModal({
                 <div className="mt-1.5">
                   <div className="flex flex-wrap items-center gap-1 sm:gap-3 mb-0.5 sm:mb-1">
                     <h2 className="text-base sm:text-2xl font-black bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent tracking-tight break-words">
-                      Order #{effectiveOrder.id}-
-                      {effectiveOrder.master_order_id}
+                      {t("vendorOrderDetail.orderNumber", {
+                        id: effectiveOrder.id,
+                        masterId: effectiveOrder.master_order_id,
+                      })}
                     </h2>
                     <StatusBadge
                       status={effectiveOrder.status}
                       customLabels={{
-                        pending: "Pending",
+                        pending: t("companyOrders.statusBadge.pending"),
                       }}
+                      t={t}
                     />
                   </div>
                   <div className="flex flex-wrap items-center gap-1 sm:gap-4 text-[9px] sm:text-xs font-bold">
@@ -3778,11 +3918,10 @@ export function VendorOrderDetailModal({
                   <AlertCircle className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
                   <div className="flex-1 text-sm">
                     <div className="font-bold text-purple-900">
-                      Replacement In Progress
+                      {t("vendorOrderDetail.replacementInProgressTitle")}
                     </div>
                     <p className="mt-0.5 text-purple-700 text-xs">
-                      Customer reported an issue and redelivery was approved.
-                      Please prepare the replacement items and assign a delivery person.
+                      {t("vendorOrderDetail.replacementInProgressDescription")}
                     </p>
                   </div>
                 </div>
@@ -3793,67 +3932,104 @@ export function VendorOrderDetailModal({
                   <div className="flex-1 text-sm">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="font-bold text-amber-900">
-                        Order Issue Reported (Disputed)
+                        {t("vendorOrderDetail.disputedTitle")}
                       </div>
                       {effectiveOrder.active_dispute && (
                         <button
                           type="button"
                           disabled={approvingRedelivery}
-                          onClick={() => handleApproveRedelivery(effectiveOrder.active_dispute.id)}
+                          onClick={() =>
+                            handleApproveRedelivery(
+                              effectiveOrder.active_dispute.id,
+                            )
+                          }
                           className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"
                         >
-                          <RefreshCw className={`h-3.5 w-3.5 ${approvingRedelivery ? "animate-spin" : ""}`} />
-                          {approvingRedelivery ? "Approving..." : "Approve Redelivery"}
+                          <RefreshCw
+                            className={`h-3.5 w-3.5 ${approvingRedelivery ? "animate-spin" : ""}`}
+                          />
+                          {approvingRedelivery
+                            ? t("vendorOrderDetail.approving")
+                            : t("vendorOrderDetail.approveRedelivery")}
                         </button>
                       )}
                     </div>
                     <p className="mt-1 text-amber-800 text-xs">
                       {effectiveOrder.active_dispute
-                        ? `Reason: ${effectiveOrder.active_dispute.reason} — ${effectiveOrder.active_dispute.explanation || "No additional note provided"}`
-                        : "An issue was reported for this order. Please review and authorize replacement redelivery."}
+                        ? t("vendorOrderDetail.disputeReason", {
+                            reason: effectiveOrder.active_dispute.reason,
+                            explanation:
+                              effectiveOrder.active_dispute.explanation ||
+                              t("vendorOrderDetail.noAdditionalNote"),
+                          })
+                        : t("vendorOrderDetail.disputeFallback")}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Delivery Attempt History Audit Card */}
-              {Array.isArray(effectiveOrder.delivery_history) && effectiveOrder.delivery_history.length > 0 && (
-                <div className="mb-4 sm:mb-6 p-4 bg-gray-50 border border-gray-200 rounded-2xl shadow-sm">
-                  <div className="flex items-center gap-2 mb-3 text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    <History className="h-4 w-4 text-gray-500" />
-                    Delivery History & Past Attempts ({effectiveOrder.delivery_history.length})
-                  </div>
-                  <div className="space-y-2.5">
-                    {effectiveOrder.delivery_history.map((att: any) => (
-                      <div key={att.id} className="p-3 bg-white border border-gray-200 rounded-xl flex items-start justify-between gap-3 text-xs">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-gray-900">Attempt #{att.attempt_number}</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                              {att.status}
-                            </span>
+              {Array.isArray(effectiveOrder.delivery_history) &&
+                effectiveOrder.delivery_history.length > 0 && (
+                  <div className="mb-4 sm:mb-6 p-4 bg-gray-50 border border-gray-200 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-2 mb-3 text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <History className="h-4 w-4 text-gray-500" />
+                      {t("vendorOrderDetail.deliveryHistoryTitle", {
+                        count: effectiveOrder.delivery_history.length,
+                      })}
+                    </div>
+                    <div className="space-y-2.5">
+                      {effectiveOrder.delivery_history.map((att: any) => (
+                        <div
+                          key={att.id}
+                          className="p-3 bg-white border border-gray-200 rounded-xl flex items-start justify-between gap-3 text-xs"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-gray-900">
+                                {t("vendorOrderDetail.attemptNumber", {
+                                  number: att.attempt_number,
+                                })}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                {att.status}
+                              </span>
+                            </div>
+                            {att.delivery_person_name && (
+                              <p className="mt-1 text-gray-600">
+                                {t("vendorOrderDetail.driverLabel")}{" "}
+                                <span className="font-medium text-gray-800">
+                                  {att.delivery_person_name}
+                                </span>{" "}
+                                {att.delivery_person_phone
+                                  ? `(${att.delivery_person_phone})`
+                                  : ""}
+                              </p>
+                            )}
+                            {att.failure_reason && (
+                              <p className="mt-0.5 text-gray-500 italic">
+                                {t("vendorOrderDetail.noteLabel")}{" "}
+                                {att.failure_reason}
+                              </p>
+                            )}
                           </div>
-                          {att.delivery_person_name && (
-                            <p className="mt-1 text-gray-600">
-                              Driver: <span className="font-medium text-gray-800">{att.delivery_person_name}</span> {att.delivery_person_phone ? `(${att.delivery_person_phone})` : ""}
-                            </p>
-                          )}
-                          {att.failure_reason && (
-                            <p className="mt-0.5 text-gray-500 italic">
-                              Note: {att.failure_reason}
-                            </p>
+                          {att.completed_at && (
+                            <div className="text-[11px] text-gray-400 shrink-0">
+                              {new Date(att.completed_at).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </div>
                           )}
                         </div>
-                        {att.completed_at && (
-                          <div className="text-[11px] text-gray-400 shrink-0">
-                            {new Date(att.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
               <div className="grid grid-cols-12 gap-4 sm:gap-6 md:gap-8 items-start">
                 <div className="col-span-12 lg:col-span-8 space-y-4 sm:space-y-6 md:space-y-8 lg:sticky lg:top-0">
                   {(() => {
@@ -3864,28 +4040,27 @@ export function VendorOrderDetailModal({
                     const customerImage = resolveCustomerImage(effectiveOrder);
 
                     const restaurant = isRestaurant(effectiveOrder);
-  console.log("[CustomerProfile] name:", customerName);
-  console.log("[CustomerProfile] hasName:", hasName);
-  console.log("[CustomerProfile] phone:", customerPhone);
-  console.log("[CustomerProfile] fulfillment:", fulfillmentKind);
-  console.log("[CustomerProfile] image:", customerImage);
-  console.log("[CustomerProfile] raw order:", effectiveOrder);
                     const isPickupLike =
                       fulfillmentKind === "pickup" ||
                       fulfillmentKind === "onspot";
 
-                    const locationTitle = isPickupLike
+                    const locationTitleKey = isPickupLike
                       ? fulfillmentKind === "onspot"
-                        ? "Onspot Details"
+                        ? "vendorOrderDetail.location.onspotDetails"
                         : restaurant
-                          ? "Takeaway Details"
-                          : "Pickup Location"
-                      : "Shipping Destination";
+                          ? "vendorOrderDetail.location.takeawayDetails"
+                          : "vendorOrderDetail.location.pickupLocation"
+                      : "vendorOrderDetail.location.shippingDestination";
 
-                    const storeName =
-                      effectiveOrder.company?.name ||
-                      effectiveOrder.vendor_orders?.[0]?.company?.name ||
-                      "Store";
+                    const storeName = isAmharic
+                      ? effectiveOrder.company?.name_am ||
+                        effectiveOrder.vendor_orders?.[0]?.company?.name_am ||
+                        effectiveOrder.company?.name ||
+                        effectiveOrder.vendor_orders?.[0]?.company?.name ||
+                        t("vendorOrderDetail.storeFallback")
+                      : effectiveOrder.company?.name ||
+                        effectiveOrder.vendor_orders?.[0]?.company?.name ||
+                        t("vendorOrderDetail.storeFallback");
 
                     const storeAddress =
                       formatAddress(
@@ -3895,7 +4070,7 @@ export function VendorOrderDetailModal({
                           "",
                       ) ||
                       effectiveOrder.shipping_address_text ||
-                      "Pickup address unavailable";
+                      t("vendorOrderDetail.pickupAddressUnavailable");
 
                     const hasAnyLocationData = isPickupLike
                       ? !!storeAddress
@@ -3903,7 +4078,11 @@ export function VendorOrderDetailModal({
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <Card title="Customer Profile" icon={User}>
+                        <Card
+                          titleKey="vendorOrderDetail.customerProfile"
+                          icon={User}
+                          t={t}
+                        >
                           <div className="flex items-center gap-4">
                             {customerImage ? (
                               <img
@@ -3944,7 +4123,9 @@ export function VendorOrderDetailModal({
                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                                       />
                                     </svg>
-                                    {restaurant ? "Takeaway" : "Self Pickup"}
+                                    {restaurant
+                                      ? t("vendorOrderDetail.takeaway")
+                                      : t("vendorOrderDetail.selfPickup")}
                                   </span>
                                 )}
 
@@ -3953,38 +4134,36 @@ export function VendorOrderDetailModal({
                                   "order_ahead" ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 border border-purple-200 shadow-sm">
                                       <Clock className="h-3 w-3 text-purple-600" />
-                                      Pre-order
+                                      {t("vendorOrderDetail.preOrder")}
                                       {effectiveOrder.estimated_arrival_time && (
                                         <>
                                           {" "}
-                                          · ETA:{" "}
-                                          {new Date(
-                                            effectiveOrder.estimated_arrival_time,
-                                          ).toLocaleTimeString([], {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
+                                          ·{" "}
+                                          {t("vendorOrderDetail.etaLabel", {
+                                            time: new Date(
+                                              effectiveOrder.estimated_arrival_time,
+                                            ).toLocaleTimeString([], {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            }),
                                           })}
                                         </>
                                       )}
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">
-                                      Onspot
+                                      {t("vendorOrderDetail.onspot")}
                                       {effectiveOrder.table_number && (
                                         <>
                                           {" "}
-                                          · Table {effectiveOrder.table_number}
+                                          ·{" "}
+                                          {t("vendorOrderDetail.tableLabel", {
+                                            number: effectiveOrder.table_number,
+                                          })}
                                         </>
                                       )}
                                     </span>
                                   ))}
-
-                                {/* {fulfillmentKind === "delivery" && (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
-                                    <Truck className="h-3 w-3 text-emerald-600" />
-                                    Delivery
-                                  </span>
-                                )} */}
                               </div>
 
                               {customerPhone ? (
@@ -3997,16 +4176,34 @@ export function VendorOrderDetailModal({
                                 </div>
                               ) : (
                                 <p className="text-[11px] text-gray-400 italic">
-                                  No phone number on file
+                                  {t("vendorOrderDetail.noPhoneOnFile")}
                                 </p>
                               )}
 
                               {!hasName && isPickupLike && (
                                 <p className="text-[10px] text-gray-400 italic">
-                                  Customer name not provided —{" "}
                                   {fulfillmentKind === "onspot"
-                                    ? `Table ${effectiveOrder.table_number || "—"}`
-                                    : "walk-in order"}
+                                    ? t(
+                                        "vendorOrderDetail.customerNameNotProvided",
+                                        {
+                                          detail: t(
+                                            "vendorOrderDetail.tableLabel",
+                                            {
+                                              number:
+                                                effectiveOrder.table_number ||
+                                                "—",
+                                            },
+                                          ),
+                                        },
+                                      )
+                                    : t(
+                                        "vendorOrderDetail.customerNameNotProvided",
+                                        {
+                                          detail: t(
+                                            "vendorOrderDetail.walkInOrder",
+                                          ),
+                                        },
+                                      )}
                                 </p>
                               )}
 
@@ -4028,13 +4225,13 @@ export function VendorOrderDetailModal({
                         </Card>
 
                         {hasAnyLocationData ? (
-                          <Card title={locationTitle} icon={MapPin}>
+                          <Card titleKey={locationTitleKey} icon={MapPin} t={t}>
                             <div className="space-y-3">
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-purple-50/30 border-l-4 border-secondary">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike
-                                    ? "Customer:"
-                                    : "Recipient Name:"}
+                                    ? t("vendorOrderDetail.customerLabel")
+                                    : t("vendorOrderDetail.recipientName")}
                                 </span>
                                 <span
                                   className={`text-sm font-bold ${hasName ? "text-secondary" : "text-gray-400 italic"}`}
@@ -4046,13 +4243,14 @@ export function VendorOrderDetailModal({
                               <div className="flex items-start gap-2 p-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50/30 border-l-4 border-green-500">
                                 <span className="text-xs font-bold text-gray-500 min-w-[110px]">
                                   {isPickupLike
-                                    ? "Contact:"
-                                    : "Recipient Phone:"}
+                                    ? t("vendorOrderDetail.contactLabel")
+                                    : t("vendorOrderDetail.recipientPhone")}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <PhoneCall className="h-3.5 w-3.5 text-green-600" />
                                   <span className="text-sm font-mono font-bold text-green-700 tracking-tight">
-                                    {customerPhone || "Not provided"}
+                                    {customerPhone ||
+                                      t("vendorOrderDetail.notProvided")}
                                   </span>
                                   {customerPhone && (
                                     <CopyButton text={customerPhone} />
@@ -4066,44 +4264,60 @@ export function VendorOrderDetailModal({
                                     ? fulfillmentKind === "onspot"
                                       ? effectiveOrder.onspot_order_mode ===
                                         "order_ahead"
-                                        ? "Pre-order At:"
-                                        : "Onspot At:"
+                                        ? t("vendorOrderDetail.preOrderAtLabel")
+                                        : t("vendorOrderDetail.onspotAtLabel")
                                       : restaurant
-                                        ? "Takeaway From:"
-                                        : "Pickup From:"
-                                    : "Shipping Address:"}
+                                        ? t(
+                                            "vendorOrderDetail.takeawayFromLabel",
+                                          )
+                                        : t("vendorOrderDetail.pickupFromLabel")
+                                    : t("vendorOrderDetail.shippingAddress")}
                                 </span>
                                 <span className="text-sm font-bold text-secondary">
                                   {isPickupLike
                                     ? fulfillmentKind === "onspot"
                                       ? effectiveOrder.onspot_order_mode ===
                                         "order_ahead"
-                                        ? `${storeName} — Pre-ordered${
+                                        ? `${storeName} — ${t(
+                                            "vendorOrderDetail.preOrderedLabel",
+                                          )}${
                                             effectiveOrder.estimated_arrival_time
-                                              ? ` for ${new Date(
-                                                  effectiveOrder.estimated_arrival_time,
-                                                ).toLocaleTimeString([], {
-                                                  hour: "2-digit",
-                                                  minute: "2-digit",
-                                                })}`
+                                              ? ` ${t(
+                                                  "vendorOrderDetail.forTimeLabel",
+                                                  {
+                                                    time: new Date(
+                                                      effectiveOrder.estimated_arrival_time,
+                                                    ).toLocaleTimeString([], {
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                    }),
+                                                  },
+                                                )}`
                                               : ""
                                           }`
                                         : `${storeName}${
                                             effectiveOrder.table_number
-                                              ? ` — Table ${effectiveOrder.table_number}`
+                                              ? ` — ${t(
+                                                  "vendorOrderDetail.tableLabel",
+                                                  {
+                                                    number:
+                                                      effectiveOrder.table_number,
+                                                  },
+                                                )}`
                                               : ""
                                           }`
                                       : storeName
                                     : formatAddress(
                                         effectiveOrder.shipping_address_text,
-                                      ) || "No address provided."}
+                                      ) ||
+                                      t("vendorOrderDetail.noAddressProvided")}
                                 </span>
                               </div>
 
                               {isPickupLike && storeAddress && (
                                 <div className="flex items-start gap-2 p-2 rounded-lg bg-gray-50 border-l-4 border-gray-300">
                                   <span className="text-xs font-bold text-gray-500 min-w-[110px]">
-                                    Address:
+                                    {t("vendorOrderDetail.addressLabel")}
                                   </span>
                                   <span className="text-xs text-gray-600 leading-relaxed">
                                     {storeAddress}
@@ -4113,14 +4327,18 @@ export function VendorOrderDetailModal({
                             </div>
                           </Card>
                         ) : (
-                          <Card title={locationTitle} icon={MapPin}>
+                          <Card titleKey={locationTitleKey} icon={MapPin} t={t}>
                             <div className="flex items-center justify-center py-6 text-center">
                               <div>
                                 <MapPin className="mx-auto h-6 w-6 text-gray-300 mb-2" />
                                 <p className="text-xs text-gray-500">
                                   {isPickupLike
-                                    ? "Store pickup address not configured"
-                                    : "Shipping address not provided"}
+                                    ? t(
+                                        "vendorOrderDetail.storePickupAddressNotConfigured",
+                                      )
+                                    : t(
+                                        "vendorOrderDetail.shippingAddressNotProvided",
+                                      )}
                                 </p>
                               </div>
                             </div>
@@ -4136,11 +4354,15 @@ export function VendorOrderDetailModal({
                   >
                     <div className="px-4 md:px-6 py-2 md:py-5 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
-                        Item List
+                        {t("vendorOrderDetail.itemList")}
                       </h4>
                       <span className="px-3 py-1 bg-white border border-gray-200 rounded-full text-[10px] font-semibold text-purple-600 shadow-sm">
-                        {effectiveOrder.items.length}{" "}
-                        {effectiveOrder.items.length > 1 ? "ITEMS" : "ITEM"}
+                        {t(
+                          effectiveOrder.items.length > 1
+                            ? "vendorOrderDetail.itemsPlural"
+                            : "vendorOrderDetail.itemsSingular",
+                          { count: effectiveOrder.items.length },
+                        )}
                       </span>
                     </div>
                     <div className="overflow-x-auto">
@@ -4148,16 +4370,16 @@ export function VendorOrderDetailModal({
                         <thead>
                           <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50">
                             <th className="px-4 md:px-6 py-2 md:py-4 text-left">
-                              Description
+                              {t("vendorOrderDetail.table.description")}
                             </th>
                             <th className="px-4 md:px-6 py-2 md:py-4 text-center">
-                              Qty
+                              {t("vendorOrderDetail.table.qty")}
                             </th>
                             <th className="px-4 md:px-6 py-2 md:py-4 text-right">
-                              Unit Price
+                              {t("vendorOrderDetail.table.unitPrice")}
                             </th>
                             <th className="px-4 md:px-6 py-2 md:py-4 text-right">
-                              Total
+                              {t("vendorOrderDetail.table.total")}
                             </th>
                           </tr>
                         </thead>
@@ -4196,7 +4418,9 @@ export function VendorOrderDetailModal({
                                         className="px-4 py-2 text-left"
                                       >
                                         <span className="text-[10px] font-black uppercase tracking-wider text-secondary">
-                                          Round {roundNum}{" "}
+                                          {t("vendorOrderDetail.roundLabel", {
+                                            number: roundNum,
+                                          })}{" "}
                                           {roundTime ? `(${roundTime})` : ""}
                                         </span>
                                       </td>
@@ -4223,7 +4447,12 @@ export function VendorOrderDetailModal({
                                                 {item.title}
                                               </p>
                                               <p className="text-[10px] font-bold text-gray-400 font-mono uppercase tracking-tighter">
-                                                SKU: {item.sku || "N/A"}
+                                                {t(
+                                                  "vendorOrderDetail.skuLabel",
+                                                )}
+                                                :{" "}
+                                                {item.sku ||
+                                                  t("vendorOrderDetail.na")}
                                               </p>
                                             </div>
                                           </div>
@@ -4266,10 +4495,12 @@ export function VendorOrderDetailModal({
                         <Clock className="h-4 w-4 text-secondary" />
                       </div>
                       <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-                        Order Timeline
+                        {t("vendorOrderDetail.orderTimeline")}
                       </h4>
                       <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {buildOrderTimeline(effectiveOrder).length} steps
+                        {t("vendorOrderDetail.stepsCount", {
+                          count: buildOrderTimeline(effectiveOrder).length,
+                        })}
                       </span>
                     </div>
 
@@ -4311,7 +4542,7 @@ export function VendorOrderDetailModal({
                               {event.status === "pending" && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                  Pending
+                                  {t("vendorOrderDetail.pendingLabel")}
                                 </span>
                               )}
                             </div>
@@ -4357,10 +4588,12 @@ export function VendorOrderDetailModal({
                           <History className="h-4 w-4 text-secondary" />
                         </div>
                         <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-                          Customer Order History
+                          {t("vendorOrderDetail.customerOrderHistory")}
                         </h4>
                         <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                          {customerOrders.length} orders
+                          {t("vendorOrderDetail.ordersCount", {
+                            count: customerOrders.length,
+                          })}
                         </span>
                       </div>
 
@@ -4398,9 +4631,9 @@ export function VendorOrderDetailModal({
                                   ETB
                                 </span>
                               </span>
-                              <StatusBadge status={ord.status} />
+                              <StatusBadge t={t} status={ord.status} t={t} />
                               <span className="text-xs text-secondary opacity-0 group-hover:opacity-100 transition">
-                                View →
+                                {t("vendorOrderDetail.viewAction")}
                               </span>
                             </div>
                           </div>
@@ -4424,7 +4657,7 @@ export function VendorOrderDetailModal({
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                            Total Amount
+                            {t("vendorOrderDetail.totalAmount")}
                           </p>
                           <h3 className="text-xl md:text-3xl font-black">
                             {Number(effectiveOrder.amount).toLocaleString()}{" "}
@@ -4434,21 +4667,27 @@ export function VendorOrderDetailModal({
                       </div>
                       <div className="space-y-3 pt-2 border-t border-white/10">
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="opacity-60">Subtotal</span>
+                          <span className="opacity-60">
+                            {t("vendorOrderDetail.subtotal")}
+                          </span>
                           <span>
                             {Number(effectiveOrder.subtotal).toLocaleString()}{" "}
                             ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="opacity-60">VAT</span>
+                          <span className="opacity-60">
+                            {t("vendorOrderDetail.vat")}
+                          </span>
                           <span>
                             {Number(effectiveOrder.tax_amount).toLocaleString()}{" "}
                             ETB
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="opacity-60">Delivery Fee</span>
+                          <span className="opacity-60">
+                            {t("vendorOrderDetail.deliveryFee")}
+                          </span>
                           <span>
                             {Number(
                               effectiveOrder.delivery_fee || 0,
@@ -4457,7 +4696,9 @@ export function VendorOrderDetailModal({
                           </span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="opacity-60">Discount Fee</span>
+                          <span className="opacity-60">
+                            {t("vendorOrderDetail.discountFee")}
+                          </span>
                           <span>0 ETB</span>
                         </div>
                       </div>
@@ -4480,6 +4721,7 @@ export function VendorOrderDetailModal({
                         ? "delivery"
                         : "pickup")
                     }
+                    t={t}
                   />
 
                   {(effectiveOrder.status === "confirmed" ||
@@ -4490,6 +4732,7 @@ export function VendorOrderDetailModal({
                       order={effectiveOrder}
                       onUpdate={onUpdate}
                       readOnly={readOnly}
+                      t={t}
                     />
                   )}
 
@@ -4501,6 +4744,7 @@ export function VendorOrderDetailModal({
                         readOnly={readOnly}
                         onOpenLiveTracking={onOpenLiveTracking}
                         onViewOnMap={handleViewOnMap}
+                        t={t}
                       />
                     )}
                 </div>

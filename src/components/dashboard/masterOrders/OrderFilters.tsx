@@ -1,4 +1,5 @@
 import { RefreshCw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 
@@ -19,29 +20,6 @@ interface OrderFiltersProps {
   onToggleMobile?: () => void;
 }
 
-const paymentOptions: SelectOption[] = [
-  { value: "", label: "All payment statuses" },
-  { value: "Paid", label: "Paid" },
-  { value: "Verifying Receipt", label: "Verifying Receipt" },
-  { value: "Pay on Delivery", label: "Pay on Delivery" },
-  { value: "Checkout Initiated", label: "Checkout Initiated" },
-  { value: "Awaiting Bank Transfer", label: "Awaiting Bank Transfer" },
-];
-
-const fulfillmentOptions: SelectOption[] = [
-  { value: "", label: "All fulfillment types" },
-  { value: "delivery", label: "Delivery" },
-  { value: "pickup", label: "Pickup" },
-];
-
-const pageSizeOptions: SelectOption[] = [
-  { value: "5", label: "5 / page" },
-  { value: "10", label: "10 / page" },
-  { value: "15", label: "15 / page" },
-  { value: "30", label: "30 / page" },
-  { value: "60", label: "60 / page" },
-];
-
 export function OrderFilters({
   searchTerm,
   onSearchChange,
@@ -56,6 +34,43 @@ export function OrderFilters({
   onRefresh,
   onClear,
 }: OrderFiltersProps) {
+  const { t } = useTranslation("master");
+
+  const paymentOptions: SelectOption[] = [
+    { value: "", label: t("orders.paymentStatus.allLower") },
+    { value: "Paid", label: t("orders.paymentStatus.paid") },
+    {
+      value: "Verifying Receipt",
+      label: t("orders.paymentStatus.verifyingReceipt"),
+    },
+    {
+      value: "Pay on Delivery",
+      label: t("orders.paymentStatus.payOnDelivery"),
+    },
+    {
+      value: "Checkout Initiated",
+      label: t("orders.paymentStatus.checkoutInitiated"),
+    },
+    {
+      value: "Awaiting Bank Transfer",
+      label: t("orders.paymentStatus.awaitingBankTransfer"),
+    },
+  ];
+
+  const fulfillmentOptions: SelectOption[] = [
+    { value: "", label: t("orders.fulfillment.allLower") },
+    { value: "delivery", label: t("orders.fulfillment.delivery") },
+    { value: "pickup", label: t("orders.fulfillment.pickup") },
+  ];
+
+  const pageSizeOptions: SelectOption[] = [
+    { value: "5", label: t("orders.pageSize.5") },
+    { value: "10", label: t("orders.pageSize.10") },
+    { value: "15", label: t("orders.pageSize.15") },
+    { value: "30", label: t("orders.pageSize.30") },
+    { value: "60", label: t("orders.pageSize.60") },
+  ];
+
   const hasFilters = Boolean(
     searchTerm ||
       statusFilter ||
@@ -72,7 +87,7 @@ export function OrderFilters({
           onChange={onSearchChange}
           debounceMs={0}
           showClearButton
-          placeholder="Search by order ID, customer, phone, or address..."
+          placeholder={t("orders.searchPlaceholder")}
           className="w-full"
         />
 
@@ -80,7 +95,7 @@ export function OrderFilters({
           value={paymentStatusFilter}
           onChange={onPaymentStatusChange}
           options={paymentOptions}
-          placeholder="Payment status"
+          placeholder={t("orders.filters.paymentStatusPlaceholder")}
           className="w-full"
         />
 
@@ -88,7 +103,7 @@ export function OrderFilters({
           value={fulfillmentTypeFilter}
           onChange={onFulfillmentTypeChange}
           options={fulfillmentOptions}
-          placeholder="Fulfillment"
+          placeholder={t("orders.filters.fulfillmentPlaceholder")}
           className="w-full"
         />
 
@@ -96,7 +111,7 @@ export function OrderFilters({
           value={String(pageSize)}
           onChange={(value) => onPageSizeChange(Number(value))}
           options={pageSizeOptions}
-          placeholder="10 / page"
+          placeholder={t("orders.pageSize.10")}
           className="w-full"
         />
 
@@ -106,7 +121,7 @@ export function OrderFilters({
               type="button"
               onClick={onRefresh}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
-              title="Refresh orders"
+              title={t("orders.filters.refreshOrders")}
             >
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -119,7 +134,7 @@ export function OrderFilters({
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
             >
               <X className="h-4 w-4" />
-              Clear
+              {t("orders.filters.clear")}
             </button>
           )}
         </div>
