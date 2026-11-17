@@ -7,6 +7,7 @@ import {
   Package2,
   Download,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Pagination } from "../../ui/Pagination";
 import { DataTable, type Column } from "../../ui/DataTable";
 
@@ -39,24 +40,26 @@ const StatusBadge = ({
   status: string;
   type?: "order" | "delivery";
 }) => {
+  const { t } = useTranslation("companyOrders");
+
   const normalizedStatus = status?.toLowerCase?.() || "";
 
   const orderStatusLabels: Record<string, string> = {
-    processing: "Prepared",
-    shipped: "In Transit",
-    fulfilled: "Delivered",
-    contacted: "Confirmed",
-    pending: "pending",
+    processing: t("companyOrders.statusBadge.processing"),
+    shipped: t("companyOrders.statusBadge.shipped"),
+    fulfilled: t("companyOrders.statusBadge.fulfilled"),
+    contacted: t("companyOrders.statusBadge.contacted"),
+    pending: t("companyOrders.statusBadge.pending"),
   };
 
   const deliveryStatusLabels: Record<string, string> = {
-    pending: "Assigned",
-    out_for_delivery: "In Transit",
-    delivered: "Completed",
-    self_pickup: "Self Pickup",
-    takeaway: "Takeaway",
-    onspot: "Onspot",
-    no_assigned: "No Assigned",
+    pending: t("companyOrders.statusBadge.pending"),
+    out_for_delivery: t("companyOrders.statusBadge.out_for_delivery"),
+    delivered: t("companyOrders.statusBadge.delivered"),
+    self_pickup: t("companyOrders.statusBadge.self_pickup"),
+    takeaway: t("companyOrders.statusBadge.takeaway"),
+    onspot: t("companyOrders.statusBadge.onspot"),
+    no_assigned: t("companyOrders.statusBadge.no_assigned"),
   };
 
   const labels = type === "delivery" ? deliveryStatusLabels : orderStatusLabels;
@@ -100,6 +103,7 @@ const StatusBadge = ({
 };
 
 const OrderDate = ({ dateString }: { dateString?: string }) => {
+  const { t, i18n } = useTranslation("companyOrders");
   if (!dateString) return <span className="text-gray-400 text-xs">—</span>;
 
   const date = new Date(dateString);
@@ -110,13 +114,15 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
   yesterday.setDate(yesterday.getDate() - 1);
   const isYesterday = yesterday.toDateString() === date.toDateString();
 
-  const formatTime = date.toLocaleTimeString("en-US", {
+  const locale = i18n.language?.startsWith("am") ? "am-ET" : "en-US";
+
+  const formatTime = date.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   });
 
-  const formatDate = date.toLocaleDateString("en-US", {
+  const formatDate = date.toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -125,7 +131,11 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-sm font-medium text-gray-900">
-        {isToday ? "Today" : isYesterday ? "Yesterday" : formatDate}
+        {isToday
+          ? t("companyOrders.common.time.yesterday")
+          : isYesterday
+            ? t("companyOrders.common.time.yesterday")
+            : formatDate}
       </span>
       <span className="text-xs text-gray-500 font-mono">{formatTime}</span>
     </div>
@@ -175,6 +185,7 @@ const resolveDeliveryStatusKey = (order: VendorOrder): string => {
 
 /* ---------- Main Component ---------- */
 export default function CompanyOrders() {
+  const { t, i18n } = useTranslation("companyOrders");
   const { user } = useAuth();
   const { company } = useCurrentCompany();
   const { companies } = useCompaniesList();
@@ -256,7 +267,7 @@ export default function CompanyOrders() {
     ): Promise<VendorOrder[]> => {
       const token = localStorage.getItem("access");
       if (!token) {
-        setError("Please log in to view orders");
+        setError(t("companyOrders.messages.loginRequired"));
         if (!options?.silent) setLoading(false);
         return [];
       }
@@ -320,6 +331,28 @@ export default function CompanyOrders() {
         setOrders(response.data.results);
         setTotalCount(response.data.count);
 
+        // 🔍 CONSOLE: Inspect backend response (esp. company.name / name_am)
+        console.group("📦 [CompanyOrders] Backend response");
+        console.log("Total count:", response.data.count);
+        console.log("Raw payload:", response.data);
+        response.data.results?.forEach((vo: any) => {
+          console.group(`🧾 VendorOrder #${vo.id}`);
+          console.log("status:", vo.status);
+          console.log("amount:", vo.amount);
+          console.log("payment_method:", vo.payment_method);
+          console.log("delivery_status:", vo.delivery_status);
+          console.log("fulfillment_type:", (vo as any).fulfillment_type);
+          console.log("company:", vo.company);
+          console.log("company.name:", vo.company?.name);
+          console.log("company.name_am:", (vo.company as any)?.name_am); // ⬅️ CHECK THIS
+          console.log("company.logo:", vo.company?.logo);
+          console.log("delivery:", vo.delivery);
+          console.log("items_count:", vo.items?.length ?? 0);
+          console.groupEnd();
+        });
+        console.groupEnd();
+        // 🔍 END
+
         if (!options?.silent) setLoading(false);
         return response.data.results;
       } catch (err: any) {
@@ -334,10 +367,10 @@ export default function CompanyOrders() {
 
         const message =
           err.message === "SESSION_EXPIRED"
-            ? "Your session has expired."
+            ? t("companyOrders.messages.sessionExpired")
             : err.response?.data?.detail ||
               err.message ||
-              "Failed to load orders";
+              t("companyOrders.messages.loadFailed");
 
         if (!controller.signal.aborted) {
           setError(message);
@@ -361,6 +394,7 @@ export default function CompanyOrders() {
       shouldFetchAll,
       effectiveSlug,
       showToast,
+      t,
     ],
   );
 
@@ -406,41 +440,59 @@ export default function CompanyOrders() {
   };
 
   const orderStatusOptions: SelectOption[] = [
-    { value: "", label: "All Order Status" },
-    { value: "pending", label: "Pending" },
-    { value: "contacted", label: "Confirmed" },
-    { value: "processing", label: "Prepared" },
-    { value: "fulfilled", label: "Delivered" },
-    { value: "shipped", label: "In Transit" },
-    { value: "payment_rejected", label: "Payment Rejected" },
-    { value: "cancelled", label: "Cancelled" },
+    { value: "", label: t("companyOrders.orderStatus.all") },
+    { value: "pending", label: t("companyOrders.orderStatus.pending") },
+    { value: "contacted", label: t("companyOrders.orderStatus.contacted") },
+    { value: "processing", label: t("companyOrders.orderStatus.processing") },
+    { value: "fulfilled", label: t("companyOrders.orderStatus.fulfilled") },
+    { value: "shipped", label: t("companyOrders.orderStatus.shipped") },
+    {
+      value: "payment_rejected",
+      label: t("companyOrders.orderStatus.paymentRejected"),
+    },
+    { value: "cancelled", label: t("companyOrders.orderStatus.cancelled") },
   ];
 
   const deliveryStatusOptions: SelectOption[] = [
-    { value: "", label: "All Delivery Status" },
-    { value: "pending", label: "Assigned" },
-    { value: "accepted", label: "Accepted" },
-    { value: "picked_up", label: "Picked Up" },
-    { value: "out_for_delivery", label: "In Transit" },
-    { value: "delivered", label: "Completed" },
-    { value: "failed", label: "Failed" },
+    { value: "", label: t("companyOrders.deliveryStatusFilter.all") },
+    { value: "pending", label: t("companyOrders.deliveryStatusFilter.pending") },
+    {
+      value: "accepted",
+      label: t("companyOrders.deliveryStatusFilter.accepted"),
+    },
+    {
+      value: "picked_up",
+      label: t("companyOrders.deliveryStatusFilter.pickedUp"),
+    },
+    {
+      value: "out_for_delivery",
+      label: t("companyOrders.deliveryStatusFilter.outForDelivery"),
+    },
+    {
+      value: "delivered",
+      label: t("companyOrders.deliveryStatusFilter.delivered"),
+    },
+    { value: "failed", label: t("companyOrders.deliveryStatusFilter.failed") },
   ];
 
   const paymentMethodOptions: SelectOption[] = [
-    { value: "", label: "All Payment Method" },
-    { value: "bank_transfer", label: "Bank Transfer" },
-    { value: "chapa", label: "Chapa" },
-    { value: "cod", label: "Cash on Delivery" },
-    { value: "telebirr", label: "Telebirr" },
-    { value: "arifpay", label: "ArifPay (Direct)" },
+    { value: "", label: t("companyOrders.paymentMethod.all") },
+    {
+      value: "bank_transfer",
+      label: t("companyOrders.paymentMethod.bankTransfer"),
+    },
+    { value: "chapa", label: t("companyOrders.paymentMethod.chapa") },
+    { value: "cod", label: t("companyOrders.paymentMethod.cod") },
+    { value: "telebirr", label: t("companyOrders.paymentMethod.telebirr") },
+    { value: "arifpay", label: t("companyOrders.paymentMethod.arifpay") },
   ];
 
   const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
+    { value: "5", label: t("companyOrders.pageSize.5") },
+    { value: "10", label: t("companyOrders.pageSize.10") },
+    { value: "15", label: t("companyOrders.pageSize.15") },
+    { value: "30", label: t("companyOrders.pageSize.30") },
+    { value: "60", label: t("companyOrders.pageSize.60") },
   ];
 
   const handleModalUpdate = useCallback(async () => {
@@ -460,7 +512,7 @@ export default function CompanyOrders() {
     const cols: Column<VendorOrder>[] = [
       {
         key: "id",
-        header: "Order ID",
+        header: t("companyOrders.table.columns.orderId"),
         className: "whitespace-nowrap",
         render: (order) => (
           <div className="flex items-center gap-2 whitespace-nowrap font-semibold text-secondary">
@@ -468,7 +520,7 @@ export default function CompanyOrders() {
             {isTodayDate(order.created_at) && (
               <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 shadow-sm">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                Today
+                {t("companyOrders.today")}
               </span>
             )}
           </div>
@@ -479,25 +531,33 @@ export default function CompanyOrders() {
     if (isAdminLike) {
       cols.push({
         key: "company",
-        header: "Company",
-        render: (order) => (
-          <div className="flex items-center gap-2">
-            <CompanyAvatar
-              logo={order.company?.logo}
-              name={order.company?.name || "Unknown"}
-            />
-            <span className="max-w-[120px] truncate text-sm font-medium text-gray-700">
-              {order.company?.name || "Unknown"}
-            </span>
-          </div>
-        ),
+        header: t("companyOrders.table.columns.company"),
+        render: (order) => {
+          // ⬇️ Amharic-aware company name display
+          const displayName =
+            i18n.language?.startsWith("am") &&
+            (order.company as any)?.name_am?.trim()
+              ? (order.company as any).name_am
+              : order.company?.name || t("companyOrders.unknownCompany");
+          return (
+            <div className="flex items-center gap-2">
+              <CompanyAvatar
+                logo={order.company?.logo}
+                name={displayName}
+              />
+              <span className="max-w-[120px] truncate text-sm font-medium text-gray-700">
+                {displayName}
+              </span>
+            </div>
+          );
+        },
       });
     }
 
     cols.push(
       {
         key: "amount",
-        header: "Amount",
+        header: t("companyOrders.table.columns.amount"),
         className: "whitespace-nowrap",
         render: (order) => (
           <span className="font-semibold text-gray-900">
@@ -508,18 +568,18 @@ export default function CompanyOrders() {
       },
       {
         key: "payment_method",
-        header: "Payment Method",
+        header: t("companyOrders.table.columns.paymentMethod"),
         render: (order) =>
           order.payment_method ? order.payment_method.replace(/_/g, " ") : "—",
       },
       {
         key: "status",
-        header: "Order Status",
+        header: t("companyOrders.table.columns.orderStatus"),
         render: (order) => <StatusBadge status={order.status} type="order" />,
       },
       {
         key: "delivery_status",
-        header: "Delivery Status",
+        header: t("companyOrders.table.columns.deliveryStatus"),
         render: (order) => (
           <StatusBadge
             status={resolveDeliveryStatusKey(order)}
@@ -529,13 +589,13 @@ export default function CompanyOrders() {
       },
       {
         key: "created_at",
-        header: "Date & Time",
+        header: t("companyOrders.table.columns.dateTime"),
         className: "whitespace-nowrap",
         render: (order) => <OrderDate dateString={order.created_at} />,
       },
       {
         key: "actions",
-        header: "Actions",
+        header: t("companyOrders.table.columns.actions"),
         className: "whitespace-nowrap text-right",
         render: (order) => (
           <button
@@ -544,63 +604,67 @@ export default function CompanyOrders() {
             className="group inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-secondary transition hover:bg-secondary/10 sm:text-sm"
           >
             <Settings className="h-4 w-4 transition-transform group-hover:rotate-90" />
-            Manage
+            {t("companyOrders.manage")}
           </button>
         ),
       },
     );
 
     return cols;
-  }, [isAdminLike]);
+  }, [isAdminLike, i18n.language, t]);
+
+  const pageDescription = isAdminLike
+    ? t("companyOrders.pageDescription.admin")
+    : effectiveSlug
+      ? t("companyOrders.pageDescription.company")
+      : t("companyOrders.pageDescription.noCompany");
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
 
       <PageHeader
-        title="All Orders"
+        title={t("companyOrders.pageTitle")}
         icon={Package2}
-        description={
-          isAdminLike
-            ? "View and manage orders across all companies."
-            : effectiveSlug
-              ? "View and manage orders for the selected company."
-              : "Select a company to view its orders."
-        }
+        description={pageDescription}
         badge={
           readOnly ? (
             <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
-              View Only
+              {t("companyOrders.viewOnly")}
             </span>
           ) : undefined
         }
-      actionMobile={
-  <div className="flex items-center justify-end gap-1.5">
-    {canExport && (
-      <button
-        type="button"
-        onClick={() => setShowExportModal(true)}
-        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
-        aria-label="Export report"
-        title="Export daily / weekly / monthly / yearly order reports"
-      >
-        <Download className="h-3.5 w-3.5 shrink-0" />
-        <span className="whitespace-nowrap">Export</span>
-      </button>
-    )}
+        actionMobile={
+          <div className="flex items-center justify-end gap-1.5">
+            {canExport && (
+              <button
+                type="button"
+                onClick={() => setShowExportModal(true)}
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                aria-label={t("companyOrders.exportReport")}
+                title={t("companyOrders.exportTooltip")}
+              >
+                <Download className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap">
+                  {t("companyOrders.exports")}
+                </span>
+              </button>
+            )}
 
-    <button
-      type="button"
-      onClick={() => setShowTrackingMap(true)}
-      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-1.5 text-[10px] font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-secondary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2"
-      aria-label="Open tracking map"
-      title="Open tracking map"
-    >
-      <Navigation className="h-3.5 w-3.5 shrink-0" />
-      <span className="whitespace-nowrap">Tracking</span>
-    </button>
-  </div>
-}
+            <button
+              type="button"
+              onClick={() => setShowTrackingMap(true)}
+              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-1.5 text-[10px] font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-secondary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2"
+              aria-label={t("companyOrders.trackingTooltip")}
+              title={t("companyOrders.trackingTooltip")}
+            >
+              <Navigation className="h-3.5 w-3.5 shrink-0" />
+              <span className="whitespace-nowrap">
+                {t("companyOrders.tracking")}
+              </span>
+            </button>
+          </div>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canExport && (
@@ -608,10 +672,10 @@ export default function CompanyOrders() {
                 type="button"
                 onClick={() => setShowExportModal(true)}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:text-sm"
-                title="Export daily / weekly / monthly / yearly order reports"
+                title={t("companyOrders.exportTooltip")}
               >
                 <Download className="h-4 w-4" />
-                <span>Export Report</span>
+                <span>{t("companyOrders.exportReport")}</span>
               </button>
             )}
 
@@ -621,7 +685,7 @@ export default function CompanyOrders() {
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
             >
               <Navigation className="h-4 w-4" />
-              <span>Live Tracking</span>
+              <span>{t("companyOrders.liveTracking")}</span>
             </button>
           </div>
         }
@@ -638,7 +702,7 @@ export default function CompanyOrders() {
                   setSearchTerm(value);
                   setCurrentPage(1);
                 }}
-                placeholder="Search by order ID, customer name, or company..."
+                placeholder={t("companyOrders.searchPlaceholder")}
                 loading={loading}
                 showMobileFilter={true}
                 onMobileFilterClick={() => setShowMobileFilterModal(true)}
@@ -656,7 +720,7 @@ export default function CompanyOrders() {
                   setCurrentPage(1);
                 }}
                 options={pageSizeOptions}
-                placeholder="10 / page"
+                placeholder={t("companyOrders.pageSize.10")}
                 className="w-full text-xs"
               />
             </div>
@@ -695,7 +759,7 @@ export default function CompanyOrders() {
         columns={orderColumns}
         loading={loading}
         loadingRows={pageSize}
-        emptyMessage="No vendor orders found"
+        emptyMessage={t("companyOrders.empty")}
         errorMessage={error}
         onRetry={() => fetchOrders(currentPage)}
         stickyColumns={3}
@@ -739,7 +803,9 @@ export default function CompanyOrders() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
-              <h3 className="text-lg font-extrabold text-secondary">Filters</h3>
+              <h3 className="text-lg font-extrabold text-secondary">
+                {t("companyOrders.filters.title")}
+              </h3>
               <button
                 onClick={() => setShowMobileFilterModal(false)}
                 className="p-2 rounded-full hover:bg-gray-100 transition"
@@ -751,54 +817,58 @@ export default function CompanyOrders() {
             <div className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-secondary mb-1.5">
-                  Order Status
+                  {t("companyOrders.table.columns.orderStatus")}
                 </label>
                 <CustomSelect
                   value={orderStatusFilter}
                   onChange={handleOrderStatusChange}
                   options={orderStatusOptions}
-                  placeholder="All Order Status"
+                  placeholder={t("companyOrders.orderStatus.all")}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-secondary mb-1.5">
-                  Delivery Status
+                  {t("companyOrders.table.columns.deliveryStatus")}
                 </label>
                 <CustomSelect
                   value={deliveryStatusFilter}
                   onChange={handleDeliveryStatusChange}
                   options={deliveryStatusOptions}
-                  placeholder="All Delivery Status"
+                  placeholder={t("companyOrders.deliveryStatusFilter.all")}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-secondary mb-1.5">
-                  Payment Method
+                  {t("companyOrders.table.columns.paymentMethod")}
                 </label>
                 <CustomSelect
                   value={paymentMethodFilter}
                   onChange={handlePaymentMethodChange}
                   options={paymentMethodOptions}
-                  placeholder="All Payment Method"
+                  placeholder={t("companyOrders.paymentMethod.all")}
                 />
               </div>
 
               {isAdminLike && (
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Company
+                    {t("companyOrders.table.columns.company")}
                   </label>
                   <select
                     value={selectedCompanyId}
                     onChange={(e) => handleCompanyChange(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-2 focus:border-secondary focus:shadow-sm transition-all"
                   >
-                    <option value="">All Companies</option>
+                    <option value="">{t("companyOrders.allCompanies")}</option>
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {/* Amharic-aware company name in the native <option> */}
+                        {i18n.language?.startsWith("am") &&
+                        (c as any).name_am?.trim()
+                          ? (c as any).name_am
+                          : c.name}
                       </option>
                     ))}
                   </select>
@@ -815,14 +885,14 @@ export default function CompanyOrders() {
                     onClick={clearFilters}
                     className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
                   >
-                    Clear all
+                    {t("companyOrders.filters.clearAll")}
                   </button>
                 )}
                 <button
                   onClick={() => setShowMobileFilterModal(false)}
                   className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
                 >
-                  Apply Filters
+                  {t("companyOrders.filters.applyFilters")}
                 </button>
               </div>
             </div>
@@ -842,7 +912,7 @@ export default function CompanyOrders() {
           companySlug={effectiveSlug}
           companyName={
             isAdminLike && !effectiveSlug
-              ? "All Companies"
+              ? t("companyOrders.allCompanies")
               : company?.name || ""
           }
           onSuccess={(message) => showToast("success", message)}

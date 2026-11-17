@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, X, Repeat, Lock, Package2 } from "lucide-react";
-// import type { CompanyListItem } from "../../../types";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/authContext";
-// import { useCompanySelection } from '../../../hooks/useCompanySelection';
 import { useCompanyProducts } from "../../../hooks/useCompanyProducts";
 import { CompanySelector } from "./CompanySelector";
 import { ProductTable, type Product } from "./ProductTable";
@@ -12,7 +11,6 @@ import { DeleteConfirmModal } from "../../ui/DeleteConfirmModal";
 import { Toast } from "../../ui/Toast";
 import { Pagination } from "../../ui/Pagination";
 import { ErrorView } from "../../ui/ErrorView";
-// import { NoCompanyView } from './NoCompanyView';
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
@@ -20,13 +18,14 @@ import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
 
 export default function CompanyProducts() {
+  const { t } = useTranslation("product");
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
 
   const companySlug = company?.slug ?? null;
   const companyName = company?.name ?? "";
-  // Keep the selected company record so status can control write access.
+
   const selectedCompany = useMemo(() => {
     if (!companySlug) return null;
     return (
@@ -36,14 +35,12 @@ export default function CompanyProducts() {
     );
   }, [companySlug, companies, company]);
 
-  // If status is not present yet, do not lock the screen while company data is loading.
   const companyIsActive = selectedCompany?.is_active !== false;
   const isCompanyViewOnly = !companyIsActive;
 
   const isSuperAdmin = !user?.memberships?.length;
   const showSelector = isSuperAdmin && !companySlug;
 
-  // Derive correct role for the selected company from user memberships
   const companyRole = useMemo(() => {
     if (!user || !companySlug) return "";
     if (isSuperAdmin) return "admin";
@@ -53,23 +50,21 @@ export default function CompanyProducts() {
     return membership?.role || "";
   }, [user, companySlug, isSuperAdmin]);
 
-  // Role-based permissions. Inactive companies are always view-only, including for super admins.
-  const isAdmin = companyRole === "admin" ||companyRole ==="owner"|| isSuperAdmin;
-  // const isStaff = companyRole === "staff";
+  const isAdmin =
+    companyRole === "admin" || companyRole === "owner" || isSuperAdmin;
   const canEditBasic = companyIsActive && isAdmin;
-  // const canEditPricing = isAdmin;
   const canDelete = companyIsActive && isAdmin;
 
-  // Products hook
   const [pageSize, setPageSize] = useState(10);
-  // Options for Page Size dropdown
+
   const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
+    { value: "5", label: t("products.pageSize.5") },
+    { value: "10", label: t("products.pageSize.10") },
+    { value: "15", label: t("products.pageSize.15") },
+    { value: "30", label: t("products.pageSize.30") },
+    { value: "60", label: t("products.pageSize.60") },
   ];
+
   const {
     products,
     loading,
@@ -85,6 +80,7 @@ export default function CompanyProducts() {
     deleteProduct,
     refetch,
   } = useCompanyProducts({ companySlug, pageSize });
+
   useEffect(() => {
     setCurrentPage(1);
     setTimeout(() => {
@@ -92,7 +88,6 @@ export default function CompanyProducts() {
     }, 100);
   }, [pageSize]);
 
-  // Modals & toast
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,95 +114,94 @@ export default function CompanyProducts() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Increase toast z-index when modal is open
   const showToastWithHigherZIndex = (
     type: "success" | "error",
     message: string,
   ) => {
-    setToastZIndex(100); // Higher z-index for modal visibility
+    setToastZIndex(100);
     setToast({ type, message });
     setTimeout(() => {
       setToast(null);
-      setToastZIndex(50); // Reset to normal after toast disappears
+      setToastZIndex(50);
     }, 3000);
   };
 
-  // Handlers with permission checks (unchanged except we now use `companyRole`)
   const handleAdd = () => {
     if (isCompanyViewOnly) {
-      showToast("error", "This company is inactive. Products are view-only.");
+      showToast("error", t("products.messages.inactiveViewOnly"));
       return;
     }
     if (!canEditBasic) {
-      showToast("error", "No permission");
+      showToast("error", t("products.messages.noPermission"));
       return;
     }
     setEditingProduct(null);
     setIsModalOpen(true);
   };
+
   const handleView = (product: Product) => {
     setViewingProduct(product);
   };
 
   const handleEdit = (product: any) => {
     if (isCompanyViewOnly) {
-      showToast("error", "This company is inactive. Products are view-only.");
+      showToast("error", t("products.messages.inactiveViewOnly"));
       return;
     }
     if (!canEditBasic) {
-      showToast("error", "No permission");
+      showToast("error", t("products.messages.noPermission"));
       return;
     }
     setEditingProduct(product);
     setIsModalOpen(true);
   };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     if (isCompanyViewOnly) {
-      showToast("error", "This company is inactive. Products are view-only.");
+      showToast("error", t("products.messages.inactiveViewOnly"));
       setDeleteTarget(null);
       return;
     }
     if (!canDelete) {
-      showToast("error", "No permission");
+      showToast("error", t("products.messages.noPermission"));
       setDeleteTarget(null);
       return;
     }
     try {
       await deleteProduct(deleteTarget.id);
-      showToast("success", "Product deleted");
+      showToast("success", t("products.messages.deleted"));
     } catch {
-      showToast("error", "Delete failed");
+      showToast("error", t("products.messages.deleteFailed"));
     } finally {
       setDeleteTarget(null);
     }
   };
+
   const handleSave = async (data: any, existingProductId?: number) => {
     if (!canEditBasic) {
       const message = isCompanyViewOnly
-        ? "This company is inactive. Products are view-only."
-        : "No permission";
+        ? t("products.messages.inactiveViewOnly")
+        : t("products.messages.noPermission");
       showToast("error", message);
       throw new Error(message);
     }
     try {
-      // If we have an existingProductId passed from modal (for update after back button)
       if (existingProductId) {
         await updateProduct(existingProductId, data);
-        showToast("success", "Updated");
-        await refetch(); // Refresh the product list
+        showToast("success", t("products.messages.updated"));
+        await refetch();
         return { id: existingProductId };
       }
-      // Normal edit mode
       if (editingProduct) {
         await updateProduct(editingProduct.id, data);
-        showToast("success", "Updated");
-        await refetch(); // Refresh the product list
+        showToast("success", t("products.messages.updated"));
+        await refetch();
         return { id: editingProduct.id };
       } else {
         const created = await createProduct(data);
-        showToast("success", "Created");
-        await refetch(); // Refresh the product list for new product
+        showToast("success", t("products.messages.created"));
+        await refetch();
         return created;
       }
     } catch (err: any) {
@@ -217,23 +211,26 @@ export default function CompanyProducts() {
         (typeof err?.response?.data === "object" && err?.response?.data !== null
           ? Object.values(err.response.data).flat()[0]
           : null) ||
-        "Save failed";
-      showToast("error", typeof errorMsg === "string" ? errorMsg : "Save failed");
+        t("products.messages.saveFailed");
+      showToast(
+        "error",
+        typeof errorMsg === "string"
+          ? errorMsg
+          : t("products.messages.saveFailed"),
+      );
       throw err;
     }
   };
 
-  // ----- Render -----
   if (showSelector) {
     return (
       <CompanySelector
-        companies={companies} // ✅ now populated
+        companies={companies}
         isLoading={isLoadingCompanies}
-        title="All Products"
-        subtitle="Select a company. Inactive companies are available in view-only mode."
-        searchPlaceholder="Search products and companies by name..."
+        title={t("companySelector.title")}
+        subtitle={t("companySelector.subtitle")}
+        searchPlaceholder={t("companySelector.searchPlaceholder")}
         onSelect={(slug, name) => {
-          // If the user has NO memberships, they are a super admin → role = "admin"
           const membership = user?.memberships?.find(
             (m: any) => m.company_slug === slug,
           );
@@ -247,10 +244,11 @@ export default function CompanyProducts() {
 
   if (error && !companySlug)
     return <ErrorView error={error} onRetry={refetch} />;
+
   if (!companySlug)
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-        No company selected. Please select one to manage products.
+        {t("products.messages.noCompanySelected")}
       </div>
     );
 
@@ -272,7 +270,6 @@ export default function CompanyProducts() {
     );
   }
 
-  // Normal content (identical to your last version)
   return (
     <>
       <Toast toast={toast} zIndex={toastZIndex} />
@@ -291,22 +288,25 @@ export default function CompanyProducts() {
           onClose={() => setIsModalOpen(false)}
           onSave={handleSave}
           onProductUpdated={refetch}
-          // Staff: can edit everything on create, but price/stock read‑only on edit
           isStaff={companyRole === "staff"}
           canEditBasic={canEditBasic}
-          canEditPricing={true} // let the isStaff logic handle edit restriction
+          canEditPricing={true}
           onShowToast={showToastWithHigherZIndex}
         />
 
         <div className="px-3 sm:px-5 md:px-6">
           <PageHeader
-            title="All Products"
+            title={t("products.title")}
             icon={Package2}
-            eyebrow={isSuperAdmin && companyName ? companyName : undefined}
+            eyebrow={
+              isSuperAdmin && companyName
+                ? t("products.eyebrow", { companyName })
+                : undefined
+            }
             description={
               isCompanyViewOnly
-                ? "Browse and search this company’s products. Editing is disabled while the company is inactive."
-                : "Manage your company’s products, pricing, stock, and availability."
+                ? t("products.description.inactive")
+                : t("products.description.active")
             }
             badge={
               <span
@@ -316,7 +316,9 @@ export default function CompanyProducts() {
                     : "border-red-200 bg-red-50 text-red-700"
                 }`}
               >
-                {companyIsActive ? "Active" : "Inactive · View only"}
+                {companyIsActive
+                  ? t("products.badge.active")
+                  : t("products.badge.inactiveViewOnly")}
               </span>
             }
             actions={
@@ -328,7 +330,7 @@ export default function CompanyProducts() {
                     className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 sm:text-sm"
                   >
                     <Repeat className="h-4 w-4" />
-                    <span>Switch company</span>
+                    <span>{t("products.actions.switchCompany")}</span>
                   </button>
                 )}
                 {canEditBasic && (
@@ -338,7 +340,7 @@ export default function CompanyProducts() {
                     className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Add Product</span>
+                    <span>{t("products.actions.addProduct")}</span>
                   </button>
                 )}
               </>
@@ -352,7 +354,6 @@ export default function CompanyProducts() {
                     className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:border-secondary/30 hover:bg-secondary/5 sm:text-sm"
                   >
                     <Repeat className="h-4 w-4" />
-                    {/* <span>Switch</span> */}
                   </button>
                 )}
                 {canEditBasic && (
@@ -362,7 +363,7 @@ export default function CompanyProducts() {
                     className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Add</span>
+                    <span>{t("products.actions.add")}</span>
                   </button>
                 )}
               </>
@@ -373,11 +374,7 @@ export default function CompanyProducts() {
           {isCompanyViewOnly && (
             <div className="mb-6 mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:text-sm">
               <Lock className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <p>
-                This company is inactive. You can view and search its products,
-                but adding, editing, and deleting are disabled. Only a super
-                admin can reactivate the company from Company Management.
-              </p>
+              <p>{t("products.inactiveBanner")}</p>
             </div>
           )}
         </div>
@@ -392,7 +389,7 @@ export default function CompanyProducts() {
                     setSearch(value);
                     setCurrentPage(1);
                   }}
-                  placeholder="Search products..."
+                  placeholder={t("products.searchPlaceholder")}
                   loading={loading}
                   debounceMs={0}
                   showClearButton={true}
@@ -408,7 +405,7 @@ export default function CompanyProducts() {
                     setCurrentPage(1);
                   }}
                   options={pageSizeOptions}
-                  placeholder="10 / page"
+                  placeholder={t("products.pageSize.10")}
                   className="w-full text-xs"
                 />
               </div>
@@ -440,24 +437,20 @@ export default function CompanyProducts() {
           )}
         </div>
 
-        {/* Mobile Filter Modal - Bottom Sheet */}
         {showMobileFilterModal && (
           <div
             className="fixed inset-0 z-50 lg:hidden"
             onClick={() => setShowMobileFilterModal(false)}
           >
-            {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-            {/* Bottom Sheet Content */}
             <div
               className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl animate-in slide-in-from-bottom duration-300 max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
                 <h3 className="text-lg font-extrabold text-secondary">
-                  Filters
+                  {t("products.filters.title")}
                 </h3>
                 <button
                   onClick={() => setShowMobileFilterModal(false)}
@@ -467,21 +460,15 @@ export default function CompanyProducts() {
                 </button>
               </div>
 
-              {/* Content */}
               <div className="p-4 space-y-4">
-                {/* Page Size */}
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Items per page
+                    {t("products.filters.itemsPerPage")}
                   </label>
                   <CustomSelect
                     key={pageSize}
                     value={String(pageSize)}
                     onChange={(val) => {
-                      console.log(
-                        "🟢 Modal CustomSelect onChange called with:",
-                        val,
-                      );
                       setPageSize(Number(val));
                       setCurrentPage(1);
                     }}
@@ -490,7 +477,6 @@ export default function CompanyProducts() {
                   />
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex items-center gap-3 pt-2">
                   {(search || pageSize !== 10) && (
                     <button
@@ -501,14 +487,14 @@ export default function CompanyProducts() {
                       }}
                       className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
                     >
-                      Clear all
+                      {t("common.actions.clearAll")}
                     </button>
                   )}
                   <button
                     onClick={() => setShowMobileFilterModal(false)}
                     className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
                   >
-                    Apply Filters
+                    {t("products.filters.applyFilters")}
                   </button>
                 </div>
               </div>

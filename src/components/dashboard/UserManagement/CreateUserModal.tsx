@@ -15,20 +15,8 @@ import {
   Truck,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { CustomSelect } from "../../ui/CustomSelect";
-
-/* -------------------------------------------------------------------------- */
-/*                          VEHICLE TYPE CHOICES                              */
-/* -------------------------------------------------------------------------- */
-const VEHICLE_CHOICES = [
-  { value: "motorcycle", label: "Motorcycle" },
-  { value: "car", label: "Car" },
-  { value: "bicycle", label: "Bicycle" },
-  { value: "van", label: "Van" },
-  { value: "foot", label: "Foot" },
-] as const;
-
-export type VehicleType = (typeof VEHICLE_CHOICES)[number]["value"];
 
 interface CreateCompanyUserModalProps {
   isOpen: boolean;
@@ -42,9 +30,8 @@ interface CreateCompanyUserModalProps {
     username: string;
     password: string;
     role: "admin" | "staff" | "viewer" | "delivery";
-    vehicle_type?: VehicleType; // Only for delivery role
+    vehicle_type?: string;
   }) => void;
-  /** Optional: pass backend field errors from parent, e.g. { username: ["Already exists"] } */
   serverErrors?: Record<string, string | string[]>;
 }
 
@@ -66,6 +53,19 @@ export function CreateCompanyUserModal({
   onSubmit,
   serverErrors,
 }: CreateCompanyUserModalProps) {
+  const { t } = useTranslation("users");
+
+  const VEHICLE_CHOICES = useMemo(
+    () => [
+      { value: "motorcycle", label: t("vehicleMotorcycle") },
+      { value: "car", label: t("vehicleCar") },
+      { value: "bicycle", label: t("vehicleBicycle") },
+      { value: "van", label: t("vehicleVan") },
+      { value: "foot", label: t("vehicleFoot") },
+    ],
+    [t],
+  );
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -75,7 +75,7 @@ export function CreateCompanyUserModal({
     password: "",
     confirm_password: "",
     role: "staff" as "admin" | "staff" | "viewer" | "delivery",
-    vehicle_type: "" as VehicleType | "",
+    vehicle_type: "" as string,
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -84,13 +84,9 @@ export function CreateCompanyUserModal({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // ✅ Ethiopian mobile: Ethio Telecom (09/+2519) OR Safaricom (07/+2517)
   const phoneRegex = /^(\+251|0)(9|7)\d{8}$/;
-
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
-  // ✅ Reset vehicle_type when role changes away from "delivery"
   useEffect(() => {
     if (formData.role !== "delivery" && formData.vehicle_type) {
       setFormData((prev) => ({ ...prev, vehicle_type: "" }));
@@ -98,7 +94,6 @@ export function CreateCompanyUserModal({
     }
   }, [formData.role, formData.vehicle_type]);
 
-  // Normalize backend errors into a flat map of field -> message
   const normalizedServerErrors = useMemo(() => {
     const map: Record<string, string> = {};
     if (!serverErrors) return map;
@@ -123,58 +118,55 @@ export function CreateCompanyUserModal({
     const newErrors: FormErrors = {};
 
     if (!formData.first_name.trim()) {
-      newErrors.first_name = "First name is required";
+      newErrors.first_name = t("firstNameRequired");
     } else if (formData.first_name.trim().length < 2) {
-      newErrors.first_name = "Minimum 2 characters required";
+      newErrors.first_name = t("min2Chars");
     }
 
     if (!formData.last_name.trim()) {
-      newErrors.last_name = "Last name is required";
+      newErrors.last_name = t("lastNameRequired");
     } else if (formData.last_name.trim().length < 2) {
-      newErrors.last_name = "Minimum 2 characters required";
+      newErrors.last_name = t("min2Chars");
     }
 
     if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
+      newErrors.username = t("usernameRequired");
     } else if (!usernameRegex.test(formData.username)) {
-      newErrors.username =
-        "3-20 characters. Letters, numbers & underscore only";
+      newErrors.username = t("usernameInvalid");
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("emailRequired");
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Invalid email address";
+      newErrors.email = t("emailInvalid");
     }
 
     if (!formData.phone_number.trim()) {
-      newErrors.phone_number = "Phone number is required";
+      newErrors.phone_number = t("phoneRequired");
     } else if (!phoneRegex.test(formData.phone_number)) {
-      newErrors.phone_number =
-        "Use 09XXXXXXXX, 07XXXXXXXX, +2519XXXXXXXX or +2517XXXXXXXX";
+      newErrors.phone_number = t("phoneInvalid");
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("passwordRequired");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Minimum 8 characters required";
+      newErrors.password = t("passwordMinLength");
     } else if (
       !/[A-Z]/.test(formData.password) ||
       !/[0-9]/.test(formData.password) ||
       !/[^A-Za-z0-9]/.test(formData.password)
     ) {
-      newErrors.password = "Include uppercase, number and special character";
+      newErrors.password = t("passwordRequirements");
     }
 
     if (!formData.confirm_password) {
-      newErrors.confirm_password = "Please confirm your password";
+      newErrors.confirm_password = t("confirmPasswordRequired");
     } else if (formData.confirm_password !== formData.password) {
-      newErrors.confirm_password = "Passwords do not match";
+      newErrors.confirm_password = t("passwordsDontMatch");
     }
 
-    // ✅ Vehicle type required when role is "delivery"
     if (formData.role === "delivery" && !formData.vehicle_type) {
-      newErrors.vehicle_type = "Vehicle type is required for delivery personnel";
+      newErrors.vehicle_type = t("vehicleRequired");
     }
 
     setErrors(newErrors);
@@ -203,9 +195,9 @@ export function CreateCompanyUserModal({
   }, [formData.password]);
 
   const passwordStrengthText = () => {
-    if (passwordStrength <= 1) return "Weak";
-    if (passwordStrength <= 3) return "Medium";
-    return "Strong";
+    if (passwordStrength <= 1) return t("strengthWeak");
+    if (passwordStrength <= 3) return t("strengthMedium");
+    return t("strengthStrong");
   };
 
   const handleSubmit = () => {
@@ -224,16 +216,7 @@ export function CreateCompanyUserModal({
       return;
     }
 
-    const payload: {
-      first_name: string;
-      last_name: string;
-      email: string;
-      phone_number: string;
-      username: string;
-      password: string;
-      role: "admin" | "staff" | "viewer" | "delivery";
-      vehicle_type?: VehicleType;
-    } = {
+    const payload: any = {
       first_name: formData.first_name,
       last_name: formData.last_name,
       email: formData.email,
@@ -243,9 +226,8 @@ export function CreateCompanyUserModal({
       role: formData.role,
     };
 
-    // ✅ Only attach vehicle_type when role is delivery
     if (formData.role === "delivery" && formData.vehicle_type) {
-      payload.vehicle_type = formData.vehicle_type as VehicleType;
+      payload.vehicle_type = formData.vehicle_type;
     }
 
     onSubmit(payload);
@@ -276,16 +258,17 @@ export function CreateCompanyUserModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[95%] sm:max-w-5xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] sm:max-h-[85vh] flex flex-col"
       >
-        {/* HEADER */}
         <div className="sticky top-0 z-30 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-secondary/5 to-indigo-50 backdrop-blur-sm bg-opacity-95">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-secondary">
-              {formData.role === "staff" ? "Create Dispatcher" : "Create User"}
+              {formData.role === "staff"
+                ? t("createDispatcher")
+                : t("createUserTitle")}
             </h2>
             <p className="text-xs sm:text-sm text-secondary/60 mt-1">
               {formData.role === "staff"
-                ? "Create and onboard a dispatcher"
-                : "Create and onboard a company user instantly"}
+                ? t("createDispatcherDesc")
+                : t("createUserDesc")}
             </p>
           </div>
           <button
@@ -296,9 +279,7 @@ export function CreateCompanyUserModal({
           </button>
         </div>
 
-        {/* BODY */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1 overflow-y-auto">
-          {/* General backend error banner */}
           {generalServerError && (
             <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -307,16 +288,15 @@ export function CreateCompanyUserModal({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {/* FIRST NAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                First Name <span className="text-red-500">*</span>
+                {t("firstName")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Abebe"
+                  placeholder={t("firstNamePlaceholder")}
                   value={formData.first_name}
                   onChange={(e) => handleChange("first_name", e.target.value)}
                   onBlur={() => handleBlur("first_name")}
@@ -331,16 +311,15 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* LAST NAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Last Name <span className="text-red-500">*</span>
+                {t("lastName")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Bikila"
+                  placeholder={t("lastNamePlaceholder")}
                   value={formData.last_name}
                   onChange={(e) => handleChange("last_name", e.target.value)}
                   onBlur={() => handleBlur("last_name")}
@@ -355,16 +334,15 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* USERNAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Username <span className="text-red-500">*</span>
+                {t("username")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="abebe123"
+                  placeholder={t("usernamePlaceholder")}
                   value={formData.username}
                   onChange={(e) =>
                     handleChange("username", e.target.value.replace(/\s/g, ""))
@@ -381,16 +359,15 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* EMAIL */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Email <span className="text-red-500">*</span>
+                {t("email")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="email"
-                  placeholder="abebe@example.com"
+                  placeholder={t("emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   onBlur={() => handleBlur("email")}
@@ -405,27 +382,25 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* PHONE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Phone Number <span className="text-red-500">*</span>
-                <span className="text-[10px] sm:text-xs text-gray-400 ml-1">
-                  (Ethio Telecom & Safaricom)
-                </span>
+                {t("phoneNumber")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="09XXXXXXXX, 07XXXXXXXX or +251..."
+                  placeholder={t("phonePlaceholder")}
                   value={formData.phone_number}
-                  onChange={(e) => handleChange("phone_number", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("phone_number", e.target.value)
+                  }
                   onBlur={() => handleBlur("phone_number")}
                   className={inputClass("phone_number")}
                 />
                 <div
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-help"
-                  title="Accepts Ethio Telecom (09/+2519) and Safaricom (07/+2517) numbers"
+                  title={t("phoneHint")}
                 >
                   <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
@@ -437,15 +412,14 @@ export function CreateCompanyUserModal({
                 </p>
               ) : (
                 <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                  Ethio Telecom: 0911000000 · Safaricom: 0711000000
+                  {t("phoneHint")}
                 </p>
               )}
             </div>
 
-            {/* ROLE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Role
+                {t("role")}
               </label>
               <div className="relative">
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 z-10" />
@@ -454,23 +428,20 @@ export function CreateCompanyUserModal({
                   onChange={(e) => handleChange("role", e.target.value)}
                   className="w-full appearance-none pl-8 sm:pl-10 pr-8 sm:pr-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-2xl border border-gray-200 bg-white focus:ring-4 focus:ring-secondary/10 focus:border-secondary outline-none transition"
                 >
-                  <option value="admin">Admin</option>
-                  <option value="staff">Dispatcher</option>
-                  <option value="delivery">Delivery Personnel</option>
-                  <option value="viewer">Viewer</option>
+                  <option value="admin">{t("roleAdmin")}</option>
+                  <option value="staff">{t("roleDispatcher")}</option>
+                  <option value="delivery">{t("roleDelivery")}</option>
+                  <option value="viewer">{t("roleViewer")}</option>
                 </select>
               </div>
             </div>
 
-            {/* ============================================================ */}
-            {/* VEHICLE TYPE — only shown when role = "delivery"             */}
-            {/* ============================================================ */}
             {formData.role === "delivery" && (
               <div className="sm:col-span-2">
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
                   <span className="inline-flex items-center gap-1.5">
                     <Truck className="h-3.5 w-3.5" />
-                    Vehicle Type <span className="text-red-500">*</span>
+                    {t("vehicleType")} <span className="text-red-500">*</span>
                   </span>
                 </label>
                 <CustomSelect
@@ -480,13 +451,13 @@ export function CreateCompanyUserModal({
                     setTouched((prev) => ({ ...prev, vehicle_type: true }));
                   }}
                   options={[
-                    { value: "", label: "Select Vehicle Type" },
+                    { value: "", label: t("selectVehicleType") },
                     ...VEHICLE_CHOICES.map((v) => ({
                       value: v.value,
                       label: v.label,
                     })),
                   ]}
-                  placeholder="Select Vehicle Type"
+                  placeholder={t("selectVehicleType")}
                   className={
                     getFieldError("vehicle_type") ? "border-red-500" : ""
                   }
@@ -498,22 +469,21 @@ export function CreateCompanyUserModal({
                   </p>
                 ) : (
                   <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                    Select the type of vehicle this delivery person will use.
+                    {t("vehicleTypeHint")}
                   </p>
                 )}
               </div>
             )}
 
-            {/* PASSWORD */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Password <span className="text-red-500">*</span>
+                {t("password")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Strong password..."
+                  placeholder={t("passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                   onBlur={() => handleBlur("password")}
@@ -535,15 +505,15 @@ export function CreateCompanyUserModal({
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] sm:text-xs text-gray-500">
-                      Password strength
+                      {t("passwordStrength")}
                     </span>
                     <span
                       className={`text-[10px] sm:text-xs font-medium ${
                         passwordStrength <= 1
                           ? "text-red-500"
                           : passwordStrength <= 3
-                            ? "text-yellow-500"
-                            : "text-green-600"
+                          ? "text-yellow-500"
+                          : "text-green-600"
                       }`}
                     >
                       {passwordStrengthText()}
@@ -558,8 +528,8 @@ export function CreateCompanyUserModal({
                             ? passwordStrength <= 1
                               ? "bg-red-500"
                               : passwordStrength <= 3
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
                             : "bg-gray-200"
                         }`}
                       />
@@ -575,16 +545,15 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* CONFIRM PASSWORD */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Confirm Password <span className="text-red-500">*</span>
+                {t("confirmPassword")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm password..."
+                  placeholder={t("confirmPasswordPlaceholder")}
                   value={formData.confirm_password}
                   onChange={(e) =>
                     handleChange("confirm_password", e.target.value)
@@ -614,13 +583,12 @@ export function CreateCompanyUserModal({
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="sticky bottom-0 z-20 mt-auto px-4 sm:px-6 py-4 sm:py-5 border-t border-gray-100 bg-gray-50/95 backdrop-blur-sm flex flex-row justify-end gap-2 sm:gap-3 rounded-b-2xl sm:rounded-b-3xl">
           <button
             onClick={onClose}
             className="flex-1 px-4 sm:px-5 py-2 sm:py-3 rounded-xl border border-gray-200 hover:bg-white transition font-medium text-sm sm:text-base"
           >
-            Cancel
+            {t("cancelBtn")}
           </button>
           <button
             onClick={handleSubmit}
@@ -630,14 +598,14 @@ export function CreateCompanyUserModal({
             {loading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />{" "}
-                Creating...
+                {t("createBtn")}
               </>
             ) : (
               <>
                 <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {formData.role === "staff"
-                  ? "Create Dispatcher"
-                  : "Create User"}
+                  ? t("createDispatcher")
+                  : t("createUserTitle")}
               </>
             )}
           </button>

@@ -7,6 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import {
   X,
   MapPin,
@@ -98,9 +99,6 @@ const ADDIS_ABABA_POLYGON = {
   },
 };
 
-const OUTSIDE_MESSAGE =
-  "This location is outside Addis Ababa. Our service is currently available only within Addis Ababa.";
-
 const roundCoord = (n: number) => n.toFixed(6);
 const COORDINATE_REGEX = /^-?\d{1,3}(\.\d+)?$/;
 
@@ -145,6 +143,8 @@ export default function LocationPickerModal({
   initialLon,
   initialAddress,
 }: LocationPickerModalProps) {
+  const { t } = useTranslation("company");
+
   // ── State ────────────────────────────────────────────────────────
   const [selectedLat, setSelectedLat] = useState<string>(
     initialLat || String(ADDIS_ABABA_CENTER.lat)
@@ -165,6 +165,9 @@ export default function LocationPickerModal({
   const [toastType, setToastType] = useState<"error" | "success" | "info">(
     "info"
   );
+
+  // ── Derived: translated OUTSIDE_MESSAGE ──
+  const outsideMessage = t("outsideAddisMessage");
 
   // ── Derived state: is current location valid? ─────────────────────
   const isLocationValid = useMemo(() => {
@@ -237,12 +240,12 @@ export default function LocationPickerModal({
       script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
       script.id = scriptId;
       script.onload = () => setLeafletLoaded(true);
-      script.onerror = () => showToast("Failed to load map library", "error");
+      script.onerror = () => showToast(t("mapLibraryFailed"), "error");
       document.head.appendChild(script);
     } else {
       setLeafletLoaded(true);
     }
-  }, [isOpen, showToast]);
+  }, [isOpen, showToast, t]);
 
   // ── Helpers: geocode & reverse geocode ────────────────────────────
   const reverseGeocode = useCallback(
@@ -290,14 +293,14 @@ export default function LocationPickerModal({
   );
 
   // ─────────────────────────────────────────────────────────────────
-  //  Current-location detection helper (reused by auto-detect + button)
+  //  Current-location detection helper
   // ─────────────────────────────────────────────────────────────────
   const detectCurrentLocation = useCallback(
     (opts: { silentOnDenied?: boolean } = {}) =>
       new Promise<LatLng | null>((resolve) => {
         if (!navigator.geolocation) {
           if (!opts.silentOnDenied) {
-            showToast("Geolocation not supported by your browser.", "error");
+            showToast(t("geolocationNotSupported"), "error");
           }
           resolve(null);
           return;
@@ -311,9 +314,7 @@ export default function LocationPickerModal({
             const curLon = position.coords.longitude;
 
             if (!isWithinAddisAbaba(curLat, curLon)) {
-              // User's real position is outside Addis Ababa:
-              // fall back to whatever we had before and inform the user.
-              showToast(OUTSIDE_MESSAGE, "error");
+              showToast(t("outsideAddisMessage"), "error");
               setDetecting(false);
               resolve(null);
               return;
@@ -341,8 +342,8 @@ export default function LocationPickerModal({
             if (!opts.silentOnDenied) {
               showToast(
                 err.code === 1
-                  ? "Location permission denied. Enable location access."
-                  : "Unable to retrieve location.",
+                  ? t("locationDenied")
+                  : t("locationUnavailable"),
                 "error"
               );
             }
@@ -351,10 +352,10 @@ export default function LocationPickerModal({
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       }),
-    [reverseGeocode, showToast]
+    [reverseGeocode, showToast, t]
   );
 
-  // ── Initial setup (runs once per open) — AUTO-DETECT CURRENT LOCATION ──
+  // ── Initial setup — AUTO-DETECT CURRENT LOCATION ──
   useEffect(() => {
     if (!isOpen) {
       setInitialSetupDone(false);
@@ -366,11 +367,9 @@ export default function LocationPickerModal({
     setInitialSetupDone(true);
 
     const init = async () => {
-      // 👉 Primary behavior: auto-detect the user's current location.
       const detected = await detectCurrentLocation({ silentOnDenied: true });
-      if (detected) return; // Success — we're done.
+      if (detected) return;
 
-      // 👉 Fallback #1: use stored/initial coordinates if provided & valid
       if (
         initialLat &&
         initialLon &&
@@ -392,11 +391,10 @@ export default function LocationPickerModal({
         setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
         setSearchQuery("");
         setDisplayAddress("");
-        showToast(OUTSIDE_MESSAGE, "error");
+        showToast(t("outsideAddisMessage"), "error");
         return;
       }
 
-      // 👉 Fallback #2: geocode the stored address
       if (initialAddress && initialAddress.trim() !== "") {
         setSearching(true);
         setSearchQuery(initialAddress);
@@ -406,10 +404,7 @@ export default function LocationPickerModal({
           setSelectedLon(roundCoord(coords.lng));
           setDisplayAddress(initialAddress);
         } else {
-          showToast(
-            "Could not locate the company address in Addis Ababa. Using default location.",
-            "info"
-          );
+          showToast(t("couldNotLocateAddress"), "info");
           setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
           setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
           setDisplayAddress("");
@@ -418,7 +413,6 @@ export default function LocationPickerModal({
         return;
       }
 
-      // 👉 Fallback #3: default center of Addis Ababa
       setSelectedLat(String(ADDIS_ABABA_CENTER.lat));
       setSelectedLon(String(ADDIS_ABABA_CENTER.lng));
       setDisplayAddress("");
@@ -445,7 +439,6 @@ export default function LocationPickerModal({
     const container = document.getElementById(mapContainerId);
     if (!container) return;
 
-    // Map instance with restricted bounds to Addis Ababa
     const map = L.map(container, {
       zoomControl: false,
       attributionControl: false,
@@ -455,7 +448,7 @@ export default function LocationPickerModal({
       ],
       maxBoundsViscosity: 1.0,
       minZoom: 11,
-    }).setView([startLat, startLng], 15); // closer zoom for current location
+    }).setView([startLat, startLng], 15);
     mapRef.current = map;
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -463,7 +456,6 @@ export default function LocationPickerModal({
       noWrap: true,
     }).addTo(map);
 
-    // Addis Ababa polygon overlay
     L.geoJSON(ADDIS_ABABA_POLYGON, {
       style: {
         fillColor: "#312E81",
@@ -507,11 +499,10 @@ export default function LocationPickerModal({
       }
     };
 
-    // ── Marker drag: reject if outside ──
     marker.on("dragend", async () => {
       const pos = marker.getLatLng();
       if (!isWithinAddisAbaba(pos.lat, pos.lng)) {
-        showToast(OUTSIDE_MESSAGE, "error");
+        showToast(t("outsideAddisMessage"), "error");
         const lastLat = parseFloat(selectedLatRef.current);
         const lastLng = parseFloat(selectedLonRef.current);
         if (!isNaN(lastLat) && !isNaN(lastLng)) {
@@ -524,11 +515,10 @@ export default function LocationPickerModal({
       await handleCoordUpdate(pos.lat, pos.lng);
     });
 
-    // ── Map click: reject if outside ──
     map.on("click", async (e: any) => {
       const { lat, lng } = e.latlng;
       if (!isWithinAddisAbaba(lat, lng)) {
-        showToast(OUTSIDE_MESSAGE, "error");
+        showToast(t("outsideAddisMessage"), "error");
         return;
       }
       marker.setLatLng(e.latlng);
@@ -549,7 +539,7 @@ export default function LocationPickerModal({
       markerRef.current = null;
       setMapReady(false);
     };
-  }, [isOpen, leafletLoaded, initialSetupDone, reverseGeocode, showToast]);
+  }, [isOpen, leafletLoaded, initialSetupDone, reverseGeocode, showToast, t]);
 
   // ── Sync map view when selected coordinates change ────────────────
   useEffect(() => {
@@ -581,15 +571,15 @@ export default function LocationPickerModal({
           setDisplayAddress(finalAddress);
           setSearchQuery(finalAddress);
         } else {
-          showToast(OUTSIDE_MESSAGE, "error");
+          showToast(t("outsideAddisMessage"), "error");
         }
       } catch {
-        showToast("Search failed. Check your connection.", "error");
+        showToast(t("searchFailed"), "error");
       } finally {
         setSearching(false);
       }
     },
-    [geocodeAddress, reverseGeocode, showToast]
+    [geocodeAddress, reverseGeocode, showToast, t]
   );
 
   const handleSearchInputChange = (value: string) => {
@@ -622,7 +612,7 @@ export default function LocationPickerModal({
       !COORDINATE_REGEX.test(selectedLat) ||
       !COORDINATE_REGEX.test(selectedLon)
     ) {
-      showToast("Invalid coordinates", "error");
+      showToast(t("invalidCoordinates"), "error");
       return;
     }
 
@@ -630,7 +620,7 @@ export default function LocationPickerModal({
     const lng = parseFloat(selectedLon);
 
     if (!isWithinAddisAbaba(lat, lng)) {
-      showToast(OUTSIDE_MESSAGE, "error");
+      showToast(t("outsideAddisMessage"), "error");
       return;
     }
 
@@ -659,10 +649,10 @@ export default function LocationPickerModal({
             </div>
             <div className="min-w-0">
               <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight truncate">
-                Select Company Location
+                {t("locationPickerTitle")}
               </h3>
               <p className="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
-                Addis Ababa, Ethiopia — Search, move the marker, or use GPS
+                {t("locationPickerDesc")}
               </p>
             </div>
           </div>
@@ -683,10 +673,10 @@ export default function LocationPickerModal({
                 <Loader2 className="h-8 w-8 text-secondary animate-spin" />
                 <p className="text-xs text-gray-500 font-medium">
                   {!leafletLoaded
-                    ? "Loading map..."
+                    ? t("loadingMap")
                     : detecting
-                    ? "Detecting your current location..."
-                    : "Preparing location..."}
+                    ? t("detectingLocation")
+                    : t("preparingLocation")}
                 </p>
               </div>
             )}
@@ -705,7 +695,7 @@ export default function LocationPickerModal({
                   <Navigation className="h-4 w-4 text-secondary" />
                 )}
                 <span className="hidden sm:inline">
-                  {detecting ? "Locating..." : "My Location"}
+                  {detecting ? t("locating") : t("myLocation")}
                 </span>
               </button>
             )}
@@ -714,7 +704,7 @@ export default function LocationPickerModal({
               <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-gray-100 flex items-center gap-1.5">
                 <MapPin className="h-3 w-3 text-secondary" />
                 <span className="text-[10px] font-bold text-gray-700">
-                  Addis Ababa
+                  {t("addisAbaba")}
                 </span>
               </div>
             )}
@@ -754,7 +744,7 @@ export default function LocationPickerModal({
               <form onSubmit={handleSearchSubmit} className="relative">
                 <input
                   type="text"
-                  placeholder="Search address or place in Addis Ababa..."
+                  placeholder={t("searchAddressPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => handleSearchInputChange(e.target.value)}
                   className="w-full pl-10 pr-12 py-3 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white shadow-sm"
@@ -786,7 +776,7 @@ export default function LocationPickerModal({
               <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50/60 border border-indigo-100 rounded-xl">
                 <Info className="h-3.5 w-3.5 text-indigo-500 flex-shrink-0" />
                 <p className="text-[10px] text-indigo-600 font-medium">
-                  Search is restricted to Addis Ababa, Ethiopia
+                  {t("searchRestrictedNotice")}
                 </p>
               </div>
 
@@ -796,10 +786,10 @@ export default function LocationPickerModal({
                   <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-[11px] font-bold text-red-700">
-                      Outside Addis Ababa
+                      {t("outsideAddisTitle")}
                     </p>
                     <p className="text-[10px] text-red-600 mt-0.5 leading-relaxed">
-                      {OUTSIDE_MESSAGE}
+                      {outsideMessage}
                     </p>
                   </div>
                 </div>
@@ -813,12 +803,12 @@ export default function LocationPickerModal({
               >
                 <h4 className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  Target Coordinates
+                  {t("targetCoordinates")}
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">
-                      Latitude
+                      {t("latitude")}
                     </label>
                     <input
                       type="text"
@@ -834,7 +824,7 @@ export default function LocationPickerModal({
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">
-                      Longitude
+                      {t("longitude")}
                     </label>
                     <input
                       type="text"
@@ -855,7 +845,7 @@ export default function LocationPickerModal({
               <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2 shadow-sm">
                 <h4 className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  Selected Address
+                  {t("selectedAddress")}
                 </h4>
                 <p className="text-sm text-gray-700 leading-relaxed break-words min-h-[2rem]">
                   {displayAddress || "—"}
@@ -865,8 +855,7 @@ export default function LocationPickerModal({
               {/* Info note */}
               <div className="hidden md:p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
                 <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
-                  💡 Accurate coordinates ensure precise delivery routes, fees,
-                  and dispatch sequences within Addis Ababa.
+                  {t("accurateCoordsNote")}
                 </p>
               </div>
             </div>
@@ -877,12 +866,14 @@ export default function LocationPickerModal({
                 onClick={onClose}
                 className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 active:scale-[0.98] transition-all"
               >
-                Cancel
+                {t("cancelLocation")}
               </button>
               <button
                 onClick={handleSave}
                 disabled={!isLocationValid}
-                title={!isLocationValid ? OUTSIDE_MESSAGE : "Apply this location"}
+                title={
+                  !isLocationValid ? outsideMessage : t("applyLocationTitle")
+                }
                 className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   isLocationValid
                     ? "bg-gradient-to-r from-secondary to-secondary-light hover:from-[#5b4694] hover:to-[#6b55a8] text-white shadow-lg shadow-purple-100 active:scale-[0.98]"
@@ -890,7 +881,7 @@ export default function LocationPickerModal({
                 }`}
               >
                 <Check className="h-5 w-5" />
-                Apply Location
+                {t("applyLocation")}
               </button>
             </div>
           </div>

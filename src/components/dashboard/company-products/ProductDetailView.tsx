@@ -14,8 +14,10 @@ import {
   XCircle,
   Sparkles,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Product } from "./ProductTable";
 import MealCategoryIcon from "../../ui/MealCategoryIcon";
+import { localizeField, translateUnit } from "../../../utils/localized";
 
 interface ProductDetailViewProps {
   product: Product;
@@ -25,7 +27,7 @@ interface ProductDetailViewProps {
 }
 
 /* ─────────────────────────────────────────────
-   Small reusable pieces
+   Reusable sub-components
    ───────────────────────────────────────────── */
 
 const InfoTile = ({
@@ -114,18 +116,44 @@ export function ProductDetailView({
   onBack,
   onEdit,
 }: ProductDetailViewProps) {
+  const { t, i18n } = useTranslation("product");
   const [imageError, setImageError] = useState(false);
   const imageUrl = product.image || product.image_url;
   const rating = Number(product.average_rating || 0);
   const reviews = product.total_reviews || 0;
   const currency = product.currency || "ETB";
 
+  // ← Localized fields (Amharic-first when lang = am, English fallback)
+  const displayTitle = localizeField(
+    product.title,
+    product.title_am,
+    i18n.language,
+  );
+  const displayDescription = localizeField(
+    product.description,
+    product.description_am,
+    i18n.language,
+  );
+  const unitLabel = translateUnit(product.unit, t) || "—";
+
   const stockStatus =
     product.stock === 0
-      ? { tone: "danger" as const, icon: XCircle, label: "Out of stock" }
+      ? {
+          tone: "danger" as const,
+          icon: XCircle,
+          label: t("productDetail.status.outOfStock"),
+        }
       : product.stock < 10
-        ? { tone: "warning" as const, icon: TrendingDown, label: "Low stock" }
-        : { tone: "success" as const, icon: TrendingUp, label: "In stock" };
+        ? {
+            tone: "warning" as const,
+            icon: TrendingDown,
+            label: t("productDetail.status.lowStock"),
+          }
+        : {
+            tone: "success" as const,
+            icon: TrendingUp,
+            label: t("productDetail.status.inStock"),
+          };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
@@ -136,8 +164,8 @@ export function ProductDetailView({
             <button
               type="button"
               onClick={onBack}
-              aria-label="Back to products"
-              title="Back to products"
+              aria-label={t("productDetail.actions.backToProducts")}
+              title={t("productDetail.actions.backToProducts")}
               className="flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-gray-900 active:scale-95"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -146,13 +174,16 @@ export function ProductDetailView({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-gray-400">
                 <span className="truncate">
-                  {companyName || "Company"}
+                  {companyName ||
+                    t("productDetail.breadcrumb.companyFallback")}
                 </span>
                 <span className="text-gray-300">/</span>
-                <span className="truncate">Product</span>
+                <span className="truncate">
+                  {t("productDetail.breadcrumb.product")}
+                </span>
               </div>
               <h2 className="mt-0.5 truncate text-base sm:text-xl font-bold tracking-tight text-secondary">
-                {product.title}
+                {displayTitle}
               </h2>
             </div>
           </div>
@@ -164,7 +195,9 @@ export function ProductDetailView({
               className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-secondary px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md active:scale-95"
             >
               <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Edit</span>
+              <span className="hidden xs:inline">
+                {t("productDetail.actions.edit")}
+              </span>
             </button>
           )}
         </div>
@@ -173,7 +206,7 @@ export function ProductDetailView({
       {/* ─────────── Body ─────────── */}
       <div className="p-4 sm:p-6">
         <div className="grid gap-5 lg:gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-          {/* ═══ Left column: Image + status ═══ */}
+          {/* ═══ LEFT column: Image + status + price ═══ */}
           <div className="space-y-4">
             {/* Image */}
             <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-gray-50 to-white">
@@ -181,24 +214,25 @@ export function ProductDetailView({
                 {imageUrl && !imageError ? (
                   <img
                     src={imageUrl}
-                    alt={product.title}
+                    alt={displayTitle}
                     className="max-h-full w-full object-contain"
                     onError={() => setImageError(true)}
                   />
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-gray-300">
                     <Package className="h-14 w-14" strokeWidth={1.5} />
-                    <span className="text-xs font-medium">No image</span>
+                    <span className="text-xs font-medium">
+                      {t("common.states.noImage")}
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Featured badge on image */}
               {product.is_featured && (
                 <div className="absolute top-3 right-3">
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/95 backdrop-blur-sm border border-amber-200 px-2.5 py-1 text-[10px] font-bold text-amber-700 shadow-sm">
                     <Sparkles className="h-3 w-3" />
-                    FEATURED
+                    {t("productDetail.image.featured")}
                   </span>
                 </div>
               )}
@@ -214,14 +248,16 @@ export function ProductDetailView({
                 tone={product.is_featured ? "info" : "neutral"}
                 icon={product.is_featured ? Star : undefined}
               >
-                {product.is_featured ? "Featured" : "Not featured"}
+                {product.is_featured
+                  ? t("productDetail.status.featured")
+                  : t("productDetail.status.notFeatured")}
               </StatusPill>
             </div>
 
-            {/* Price block — highlighted */}
+            {/* Price block */}
             <div className="rounded-2xl border border-secondary/15 bg-gradient-to-br from-secondary/[0.05] to-secondary/[0.02] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/60">
-                Price
+                {t("productDetail.price.label")}
               </p>
               <p className="mt-1 text-2xl font-extrabold tracking-tight text-secondary">
                 {Number(product.price || 0).toLocaleString()}
@@ -231,47 +267,66 @@ export function ProductDetailView({
               </p>
               {product.unit && (
                 <p className="mt-1 text-[11px] text-secondary/60">
-                  per {product.unit === "pc" ? "piece" : product.unit}
+                  {product.unit === "pc"
+                    ? t("productDetail.price.perPiece")
+                    : t("productDetail.price.per", { unit: unitLabel })}
                 </p>
               )}
             </div>
           </div>
 
-          {/* ═══ Right column: Details ═══ */}
+          {/* ═══ RIGHT column: Details ═══ */}
           <div className="min-w-0 space-y-5">
             {/* Quick stats grid */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
               <InfoTile
-                label="SKU"
+                label={t("productDetail.tiles.sku")}
                 value={product.sku || "—"}
                 icon={Barcode}
                 accent="primary"
               />
               <InfoTile
-                label="Stock"
-                value={`${product.stock} ${product.unit === "pc" ? "pcs" : product.unit || "units"}`}
+                label={t("productDetail.tiles.stock")}
+                value={`${product.stock} ${
+                  translateUnit(product.unit, t) ||
+                  t("common.units.units")
+                }`}
                 icon={Boxes}
-                accent={stockStatus.tone === "danger" ? "danger" : stockStatus.tone === "warning" ? "warning" : "success"}
+                accent={
+                  stockStatus.tone === "danger"
+                    ? "danger"
+                    : stockStatus.tone === "warning"
+                      ? "warning"
+                      : "success"
+                }
               />
               <InfoTile
-                label="Rating"
-                value={reviews > 0 ? `${rating.toFixed(1)} ★` : "No reviews"}
+                label={t("productDetail.tiles.rating")}
+                value={
+                  reviews > 0
+                    ? `${rating.toFixed(1)} ★`
+                    : t("productDetail.rating.noReviewsValue")
+                }
                 icon={Star}
                 accent="default"
               />
               <InfoTile
-                label="Currency"
+                label={t("productDetail.tiles.currency")}
                 value={currency}
                 icon={BadgeDollarSign}
               />
               <InfoTile
-                label="Unit"
-                value={product.unit === "pc" ? "pcs" : product.unit || "—"}
+                label={t("productDetail.tiles.unit")}
+                value={unitLabel}
                 icon={Package}
               />
               <InfoTile
-                label="Reviews"
-                value={reviews > 0 ? `${reviews} total` : "—"}
+                label={t("productDetail.tiles.reviews")}
+                value={
+                  reviews > 0
+                    ? t("productDetail.rating.total", { count: reviews })
+                    : "—"
+                }
                 icon={Star}
               />
             </div>
@@ -283,18 +338,18 @@ export function ProductDetailView({
                   <Tag className="h-4 w-4" />
                 </span>
                 <h3 className="text-sm font-bold text-gray-900">
-                  Product information
+                  {t("productDetail.productInformation.title")}
                 </h3>
               </div>
 
               <div className="mt-4 space-y-4 text-sm">
-                {product.description && (
+                {displayDescription && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                      Description
+                      {t("productDetail.productInformation.description")}
                     </p>
                     <p className="mt-1.5 whitespace-pre-wrap leading-relaxed text-gray-700">
-                      {product.description}
+                      {displayDescription}
                     </p>
                   </div>
                 )}
@@ -305,7 +360,7 @@ export function ProductDetailView({
                       <Tag className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                       <div className="min-w-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                          Category
+                          {t("productDetail.productInformation.category")}
                         </p>
                         <p className="mt-0.5 truncate font-semibold text-gray-800">
                           {product.category}
@@ -319,7 +374,7 @@ export function ProductDetailView({
                       <Boxes className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                       <div className="min-w-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                          Brand
+                          {t("productDetail.productInformation.brand")}
                         </p>
                         <p className="mt-0.5 truncate font-semibold text-gray-800">
                           {product.brand}
@@ -333,7 +388,7 @@ export function ProductDetailView({
                       <Barcode className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                       <div className="min-w-0">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                          Barcode
+                          {t("productDetail.productInformation.barcode")}
                         </p>
                         <p className="mt-0.5 break-all font-mono text-xs font-semibold text-gray-800">
                           {product.barcode}
@@ -348,7 +403,9 @@ export function ProductDetailView({
                         <UtensilsCrossed className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                            Meal Availability
+                            {t(
+                              "productDetail.productInformation.mealAvailability",
+                            )}
                           </p>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {product.meal_periods.map((mp) => (
@@ -360,7 +417,11 @@ export function ProductDetailView({
                                   icon={mp}
                                   className="w-3.5 h-3.5 shrink-0"
                                 />
-                                <span>{mp.replace(/-/g, " ")}</span>
+                                <span>
+                                  {t(`mealPeriods.${mp}`, {
+                                    defaultValue: mp.replace(/-/g, " "),
+                                  })}
+                                </span>
                               </span>
                             ))}
                           </div>
@@ -369,14 +430,14 @@ export function ProductDetailView({
                     )}
                 </div>
 
-                {!product.description &&
+                {!displayDescription &&
                   !product.category &&
                   !product.brand &&
                   !product.barcode && (
                     <div className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-3.5 py-4">
                       <Package className="h-4 w-4 text-gray-400" />
                       <p className="text-sm text-gray-500">
-                        No additional product information available.
+                        {t("productDetail.productInformation.empty")}
                       </p>
                     </div>
                   )}
@@ -391,13 +452,18 @@ export function ProductDetailView({
               <div className="min-w-0">
                 <p className="text-sm font-bold text-gray-900">
                   {reviews > 0
-                    ? `${rating.toFixed(1)} average rating`
-                    : "No reviews yet"}
+                    ? t("productDetail.rating.average", {
+                        rating: rating.toFixed(1),
+                      })
+                    : t("productDetail.rating.noReviews")}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
                   {reviews > 0
-                    ? `Based on ${reviews} customer review${reviews === 1 ? "" : "s"}.`
-                    : "Be the first to review this product."}
+                    ? t("productDetail.rating.basedOn", {
+                        count: reviews,
+                        suffix: reviews === 1 ? "" : "s",
+                      })
+                    : t("productDetail.rating.beFirst")}
                 </p>
               </div>
             </div>

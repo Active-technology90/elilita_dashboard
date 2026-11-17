@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Users,
   Building2,
@@ -60,15 +61,11 @@ interface AgentProgress {
   weekly: { actual: number; target: number; percent: number };
   worstPercent: number;
   rank: {
-    label: string;
+    labelKey: string;
     color: string;
     icon: React.ReactNode;
   };
 }
-
-/* ==========================================================================
-   Skeleton stat card
-   ========================================================================== */
 
 const SkeletonStatCard: React.FC = () => (
   <div className="rounded-xl border border-secondary/10 bg-white px-4 py-4">
@@ -77,10 +74,6 @@ const SkeletonStatCard: React.FC = () => (
     <div className="mt-1 h-3 w-24 rounded bg-secondary/[0.06]" />
   </div>
 );
-
-/* ==========================================================================
-   Progress helpers
-   ========================================================================== */
 
 const startOfWeekLocal = (d: Date): Date => {
   const date = new Date(d);
@@ -129,13 +122,6 @@ const resolvePeriodCounts = (
   return { today: 0, thisWeek: 0 };
 };
 
-/**
- * Rank tokens now use the standard palette only:
- *   emerald = Top performer
- *   indigo  = On track
- *   amber   = Needs attention
- *   gray    = No progress
- */
 const getAgentProgress = (agent: MarketingAgent): AgentProgress => {
   const { today, thisWeek } = resolvePeriodCounts(agent);
 
@@ -161,25 +147,25 @@ const getAgentProgress = (agent: MarketingAgent): AgentProgress => {
 
   if (worstPercent >= 80) {
     rank = {
-      label: "Top Performer",
+      labelKey: "rankTopPerformer",
       color: "bg-emerald-50 text-emerald-700 border-emerald-200",
       icon: <Award className="h-3 w-3" />,
     };
   } else if (worstPercent >= 50) {
     rank = {
-      label: "On Track",
+      labelKey: "rankOnTrack",
       color: "bg-indigo-50 text-indigo-700 border-indigo-200",
       icon: <TrendingUp className="h-3 w-3" />,
     };
   } else if (today > 0 || thisWeek > 0) {
     rank = {
-      label: "Needs Attention",
+      labelKey: "rankNeedsAttention",
       color: "bg-amber-50 text-amber-700 border-amber-200",
       icon: <AlertTriangle className="h-3 w-3" />,
     };
   } else {
     rank = {
-      label: "No Progress",
+      labelKey: "rankNoProgress",
       color: "bg-gray-50 text-gray-500 border-gray-200",
       icon: null,
     };
@@ -193,13 +179,6 @@ const getAgentProgress = (agent: MarketingAgent): AgentProgress => {
   };
 };
 
-/**
- * Standard progress bar palette:
- *   ≥80% → emerald
- *   ≥50% → indigo
- *   >0%  → amber
- *    0%  → gray
- */
 const progressBarColor = (percent: number): string => {
   if (percent >= 80) return "bg-emerald-500";
   if (percent >= 50) return "bg-indigo-500";
@@ -212,6 +191,7 @@ const progressBarColor = (percent: number): string => {
    ========================================================================== */
 
 export default function MarketingAgentsManagement() {
+  const { t } = useTranslation("marketingAgents");
   const { toast, showToast } = useToast();
   const [agents, setAgents] = useState<MarketingAgent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,25 +215,70 @@ export default function MarketingAgentsManagement() {
   const [tempSort, setTempSort] = useState("name|asc");
   const [tempCategory, setTempCategory] = useState("all");
 
-  const sortOptions = [
-    { label: "Name (A-Z)", value: "name|asc", icon: <Users className="h-4 w-4" /> },
-    { label: "Name (Z-A)", value: "name|desc", icon: <Users className="h-4 w-4" /> },
-    { label: "Most Companies", value: "companies_count|desc", icon: <Building2 className="h-4 w-4" /> },
-    { label: "Least Companies", value: "companies_count|asc", icon: <Building2 className="h-4 w-4" /> },
-    { label: "Highest Daily Target", value: "daily_target|desc", icon: <Target className="h-4 w-4" /> },
-    { label: "Highest Weekly Target", value: "weekly_target|desc", icon: <Award className="h-4 w-4" /> },
-  ];
+  const sortOptions = useMemo(
+    () => [
+      {
+        label: t("sortNameAsc"),
+        value: "name|asc",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: t("sortNameDesc"),
+        value: "name|desc",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: t("sortMostCompanies"),
+        value: "companies_count|desc",
+        icon: <Building2 className="h-4 w-4" />,
+      },
+      {
+        label: t("sortLeastCompanies"),
+        value: "companies_count|asc",
+        icon: <Building2 className="h-4 w-4" />,
+      },
+      {
+        label: t("sortHighestDailyTarget"),
+        value: "daily_target|desc",
+        icon: <Target className="h-4 w-4" />,
+      },
+      {
+        label: t("sortHighestWeeklyTarget"),
+        value: "weekly_target|desc",
+        icon: <Award className="h-4 w-4" />,
+      },
+    ],
+    [t],
+  );
 
-  const categoryOptions = [
-    { label: "All Agents", value: "all", icon: <Users className="h-4 w-4" /> },
-    { label: "Active", value: "active", icon: <CheckCircle className="h-4 w-4" /> },
-    { label: "Inactive", value: "inactive", icon: <X className="h-4 w-4" /> },
-  ];
+  const categoryOptions = useMemo(
+    () => [
+      {
+        label: t("catAllAgents"),
+        value: "all",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: t("catActive"),
+        value: "active",
+        icon: <CheckCircle className="h-4 w-4" />,
+      },
+      {
+        label: t("catInactive"),
+        value: "inactive",
+        icon: <X className="h-4 w-4" />,
+      },
+    ],
+    [t],
+  );
 
-  const categoryNameMap: Record<string, string> = {
-    active: "Active",
-    inactive: "Inactive",
-  };
+  const categoryNameMap = useMemo(
+    () => ({
+      active: t("catActive"),
+      inactive: t("catInactive"),
+    }),
+    [t],
+  );
 
   const fetchAgents = async () => {
     try {
@@ -263,7 +288,7 @@ export default function MarketingAgentsManagement() {
       setAgents(res.data);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to load marketing agents list");
+      setError(t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -271,6 +296,7 @@ export default function MarketingAgentsManagement() {
 
   useEffect(() => {
     fetchAgents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredAgents = useMemo(() => {
@@ -397,11 +423,11 @@ export default function MarketingAgentsManagement() {
         weekly_target: editFormData.weekly_target,
         is_active: editFormData.is_active,
       });
-      showToast("success", "Agent updated successfully");
+      showToast("success", t("updateSuccess"));
       setEditingAgent(null);
       await fetchAgents();
     } catch (err: any) {
-      showToast("error", err.message || "Failed to update agent");
+      showToast("error", err.message || t("updateFailed"));
     }
   };
 
@@ -410,7 +436,7 @@ export default function MarketingAgentsManagement() {
   const agentColumns: Column<MarketingAgent>[] = [
     {
       key: "agent",
-      header: "Agent",
+      header: t("colAgent"),
       render: (agent) => {
         const { rank } = getAgentProgress(agent);
         return (
@@ -443,13 +469,13 @@ export default function MarketingAgentsManagement() {
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${rank.color}`}
                 >
                   {rank.icon}
-                  {rank.label}
+                  {t(rank.labelKey)}
                 </span>
                 <button
                   type="button"
                   onClick={() => setPersonalModalAgent(agent)}
                   className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-secondary/[0.06] hover:text-secondary"
-                  title="View profile"
+                  title={t("viewProfile")}
                 >
                   <User className="h-3.5 w-3.5" />
                 </button>
@@ -462,7 +488,7 @@ export default function MarketingAgentsManagement() {
     },
     {
       key: "contact",
-      header: "Contact",
+      header: t("colContact"),
       render: (agent) => (
         <div className="space-y-1">
           <p className="flex items-center gap-1.5 text-sm text-gray-700">
@@ -478,36 +504,35 @@ export default function MarketingAgentsManagement() {
     },
     {
       key: "targets",
-      header: "Targets",
+      header: t("colTargets"),
       textMode: "nowrap",
       render: (agent) => (
         <div className="space-y-1">
           <p className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
             <Sun className="h-3.5 w-3.5 text-amber-500" />
-            {agent.daily_target} / day
+            {t("perDay", { count: agent.daily_target })}
           </p>
           <p className="flex items-center gap-1.5 text-xs text-gray-500">
             <CalendarDays className="h-3.5 w-3.5 text-indigo-500" />
-            {agent.weekly_target} / week
+            {t("perWeek", { count: agent.weekly_target })}
           </p>
         </div>
       ),
     },
     {
       key: "performance",
-      header: "Performance",
+      header: t("colPerformance"),
       textMode: "nowrap",
       render: (agent) => {
         const { daily, weekly } = getAgentProgress(agent);
 
         return (
           <div className="min-w-[200px] space-y-2">
-            {/* Today */}
             <div>
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
                   <Sun className="h-3 w-3" />
-                  Today
+                  {t("perfToday")}
                 </span>
                 <span className="text-[11px] font-medium text-gray-700">
                   <span className="font-bold text-gray-900">
@@ -529,12 +554,11 @@ export default function MarketingAgentsManagement() {
               </div>
             </div>
 
-            {/* This week */}
             <div>
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-600">
                   <CalendarRange className="h-3 w-3" />
-                  This week
+                  {t("perfThisWeek")}
                 </span>
                 <span className="text-[11px] font-medium text-gray-700">
                   <span className="font-bold text-gray-900">
@@ -561,7 +585,7 @@ export default function MarketingAgentsManagement() {
     },
     {
       key: "status",
-      header: "Status",
+      header: t("colStatus"),
       textMode: "nowrap",
       render: (agent) => (
         <span
@@ -576,13 +600,13 @@ export default function MarketingAgentsManagement() {
               agent.is_active ? "bg-emerald-500" : "bg-gray-400"
             }`}
           />
-          {agent.is_active ? "Active" : "Inactive"}
+          {agent.is_active ? t("statusActive") : t("statusInactive")}
         </span>
       ),
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("colActions"),
       className: "text-right",
       textMode: "nowrap",
       render: (agent) => (
@@ -591,7 +615,7 @@ export default function MarketingAgentsManagement() {
             type="button"
             onClick={() => openEditModal(agent)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-secondary/15 bg-white text-secondary/70 transition hover:bg-secondary/[0.04] hover:text-secondary"
-            title="Edit agent"
+            title={t("editAgent")}
           >
             <Edit className="h-4 w-4" />
           </button>
@@ -608,14 +632,12 @@ export default function MarketingAgentsManagement() {
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-secondary px-3 text-sm font-semibold text-white transition hover:bg-secondary/90"
           >
             <Eye className="h-4 w-4" />
-            Audit
+            {t("auditBtn")}
           </button>
         </div>
       ),
     },
   ];
-
-  /* ─── Skeleton ───────────────────────────────────────────────── */
 
   const renderSkeleton = () => (
     <div className="rounded-2xl border border-secondary/10 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
@@ -659,17 +681,15 @@ export default function MarketingAgentsManagement() {
     return renderSkeleton();
   }
 
-  /* ─── Render ─────────────────────────────────────────────────── */
-
   return (
     <div className="rounded-2xl border border-secondary/10 bg-white p-4 shadow-sm sm:p-6 lg:p-8">
       <PageHeader
-        title="Marketing Agents"
-        description="Manage agent targets, status, and onboarding activity."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         icon={Users}
         badge={
           <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary sm:text-xs">
-            {agents.length} agents
+            {t("agentsCount", { count: agents.length })}
           </span>
         }
         actions={
@@ -677,15 +697,15 @@ export default function MarketingAgentsManagement() {
             type="button"
             onClick={() => {
               const headers = [
-                "Username",
-                "Email",
-                "Phone",
-                "Companies (total)",
-                "Today",
-                "This week",
-                "Daily Target",
-                "Weekly Target",
-                "Status",
+                t("csvUsername"),
+                t("csvEmail"),
+                t("csvPhone"),
+                t("csvCompaniesTotal"),
+                t("csvToday"),
+                t("csvThisWeek"),
+                t("csvDailyTarget"),
+                t("csvWeeklyTarget"),
+                t("csvStatus"),
               ];
               const rows = filteredAgents.map((agent) => {
                 const { daily, weekly } = getAgentProgress(agent);
@@ -698,7 +718,7 @@ export default function MarketingAgentsManagement() {
                   weekly.actual,
                   agent.daily_target,
                   agent.weekly_target,
-                  agent.is_active ? "Active" : "Inactive",
+                  agent.is_active ? t("statusActive") : t("statusInactive"),
                 ];
               });
               const csv = [
@@ -717,21 +737,19 @@ export default function MarketingAgentsManagement() {
             }}
             className="inline-flex min-h-10 items-center justify-center rounded-xl border border-secondary/15 bg-white px-3.5 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:bg-secondary/[0.04] sm:text-sm"
           >
-            Export
+            {t("export")}
           </button>
         }
         className="mb-6"
       />
 
-      {/* Inactive agents alert banner */}
       {agents.filter((a) => !a.is_active).length > 0 && (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
           <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
           <span className="text-amber-700">
-            <span className="font-semibold">
-              {agents.filter((a) => !a.is_active).length}
-            </span>{" "}
-            inactive agents found.
+            {t("inactiveAlert", {
+              count: agents.filter((a) => !a.is_active).length,
+            })}
             <button
               onClick={() => {
                 setTempCategory("inactive");
@@ -739,7 +757,7 @@ export default function MarketingAgentsManagement() {
               }}
               className="ml-1 font-medium underline underline-offset-2 transition hover:text-amber-800"
             >
-              View inactive agents
+              {t("viewInactiveAgents")}
             </button>
           </span>
           <button
@@ -751,29 +769,28 @@ export default function MarketingAgentsManagement() {
         </div>
       )}
 
-      {/* Top stats — one row of 4 */}
       <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           {
-            label: "Total Agents",
+            label: t("statTotalAgents"),
             value: stats.totalAgents,
             icon: <Users className="h-4 w-4" />,
             tone: "secondary",
           },
           {
-            label: "Companies Registered",
+            label: t("statCompaniesRegistered"),
             value: stats.totalCompanies,
             icon: <Building2 className="h-4 w-4" />,
             tone: "secondary",
           },
           {
-            label: "Active Agents",
+            label: t("statActiveAgents"),
             value: stats.activeAgents,
             icon: <CheckCircle className="h-4 w-4" />,
             tone: "emerald",
           },
           {
-            label: "Avg Daily Target",
+            label: t("statAvgDailyTarget"),
             value: stats.avgDailyTarget,
             icon: <Target className="h-4 w-4" />,
             tone: "secondary",
@@ -804,33 +821,31 @@ export default function MarketingAgentsManagement() {
         ))}
       </div>
 
-      {/* Today / This week aggregate row */}
       <div className="mb-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-            <Sun className="h-3.5 w-3.5" /> Today
+            <Sun className="h-3.5 w-3.5" /> {t("statToday")}
           </p>
           <p className="mt-1 text-lg font-bold text-amber-900">
             {stats.totalToday}
             <span className="ml-1 text-xs font-medium text-amber-700/70">
-              onboarded
+              {t("onboardedLabel")}
             </span>
           </p>
         </div>
         <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700">
-            <CalendarRange className="h-3.5 w-3.5" /> This week
+            <CalendarRange className="h-3.5 w-3.5" /> {t("statThisWeek")}
           </p>
           <p className="mt-1 text-lg font-bold text-indigo-900">
             {stats.totalThisWeek}
             <span className="ml-1 text-xs font-medium text-indigo-700/70">
-              onboarded
+              {t("onboardedLabel")}
             </span>
           </p>
         </div>
       </div>
 
-      {/* Filter toolbar */}
       <div className="mb-5 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
         <div className="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_190px_170px_auto]">
           <SearchInput
@@ -839,7 +854,7 @@ export default function MarketingAgentsManagement() {
               setSearchTerm(value);
               setCurrentPage(1);
             }}
-            placeholder="Search agents..."
+            placeholder={t("searchPlaceholder")}
             debounceMs={300}
             showClearButton
             showMobileFilter
@@ -855,7 +870,7 @@ export default function MarketingAgentsManagement() {
               setCurrentPage(1);
             }}
             options={sortOptions}
-            placeholder="Sort"
+            placeholder={t("sortPlaceholder")}
             className="hidden w-full md:block"
           />
 
@@ -866,7 +881,7 @@ export default function MarketingAgentsManagement() {
               setCurrentPage(1);
             }}
             options={categoryOptions}
-            placeholder="Status"
+            placeholder={t("statusPlaceholder")}
             className="hidden w-full md:block"
           />
 
@@ -884,7 +899,7 @@ export default function MarketingAgentsManagement() {
               className="hidden h-10 items-center justify-center gap-1.5 rounded-xl border border-secondary/15 bg-white px-3 text-sm font-medium text-secondary transition hover:bg-secondary/[0.04] md:inline-flex"
             >
               <X className="h-4 w-4" />
-              Clear
+              {t("clearFilters")}
             </button>
           )}
         </div>
@@ -895,7 +910,7 @@ export default function MarketingAgentsManagement() {
         columns={agentColumns}
         errorMessage={error || null}
         onRetry={fetchAgents}
-        emptyMessage="No marketing agents found matching your query."
+        emptyMessage={t("emptyTable")}
         currentPage={currentPage}
         totalPages={Math.ceil(filteredAgents.length / pageSize)}
         onPageChange={setCurrentPage}
@@ -904,7 +919,6 @@ export default function MarketingAgentsManagement() {
         stickyColumns={1}
       />
 
-      {/* Audit modal */}
       {selectedAgentId && (
         <AgentAuditModal
           agentId={selectedAgentId}
@@ -917,7 +931,6 @@ export default function MarketingAgentsManagement() {
         />
       )}
 
-      {/* Personal info modal */}
       {personalModalAgent && (
         <AgentPersonalInfoModal
           agent={personalModalAgent}
@@ -925,7 +938,6 @@ export default function MarketingAgentsManagement() {
         />
       )}
 
-      {/* Image zoom modal */}
       {zoomImageAgent && zoomImageAgent.profile_image && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center bg-black/75 p-4"
@@ -957,7 +969,6 @@ export default function MarketingAgentsManagement() {
         </div>
       )}
 
-      {/* Filter & sort sheet */}
       <FilterSortSheet
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
@@ -981,20 +992,17 @@ export default function MarketingAgentsManagement() {
         }}
       />
 
-      {/* Mobile bottom sheet for filters */}
       <BottomSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title="Filter Agents"
+        title={t("filterAgents")}
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Search by agent name, username, or email
-          </p>
+          <p className="text-sm text-gray-500">{t("filterAgentsDesc")}</p>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search agents..."
+            placeholder={t("searchPlaceholder")}
             debounceMs={300}
             showClearButton={true}
             className="w-full"
@@ -1007,12 +1015,11 @@ export default function MarketingAgentsManagement() {
             }}
             className="w-full rounded-xl bg-secondary/[0.06] py-3 text-sm font-semibold text-secondary transition hover:bg-secondary/[0.1]"
           >
-            Reset Filters
+            {t("resetFilters")}
           </button>
         </div>
       </BottomSheet>
 
-      {/* Edit agent modal */}
       {editingAgent && (
         <FormModal
           isOpen={!!editingAgent}
@@ -1020,7 +1027,7 @@ export default function MarketingAgentsManagement() {
             setEditingAgent(null);
             setEditFormData({});
           }}
-          title="Edit Marketing Agent"
+          title={t("editAgentTitle")}
           onSubmit={handleEditSave}
           submitting={false}
           maxWidth="lg"
@@ -1028,7 +1035,7 @@ export default function MarketingAgentsManagement() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                First Name
+                {t("firstName")}
               </label>
               <input
                 type="text"
@@ -1044,7 +1051,7 @@ export default function MarketingAgentsManagement() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                Last Name
+                {t("lastName")}
               </label>
               <input
                 type="text"
@@ -1060,7 +1067,7 @@ export default function MarketingAgentsManagement() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                Email
+                {t("email")}
               </label>
               <input
                 type="email"
@@ -1073,7 +1080,7 @@ export default function MarketingAgentsManagement() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                Phone
+                {t("phone")}
               </label>
               <input
                 type="text"
@@ -1089,7 +1096,7 @@ export default function MarketingAgentsManagement() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                Daily Target
+                {t("dailyTarget")}
               </label>
               <input
                 type="number"
@@ -1106,7 +1113,7 @@ export default function MarketingAgentsManagement() {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-secondary/60">
-                Weekly Target
+                {t("weeklyTarget")}
               </label>
               <input
                 type="number"
@@ -1135,7 +1142,7 @@ export default function MarketingAgentsManagement() {
                   className="h-5 w-5 cursor-pointer rounded border-secondary/30 text-secondary transition-all focus:ring-2 focus:ring-secondary"
                 />
                 <span className="text-sm font-semibold text-gray-700">
-                  Active Agent
+                  {t("activeAgent")}
                 </span>
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -1144,7 +1151,9 @@ export default function MarketingAgentsManagement() {
                       : "bg-gray-100 text-gray-500"
                   }`}
                 >
-                  {editFormData.is_active ? "Active" : "Inactive"}
+                  {editFormData.is_active
+                    ? t("statusActive")
+                    : t("statusInactive")}
                 </span>
               </label>
             </div>

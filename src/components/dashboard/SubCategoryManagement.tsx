@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, ImageIcon, Edit, Trash2, Filter, Package2 } from "lucide-react";
 import {
   getSubCategories,
@@ -35,7 +36,8 @@ const MemoizedDataTable = React.memo(DataTable) as typeof DataTable;
 const MemoizedPagination = React.memo(Pagination);
 
 export default function SubCategoryManagement() {
-  const readOnly = useReadOnly(); // true for viewers
+  const { t } = useTranslation("subcategory");
+  const readOnly = useReadOnly();
 
   const [pageSize, setPageSize] = useState(10);
   const [subs, setSubs] = useState<SubCategory[]>([]);
@@ -48,7 +50,6 @@ export default function SubCategoryManagement() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ---- Mobile filter sheet state ----
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tempCategory, setTempCategory] = useState("all");
   const [tempSort, setTempSort] = useState("name|asc");
@@ -83,7 +84,7 @@ export default function SubCategoryManagement() {
       setSubs(subRes.data);
       setCategories(catRes.data);
     } catch (err: any) {
-      setError(err.message || "Failed to load data");
+      setError(err.message || t("loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -91,6 +92,7 @@ export default function SubCategoryManagement() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredSubs = useMemo(() => {
@@ -114,31 +116,28 @@ export default function SubCategoryManagement() {
     );
   }, [subs, categories, searchTerm, categoryFilter]);
 
-  // ========== USE SORTING ==========
   const { sortedItems, handleSort, sortField, sortOrder } = useSorting(
     filteredSubs,
     "name",
     "asc",
   );
 
-  // ========== DERIVED VALUES DEPENDENT ON SORTING ==========
   const sortLabel = useMemo(() => {
     const val = `${sortField}|${sortOrder}`;
     const labels: Record<string, string> = {
-      "name|asc": "Name A-Z",
-      "name|desc": "Name Z-A",
-      "order|asc": "Order ↑",
-      "order|desc": "Order ↓",
-      "company_count|desc": "Most Companies",
-      "company_count|asc": "Fewest Companies",
-      "is_active|desc": "Active First",
-      "is_active|asc": "Inactive First",
+      "name|asc": t("sortNameAsc"),
+      "name|desc": t("sortNameDesc"),
+      "order|asc": t("sortOrderAsc"),
+      "order|desc": t("sortOrderDesc"),
+      "company_count|desc": t("sortMostCompanies"),
+      "company_count|asc": t("sortFewestCompanies"),
+      "is_active|desc": t("sortActiveFirst"),
+      "is_active|asc": t("sortInactiveFirst"),
     };
-    return labels[val] || "Sort";
-  }, [sortField, sortOrder]);
+    return labels[val] || t("sortBy");
+  }, [sortField, sortOrder, t]);
   void sortLabel;
 
-  // Sync temp state with current filters when sheet opens
   useEffect(() => {
     if (sheetOpen) {
       setTempCategory(categoryFilter);
@@ -205,12 +204,11 @@ export default function SubCategoryManagement() {
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
-    if (formData.category === 0) errors.category = "Please select a category";
+    if (!formData.name.trim()) errors.name = t("nameRequired");
+    if (formData.category === 0) errors.category = t("categoryRequired");
     if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug))
-      errors.slug =
-        "Slug must contain only lowercase letters, numbers, and hyphens";
-    if (formData.order < 0) errors.order = "Order must be a positive number";
+      errors.slug = t("slugInvalid");
+    if (formData.order < 0) errors.order = t("orderPositive");
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -220,7 +218,6 @@ export default function SubCategoryManagement() {
     if (readOnly) return;
     if (!validateForm()) return;
 
-    // For edit mode, check if any data actually changed
     if (editingId) {
       const originalSubCategory = subs.find((s) => s.id === editingId);
       if (originalSubCategory) {
@@ -235,10 +232,10 @@ export default function SubCategoryManagement() {
             (formData.description || "") ||
           (originalSubCategory.order || 0) !== formData.order ||
           (originalSubCategory.is_active ?? true) !== formData.is_active ||
-          formData.icon !== null; // If new icon uploaded, consider as change
+          formData.icon !== null;
 
         if (!hasChanges) {
-          showToast("info", "No changes detected");
+          showToast("info", t("noChanges"));
           setModalOpen(false);
           resetForm();
           return;
@@ -262,16 +259,16 @@ export default function SubCategoryManagement() {
       if (editingId) {
         const existing = subs.find((s) => s.id === editingId);
         if (existing) await updateSubCategory(existing.slug, fd);
-        showToast("success", "Updated successfully");
+        showToast("success", t("updatedSuccess"));
       } else {
         await createSubCategory(fd);
-        showToast("success", "Created successfully");
+        showToast("success", t("createdSuccess"));
       }
       setModalOpen(false);
       resetForm();
       fetchData();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Failed");
+      showToast("error", err.response?.data?.detail || t("saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -281,11 +278,11 @@ export default function SubCategoryManagement() {
     if (!deleteTarget || readOnly) return;
     try {
       await deleteSubCategory(deleteTarget.slug);
-      showToast("success", "Subcategory deleted successfully");
+      showToast("success", t("deletedSuccess"));
       setDeleteTarget(null);
       fetchData();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Delete failed");
+      showToast("error", err.response?.data?.detail || t("deleteFailed"));
     }
   };
 
@@ -337,26 +334,26 @@ export default function SubCategoryManagement() {
 
   const categoryOptions: SelectOption[] = useMemo(
     () => [
-      { value: "all", label: "All Categories" },
+      { value: "all", label: t("allCategories") },
       ...categories.map((cat) => ({
         value: String(cat.id),
         label: cat.name,
       })),
     ],
-    [categories],
+    [categories, t],
   );
 
   const columns: Column<SubCategory>[] = useMemo(
     () => [
       {
         key: "rowNumber",
-        header: "No.",
+        header: t("colNo"),
         sortable: false,
         render: (cat: SubCategory & { rowNumber?: number }) => cat.rowNumber,
       },
       {
         key: "icon",
-        header: "Icon",
+        header: t("colIcon"),
         sortable: false,
         render: (sub) =>
           sub.icon ? (
@@ -373,19 +370,19 @@ export default function SubCategoryManagement() {
       },
       {
         key: "name",
-        header: "Name",
+        header: t("colName"),
         sortable: true,
         className: "font-medium text-gray-900",
       },
       {
         key: "name_am",
-        header: "Name (Am)",
+        header: t("colNameAm"),
         sortable: true,
         render: (sub) => sub.name_am || "-",
       },
       {
         key: "category",
-        header: "Category",
+        header: t("colCategory"),
         sortable: true,
         sortKey: "category_name",
         render: (sub) =>
@@ -393,25 +390,25 @@ export default function SubCategoryManagement() {
       },
       {
         key: "item_code",
-        header: "Item Code",
+        header: t("colItemCode"),
         sortable: true,
         render: (sub) => sub.item_code || "-",
       },
       {
         key: "slug",
-        header: "Slug",
+        header: t("colSlug"),
         sortable: true,
         className: "font-mono text-gray-500",
       },
       {
         key: "order",
-        header: "Order",
+        header: t("colOrder"),
         sortable: true,
         render: (sub) => sub.order ?? "-",
       },
       {
         key: "is_active",
-        header: "Is Active",
+        header: t("colIsActive"),
         sortable: true,
         render: (sub) => (
           <span
@@ -421,44 +418,52 @@ export default function SubCategoryManagement() {
                 : "bg-red-100 text-red-800"
             }`}
           >
-            {sub.is_active ? "Yes" : "No"}
+            {sub.is_active ? t("yes") : t("no")}
           </span>
         ),
       },
       {
         key: "company_count",
-        header: "Companies",
+        header: t("colCompanies"),
         sortable: true,
         render: (sub) => sub.company_count ?? 0,
       },
     ],
-    [categories],
+    [categories, t],
   );
 
   if (error) return <ErrorView error={error} onRetry={fetchData} />;
 
   const sortOptions: SelectOption[] = [
-    { value: "name|asc", label: "Name (A-Z)" },
-    { value: "name|desc", label: "Name (Z-A)" },
-    { value: "order|asc", label: "Order (Ascending)" },
-    { value: "order|desc", label: "Order (Descending)" },
-    { value: "company_count|desc", label: "Most Companies" },
-    { value: "company_count|asc", label: "Fewest Companies" },
-    { value: "is_active|desc", label: "Active First" },
-    { value: "is_active|asc", label: "Inactive First" },
+    { value: "name|asc", label: t("sortNameAsc") },
+    { value: "name|desc", label: t("sortNameDesc") },
+    { value: "order|asc", label: t("sortOrderAsc") },
+    { value: "order|desc", label: t("sortOrderDesc") },
+    { value: "company_count|desc", label: t("sortMostCompanies") },
+    { value: "company_count|asc", label: t("sortFewestCompanies") },
+    { value: "is_active|desc", label: t("sortActiveFirst") },
+    { value: "is_active|asc", label: t("sortInactiveFirst") },
+  ];
+
+  const pageSizeOptions: SelectOption[] = [
+    { value: "5", label: t("pageSize5") },
+    { value: "10", label: t("pageSize10") },
+    { value: "15", label: t("pageSize15") },
+    { value: "30", label: t("pageSize30") },
+    { value: "60", label: t("pageSize60") },
   ];
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <Toast toast={toast} />
       <PageHeader
-        title="Subcategories"
-        description="Manage subcategories and connect them to the right parent category."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         icon={Package2}
         badge={
           readOnly ? (
             <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
-              View Only
+              {t("viewOnly")}
             </span>
           ) : undefined
         }
@@ -471,10 +476,10 @@ export default function SubCategoryManagement() {
                 setModalOpen(true);
               }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-              aria-label="Add Subcategory"
+              aria-label={t("addSubcategory")}
             >
               <Plus className="h-4 w-4" />
-              <span>Add Subcategory</span>
+              <span>{t("addSubcategory")}</span>
             </button>
           ) : undefined
         }
@@ -487,10 +492,10 @@ export default function SubCategoryManagement() {
                 setModalOpen(true);
               }}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 sm:text-sm"
-              aria-label="Add Subcategory"
+              aria-label={t("addSubcategory")}
             >
               <Plus className="h-4 w-4" />
-              <span>Add</span>
+              <span>{t("add")}</span>
             </button>
           ) : undefined
         }
@@ -498,6 +503,7 @@ export default function SubCategoryManagement() {
       />
 
       <div className="sticky -top-6 z-[2] -mt-6 mb-4 w-full bg-white pt-6">
+        {/* Desktop filters */}
         <div className="hidden w-full items-center gap-3 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:flex">
           <div className="min-w-0 flex-1">
             <SearchInput
@@ -505,7 +511,7 @@ export default function SubCategoryManagement() {
               onChange={handleInputChange}
               debounceMs={0}
               showClearButton={false}
-              placeholder="Search by name, Amharic name, slug, item code, or category..."
+              placeholder={t("searchDesktop")}
               loading={loading}
             />
           </div>
@@ -523,7 +529,7 @@ export default function SubCategoryManagement() {
                 }
               }}
               options={sortOptions}
-              placeholder="Sort by..."
+              placeholder={t("sortBy")}
               className="w-full"
             />
           </div>
@@ -533,7 +539,7 @@ export default function SubCategoryManagement() {
               value={categoryFilter}
               onChange={setCategoryFilter}
               options={categoryOptions}
-              placeholder="Filter category..."
+              placeholder={t("filterCategory")}
               className="w-full"
             />
           </div>
@@ -542,19 +548,14 @@ export default function SubCategoryManagement() {
             <CustomSelect
               value={String(pageSize)}
               onChange={(value) => setPageSize(Number(value))}
-              options={[
-                { value: "5", label: "5 / page" },
-                { value: "10", label: "10 / page" },
-                { value: "15", label: "15 / page" },
-                { value: "30", label: "30 / page" },
-                { value: "60", label: "60 / page" },
-              ]}
-              placeholder="10 / page"
+              options={pageSizeOptions}
+              placeholder={t("pageSize10")}
               className="w-full"
             />
           </div>
         </div>
 
+        {/* Mobile filters */}
         <div className="flex w-full items-center gap-2 rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)] md:hidden">
           <div className="relative min-w-0 flex-1">
             <SearchInput
@@ -563,17 +564,21 @@ export default function SubCategoryManagement() {
               debounceMs={0}
               loading={loading}
               showClearButton={false}
-              placeholder="Search subcategories..."
+              placeholder={t("searchMobile")}
               className="rounded-xl border-secondary shadow-sm focus:ring-2 focus:ring-secondary/30"
             />
 
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
-              aria-label="Open filters"
+              aria-label={t("openFilters")}
               className="absolute right-1 md:right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center md:rounded-lg md:bg-secondary md:text-white md:shadow-sm md:transition md:hover:bg-secondary/90 md:active:scale-95"
             >
-              <Filter size={14} strokeWidth={2.5} className="text-secondary md:text-white"/>
+              <Filter
+                size={14}
+                strokeWidth={2.5}
+                className="text-secondary md:text-white"
+              />
             </button>
           </div>
 
@@ -581,21 +586,15 @@ export default function SubCategoryManagement() {
             <CustomSelect
               value={String(pageSize)}
               onChange={(value) => setPageSize(Number(value))}
-              options={[
-                { value: "5", label: "5 / page" },
-                { value: "10", label: "10 / page" },
-                { value: "15", label: "15 / page" },
-                { value: "30", label: "30 / page" },
-                { value: "60", label: "60 / page" },
-              ]}
-              placeholder="10 / page"
+              options={pageSizeOptions}
+              placeholder={t("pageSize10")}
               className="w-full text-xs"
             />
           </div>
         </div>
       </div>
 
-      {/* Mobile card view (below md) */}
+      {/* Mobile card view */}
       <div className="block md:hidden">
         {loading ? (
           <MobileCardSkeleton
@@ -609,12 +608,12 @@ export default function SubCategoryManagement() {
               <ImageIcon className="h-8 w-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">
-              No subcategories found
+              {t("emptyTitle")}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
               {searchTerm.trim() || categoryFilter !== "all"
-                ? "Try adjusting your filters."
-                : "Add a new subcategory to get started."}
+                ? t("emptyFiltered")
+                : t("emptyNoData")}
             </p>
           </div>
         ) : (
@@ -645,30 +644,36 @@ export default function SubCategoryManagement() {
                     )}
                   </div>
                   <span
-                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] xs:text-xs font-medium rounded-full ${sub.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] xs:text-xs font-medium rounded-full ${
+                      sub.is_active
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
                   >
                     <span
-                      className={`w-1.5 h-1.5 rounded-full ${sub.is_active ? "bg-emerald-500" : "bg-red-500"}`}
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        sub.is_active ? "bg-emerald-500" : "bg-red-500"
+                      }`}
                     ></span>
-                    {sub.is_active ? "Active" : "Inactive"}
+                    {sub.is_active ? t("statusActive") : t("statusInactive")}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
                   <div>
-                    <span className="font-medium">Category:</span>{" "}
+                    <span className="font-medium">{t("labelCategory")}</span>{" "}
                     {categories.find((c) => c.id === sub.category)?.name ||
                       sub.category}
                   </div>
                   <div>
-                    <span className="font-medium">Item Code:</span>{" "}
+                    <span className="font-medium">{t("labelItemCode")}</span>{" "}
                     {sub.item_code || "—"}
                   </div>
                   <div>
-                    <span className="font-medium">Slug:</span>{" "}
+                    <span className="font-medium">{t("labelSlug")}</span>{" "}
                     <span className="font-mono">{sub.slug}</span>
                   </div>
                   <div>
-                    <span className="font-medium">Order:</span>{" "}
+                    <span className="font-medium">{t("labelOrder")}</span>{" "}
                     {sub.order ?? "—"}
                   </div>
                 </div>
@@ -676,17 +681,17 @@ export default function SubCategoryManagement() {
                   <div className="flex gap-2 pt-1">
                     <button
                       onClick={() => openEdit(sub)}
-                      className="flex-1 bg-secondary/10 text-secondary text-xs font-medium p-1  rounded-xl  hover:bg-secondary/20 min-h-[32px]"
+                      className="flex-1 bg-secondary/10 text-secondary text-xs font-medium p-1 rounded-xl hover:bg-secondary/20 min-h-[32px]"
                     >
                       <Edit size={14} className="inline-block mr-1" />
-                      Edit
+                      {t("edit")}
                     </button>
                     <button
                       onClick={() => handleDeleteClick(sub)}
                       className="flex-1 bg-red-50 text-red-600 text-xs font-medium p-1 rounded-xl hover:bg-red-100 min-h-[32px]"
                     >
                       <Trash2 size={14} className="inline-block mr-1" />
-                      Delete
+                      {t("delete")}
                     </button>
                   </div>
                 )}
@@ -702,7 +707,7 @@ export default function SubCategoryManagement() {
           data={paginatedItemsWithRowNumber}
           columns={columns}
           loading={loading}
-          emptyMessage="No subcategories found"
+          emptyMessage={t("emptyTitle")}
           onEdit={!readOnly ? openEdit : undefined}
           onDelete={!readOnly ? handleDeleteClick : undefined}
           sortField={sortField}
@@ -719,16 +724,6 @@ export default function SubCategoryManagement() {
         />
       </div>
 
-      {/* ========== MOBILE STICKY FILTER BAR ========== */}
-      {/* <MobileActionBar
-        activeFilterCount={activeFilterCount}
-        sortLabel={sortLabel}
-        onOpenFilters={() => setSheetOpen(true)}
-        onOpenSort={() => setSheetOpen(true)}
-        showFilterButton={true}
-      /> */}
-
-      {/* ========== MOBILE FILTER & SORT SHEET ========== */}
       <FilterSortSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -745,12 +740,11 @@ export default function SubCategoryManagement() {
         onClearAll={clearAllFilters}
       />
 
-      {/* Modal */}
       {!readOnly && (
         <FormModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          title={editingId ? "Edit SubCategory" : "New SubCategory"}
+          title={editingId ? t("editSubCategory") : t("newSubCategory")}
           onSubmit={handleSubmit}
           submitting={submitting}
           maxWidth="lg"
@@ -760,7 +754,7 @@ export default function SubCategoryManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Name (English) <span className="text-red-500">*</span>
+                  {t("nameEnglish")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -783,7 +777,7 @@ export default function SubCategoryManagement() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Name (Amharic)
+                  {t("nameAmharic")}
                 </label>
                 <input
                   type="text"
@@ -800,11 +794,11 @@ export default function SubCategoryManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Slug <span className="text-red-500">*</span>
+                  {t("slug")} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. beverages"
+                  placeholder={t("slugPlaceholder")}
                   value={formData.slug}
                   onChange={(e) =>
                     setFormData({ ...formData, slug: e.target.value })
@@ -824,7 +818,7 @@ export default function SubCategoryManagement() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Category <span className="text-red-500">*</span>
+                  {t("category")} <span className="text-red-500">*</span>
                 </label>
                 <CustomSelect
                   value={String(formData.category)}
@@ -832,7 +826,7 @@ export default function SubCategoryManagement() {
                     setFormData({ ...formData, category: Number(val) })
                   }
                   options={categoryOptions.filter((opt) => opt.value !== "all")}
-                  placeholder="Select a category..."
+                  placeholder={t("selectCategory")}
                   className="w-full"
                 />
                 {formErrors.category && (
@@ -847,7 +841,7 @@ export default function SubCategoryManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Item Code
+                  {t("itemCode")}
                 </label>
                 <input
                   type="text"
@@ -860,7 +854,7 @@ export default function SubCategoryManagement() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Order
+                  {t("order")}
                 </label>
                 <input
                   type="number"
@@ -886,7 +880,7 @@ export default function SubCategoryManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Sub Category Icon
+                  {t("subCategoryIcon")}
                 </label>
                 <div
                   className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-200 p-2 flex flex-col items-center justify-center transition-all duration-300 hover:border-secondary hover:bg-gray-50/80"
@@ -901,7 +895,7 @@ export default function SubCategoryManagement() {
                       const file = e.target.files?.[0];
                       if (file) {
                         if (file.size > 5 * 1024 * 1024) {
-                          alert("File must be smaller than 5MB");
+                          alert(t("fileTooLarge"));
                           return;
                         }
                         setFormData({
@@ -917,12 +911,12 @@ export default function SubCategoryManagement() {
                       <div className="relative group/preview">
                         <img
                           src={formData.iconPreview}
-                          alt="Preview"
+                          alt={t("preview")}
                           className="w-16 h-16 rounded-xl object-cover shadow-lg ring-2 ring-secondary/20"
                         />
                         <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="text-white text-[10px] font-medium">
-                            Preview
+                            {t("preview")}
                           </span>
                         </div>
                       </div>
@@ -940,7 +934,7 @@ export default function SubCategoryManagement() {
                           if (fileInput) fileInput.value = "";
                         }}
                         className="mt-2 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 transition-all duration-200 flex items-center justify-center shadow-md hover:shadow-lg"
-                        title="Remove image"
+                        title={t("removeImage")}
                       >
                         <svg
                           className="w-3.5 h-3.5 text-white"
@@ -978,10 +972,10 @@ export default function SubCategoryManagement() {
                         </svg>
                       </div>
                       <span className="text-[11px] font-semibold text-gray-600">
-                        Upload Icon
+                        {t("uploadIcon")}
                       </span>
                       <span className="text-[10px] text-gray-400 mt-0.5">
-                        PNG, JPG up to 5MB
+                        {t("uploadHint")}
                       </span>
                     </label>
                   )}
@@ -989,7 +983,7 @@ export default function SubCategoryManagement() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                  Description
+                  {t("description")}
                 </label>
                 <textarea
                   value={formData.description}
@@ -1017,7 +1011,7 @@ export default function SubCategoryManagement() {
                 htmlFor="is_active"
                 className="text-sm font-semibold text-gray-700 cursor-pointer"
               >
-                Active Subcategory
+                {t("activeSubcategory")}
               </label>
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -1027,9 +1021,11 @@ export default function SubCategoryManagement() {
                 }`}
               >
                 <span
-                  className={`inline-block w-1.5 h-1.5 rounded-full ${formData.is_active ? "bg-emerald-500" : "bg-gray-400"}`}
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    formData.is_active ? "bg-emerald-500" : "bg-gray-400"
+                  }`}
                 ></span>
-                {formData.is_active ? "Visible" : "Hidden"}
+                {formData.is_active ? t("statusVisible") : t("statusHidden")}
               </span>
             </div>
           </div>
@@ -1039,12 +1035,11 @@ export default function SubCategoryManagement() {
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         title={deleteTarget?.name || ""}
-        deleteTitle={"Delete SubCategory"}
+        deleteTitle={t("deleteSubCategory")}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {/* Safe area bottom padding for mobile filter bar */}
       <style>{`
         .safe-bottom {
           padding-bottom: env(safe-area-inset-bottom, 1rem);

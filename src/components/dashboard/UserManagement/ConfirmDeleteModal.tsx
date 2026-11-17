@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 
@@ -15,11 +16,16 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  title = "Delete User",
-  message = "Are you sure you want to delete this user? This action cannot be undone.",
+  title,
+  message,
   loading = false,
 }) => {
+  const { t } = useTranslation("users");
+
   if (!isOpen) return null;
+
+  const finalTitle = title || t("deleteDefaultTitle");
+  const finalMessage = message || t("deleteDefaultMessage");
 
   return (
     <AnimatePresence>
@@ -41,21 +47,34 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <div className="flex items-center gap-2 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
-                <h2 className="text-base sm:text-xl font-bold">{title}</h2>
+                <h2 className="text-base sm:text-xl font-bold">
+                  {finalTitle}
+                </h2>
               </div>
-              <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
+              <button
+                onClick={onClose}
+                className="p-1 rounded-full hover:bg-gray-100"
+                aria-label={t("cancel")}
+              >
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
             <div className="p-6">
-              <p className="text-gray-700">{message}</p>
+              <p className="text-gray-700">{finalMessage}</p>
             </div>
             <div className="flex justify-end gap-3 p-6 border-t border-gray-100">
-              <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-                Cancel
+              <button
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                {t("cancel")}
               </button>
-              <button onClick={onConfirm} disabled={loading} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
-                {loading ? "Deleting..." : "Delete"}
+              <button
+                onClick={onConfirm}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {loading ? t("deletingBtn") : t("deleteBtn")}
               </button>
             </div>
           </motion.div>

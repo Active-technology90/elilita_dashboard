@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Package, Edit, Trash2, Star, Eye } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DataTable, type Column } from "../../ui/DataTable";
 import MealCategoryIcon from "../../ui/MealCategoryIcon";
+import { localizeField, translateUnit } from "../../../utils/localized";
 
 export interface Product {
   id: number;
   sku: string;
   title: string;
+  title_am?: string;              // ← added
+  description?: string;
+  description_am?: string;        // ← added
   price: number;
   currency?: string;
   stock: number;
@@ -16,7 +21,6 @@ export interface Product {
   is_featured?: boolean;
   average_rating?: string | number;
   total_reviews?: number;
-  description?: string;
   category?: string;
   brand?: string;
   barcode?: string;
@@ -36,12 +40,8 @@ interface ProductTableProps {
 
 function StockBadge({ stock }: { stock: number }) {
   let color = "bg-green-100 text-green-800";
-
-  if (stock === 0) {
-    color = "bg-red-100 text-red-800";
-  } else if (stock < 10) {
-    color = "bg-yellow-100 text-yellow-800";
-  }
+  if (stock === 0) color = "bg-red-100 text-red-800";
+  else if (stock < 10) color = "bg-yellow-100 text-yellow-800";
 
   return (
     <span
@@ -59,12 +59,13 @@ function RatingDisplay({
   rating: number;
   reviews: number;
 }) {
+  const { t } = useTranslation("product");
   const safeRating = Number(rating || 0);
 
   if (!reviews) {
     return (
       <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[10px] text-gray-500 sm:text-xs">
-        No reviews
+        {t("productTable.noReviews")}
       </span>
     );
   }
@@ -89,11 +90,9 @@ function RatingDisplay({
             }`}
           />
         ))}
-
         <span className="ml-1 text-xs text-gray-600">
           {safeRating.toFixed(1)}
         </span>
-
         <span className="text-xs text-gray-400">({reviews})</span>
       </div>
     </>
@@ -129,61 +128,75 @@ export function ProductTable({
   onEdit,
   onDelete,
 }: ProductTableProps) {
+  const { t, i18n } = useTranslation("product");
+
   const columns: Column<Product>[] = [
     {
       key: "image",
-      header: "Image",
+      header: t("productTable.columns.image"),
       className: "whitespace-nowrap",
       render: (product) => (
         <ProductImage
           src={product.image || product.image_url}
-          alt={product.title}
+          alt={localizeField(product.title, product.title_am, i18n.language)}
         />
       ),
     },
     {
       key: "sku",
-      header: "SKU",
+      header: t("productTable.columns.sku"),
       className: "whitespace-nowrap font-mono text-[11px] sm:text-sm",
     },
     {
       key: "title",
-      header: "Title",
+      header: t("productTable.columns.title"),
       className: "max-w-[200px] font-medium text-gray-900",
-      render: (product) => (
-        <div className="max-w-[200px]">
-          <span className="block truncate font-medium text-gray-900" title={product.title}>
-            {product.title}
-          </span>
-          {Array.isArray(product.meal_periods) && product.meal_periods.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
-              {product.meal_periods.map((mp) => (
-                <span
-                  key={mp}
-                  className="inline-flex items-center gap-1 rounded bg-secondary/10 px-1.5 py-0.5 text-[9px] font-medium text-secondary capitalize"
-                >
-                  <MealCategoryIcon icon={mp} className="w-2.5 h-2.5 shrink-0" />
-                  <span>{mp.replace(/-/g, " ")}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      ),
+      render: (product) => {
+        const displayTitle = localizeField(
+          product.title,
+          product.title_am,
+          i18n.language,
+        );
+        return (
+          <div className="max-w-[200px]">
+            <span
+              className="block truncate font-medium text-gray-900"
+              title={displayTitle}
+            >
+              {displayTitle}
+            </span>
+            {Array.isArray(product.meal_periods) &&
+              product.meal_periods.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {product.meal_periods.map((mp) => (
+                    <span
+                      key={mp}
+                      className="inline-flex items-center gap-1 rounded bg-secondary/10 px-1.5 py-0.5 text-[9px] font-medium text-secondary capitalize"
+                    >
+                      <MealCategoryIcon
+                        icon={mp}
+                        className="w-2.5 h-2.5 shrink-0"
+                      />
+                      <span>{mp.replace(/-/g, " ")}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+          </div>
+        );
+      },
     },
     {
       key: "price",
-      header: "Price",
+      header: t("productTable.columns.price"),
       className: "whitespace-nowrap text-right",
       render: (product) => {
         const currency = product.currency || "ETB";
-
         return (
           <div className="flex items-center justify-end gap-1.5">
             <span className="text-[11px] font-medium text-gray-900 sm:text-sm">
               {product.price.toLocaleString()}
             </span>
-
             <span
               className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold sm:text-[10px] ${
                 currency === "ETB"
@@ -203,7 +216,7 @@ export function ProductTable({
     },
     {
       key: "rating",
-      header: "Rating",
+      header: t("productTable.columns.rating"),
       className: "whitespace-nowrap",
       render: (product) => (
         <RatingDisplay
@@ -214,19 +227,20 @@ export function ProductTable({
     },
     {
       key: "stock",
-      header: "Stock",
+      header: t("productTable.columns.stock"),
       className: "whitespace-nowrap",
       render: (product) => <StockBadge stock={product.stock} />,
     },
     {
       key: "unit",
-      header: "Unit",
+      header: t("productTable.columns.unit"),
       className: "whitespace-nowrap",
-      render: (product) => (product.unit === "pc" ? "pcs" : product.unit),
+      // ← translated unit code (ቁራጭ / ኪግ / ግራም / ሊትር / ሜትር …)
+      render: (product) => translateUnit(product.unit, t),
     },
     {
       key: "is_featured",
-      header: "Featured",
+      header: t("productTable.columns.featured"),
       className: "whitespace-nowrap",
       render: (product) => (
         <span
@@ -236,7 +250,9 @@ export function ProductTable({
               : "bg-gray-100 text-gray-600"
           }`}
         >
-          {product.is_featured ? "Yes" : "No"}
+          {product.is_featured
+            ? t("productTable.featuredYes")
+            : t("productTable.featuredNo")}
         </span>
       ),
     },
@@ -245,47 +261,54 @@ export function ProductTable({
   if (onView || onEdit || onDelete) {
     columns.push({
       key: "actions",
-      header: "Actions",
+      header: t("productTable.columns.actions"),
       className: "whitespace-nowrap text-right",
-      render: (product) => (
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2">
-          {onView && (
-            <button
-              type="button"
-              onClick={() => onView(product)}
-              className="rounded-md p-1 transition-colors hover:bg-blue-50"
-              title="View details"
-              aria-label={`View details for ${product.title}`}
-            >
-              <Eye className="h-3.5 w-3.5 text-blue-600 sm:h-4 sm:w-4" />
-            </button>
-          )}
+      render: (product) => {
+        const displayTitle = localizeField(
+          product.title,
+          product.title_am,
+          i18n.language,
+        );
+        return (
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+            {onView && (
+              <button
+                type="button"
+                onClick={() => onView(product)}
+                className="rounded-md p-1 transition-colors hover:bg-blue-50"
+                title={t("productTable.tooltips.view")}
+                aria-label={`${t("common.aria.viewDetails")} ${displayTitle}`}
+              >
+                <Eye className="h-3.5 w-3.5 text-blue-600 sm:h-4 sm:w-4" />
+              </button>
+            )}
 
-          {onEdit && (
-            <button
-              type="button"
-              onClick={() => onEdit(product)}
-              className="rounded-md p-1 transition-colors hover:bg-secondary/10"
-              title="Edit product"
-              aria-label={`Edit ${product.title}`}
-            >
-              <Edit className="h-3.5 w-3.5 text-secondary sm:h-4 sm:w-4" />
-            </button>
-          )}
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(product)}
+                className="rounded-md p-1 transition-colors hover:bg-secondary/10"
+                title={t("productTable.tooltips.edit")}
+                aria-label={`${t("common.aria.editItem")} ${displayTitle}`}
+              >
+                <Edit className="h-3.5 w-3.5 text-secondary sm:h-4 sm:w-4" />
+              </button>
+            )}
 
-          {onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(product.id, product.title)}
-              className="rounded-md p-1 transition-colors hover:bg-red-50"
-              title="Delete product"
-              aria-label={`Delete ${product.title}`}
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-600 sm:h-4 sm:w-4" />
-            </button>
-          )}
-        </div>
-      ),
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(product.id, displayTitle)}
+                className="rounded-md p-1 transition-colors hover:bg-red-50"
+                title={t("productTable.tooltips.delete")}
+                aria-label={`${t("common.aria.deleteItem")} ${displayTitle}`}
+              >
+                <Trash2 className="h-3.5 w-3.5 text-red-600 sm:h-4 sm:w-4" />
+              </button>
+            )}
+          </div>
+        );
+      },
     });
   }
 
@@ -293,7 +316,10 @@ export function ProductTable({
     <div className="space-y-2">
       {!loading && products.length > 0 && (
         <div className="hidden text-sm text-gray-500 sm:block">
-          Showing {products.length} of {totalItems} products
+          {t("productTable.showing", {
+            count: products.length,
+            total: totalItems,
+          })}
         </div>
       )}
 
@@ -302,7 +328,7 @@ export function ProductTable({
         columns={columns}
         loading={loading}
         loadingRows={5}
-        emptyMessage="No products found"
+        emptyMessage={t("productTable.empty")}
         stickyColumns={3}
       />
     </div>

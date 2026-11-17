@@ -1,4 +1,5 @@
-// src/components/admin/overview/ChartsSection.tsx
+
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -76,6 +77,8 @@ export default function ChartsSection({
   onNavigate,
   isServiceCompany,
 }: ChartsSectionProps) {
+  const { t } = useTranslation("overview");
+
   return (
     <div className="space-y-3">
       {/* Revenue + order status */}
@@ -90,7 +93,7 @@ export default function ChartsSection({
                   <div className="mb-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                     <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                      Revenue
+                      {t("chartsSection.revenue")}
                     </span>
                   </div>
 
@@ -101,12 +104,12 @@ export default function ChartsSection({
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] font-medium text-gray-500">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-4 rounded-[3px] bg-secondary" />
-                      Current
+                      {t("chartsSection.current")}
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-4 rounded-[3px] border border-secondary/50 bg-secondary/[0.08]" />
-                      Previous
+                      {t("chartsSection.previous")}
                     </div>
                   </div>
                 </div>
@@ -124,7 +127,7 @@ export default function ChartsSection({
                             : "text-gray-500 hover:bg-white hover:text-secondary"
                         }`}
                       >
-                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                        {t(`chartsSection.periods.${p}`)}
                       </button>
                     ))}
                   </div>
@@ -149,6 +152,7 @@ export default function ChartsSection({
                         stroke="rgba(107,114,128,0.09)"
                         vertical={false}
                       />
+
                       <XAxis
                         dataKey="label"
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
@@ -156,6 +160,7 @@ export default function ChartsSection({
                         tickLine={false}
                         interval="preserveStartEnd"
                       />
+
                       <YAxis
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
                         axisLine={false}
@@ -164,14 +169,15 @@ export default function ChartsSection({
                           `${(val / 1000).toFixed(0)}k`
                         }
                       />
+
                       <Tooltip
                         formatter={(value, name) => [
                           typeof value === "number"
                             ? formatCurrency(value)
                             : String(value ?? ""),
                           name === "revenue"
-                            ? "Current"
-                            : "Previous",
+                            ? t("chartsSection.current")
+                            : t("chartsSection.previous"),
                         ]}
                         contentStyle={{
                           borderRadius: "8px",
@@ -180,6 +186,7 @@ export default function ChartsSection({
                           background: "#ffffff",
                         }}
                       />
+
                       <Bar
                         dataKey="prevRevenue"
                         name="Previous"
@@ -206,8 +213,8 @@ export default function ChartsSection({
                 </div>
               ) : (
                 <EmptyState
-                  title="No revenue data yet"
-                  description="Revenue insights will appear here once paid orders are placed."
+                  title={t("chartsSection.noRevenueData")}
+                  description={t("chartsSection.noRevenueDescription")}
                 />
               )}
             </>
@@ -223,11 +230,12 @@ export default function ChartsSection({
                 <div className="mb-1 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                   <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                    {isServiceCompany ? "Bookings" : "Orders"}
+                    {isServiceCompany ? "Bookings" : t("chartsSection.orders")}
                   </span>
                 </div>
+
                 <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
-                  Status distribution
+                  {t("chartsSection.statusDistribution")}
                 </h3>
               </div>
 
@@ -255,9 +263,10 @@ export default function ChartsSection({
                             />
                           ))}
                         </Pie>
+
                         <Tooltip
                           formatter={(value) => [
-                            `${value ?? 0} ${isServiceCompany ? "bookings" : "orders"}`,
+                            `${value ?? 0} ${isServiceCompany ? "bookings" : t("chartsSection.ordersCount")}`,
                           ]}
                           contentStyle={{
                             borderRadius: "8px",
@@ -283,6 +292,7 @@ export default function ChartsSection({
                                 pieOpacity[idx % pieOpacity.length],
                             }}
                           />
+
                           <span className="truncate text-[10px] font-medium text-gray-600">
                             {status.name}
                           </span>
@@ -298,11 +308,11 @@ export default function ChartsSection({
               ) : (
                 <EmptyState
                   compact
-                  title={isServiceCompany ? "No booking status data" : "No order status data"}
+                  title={isServiceCompany ? "No booking status data" : t("chartsSection.noOrderStatusData")}
                   description={
                     isServiceCompany
                       ? "Status distribution will be shown after bookings are made."
-                      : "Status distribution will be shown after orders are placed."
+                      : t("chartsSection.noOrderStatusDescription")
                   }
                 />
               )}
@@ -323,30 +333,34 @@ export default function ChartsSection({
                   <div className="mb-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                     <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                      {isServiceCompany ? "Services" : "Products"}
+                      {isServiceCompany ? "Services" : t("chartsSection.products")}
                     </span>
                   </div>
 
                   <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
-                    {isServiceCompany ? "Booking trend" : "Sales trend"}
+                    {isServiceCompany ? "Booking trend" : t("chartsSection.salesTrend")}
                   </h3>
+
                   <p className="mt-0.5 text-[10px] text-gray-500">
                     {isServiceCompany
                       ? "Monthly service comparison"
-                      : "Monthly product comparison"}
+                      : t("chartsSection.monthlyProductComparison")}
                   </p>
                 </div>
 
                 <div className="flex max-w-full flex-wrap items-center gap-x-3 gap-y-1.5">
                   {topProductNames.map((name, idx) => (
-                    <div key={name} className="flex min-w-0 items-center gap-1.5">
+                    <div
+                      key={name}
+                      className="flex min-w-0 items-center gap-1.5"
+                    >
                       <span
                         className="h-1.5 w-3 shrink-0 rounded-full bg-secondary"
                         style={{
-                          opacity:
-                            1 - (idx % 5) * 0.13,
+                          opacity: 1 - (idx % 5) * 0.13,
                         }}
                       />
+
                       <span className="max-w-[130px] truncate text-[10px] text-gray-600">
                         {name}
                       </span>
@@ -367,12 +381,14 @@ export default function ChartsSection({
                         stroke="rgba(107,114,128,0.12)"
                         vertical={false}
                       />
+
                       <XAxis
                         dataKey="month"
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
                         axisLine={false}
                         tickLine={false}
                       />
+
                       <YAxis
                         tick={{ fontSize: 11, fill: "#9ca3af" }}
                         axisLine={false}
@@ -381,6 +397,7 @@ export default function ChartsSection({
                           `${(val / 1000).toFixed(0)}k`
                         }
                       />
+
                       <Tooltip
                         formatter={(value) => [
                           typeof value === "number"
@@ -423,12 +440,12 @@ export default function ChartsSection({
                   title={
                     isServiceCompany
                       ? "No service trend data"
-                      : "No product trend data"
+                      : t("chartsSection.noProductTrendData")
                   }
                   description={
                     isServiceCompany
                       ? "Service booking trend will appear after services generate bookings over time."
-                      : "Product sales trend will appear after products generate sales over time."
+                      : t("chartsSection.noProductTrendDescription")
                   }
                 />
               )}
@@ -445,12 +462,14 @@ export default function ChartsSection({
                 <div>
                   <div className="mb-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
+
                     <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                      Ranking
+                      {t("chartsSection.ranking")}
                     </span>
                   </div>
+
                   <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
-                    {isServiceCompany ? "Top services" : "Top products"}
+                    {isServiceCompany ? "Top services" : t("chartsSection.topProducts")}
                   </h3>
                 </div>
 
@@ -463,7 +482,7 @@ export default function ChartsSection({
                   }
                   className="rounded-md border border-secondary/10 bg-secondary/[0.035] px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary hover:text-white"
                 >
-                  View all
+                  {t("chartsSection.viewAll")}
                 </button>
               </div>
 
@@ -471,6 +490,7 @@ export default function ChartsSection({
                 <div className="space-y-1.5">
                   {productSalesData.map((product, idx) => {
                     const maxSales = productSalesData[0]?.sales || 0;
+
                     const width = maxSales
                       ? Math.max((product.sales / maxSales) * 100, 4)
                       : 0;
@@ -498,6 +518,7 @@ export default function ChartsSection({
 
                             <div className="mt-1 flex min-w-0 items-center gap-1 text-[10px] text-secondary/80">
                               <Building2 className="h-2.5 w-2.5 shrink-0" />
+
                               <span className="truncate">
                                 {product.company_name}
                               </span>
@@ -521,12 +542,12 @@ export default function ChartsSection({
                   title={
                     isServiceCompany
                       ? "No top services yet"
-                      : "No top products yet"
+                      : t("chartsSection.noTopProducts")
                   }
                   description={
                     isServiceCompany
                       ? "Top services will be listed here once service bookings are available."
-                      : "Top products will be listed here once product sales are available."
+                      : t("chartsSection.noTopProductsDescription")
                   }
                 />
               )}

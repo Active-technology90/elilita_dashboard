@@ -7,6 +7,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { CustomSelect } from "../ui/CustomSelect";
 import type { PayoutData } from "../../utils/payoutReceipt";
 import {
@@ -27,15 +28,6 @@ interface PayoutExportModalProps {
   onSuccess: (message: string) => void;
 }
 
-const PERIOD_OPTIONS = [
-  { value: "daily", label: "Daily (Today)" },
-  { value: "weekly", label: "Weekly (Last 7 Days)" },
-  { value: "monthly", label: "Monthly (This Month)" },
-  { value: "yearly", label: "Yearly (This Year)" },
-  { value: "custom", label: "Custom Date Range" },
-  { value: "all", label: "All Time" },
-];
-
 export function PayoutExportModal({
   isOpen,
   onClose,
@@ -44,12 +36,27 @@ export function PayoutExportModal({
   companyName,
   onSuccess,
 }: PayoutExportModalProps) {
+  const { t } = useTranslation("payoutExportModal");
+
   const [period, setPeriod] = useState<ExportPeriod>("monthly");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+
+  // Translation-driven option list
+  const PERIOD_OPTIONS = useMemo(
+    () => [
+      { value: "daily", label: t("period.daily") },
+      { value: "weekly", label: t("period.weekly") },
+      { value: "monthly", label: t("period.monthly") },
+      { value: "yearly", label: t("period.yearly") },
+      { value: "custom", label: t("period.custom") },
+      { value: "all", label: t("period.all") },
+    ],
+    [t],
+  );
 
   const preview = useMemo(() => {
     const options: ExportFilterOptions = {
@@ -73,14 +80,15 @@ export function PayoutExportModal({
       const filename = buildExportFilename(period, companySlug, dateRange);
       downloadPeriodPayoutCsv(preview, filename);
       onSuccess(
-        `Exported ${preview.records.length} payout record${
-          preview.records.length === 1 ? "" : "s"
-        } (${preview.periodLabel})`
+        t("successMessage", {
+          count: preview.records.length,
+          period: preview.periodLabel,
+        }),
       );
       onClose();
     } catch (err) {
       console.error("Export failed:", err);
-      onSuccess("Failed to export payouts. Please try again.");
+      onSuccess(t("exportFailed"));
     } finally {
       setIsExporting(false);
     }
@@ -103,17 +111,19 @@ export function PayoutExportModal({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-secondary">
-                Export Payouts
+                {t("title")}
               </h3>
               <p className="text-xs text-gray-500">
-                Download {companyName ? companyName : "all companies"} as CSV
+                {t("subtitle", {
+                  company: companyName ? companyName : t("allCompanies"),
+                })}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-100 transition"
-            aria-label="Close"
+            aria-label={t("close")}
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
@@ -124,13 +134,13 @@ export function PayoutExportModal({
           {/* Period */}
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1.5">
-              Export Period
+              {t("exportPeriod")}
             </label>
             <CustomSelect
               value={period}
               onChange={(val) => setPeriod(val as ExportPeriod)}
               options={PERIOD_OPTIONS}
-              placeholder="Select period"
+              placeholder={t("selectPeriod")}
             />
           </div>
 
@@ -139,7 +149,7 @@ export function PayoutExportModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                  Start Date
+                  {t("startDate")}
                 </label>
                 <input
                   type="date"
@@ -151,7 +161,7 @@ export function PayoutExportModal({
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                  End Date
+                  {t("endDate")}
                 </label>
                 <input
                   type="date"
@@ -168,7 +178,7 @@ export function PayoutExportModal({
             <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 p-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-800">
-                Please select both start and end dates for custom range.
+                {t("customRangeWarning")}
               </p>
             </div>
           )}
@@ -177,37 +187,37 @@ export function PayoutExportModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                Status (optional)
+                {t("statusLabel")}
               </label>
               <CustomSelect
                 value={statusFilter}
                 onChange={setStatusFilter}
                 options={[
-                  { value: "", label: "All statuses" },
-                  { value: "pending", label: "Pending" },
-                  { value: "processing", label: "Processing" },
-                  { value: "completed", label: "Completed" },
-                  { value: "failed", label: "Failed" },
+                  { value: "", label: t("status.all") },
+                  { value: "pending", label: t("status.pending") },
+                  { value: "processing", label: t("status.processing") },
+                  { value: "completed", label: t("status.completed") },
+                  { value: "failed", label: t("status.failed") },
                 ]}
-                placeholder="All statuses"
+                placeholder={t("status.all")}
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                Method (optional)
+                {t("methodLabel")}
               </label>
               <CustomSelect
                 value={methodFilter}
                 onChange={setMethodFilter}
                 options={[
-                 { value: "", label: "All Payment Method" },
-    { value: "bank_transfer", label: "Bank Transfer" },
-    { value: "chapa", label: "Chapa" },
-    { value: "cod", label: "Cash on Delivery" },
-    { value: "telebirr", label: "Telebirr" },
-    { value: "arifpay", label: "ArifPay (Direct)" },
+                  { value: "", label: t("method.all") },
+                  { value: "bank_transfer", label: t("method.bankTransfer") },
+                  { value: "chapa", label: t("method.chapa") },
+                  { value: "cod", label: t("method.cod") },
+                  { value: "telebirr", label: t("method.telebirr") },
+                  { value: "arifpay", label: t("method.arifpay") },
                 ]}
-                placeholder="All methods"
+                placeholder={t("method.allMethods")}
               />
             </div>
           </div>
@@ -224,25 +234,25 @@ export function PayoutExportModal({
             {preview.records.length === 0 ? (
               <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
                 <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <span>No payouts found for the selected period.</span>
+                <span>{t("noPayouts")}</span>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-gray-500 block">Records</span>
+                    <span className="text-gray-500 block">{t("stats.records")}</span>
                     <span className="font-bold text-gray-900">
                       {preview.summary.totalRecords}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Completed</span>
+                    <span className="text-gray-500 block">{t("stats.completed")}</span>
                     <span className="font-bold text-emerald-600">
                       {preview.summary.completedCount}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Net Disbursed</span>
+                    <span className="text-gray-500 block">{t("stats.netDisbursed")}</span>
                     <span className="font-bold text-gray-900">
                       ETB{" "}
                       {preview.summary.netDisbursed.toLocaleString(undefined, {
@@ -251,7 +261,7 @@ export function PayoutExportModal({
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Platform Fees</span>
+                    <span className="text-gray-500 block">{t("stats.platformFees")}</span>
                     <span className="font-bold text-secondary">
                       ETB{" "}
                       {preview.summary.platformFees.toLocaleString(undefined, {
@@ -262,7 +272,7 @@ export function PayoutExportModal({
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-1.5 text-[11px] text-emerald-700">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Ready to export
+                  {t("readyToExport")}
                 </div>
               </>
             )}
@@ -275,7 +285,7 @@ export function PayoutExportModal({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             onClick={handleExport}
@@ -284,10 +294,8 @@ export function PayoutExportModal({
           >
             <Download className="h-4 w-4" />
             {isExporting
-              ? "Exporting..."
-              : `Export ${preview.records.length || 0} record${
-                  preview.records.length === 1 ? "" : "s"
-                }`}
+              ? t("exporting")
+              : t("exportButton", { count: preview.records.length || 0 })}
           </button>
         </div>
       </div>

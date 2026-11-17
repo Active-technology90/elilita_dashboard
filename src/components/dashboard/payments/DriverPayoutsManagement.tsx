@@ -21,6 +21,7 @@ import {
   Check,
   Info,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   getAdminUnpaidDeliveries,
   getAdminDriverPayouts,
@@ -128,6 +129,7 @@ export function DriverPayoutsManagement({
   companySlug,
   isSuperAdmin: _isSuperAdmin,
 }: DriverPayoutsManagementProps) {
+  const { t } = useTranslation("driverPayouts");
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"unpaid" | "history">("unpaid");
@@ -335,7 +337,11 @@ export function DriverPayoutsManagement({
 
       showToast(
         "success",
-        `Payout of ${selectedNetDisbursable.toFixed(2)} ETB (${selectedOrders.length} orders) disbursed to ${selectedDriverGroup.driver_name}!`
+        t("toasts.payoutDisbursed", {
+          amount: selectedNetDisbursable.toFixed(2),
+          count: selectedOrders.length,
+          driver: selectedDriverGroup.driver_name,
+        })
       );
       setDisburseModalOpen(false);
       setSelectedDriverGroup(null);
@@ -347,7 +353,7 @@ export function DriverPayoutsManagement({
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to disburse payout";
+        t("toasts.disburseFailed");
       showToast("error", errMsg);
     } finally {
       setSubmittingPayout(false);
@@ -363,13 +369,13 @@ export function DriverPayoutsManagement({
         transaction_reference: resolveRef.trim() || undefined,
         notes: resolveNotes.trim() || undefined,
       });
-      showToast("success", "Dispute resolved and payout returned to awaiting confirmation.");
+      showToast("success", t("toasts.disputeResolved"));
       setSelectedPayout(res.data.payout);
       setResolveRef("");
       setResolveNotes("");
       await fetchData();
     } catch (err: any) {
-      showToast("error", err.response?.data?.error || "Failed to resolve dispute");
+      showToast("error", err.response?.data?.error || t("toasts.resolveFailed"));
     } finally {
       setResolvingDispute(false);
     }
@@ -384,17 +390,17 @@ export function DriverPayoutsManagement({
     if (!selectedPayout) return;
     setCancellingPayout(true);
     try {
-      await cancelAdminDriverPayout(selectedPayout.id, "Admin cancelled payout");
+      await cancelAdminDriverPayout(selectedPayout.id, t("toasts.cancelReason"));
       showToast(
         "success",
-        `Payout #${selectedPayout.payout_number} cancelled and orders released back to unpaid list.`
+        t("toasts.payoutCancelled", { number: selectedPayout.payout_number })
       );
       setCancelConfirmModalOpen(false);
       setDetailModalOpen(false);
       setSelectedPayout(null);
       await fetchData();
     } catch (err: any) {
-      showToast("error", err.response?.data?.error || "Failed to cancel payout");
+      showToast("error", err.response?.data?.error || t("toasts.cancelFailed"));
     } finally {
       setCancellingPayout(false);
     }
@@ -424,7 +430,7 @@ export function DriverPayoutsManagement({
       setUnpaidItems(unpaidList);
       setPayouts(payoutList);
     } catch (err: any) {
-      showToast("error", err.message || "Failed to load Delivery person  payout data");
+      showToast("error", err.message || t("toasts.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -567,27 +573,27 @@ export function DriverPayoutsManagement({
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
             <Clock className="h-3.5 w-3.5 text-amber-600 animate-pulse" />
-            Awaiting Confirmation
+            {t("statusBadge.disbursed")}
           </span>
         );
       case "confirmed":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
             <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-            Confirmed
+            {t("statusBadge.confirmed")}
           </span>
         );
       case "disputed":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
             <AlertCircle className="h-3.5 w-3.5 text-red-600" />
-            Disputed by Delivery person 
+            {t("statusBadge.disputed")}
           </span>
         );
       case "cancelled":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700">
-            Cancelled
+            {t("statusBadge.cancelled")}
           </span>
         );
       default:
@@ -607,13 +613,16 @@ export function DriverPayoutsManagement({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Unpaid Delivery Fees
+              {t("metrics.unpaidFees")}
             </p>
             <h3 className="text-2xl font-black text-gray-900 mt-1">
               ETB {totalUnpaidGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </h3>
             <p className="text-xs text-gray-400 mt-1">
-              {unpaidItems.length} orders across {driverGroups.length} Delivery person 
+              {t("metrics.unpaidFeesSubtitle", {
+                orders: unpaidItems.length,
+                drivers: driverGroups.length,
+              })}
             </p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -625,12 +634,12 @@ export function DriverPayoutsManagement({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              COD Cash in Hand
+              {t("metrics.codCash")}
             </p>
             <h3 className="text-2xl font-black text-secondary mt-1">
               ETB {totalCodCollected.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </h3>
-            <p className="text-xs text-gray-400 mt-1">Cash collected from customers</p>
+            <p className="text-xs text-gray-400 mt-1">{t("metrics.codCashSubtitle")}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
             <Banknote className="w-6 h-6" />
@@ -641,12 +650,12 @@ export function DriverPayoutsManagement({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Awaiting Delivery person  Check
+              {t("metrics.awaitingCheck")}
             </p>
             <h3 className="text-2xl font-black text-gray-600 mt-1">
-              {awaitingConfirmationCount} Payouts
+              {t("metrics.payoutsCount", { count: awaitingConfirmationCount })}
             </h3>
-            <p className="text-xs text-gray-400 mt-1">Disbursed · pending Delivery person confirmation</p>
+            <p className="text-xs text-gray-400 mt-1">{t("metrics.awaitingCheckSubtitle")}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <AlertTriangle className="w-6 h-6" />
@@ -657,12 +666,12 @@ export function DriverPayoutsManagement({
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Total Settled
+              {t("metrics.totalSettled")}
             </p>
             <h3 className="text-2xl font-black text-green-600 mt-1">
               ETB {confirmedSettledTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </h3>
-            <p className="text-xs text-gray-400 mt-1">Fully confirmed by delivery persons</p>
+            <p className="text-xs text-gray-400 mt-1">{t("metrics.totalSettledSubtitle")}</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
             <CheckCircle2 className="w-6 h-6" />
@@ -685,7 +694,7 @@ export function DriverPayoutsManagement({
               }`}
             >
               <Truck className="h-4 w-4" />
-              <span>Unpaid Orders & Ready to Disburse</span>
+              <span>{t("tabs.unpaid")}</span>
               <span
                 className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                   activeTab === "unpaid"
@@ -706,7 +715,7 @@ export function DriverPayoutsManagement({
               }`}
             >
               <Wallet className="h-4 w-4" />
-              <span>Payouts History</span>
+              <span>{t("tabs.history")}</span>
               <span
                 className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                   activeTab === "history"
@@ -727,8 +736,8 @@ export function DriverPayoutsManagement({
                 type="text"
                 placeholder={
                   activeTab === "unpaid"
-                    ? "Search Delivery person  name or phone..."
-                    : "Search payout # or Delivery person ..."
+                    ? t("search.unpaidPlaceholder")
+                    : t("search.historyPlaceholder")
                 }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -742,11 +751,11 @@ export function DriverPayoutsManagement({
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="py-2 px-3 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary font-medium text-gray-700"
               >
-                <option value="all">All Statuses</option>
-                <option value="disbursed">Awaiting Confirmation</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="disputed">Disputed</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="all">{t("filters.allStatuses")}</option>
+                <option value="disbursed">{t("filters.disbursed")}</option>
+                <option value="confirmed">{t("filters.confirmed")}</option>
+                <option value="disputed">{t("filters.disputed")}</option>
+                <option value="cancelled">{t("filters.cancelled")}</option>
               </select>
             )}
 
@@ -754,7 +763,7 @@ export function DriverPayoutsManagement({
               onClick={fetchData}
               disabled={loading}
               className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 transition"
-              title="Refresh data"
+              title={t("actions.refresh")}
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-secondary" : ""}`} />
             </button>
@@ -769,9 +778,9 @@ export function DriverPayoutsManagement({
                 <div className="w-16 h-16 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto mb-3">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
-                <h4 className="text-base font-bold text-gray-900">All Delivery Persons Settled</h4>
+                <h4 className="text-base font-bold text-gray-900">{t("unpaidEmpty.title")}</h4>
                 <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1">
-                  There are currently no unpaid completed deliveries awaiting payout.
+                  {t("unpaidEmpty.description")}
                 </p>
               </div>
             ) : (
@@ -795,7 +804,9 @@ export function DriverPayoutsManagement({
                               {group.driver_name}
                             </h4>
                             <span className="bg-gray-100 text-gray-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                              {group.orders.length} Deliveries
+                              {t("driverCard.deliveriesCount", {
+                                count: group.orders.length,
+                              })}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
@@ -807,7 +818,7 @@ export function DriverPayoutsManagement({
                             )}
                             <span>·</span>
                             <span>
-                              Store: {group.company_name || group.orders[0]?.company_name || "Company Store"}
+                              {t("driverCard.store")}: {group.company_name || group.orders[0]?.company_name || t("driverCard.companyStore")}
                             </span>
                           </div>
                         </div>
@@ -817,7 +828,7 @@ export function DriverPayoutsManagement({
                       <div className="flex flex-wrap items-center gap-4 sm:gap-6 justify-between md:justify-end">
                         <div className="text-right">
                           <p className="text-[11px] text-gray-400 font-semibold uppercase">
-                            Gross Fees
+                            {t("driverCard.grossFees")}
                           </p>
                           <p className="text-sm font-bold text-gray-700">
                             +{group.total_gross_fees.toFixed(2)} ETB
@@ -827,7 +838,7 @@ export function DriverPayoutsManagement({
                         {group.total_cod_collected > 0 && (
                           <div className="text-right">
                             <p className="text-[11px] text-amber-600 font-semibold uppercase">
-                              COD Collected
+                              {t("driverCard.codCollected")}
                             </p>
                             <p className="text-sm font-bold text-amber-700">
                               {group.total_cod_collected.toFixed(2)} ETB
@@ -837,7 +848,7 @@ export function DriverPayoutsManagement({
 
                         <div className="text-right">
                           <p className="text-[11px] text-green-600 font-bold uppercase">
-                            Net Disbursable
+                            {t("driverCard.netDisbursable")}
                           </p>
                           <p className="text-lg font-black text-green-600">
                             {group.suggested_net.toFixed(2)} ETB
@@ -850,13 +861,13 @@ export function DriverPayoutsManagement({
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-bold rounded-xl hover:bg-secondary/90 transition shadow-sm"
                           >
                             <Wallet className="h-3.5 w-3.5" />
-                            <span>Disburse Payout</span>
+                            <span>{t("driverCard.disburse")}</span>
                           </button>
 
                           <button
                             onClick={() => toggleDriverExpand(group.group_key)}
                             className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-500 transition"
-                            title={isExpanded ? "Collapse orders" : "View orders"}
+                            title={isExpanded ? t("driverCard.collapse") : t("driverCard.view")}
                           >
                             {isExpanded ? (
                               <ChevronUp className="h-4 w-4" />
@@ -874,12 +885,12 @@ export function DriverPayoutsManagement({
                         <table className="w-full text-xs text-left">
                           <thead>
                             <tr className="text-gray-400 font-semibold uppercase border-b border-gray-200/60 pb-2">
-                              <th className="py-2 px-3">Order Number</th>
-                              <th className="py-2 px-3">Customer</th>
-                              <th className="py-2 px-3">Completed At</th>
-                              <th className="py-2 px-3">Payment Method</th>
-                              <th className="py-2 px-3 text-right">Delivery Fee</th>
-                              <th className="py-2 px-3 text-right">COD Collected</th>
+                              <th className="py-2 px-3">{t("unpaidTable.orderNumber")}</th>
+                              <th className="py-2 px-3">{t("unpaidTable.customer")}</th>
+                              <th className="py-2 px-3">{t("unpaidTable.completedAt")}</th>
+                              <th className="py-2 px-3">{t("unpaidTable.paymentMethod")}</th>
+                              <th className="py-2 px-3 text-right">{t("unpaidTable.deliveryFee")}</th>
+                              <th className="py-2 px-3 text-right">{t("unpaidTable.codCollected")}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -899,7 +910,7 @@ export function DriverPayoutsManagement({
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       })
-                                    : "N/A"}
+                                    : t("unpaidTable.notAvailable")}
                                 </td>
                                 <td className="py-2.5 px-3">
                                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -914,7 +925,9 @@ export function DriverPayoutsManagement({
                                             : "bg-amber-100 text-amber-700"
                                         }`}
                                       >
-                                        {ord.cod_payment_confirmed ? "COD Handed In" : "COD Pending Turn-in"}
+                                        {ord.cod_payment_confirmed
+                                          ? t("unpaidTable.codHandedIn")
+                                          : t("unpaidTable.codPendingTurnIn")}
                                       </span>
                                     )}
                                   </div>
@@ -948,24 +961,24 @@ export function DriverPayoutsManagement({
                 <div className="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-3">
                   <Wallet className="h-8 w-8" />
                 </div>
-                <h4 className="text-base font-bold text-gray-900">No Payout Records</h4>
+                <h4 className="text-base font-bold text-gray-900">{t("historyEmpty.title")}</h4>
                 <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1">
-                  Disbursed payouts will appear here with confirmation statuses and breakdown.
+                  {t("historyEmpty.description")}
                 </p>
               </div>
             ) : (
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="bg-gray-50/80 text-gray-500 font-bold uppercase border-b border-gray-100">
-                    <th className="py-3.5 px-4">Payout #</th>
-                    <th className="py-3.5 px-4">Delivery Person</th>
-                    <th className="py-3.5 px-4">Frequency</th>
-                    <th className="py-3.5 px-4">Payment Method</th>
-                    <th className="py-3.5 px-4 text-right">Orders</th>
-                    <th className="py-3.5 px-4 text-right">Net Amount</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Disbursed Date</th>
-                    <th className="py-3.5 px-4 text-right">Action</th>
+                    <th className="py-3.5 px-4">{t("historyTable.payoutNumber")}</th>
+                    <th className="py-3.5 px-4">{t("historyTable.driver")}</th>
+                    <th className="py-3.5 px-4">{t("historyTable.frequency")}</th>
+                    <th className="py-3.5 px-4">{t("historyTable.paymentMethod")}</th>
+                    <th className="py-3.5 px-4 text-right">{t("historyTable.orders")}</th>
+                    <th className="py-3.5 px-4 text-right">{t("historyTable.netAmount")}</th>
+                    <th className="py-3.5 px-4">{t("historyTable.status")}</th>
+                    <th className="py-3.5 px-4">{t("historyTable.disbursedDate")}</th>
+                    <th className="py-3.5 px-4 text-right">{t("historyTable.action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -989,12 +1002,12 @@ export function DriverPayoutsManagement({
                         </span>
                         {payout.transaction_reference && (
                           <div className="text-[10px] text-gray-400 truncate max-w-[120px]">
-                            Ref: {payout.transaction_reference}
+                            {t("historyTable.ref")}: {payout.transaction_reference}
                           </div>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-gray-700">
-                        {payout.items_count} orders
+                        {t("historyTable.ordersCount", { count: payout.items_count })}
                       </td>
                       <td className="py-3 px-4 text-right font-black text-gray-900 text-sm">
                         {parseFloat(payout.net_payout_amount).toFixed(2)} ETB
@@ -1015,7 +1028,7 @@ export function DriverPayoutsManagement({
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 text-gray-700 font-semibold text-xs transition"
                         >
                           <Eye className="h-3.5 w-3.5" />
-                          <span>View</span>
+                          <span>{t("historyTable.view")}</span>
                         </button>
                       </td>
                     </tr>
@@ -1030,7 +1043,7 @@ export function DriverPayoutsManagement({
       {/* Disburse Payout Modal */}
       {disburseModalOpen && selectedDriverGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/55 backdrop-blur-md">
-          <div role="dialog" aria-modal="true" aria-label="Disburse driver payout" className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-4xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70 animate-in fade-in zoom-in-95 duration-150">
+          <div role="dialog" aria-modal="true" aria-label={t("disburseModal.ariaLabel")} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-4xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70 animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
             <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
@@ -1038,574 +1051,576 @@ export function DriverPayoutsManagement({
                   <Wallet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">Disburse Driver Payout</h3>
+                  <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
+                    {t("disburseModal.title")}
+                  </h3>
                   <p className="text-xs text-gray-600 mt-0.5 truncate">
-                    Settle completed deliveries for <span className="font-semibold text-secondary">{selectedDriverGroup.driver_name}</span>
+                    {t("disburseModal.subtitle")}{" "}
+                    <span className="font-semibold text-secondary">
+                      {selectedDriverGroup.driver_name}
+                    </span>
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setDisburseModalOpen(false)}
-                aria-label="Close disburse payout"
+                aria-label={t("disburseModal.closeAria")}
                 className="shrink-0 p-2 text-gray-500 hover:text-gray-800 rounded-xl border border-white/70 bg-white/70 hover:bg-white transition shadow-sm"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            
             {/* SCROLLABLE BODY */}
-<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-            {/* Step 1: Payout Interval / Quick Filter */}
-          
-<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-  {/* Section Header */}
-  <div className="flex flex-col gap-1 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-    <div>
-      <h3 className="text-sm font-bold text-gray-900">
-        Payout Interval
-      </h3>
-      <p className="mt-1 text-[11px] text-gray-500">
-        Choose a time period to filter unpaid deliveries.
-      </p>
-    </div>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+              {/* Step 1: Payout Interval / Quick Filter */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {/* Section Header */}
+                <div className="flex flex-col gap-1 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {t("interval.title")}
+                    </h3>
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      {t("interval.subtitle")}
+                    </p>
+                  </div>
 
-    <div className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] font-medium text-gray-600">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-      <span className="font-bold text-gray-900 tabular-nums">
-        {intervalCounts.all}
-      </span>
-      unpaid {intervalCounts.all === 1 ? "order" : "orders"} available
-    </div>
-  </div>
+                  <div className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] font-medium text-gray-600">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    <span className="font-bold text-gray-900 tabular-nums">
+                      {intervalCounts.all}
+                    </span>
+                    {t("interval.unpaidAvailable", { count: intervalCounts.all })}
+                  </div>
+                </div>
 
-  {/* Interval Options */}
-  <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
-    {[
-      {
-        key: "instant",
-        label: "Instant",
-        sub: "Today",
-        count: intervalCounts.instant,
-      },
-      {
-        key: "weekly",
-        label: "Weekly",
-        sub: "Last 7 days",
-        count: intervalCounts.weekly,
-      },
-      {
-        key: "monthly",
-        label: "Monthly",
-        sub: "Last 30 days",
-        count: intervalCounts.monthly,
-      },
-      {
-        key: "manual",
-        label: "All Unpaid",
-        sub: "Manual selection",
-        count: intervalCounts.all,
-      },
-    ].map((item) => {
-      const isSelected = payoutType === item.key;
-      const hasMatches = item.count > 0;
+                {/* Interval Options */}
+                <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4 sm:p-5">
+                  {[
+                    {
+                      key: "instant",
+                      label: t("interval.options.instant.label"),
+                      sub: t("interval.options.instant.sub"),
+                      count: intervalCounts.instant,
+                    },
+                    {
+                      key: "weekly",
+                      label: t("interval.options.weekly.label"),
+                      sub: t("interval.options.weekly.sub"),
+                      count: intervalCounts.weekly,
+                    },
+                    {
+                      key: "monthly",
+                      label: t("interval.options.monthly.label"),
+                      sub: t("interval.options.monthly.sub"),
+                      count: intervalCounts.monthly,
+                    },
+                    {
+                      key: "manual",
+                      label: t("interval.options.manual.label"),
+                      sub: t("interval.options.manual.sub"),
+                      count: intervalCounts.all,
+                    },
+                  ].map((item) => {
+                    const isSelected = payoutType === item.key;
+                    const hasMatches = item.count > 0;
 
-      return (
-        <button
-          key={item.key}
-          type="button"
-          aria-pressed={isSelected}
-          onClick={() =>
-            selectOrdersByInterval(
-              item.key as any,
-              selectedDriverGroup.orders
-            )
-          }
-          className={`
-            relative flex min-h-[112px] flex-col justify-between
-            rounded-xl border p-3 text-left
-            transition-all duration-200
-            focus:outline-none focus-visible:ring-2
-            focus-visible:ring-secondary/30 focus-visible:ring-offset-2
-            ${
-              isSelected
-                ? "border-secondary bg-secondary/[0.06] ring-1 ring-secondary/20"
-                : "border-gray-200 bg-white hover:border-secondary/40 hover:bg-gray-50"
-            }
-          `}
-        >
-          {/* Selected indicator */}
-          {isSelected && (
-            <span className="absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-white">
-              <Check className="h-2.5 w-2.5" />
-            </span>
-          )}
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() =>
+                          selectOrdersByInterval(
+                            item.key as any,
+                            selectedDriverGroup.orders
+                          )
+                        }
+                        className={`
+                          relative flex min-h-[112px] flex-col justify-between
+                          rounded-xl border p-3 text-left
+                          transition-all duration-200
+                          focus:outline-none focus-visible:ring-2
+                          focus-visible:ring-secondary/30 focus-visible:ring-offset-2
+                          ${
+                            isSelected
+                              ? "border-secondary bg-secondary/[0.06] ring-1 ring-secondary/20"
+                              : "border-gray-200 bg-white hover:border-secondary/40 hover:bg-gray-50"
+                          }
+                        `}
+                      >
+                        {/* Selected indicator */}
+                        {isSelected && (
+                          <span className="absolute right-3 top-3 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-white">
+                            <Check className="h-2.5 w-2.5" />
+                          </span>
+                        )}
 
-          {/* Label */}
-          <div className="pr-5">
-            <p
-              className={`text-sm font-bold ${
-                isSelected ? "text-secondary" : "text-gray-900"
-              }`}
-            >
-              {item.label}
-            </p>
-            <p className="mt-1 text-[11px] text-gray-500">
-              {item.sub}
-            </p>
-          </div>
+                        {/* Label */}
+                        <div className="pr-5">
+                          <p
+                            className={`text-sm font-bold ${
+                              isSelected ? "text-secondary" : "text-gray-900"
+                            }`}
+                          >
+                            {item.label}
+                          </p>
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            {item.sub}
+                          </p>
+                        </div>
 
-          {/* Count */}
-          <div className="mt-3 flex items-center justify-between gap-1">
-            <span
-              className={`
-                rounded-md px-2 py-1 text-[10px] font-bold tabular-nums
-                ${
-                  isSelected
-                    ? "bg-secondary text-white"
-                    : hasMatches
-                      ? "bg-gray-100 text-gray-700"
-                      : "bg-gray-50 text-gray-400"
-                }
-              `}
-            >
-              {item.count} {item.count === 1 ? "order" : "orders"}
-            </span>
+                        {/* Count */}
+                        <div className="mt-3 flex items-center justify-between gap-1">
+                          <span
+                            className={`
+                              rounded-md px-2 py-1 text-[10px] font-bold tabular-nums
+                              ${
+                                isSelected
+                                  ? "bg-secondary text-white"
+                                  : hasMatches
+                                    ? "bg-gray-100 text-gray-700"
+                                    : "bg-gray-50 text-gray-400"
+                              }
+                            `}
+                          >
+                            {t("interval.ordersCount", { count: item.count })}
+                          </span>
 
-            {isSelected && (
-              <span className="text-[10px] font-semibold text-secondary">
-                Selected
-              </span>
-            )}
-          </div>
-        </button>
-      );
-    })}
-  </div>
+                          {isSelected && (
+                            <span className="text-[10px] font-semibold text-secondary">
+                              {t("interval.selected")}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-  {/* Selection information */}
-  <div className="flex items-start gap-2 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
-    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
-    <p className="text-[11px] leading-relaxed text-gray-500">
-      {payoutType === "manual"
-        ? "All unpaid deliveries are available. Select the specific orders you want to settle."
-        : `Showing unpaid deliveries matching the ${
-            payoutType === "instant"
-              ? "today"
-              : payoutType === "weekly"
-                ? "last 7 days"
-                : "last 30 days"
-          } payout interval.`}
-    </p>
-  </div>
-</div>
+                {/* Selection information */}
+                <div className="flex items-start gap-2 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <p className="text-[11px] leading-relaxed text-gray-500">
+                    {payoutType === "manual"
+                      ? t("interval.manualHint")
+                      : t("interval.intervalHint", { interval: payoutType })}
+                  </p>
+                </div>
+              </div>
 
+              {/* Step 2: Interactive Order Selection Checklist */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {/* Header */}
+                <div className="border-b border-gray-100 p-4 sm:p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-gray-900">
+                          {t("selection.title")}
+                        </h3>
+                        <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-bold text-secondary">
+                          {selectedAssignmentIds.length}/{selectedDriverGroup.orders.length}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {t("selection.subtitle")}
+                      </p>
+                    </div>
 
-            {/* Step 2: Interactive Order Selection Checklist */}
-         
-<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-  {/* Header */}
-  <div className="border-b border-gray-100 p-4 sm:p-5">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold text-gray-900">
-            Choose Orders to Settle
-          </h3>
-          <span className="rounded-full bg-secondary/10 px-2.5 py-1 text-[11px] font-bold text-secondary">
-            {selectedAssignmentIds.length}/{selectedDriverGroup.orders.length}
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-gray-500">
-          Select the delivered orders you want to include in this payout.
-        </p>
-      </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllOrders}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
+                      >
+                        {t("selection.selectAll")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeselectAllOrders}
+                        disabled={selectedAssignmentIds.length === 0}
+                        className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {t("selection.clear")}
+                      </button>
+                    </div>
+                  </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleSelectAllOrders}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-secondary/40 hover:bg-secondary/5 hover:text-secondary"
-        >
-          Select all
-        </button>
-        <button
-          type="button"
-          onClick={handleDeselectAllOrders}
-          disabled={selectedAssignmentIds.length === 0}
-          className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
+                  {/* Selection progress */}
+                  <div className="mt-4">
+                    <div className="mb-1.5 flex items-center justify-between text-[11px]">
+                      <span className="font-medium text-gray-500">
+                        {t("selection.progress")}
+                      </span>
+                      <span className="font-bold tabular-nums text-gray-700">
+                        {selectedDriverGroup.orders.length > 0
+                          ? Math.round(
+                              (selectedAssignmentIds.length /
+                                selectedDriverGroup.orders.length) *
+                                100
+                            )
+                          : 0}
+                        %
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-secondary transition-all duration-200"
+                        style={{
+                          width: `${
+                            selectedDriverGroup.orders.length > 0
+                              ? (selectedAssignmentIds.length /
+                                  selectedDriverGroup.orders.length) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-    {/* Selection progress */}
-    <div className="mt-4">
-      <div className="mb-1.5 flex items-center justify-between text-[11px]">
-        <span className="font-medium text-gray-500">Selection progress</span>
-        <span className="font-bold tabular-nums text-gray-700">
-          {selectedDriverGroup.orders.length > 0
-            ? Math.round(
-                (selectedAssignmentIds.length /
-                  selectedDriverGroup.orders.length) *
-                  100
-              )
-            : 0}
-          %
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-        <div
-          className="h-full rounded-full bg-secondary transition-all duration-200"
-          style={{
-            width: `${
-              selectedDriverGroup.orders.length > 0
-                ? (selectedAssignmentIds.length /
-                    selectedDriverGroup.orders.length) *
-                  100
-                : 0
-            }%`,
-          }}
-        />
-      </div>
-    </div>
-  </div>
-
-  {/* Empty selection notice */}
-  {selectedAssignmentIds.length === 0 && (
-    <div className="mx-4 mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mx-5">
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-      <div className="min-w-0">
-        <p className="text-xs font-bold text-amber-900">
-          No orders selected
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-amber-800">
-          No orders match the{" "}
-          <span className="font-semibold capitalize">{payoutType}</span>{" "}
-          timeframe ({payoutType === "instant"
-            ? intervalCounts.instant
-            : payoutType === "weekly"
-              ? intervalCounts.weekly
-              : intervalCounts.monthly} matching).
-          Select orders individually or use the All Unpaid option.
-        </p>
-      </div>
-    </div>
-  )}
-
-  {/* Orders list */}
-  <div className="p-4 sm:p-5">
-    <div className="mb-3 flex items-center justify-between">
-      <p className="text-xs font-semibold text-gray-600">
-        Available orders
-      </p>
-      <span className="text-[11px] text-gray-400">
-        {selectedDriverGroup.orders.length} orders
-      </span>
-    </div>
-
-    <div className="max-h-72 space-y-2 overflow-y-auto pr-1 sm:max-h-80 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-      {selectedDriverGroup.orders.map((ord) => {
-        const orderId = getAssignmentId(ord);
-        const isChecked = selectedAssignmentIds.includes(orderId);
-
-        const completedStr = ord.completed_at
-          ? new Date(ord.completed_at).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "Delivered";
-
-        return (
-          <div
-            key={orderId}
-            role="button"
-            tabIndex={0}
-            aria-pressed={isChecked}
-            onClick={() => toggleOrderSelection(orderId)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                toggleOrderSelection(orderId);
-              }
-            }}
-            className={`group flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-              isChecked
-                ? "border-secondary/40 bg-secondary/[0.04] shadow-sm"
-                : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70"
-            }`}
-          >
-            {/* Checkbox */}
-            <input
-              type="checkbox"
-              checked={isChecked}
-              onClick={(e) => e.stopPropagation()}
-              onChange={() => toggleOrderSelection(orderId)}
-              className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-secondary focus:ring-secondary/30"
-              aria-label={`Select order ${ord.order_number}`}
-            />
-
-            {/* Order information */}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-gray-900">
-                  #{ord.order_number}
-                </span>
-
-                <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-gray-600">
-                  {ord.payment_method}
-                </span>
-
-                {ord.payment_method === "cod" && (
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                      ord.cod_payment_confirmed
-                        ? "bg-green-50 text-green-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {ord.cod_payment_confirmed
-                      ? "COD received"
-                      : "COD pending"}
-                  </span>
+                {/* Empty selection notice */}
+                {selectedAssignmentIds.length === 0 && (
+                  <div className="mx-4 mt-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mx-5">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-amber-900">
+                        {t("selection.emptyTitle")}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                        {t("selection.emptyDescription", {
+                          type: payoutType,
+                          count:
+                            payoutType === "instant"
+                              ? intervalCounts.instant
+                              : payoutType === "weekly"
+                                ? intervalCounts.weekly
+                                : intervalCounts.monthly,
+                        })}
+                      </p>
+                    </div>
+                  </div>
                 )}
+
+                {/* Orders list */}
+                <div className="p-4 sm:p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-600">
+                      {t("selection.availableOrders")}
+                    </p>
+                    <span className="text-[11px] text-gray-400">
+                      {t("selection.ordersCount", {
+                        count: selectedDriverGroup.orders.length,
+                      })}
+                    </span>
+                  </div>
+
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1 sm:max-h-80 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+                    {selectedDriverGroup.orders.map((ord) => {
+                      const orderId = getAssignmentId(ord);
+                      const isChecked = selectedAssignmentIds.includes(orderId);
+
+                      const completedStr = ord.completed_at
+                        ? new Date(ord.completed_at).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : t("selection.delivered");
+
+                      return (
+                        <div
+                          key={orderId}
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isChecked}
+                          onClick={() => toggleOrderSelection(orderId)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleOrderSelection(orderId);
+                            }
+                          }}
+                          className={`group flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+                            isChecked
+                              ? "border-secondary/40 bg-secondary/[0.04] shadow-sm"
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70"
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => toggleOrderSelection(orderId)}
+                            className="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-secondary focus:ring-secondary/30"
+                            aria-label={t("selection.selectOrderAria", {
+                              order: ord.order_number,
+                            })}
+                          />
+
+                          {/* Order information */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-bold text-gray-900">
+                                #{ord.order_number}
+                              </span>
+
+                              <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold capitalize text-gray-600">
+                                {ord.payment_method}
+                              </span>
+
+                              {ord.payment_method === "cod" && (
+                                <span
+                                  className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                                    ord.cod_payment_confirmed
+                                      ? "bg-green-50 text-green-700"
+                                      : "bg-amber-50 text-amber-700"
+                                  }`}
+                                >
+                                  {ord.cod_payment_confirmed
+                                    ? t("selection.codReceived")
+                                    : t("selection.codPending")}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                              <span className="truncate">
+                                {ord.customer_name}
+                              </span>
+                              <span className="hidden text-gray-300 sm:inline">•</span>
+                              <span>{completedStr}</span>
+                            </div>
+                          </div>
+
+                          {/* Delivery fee */}
+                          <div className="shrink-0 text-right">
+                            <p className="text-[10px] font-medium text-gray-400">
+                              {t("selection.deliveryFee")}
+                            </p>
+                            <p className="mt-0.5 text-sm font-bold tabular-nums text-gray-900">
+                              +{parseFloat(ord.delivery_fee || "0").toFixed(2)}
+                              <span className="ml-1 text-[10px] font-semibold text-gray-500">
+                                ETB
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer summary */}
+                <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
+                  <div>
+                    <p className="text-[11px] text-gray-500">{t("selection.selectedOrders")}</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {t("selection.ofTotal", {
+                        selected: selectedAssignmentIds.length,
+                        total: selectedDriverGroup.orders.length,
+                      })}
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-500">
+                    {selectedAssignmentIds.length === 0
+                      ? t("selection.selectToContinue")
+                      : t("selection.updated")}
+                  </span>
+                </div>
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
-                <span className="truncate">
-                  {ord.customer_name}
-                </span>
-                <span className="hidden text-gray-300 sm:inline">•</span>
-                <span>{completedStr}</span>
+              {/* Financial Summary Box */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {/* Summary header */}
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {t("summary.title")}
+                    </h3>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      {t("summary.subtitle")}
+                    </p>
+                  </div>
+
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                    <Wallet className="h-4.5 w-4.5" />
+                  </div>
+                </div>
+
+                {/* Breakdown */}
+                <div className="space-y-4 p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                        <Package className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">
+                          {t("summary.selectedDeliveries")}
+                        </p>
+                        <p className="text-[11px] text-gray-400">
+                          {t("summary.selectedDeliveriesSubtitle")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="text-sm font-bold tabular-nums text-gray-900">
+                      {selectedOrders.length}
+                      <span className="ml-1 text-xs font-medium text-gray-400">
+                        / {selectedDriverGroup.orders.length}
+                      </span>
+                    </span>
+                  </div>
+
+                  <div className="h-px bg-gray-100" />
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <Truck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">
+                          {t("summary.totalDeliveryFees")}
+                        </p>
+                        <p className="text-[11px] text-gray-400">
+                          {t("summary.totalDeliveryFeesSubtitle")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="text-sm font-bold tabular-nums text-gray-900">
+                      {selectedGrossFees.toFixed(2)}
+                      <span className="ml-1 text-[10px] font-semibold text-gray-500">
+                        ETB
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Final payout amount */}
+                <div className="border-t border-gray-100 bg-gray-50/80 p-4 sm:p-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-gray-700">
+                        {t("summary.netAmount")}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        {t("summary.netAmountSubtitle")}
+                      </p>
+                    </div>
+
+                    <div className="flex items-baseline gap-1.5 sm:justify-end">
+                      <span className="text-2xl font-black tracking-tight tabular-nums text-secondary">
+                        {selectedNetDisbursable.toFixed(2)}
+                      </span>
+                      <span className="text-xs font-bold text-gray-500">
+                        ETB
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Delivery fee */}
-            <div className="shrink-0 text-right">
-              <p className="text-[10px] font-medium text-gray-400">
-                Delivery fee
-              </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-gray-900">
-                +{parseFloat(ord.delivery_fee || "0").toFixed(2)}
-                <span className="ml-1 text-[10px] font-semibold text-gray-500">
-                  ETB
-                </span>
-              </p>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  </div>
+              {/* Payout Options Form */}
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                {/* Header */}
+                <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 sm:px-5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
+                    <Wallet className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {t("form.title")}
+                    </h3>
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      {t("form.subtitle")}
+                    </p>
+                  </div>
+                </div>
 
-  {/* Footer summary */}
-  <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/70 px-4 py-3 sm:px-5">
-    <div>
-      <p className="text-[11px] text-gray-500">Selected orders</p>
-      <p className="text-sm font-bold text-gray-900">
-        {selectedAssignmentIds.length} of {selectedDriverGroup.orders.length}
-      </p>
-    </div>
-    <span className="text-[11px] font-medium text-gray-500">
-      {selectedAssignmentIds.length === 0
-        ? "Select orders to continue"
-        : "Selection updated"}
-    </span>
-  </div>
-</div>
+                <div className="space-y-5 p-4 sm:p-5">
+                  {/* Payment Channel */}
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-gray-700">
+                      {t("form.paymentChannel")} <span className="text-red-500">*</span>
+                    </label>
 
+                    <CustomSelect
+                      ariaLabel={t("form.paymentChannelAria")}
+                      options={[
+                        { value: "telebirr", label: t("form.options.telebirr") },
+                        { value: "cbe_birr", label: t("form.options.cbeBirr") },
+                        { value: "cash", label: t("form.options.cash") },
+                        { value: "other", label: t("form.options.other") },
+                      ]}
+                      value={paymentMethod}
+                      onChange={(value) => setPaymentMethod(value)}
+                      placeholder={t("form.choosePaymentChannel")}
+                      maxHeight={220}
+                      className="w-full"
+                    />
+                  </div>
 
-            {/* Financial Summary Box */}
-         
-<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-  {/* Summary header */}
-  <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3.5 sm:px-5">
-    <div>
-      <h3 className="text-sm font-bold text-gray-900">
-        Payout Summary
-      </h3>
-      <p className="mt-0.5 text-[11px] text-gray-500">
-        Review the selected delivery amounts before disbursement.
-      </p>
-    </div>
+                  {/* Transaction Reference */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                      {t("form.transactionRef")}
+                      <span className="ml-1 font-normal text-gray-400">
+                        ({t("form.optional")})
+                      </span>
+                    </label>
 
-    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-      <Wallet className="h-4.5 w-4.5" />
-    </div>
-  </div>
+                    <input
+                      type="text"
+                      placeholder={t("form.transactionRefPlaceholder")}
+                      value={transactionRef}
+                      onChange={(e) => setTransactionRef(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
+                    />
 
-  {/* Breakdown */}
-  <div className="space-y-4 p-4 sm:p-5">
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-          <Package className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-gray-800">
-            Selected Deliveries
-          </p>
-          <p className="text-[11px] text-gray-400">
-            Orders included in this payout
-          </p>
-        </div>
-      </div>
+                    <p className="mt-1.5 text-[11px] text-gray-400">
+                      {t("form.transactionRefHint")}
+                    </p>
+                  </div>
 
-      <span className="text-sm font-bold tabular-nums text-gray-900">
-        {selectedOrders.length}
-        <span className="ml-1 text-xs font-medium text-gray-400">
-          / {selectedDriverGroup.orders.length}
-        </span>
-      </span>
-    </div>
+                  {/* Payment Notes */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                      {t("form.notes")}
+                      <span className="ml-1 font-normal text-gray-400">
+                        ({t("form.optional")})
+                      </span>
+                    </label>
 
-    <div className="h-px bg-gray-100" />
+                    <textarea
+                      rows={3}
+                      placeholder={t("form.notesPlaceholder")}
+                      value={payoutNotes}
+                      onChange={(e) => setPayoutNotes(e.target.value)}
+                      className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
+                    />
 
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-          <Truck className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-gray-800">
-            Total Delivery Fees
-          </p>
-          <p className="text-[11px] text-gray-400">
-            Gross amount from selected orders
-          </p>
-        </div>
-      </div>
-
-      <span className="text-sm font-bold tabular-nums text-gray-900">
-        {selectedGrossFees.toFixed(2)}
-        <span className="ml-1 text-[10px] font-semibold text-gray-500">
-          ETB
-        </span>
-      </span>
-    </div>
-  </div>
-
-  {/* Final payout amount */}
-  <div className="border-t border-gray-100 bg-gray-50/80 p-4 sm:p-5">
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-xs font-bold text-gray-700">
-          Net Amount to Disburse
-        </p>
-        <p className="mt-0.5 text-[11px] text-gray-500">
-          Final payable amount for this selection
-        </p>
-      </div>
-
-      <div className="flex items-baseline gap-1.5 sm:justify-end">
-        <span className="text-2xl font-black tracking-tight tabular-nums text-secondary">
-          {selectedNetDisbursable.toFixed(2)}
-        </span>
-        <span className="text-xs font-bold text-gray-500">
-          ETB
-        </span>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-            {/* Payout Options Form */}
-         
-
-<div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-  {/* Header */}
-  <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4 sm:px-5">
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-      <Wallet className="h-4 w-4" />
-    </div>
-    <div>
-      <h3 className="text-sm font-bold text-gray-900">
-        Disbursement Details
-      </h3>
-      <p className="mt-0.5 text-[11px] text-gray-500">
-        Specify how the driver will receive the payout.
-      </p>
-    </div>
-  </div>
-
-  <div className="space-y-5 p-4 sm:p-5">
-    {/* Payment Channel */}
-    <div>
-      <label className="mb-2 block text-xs font-semibold text-gray-700">
-        Payment Channel <span className="text-red-500">*</span>
-      </label>
-
-      <CustomSelect
-        ariaLabel="Select disbursement payment channel"
-        options={[
-          { value: "telebirr", label: "Telebirr Transfer" },
-          { value: "cbe_birr", label: "CBE Birr Transfer" },
-          { value: "cash", label: "Cash in Person" },
-          { value: "other", label: "Other Method" },
-        ]}
-        value={paymentMethod}
-        onChange={(value) => setPaymentMethod(value)}
-        placeholder="Choose payment channel"
-        maxHeight={220}
-        className="w-full"
-      />
-    </div>
-
-    {/* Transaction Reference */}
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-        Transaction Reference
-        <span className="ml-1 font-normal text-gray-400">(Optional)</span>
-      </label>
-
-      <input
-        type="text"
-        placeholder="Enter transaction ID or bank reference number"
-        value={transactionRef}
-        onChange={(e) => setTransactionRef(e.target.value)}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
-      />
-
-      <p className="mt-1.5 text-[11px] text-gray-400">
-        Use this reference to identify and verify the payment later.
-      </p>
-    </div>
-
-    {/* Payment Notes */}
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-        Payment Notes
-        <span className="ml-1 font-normal text-gray-400">(Optional)</span>
-      </label>
-
-      <textarea
-        rows={3}
-        placeholder="Add payout period, payment details, or additional remarks..."
-        value={payoutNotes}
-        onChange={(e) => setPayoutNotes(e.target.value)}
-        className="w-full resize-y rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/10"
-      />
-
-      <p className="mt-1.5 text-[11px] text-gray-400">
-        Additional information for your payout records.
-      </p>
-    </div>
-  </div>
-</div>
-
-
-            {/* Validation warning if no orders selected */}
-            {selectedAssignmentIds.length === 0 && (
-              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600 font-semibold flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>Please select at least 1 order to disburse payout.</span>
+                    <p className="mt-1.5 text-[11px] text-gray-400">
+                      {t("form.notesHint")}
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
 
+              {/* Validation warning if no orders selected */}
+              {selectedAssignmentIds.length === 0 && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-600 font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{t("form.noOrdersWarning")}</span>
+                </div>
+              )}
             </div>
             {/* FIXED FOOTER */}
             <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
@@ -1614,7 +1629,7 @@ export function DriverPayoutsManagement({
                 onClick={() => setDisburseModalOpen(false)}
                 className="w-full sm:w-auto justify-center px-4 py-2 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition"
               >
-                Cancel
+                {t("form.cancel")}
               </button>
 
               <button
@@ -1626,13 +1641,16 @@ export function DriverPayoutsManagement({
                 {submittingPayout ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Disbursing...</span>
+                    <span>{t("form.disbursing")}</span>
                   </>
                 ) : (
                   <>
                     <Wallet className="h-4 w-4" />
                     <span>
-                      Disburse ({selectedNetDisbursable.toFixed(2)} ETB · {selectedAssignmentIds.length} Orders)
+                      {t("form.disburseButton", {
+                        amount: selectedNetDisbursable.toFixed(2),
+                        count: selectedAssignmentIds.length,
+                      })}
                     </span>
                   </>
                 )}
@@ -1647,7 +1665,7 @@ export function DriverPayoutsManagement({
         const parsedNotes = parsePayoutNotes(selectedPayout.notes);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/55 backdrop-blur-md">
-            <div role="dialog" aria-modal="true" aria-label={`Payout ${selectedPayout.payout_number} details`} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-5xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
+            <div role="dialog" aria-modal="true" aria-label={t("detailModal.ariaLabel", { number: selectedPayout.payout_number })} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none lg:max-w-5xl max-h-[94vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
               {/* Header */}
               <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -1656,17 +1674,19 @@ export function DriverPayoutsManagement({
                       <Wallet className="w-5 h-5" />
                     </div>
                     <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
-                      Payout #{selectedPayout.payout_number}
+                      {t("detailModal.title", { number: selectedPayout.payout_number })}
                     </h3>
                     {renderStatusBadge(selectedPayout.status)}
                   </div>
                   <p className="text-xs text-gray-600 mt-1 truncate">
-                    Issued to <span className="font-semibold text-gray-800">{selectedPayout.driver_name}</span> · {selectedPayout.company_name}
+                    {t("detailModal.issuedTo")}{" "}
+                    <span className="font-semibold text-gray-800">{selectedPayout.driver_name}</span>{" "}
+                    · {selectedPayout.company_name}
                   </p>
                 </div>
                 <button
                   onClick={() => setDetailModalOpen(false)}
-                  aria-label="Close payout details"
+                  aria-label={t("detailModal.closeAria")}
                   className="shrink-0 p-2 text-gray-500 hover:text-gray-800 rounded-xl border border-white/70 bg-white/70 hover:bg-white transition shadow-sm"
                 >
                   <X className="h-5 w-5" />
@@ -1674,329 +1694,356 @@ export function DriverPayoutsManagement({
               </div>
 
               {/* SCROLLABLE BODY */}
-              {/* SCROLLABLE BODY */}
-<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
-              {/* Financial Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 rounded-2xl p-4 sm:p-6 border border-gray-200/80 text-center">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase">Gross Delivery Fees</p>
-                  <p className="text-sm font-bold text-gray-900 mt-1">
-                    +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)} ETB
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-amber-600 font-bold uppercase">COD Collected</p>
-                  <p className="text-sm font-bold text-amber-700 mt-1">
-                    {parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)} ETB
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-green-600 font-bold uppercase">Net Amount Paid</p>
-                  <p className="text-base font-black text-green-600 mt-1">
-                    {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
-                  </p>
-                </div>
-              </div>
-
-              {/* Handshake & Verification Lifecycle Timeline */}
-              <div className="bg-slate-50/70 border border-gray-200/80 rounded-2xl p-4 sm:p-6 space-y-5">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 text-secondary" />
-                    <span>Settlement & Handshake Timeline</span>
-                  </h4>
-                  <span className="text-[11px] text-gray-400 font-medium">
-                    Lifecycle Audit
-                  </span>
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-8 lg:px-10 py-6 space-y-6 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+                {/* Financial Details Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 rounded-2xl p-4 sm:p-6 border border-gray-200/80 text-center">
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">
+                      {t("detail.grossDeliveryFees")}
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 mt-1">
+                      +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)} ETB
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-amber-600 font-bold uppercase">
+                      {t("detail.codCollected")}
+                    </p>
+                    <p className="text-sm font-bold text-amber-700 mt-1">
+                      {parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)} ETB
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-green-600 font-bold uppercase">
+                      {t("detail.netAmountPaid")}
+                    </p>
+                    <p className="text-base font-black text-green-600 mt-1">
+                      {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                    </p>
+                  </div>
                 </div>
 
-                <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                  {/* Step 1: Disbursed */}
-                  <div className="relative">
-                    <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-secondary text-white flex items-center justify-center ring-4 ring-white shadow-xs">
-                      <Send className="w-2.5 h-2.5" />
-                    </div>
-                    <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-xs space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-gray-900">
-                          1. Payout Disbursed by Admin
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium">
-                          {selectedPayout.disbursed_at
-                            ? new Date(selectedPayout.disbursed_at).toLocaleString()
-                            : new Date(selectedPayout.created_at).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs">
-                        <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[11px] uppercase border border-purple-100">
-                          {selectedPayout.payment_method?.replace(/_/g, " ")}
-                        </span>
-                        {selectedPayout.transaction_reference && (
-                          <span className="text-gray-600 font-mono text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
-                            Ref: <strong className="text-gray-900">{selectedPayout.transaction_reference}</strong>
-                          </span>
-                        )}
-                        <span className="text-[11px] font-bold text-green-700 ml-auto">
-                          Net: {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
-                        </span>
-                      </div>
-                      {parsedNotes.originalNote && (
-                        <p className="text-[11px] text-gray-600 bg-gray-50/70 p-2 rounded-lg border border-gray-100">
-                          <span className="font-semibold text-gray-700">Disbursement Note:</span> {parsedNotes.originalNote}
-                        </p>
-                      )}
-                    </div>
+                {/* Handshake & Verification Lifecycle Timeline */}
+                <div className="bg-slate-50/70 border border-gray-200/80 rounded-2xl p-4 sm:p-6 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5 text-secondary" />
+                      <span>{t("detail.timelineTitle")}</span>
+                    </h4>
+                    <span className="text-[11px] text-gray-400 font-medium">
+                      {t("detail.lifecycleAudit")}
+                    </span>
                   </div>
 
-                  {/* Step 2: Dispute (if disputed or dispute_reason exists) */}
-                  {(selectedPayout.dispute_reason || selectedPayout.status === "disputed" || selectedPayout.disputed_at) && (
+                  <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
+                    {/* Step 1: Disbursed */}
                     <div className="relative">
-                      <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
-                        <AlertCircle className="w-2.5 h-2.5" />
+                      <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-secondary text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                        <Send className="w-2.5 h-2.5" />
                       </div>
-                      <div className="bg-red-50/60 rounded-xl p-3 border border-red-200 shadow-xs space-y-2">
+                      <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-xs space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-red-900">
-                            2. Delivery Person Dispute Reported
+                          <span className="font-bold text-xs text-gray-900">
+                            {t("detail.step1.title")}
                           </span>
-                          <span className="text-[10px] text-red-500 font-medium">
-                            {selectedPayout.disputed_at
-                              ? new Date(selectedPayout.disputed_at).toLocaleString()
-                              : "Reported"}
+                          <span className="text-[10px] text-gray-400 font-medium">
+                            {selectedPayout.disbursed_at
+                              ? new Date(selectedPayout.disbursed_at).toLocaleString()
+                              : new Date(selectedPayout.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <div className="bg-white/90 rounded-lg p-2.5 border border-red-100 text-xs text-red-800">
-                          <div className="flex items-start gap-1.5">
-                            <MessageSquare className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                            <p className="italic font-medium">
-                              "{selectedPayout.dispute_reason || "Payment not received or transaction reference not matching bank account."}"
-                            </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[11px] uppercase border border-purple-100">
+                            {selectedPayout.payment_method?.replace(/_/g, " ")}
+                          </span>
+                          {selectedPayout.transaction_reference && (
+                            <span className="text-gray-600 font-mono text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                              {t("detail.ref")}: <strong className="text-gray-900">{selectedPayout.transaction_reference}</strong>
+                            </span>
+                          )}
+                          <span className="text-[11px] font-bold text-green-700 ml-auto">
+                            {t("detail.net")}: {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                          </span>
+                        </div>
+                        {parsedNotes.originalNote && (
+                          <p className="text-[11px] text-gray-600 bg-gray-50/70 p-2 rounded-lg border border-gray-100">
+                            <span className="font-semibold text-gray-700">
+                              {t("detail.disbursementNote")}:
+                            </span>{" "}
+                            {parsedNotes.originalNote}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step 2: Dispute (if disputed or dispute_reason exists) */}
+                    {(selectedPayout.dispute_reason || selectedPayout.status === "disputed" || selectedPayout.disputed_at) && (
+                      <div className="relative">
+                        <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                          <AlertCircle className="w-2.5 h-2.5" />
+                        </div>
+                        <div className="bg-red-50/60 rounded-xl p-3 border border-red-200 shadow-xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-red-900">
+                              {t("detail.step2.title")}
+                            </span>
+                            <span className="text-[10px] text-red-500 font-medium">
+                              {selectedPayout.disputed_at
+                                ? new Date(selectedPayout.disputed_at).toLocaleString()
+                                : t("detail.step2.reported")}
+                            </span>
+                          </div>
+                          <div className="bg-white/90 rounded-lg p-2.5 border border-red-100 text-xs text-red-800">
+                            <div className="flex items-start gap-1.5">
+                              <MessageSquare className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                              <p className="italic font-medium">
+                                "{selectedPayout.dispute_reason || t("detail.step2.fallbackReason")}"
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Step 3: Admin Resolution (if disputed or resolution note exists) */}
-                  {(parsedNotes.resolutionNote || selectedPayout.status === "disputed") && (
-                    <div className="relative">
-                      <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
-                        <RefreshCw className="w-2.5 h-2.5" />
-                      </div>
-                      <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-200 shadow-xs space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-amber-900">
-                            3. Admin Review & Resolution
-                          </span>
-                          {selectedPayout.status === "disputed" ? (
-                            <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                              Action Required
+                    {/* Step 3: Admin Resolution (if disputed or resolution note exists) */}
+                    {(parsedNotes.resolutionNote || selectedPayout.status === "disputed") && (
+                      <div className="relative">
+                        <div className="absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center ring-4 ring-white shadow-xs">
+                          <RefreshCw className="w-2.5 h-2.5" />
+                        </div>
+                        <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-200 shadow-xs space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs text-amber-900">
+                              {t("detail.step3.title")}
                             </span>
-                          ) : (
-                            <span className="text-[10px] text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                              Resolved & Re-disbursed
+                            {selectedPayout.status === "disputed" ? (
+                              <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
+                                {t("detail.step3.actionRequired")}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                {t("detail.step3.resolved")}
+                              </span>
+                            )}
+                          </div>
+
+                          {parsedNotes.resolutionNote && (
+                            <div className="bg-white rounded-lg p-2.5 border border-amber-100 text-xs text-amber-950 space-y-1">
+                              <p className="font-semibold text-gray-700 text-[11px]">
+                                {t("detail.step3.resolutionDetails")}
+                              </p>
+                              <p className="text-gray-800 text-[11px] leading-relaxed">
+                                {parsedNotes.resolutionNote}
+                              </p>
+                            </div>
+                          )}
+
+                          {selectedPayout.status === "disputed" && (
+                            <div className="bg-white rounded-xl p-3.5 border border-amber-200/90 shadow-sm space-y-3">
+                              <p className="text-[11px] text-gray-600 font-medium">
+                                {t("detail.step3.resolveHint")}
+                              </p>
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                  {t("detail.step3.correctedRefLabel")}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={resolveRef}
+                                  onChange={(e) => setResolveRef(e.target.value)}
+                                  placeholder={t("detail.step3.correctedRefPlaceholder")}
+                                  className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                                  {t("detail.step3.notesLabel")}
+                                </label>
+                                <textarea
+                                  value={resolveNotes}
+                                  onChange={(e) => setResolveNotes(e.target.value)}
+                                  rows={2}
+                                  placeholder={t("detail.step3.notesPlaceholder")}
+                                  className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={handleResolveDispute}
+                                  disabled={resolvingDispute}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:bg-secondary/90 transition shadow-sm disabled:opacity-50"
+                                >
+                                  {resolvingDispute ? (
+                                    <>
+                                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                      <span>{t("detail.step3.submitting")}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      <span>{t("detail.step3.submit")}</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Final Handshake Confirmation */}
+                    <div className="relative">
+                      <div
+                        className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full text-white flex items-center justify-center ring-4 ring-white shadow-xs ${
+                          selectedPayout.status === "confirmed"
+                            ? "bg-green-600"
+                            : selectedPayout.status === "cancelled"
+                            ? "bg-gray-500"
+                            : selectedPayout.status === "disputed"
+                            ? "bg-red-500"
+                            : "bg-amber-500"
+                        }`}
+                      >
+                        {selectedPayout.status === "confirmed" ? (
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                        ) : selectedPayout.status === "cancelled" ? (
+                          <XCircle className="w-2.5 h-2.5" />
+                        ) : selectedPayout.status === "disputed" ? (
+                          <AlertCircle className="w-2.5 h-2.5" />
+                        ) : (
+                          <Clock className="w-2.5 h-2.5" />
+                        )}
+                      </div>
+
+                      <div
+                        className={`rounded-xl p-3 border shadow-xs space-y-1 ${
+                          selectedPayout.status === "confirmed"
+                            ? "bg-green-50/70 border-green-200"
+                            : selectedPayout.status === "cancelled"
+                            ? "bg-gray-50 border-gray-200"
+                            : selectedPayout.status === "disputed"
+                            ? "bg-red-50/50 border-red-200"
+                            : "bg-amber-50/60 border-amber-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`font-bold text-xs ${
+                              selectedPayout.status === "confirmed"
+                                ? "text-green-900"
+                                : selectedPayout.status === "cancelled"
+                                ? "text-gray-700"
+                                : selectedPayout.status === "disputed"
+                                ? "text-red-900"
+                                : "text-amber-900"
+                            }`}
+                          >
+                            {selectedPayout.status === "confirmed"
+                              ? t("detail.step4.confirmedTitle")
+                              : selectedPayout.status === "cancelled"
+                              ? t("detail.step4.cancelledTitle")
+                              : selectedPayout.status === "disputed"
+                              ? t("detail.step4.onHoldTitle")
+                              : t("detail.step4.awaitingTitle")}
+                          </span>
+                          {selectedPayout.confirmed_at && (
+                            <span className="text-[10px] text-green-700 font-semibold">
+                              {new Date(selectedPayout.confirmed_at).toLocaleString()}
                             </span>
                           )}
                         </div>
-
-                        {parsedNotes.resolutionNote && (
-                          <div className="bg-white rounded-lg p-2.5 border border-amber-100 text-xs text-amber-950 space-y-1">
-                            <p className="font-semibold text-gray-700 text-[11px]">Resolution Details:</p>
-                            <p className="text-gray-800 text-[11px] leading-relaxed">{parsedNotes.resolutionNote}</p>
-                          </div>
-                        )}
-
-                        {selectedPayout.status === "disputed" && (
-                          <div className="bg-white rounded-xl p-3.5 border border-amber-200/90 shadow-sm space-y-3">
-                            <p className="text-[11px] text-gray-600 font-medium">
-                              Provide corrected reference or transfer details to clear the dispute and return the payout for delivery person confirmation:
-                            </p>
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                                Corrected Transaction Reference
-                              </label>
-                              <input
-                                type="text"
-                                value={resolveRef}
-                                onChange={(e) => setResolveRef(e.target.value)}
-                                placeholder="e.g. Telebirr Txn # / Bank Transfer Ref"
-                                className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                                Resolution Notes for Delivery Person
-                              </label>
-                              <textarea
-                                value={resolveNotes}
-                                onChange={(e) => setResolveNotes(e.target.value)}
-                                rows={2}
-                                placeholder="Explain resolution (e.g. resent payout with correct reference)..."
-                                className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
-                              />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={handleResolveDispute}
-                                disabled={resolvingDispute}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:bg-secondary/90 transition shadow-sm disabled:opacity-50"
-                              >
-                                {resolvingDispute ? (
-                                  <>
-                                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                    <span>Submitting Resolution...</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    <span>Submit Resolution & Re-disburse</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 4: Final Handshake Confirmation */}
-                  <div className="relative">
-                    <div
-                      className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full text-white flex items-center justify-center ring-4 ring-white shadow-xs ${
-                        selectedPayout.status === "confirmed"
-                          ? "bg-green-600"
-                          : selectedPayout.status === "cancelled"
-                          ? "bg-gray-500"
-                          : selectedPayout.status === "disputed"
-                          ? "bg-red-500"
-                          : "bg-amber-500"
-                      }`}
-                    >
-                      {selectedPayout.status === "confirmed" ? (
-                        <CheckCircle2 className="w-2.5 h-2.5" />
-                      ) : selectedPayout.status === "cancelled" ? (
-                        <XCircle className="w-2.5 h-2.5" />
-                      ) : selectedPayout.status === "disputed" ? (
-                        <AlertCircle className="w-2.5 h-2.5" />
-                      ) : (
-                        <Clock className="w-2.5 h-2.5" />
-                      )}
-                    </div>
-
-                    <div
-                      className={`rounded-xl p-3 border shadow-xs space-y-1 ${
-                        selectedPayout.status === "confirmed"
-                          ? "bg-green-50/70 border-green-200"
-                          : selectedPayout.status === "cancelled"
-                          ? "bg-gray-50 border-gray-200"
-                          : selectedPayout.status === "disputed"
-                          ? "bg-red-50/50 border-red-200"
-                          : "bg-amber-50/60 border-amber-200"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`font-bold text-xs ${
-                            selectedPayout.status === "confirmed"
-                              ? "text-green-900"
-                              : selectedPayout.status === "cancelled"
-                              ? "text-gray-700"
-                              : selectedPayout.status === "disputed"
-                              ? "text-red-900"
-                              : "text-amber-900"
-                          }`}
-                        >
+                        <p className="text-[11px] text-gray-600 leading-relaxed">
                           {selectedPayout.status === "confirmed"
-                            ? "4. Receipt Confirmed by Delivery Person"
+                            ? t("detail.step4.confirmedDescription", {
+                                driver: selectedPayout.driver_name,
+                              })
                             : selectedPayout.status === "cancelled"
-                            ? "4. Payout Cancelled (Orders Released)"
+                            ? t("detail.step4.cancelledDescription")
                             : selectedPayout.status === "disputed"
-                            ? "4. Confirmation On Hold"
-                            : "4. Awaiting Delivery Person Confirmation"}
-                        </span>
-                        {selectedPayout.confirmed_at && (
-                          <span className="text-[10px] text-green-700 font-semibold">
-                            {new Date(selectedPayout.confirmed_at).toLocaleString()}
-                          </span>
-                        )}
+                            ? t("detail.step4.onHoldDescription")
+                            : t("detail.step4.awaitingDescription", {
+                                driver: selectedPayout.driver_name,
+                              })}
+                        </p>
                       </div>
-                      <p className="text-[11px] text-gray-600 leading-relaxed">
-                        {selectedPayout.status === "confirmed"
-                          ? `${selectedPayout.driver_name} confirmed receipt of this payout in their mobile app. Settlement closed successfully.`
-                          : selectedPayout.status === "cancelled"
-                          ? "This payout was cancelled by admin. All associated orders were returned to the unpaid pool."
-                          : selectedPayout.status === "disputed"
-                          ? "Delivery person disputed this disbursement. Payout cannot be confirmed until the dispute is resolved."
-                          : `Funds have been disbursed. Awaiting ${selectedPayout.driver_name} to verify receipt on their device and tap 'Confirm Payout'.`}
-                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Metadata Rows */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
-                <div>
-                  <span className="text-gray-400 font-medium">Payment Channel:</span>{" "}
-                  <span className="font-bold text-gray-800 capitalize">
-                    {selectedPayout.payment_method?.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400 font-medium">Payout Interval:</span>{" "}
-                  <span className="font-bold text-gray-800 capitalize">
-                    {selectedPayout.payout_type}
-                  </span>
-                </div>
-                {selectedPayout.transaction_reference && (
-                  <div className="col-span-2">
-                    <span className="text-gray-400 font-medium">Transaction Reference:</span>{" "}
-                    <span className="font-mono font-bold text-gray-800">
-                      {selectedPayout.transaction_reference}
+                {/* Metadata Rows */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white rounded-xl border border-gray-100 p-3.5">
+                  <div>
+                    <span className="text-gray-400 font-medium">
+                      {t("detail.metadata.paymentChannel")}:
+                    </span>{" "}
+                    <span className="font-bold text-gray-800 capitalize">
+                      {selectedPayout.payment_method?.replace(/_/g, " ")}
                     </span>
                   </div>
-                )}
-              </div>
-
-              {/* Orders Included in Payout */}
-              <div>
-                <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider mb-2">
-                  Settled Orders ({selectedPayout.items?.length || selectedPayout.items_count})
-                </h4>
-                <div className="border border-gray-100 rounded-xl overflow-x-auto max-h-72 overflow-y-auto">
-                  <table className="w-full min-w-[600px] text-xs text-left">
-                    <thead className="bg-gray-50 text-gray-400 font-semibold uppercase sticky top-0 border-b border-gray-100">
-                      <tr>
-                        <th className="py-2 px-3">Order Number</th>
-                        <th className="py-2 px-3">Customer</th>
-                        <th className="py-2 px-3 text-right">Fee</th>
-                        <th className="py-2 px-3 text-right">COD</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {(selectedPayout.items || []).map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50/50">
-                          <td className="py-2 px-3 font-bold text-secondary">
-                            #{item.order_number}
-                          </td>
-                          <td className="py-2 px-3 text-gray-700">{item.customer_name}</td>
-                          <td className="py-2 px-3 text-right font-bold text-gray-900">
-                            +{parseFloat(item.delivery_fee).toFixed(2)} ETB
-                          </td>
-                          <td className="py-2 px-3 text-right text-amber-700 font-medium">
-                            {parseFloat(item.cod_collected) > 0
-                              ? `${parseFloat(item.cod_collected).toFixed(2)} ETB`
-                              : "0.00 ETB"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div>
+                    <span className="text-gray-400 font-medium">
+                      {t("detail.metadata.payoutInterval")}:
+                    </span>{" "}
+                    <span className="font-bold text-gray-800 capitalize">
+                      {selectedPayout.payout_type}
+                    </span>
+                  </div>
+                  {selectedPayout.transaction_reference && (
+                    <div className="col-span-2">
+                      <span className="text-gray-400 font-medium">
+                        {t("detail.metadata.transactionRef")}:
+                      </span>{" "}
+                      <span className="font-mono font-bold text-gray-800">
+                        {selectedPayout.transaction_reference}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
 
+                {/* Orders Included in Payout */}
+                <div>
+                  <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider mb-2">
+                    {t("detail.settledOrders", {
+                      count:
+                        selectedPayout.items?.length ||
+                        selectedPayout.items_count,
+                    })}
+                  </h4>
+                  <div className="border border-gray-100 rounded-xl overflow-x-auto max-h-72 overflow-y-auto">
+                    <table className="w-full min-w-[600px] text-xs text-left">
+                      <thead className="bg-gray-50 text-gray-400 font-semibold uppercase sticky top-0 border-b border-gray-100">
+                        <tr>
+                          <th className="py-2 px-3">{t("detail.ordersTable.orderNumber")}</th>
+                          <th className="py-2 px-3">{t("detail.ordersTable.customer")}</th>
+                          <th className="py-2 px-3 text-right">{t("detail.ordersTable.fee")}</th>
+                          <th className="py-2 px-3 text-right">{t("detail.ordersTable.cod")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(selectedPayout.items || []).map((item) => (
+                          <tr key={item.id} className="hover:bg-gray-50/50">
+                            <td className="py-2 px-3 font-bold text-secondary">
+                              #{item.order_number}
+                            </td>
+                            <td className="py-2 px-3 text-gray-700">
+                              {item.customer_name}
+                            </td>
+                            <td className="py-2 px-3 text-right font-bold text-gray-900">
+                              +{parseFloat(item.delivery_fee).toFixed(2)} ETB
+                            </td>
+                            <td className="py-2 px-3 text-right text-amber-700 font-medium">
+                              {parseFloat(item.cod_collected) > 0
+                                ? `${parseFloat(item.cod_collected).toFixed(2)} ETB`
+                                : "0.00 ETB"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
               {/* FIXED FOOTER */}
               <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
@@ -2008,7 +2055,7 @@ export function DriverPayoutsManagement({
                       className="w-full sm:w-auto justify-center px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
                     >
                       <XCircle className="h-4 w-4" />
-                      <span>Cancel Payout & Release Orders</span>
+                      <span>{t("detail.cancelPayout")}</span>
                     </button>
                   )}
                 </div>
@@ -2016,7 +2063,7 @@ export function DriverPayoutsManagement({
                   onClick={() => setDetailModalOpen(false)}
                   className="w-full sm:w-auto justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition"
                 >
-                  Close
+                  {t("detail.close")}
                 </button>
               </div>
             </div>
@@ -2027,40 +2074,44 @@ export function DriverPayoutsManagement({
       {/* Custom Confirmation Modal for Cancelling Payout */}
       {cancelConfirmModalOpen && selectedPayout && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-200">
-          <div role="alertdialog" aria-modal="true" aria-label={`Confirm cancellation of payout ${selectedPayout.payout_number}`} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none sm:max-w-md max-h-[92vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
+          <div role="alertdialog" aria-modal="true" aria-label={t("cancelConfirm.ariaLabel", { number: selectedPayout.payout_number })} className="relative bg-gradient-to-br from-white via-white to-gray-50/60 w-full max-w-none sm:max-w-md max-h-[92vh] rounded-2xl sm:rounded-[28px] shadow-2xl overflow-hidden flex flex-col border border-white/70">
             <div className="shrink-0 bg-secondary/15 backdrop-blur-md border-b border-secondary/15 px-5 sm:px-8 lg:px-10 py-5 sticky top-0 z-20 shadow-sm flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0 shadow-sm">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+                <div className="w-11 h-11 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0 shadow-sm">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
+                    {t("cancelConfirm.title", { number: selectedPayout.payout_number })}
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {t("cancelConfirm.issuedTo")}{" "}
+                    <span className="font-semibold text-gray-800">
+                      {selectedPayout.driver_name}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-black text-gray-900 text-base sm:text-lg tracking-tight">
-                  Cancel Payout #{selectedPayout.payout_number}?
-                </h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Issued to <span className="font-semibold text-gray-800">{selectedPayout.driver_name}</span>
-                </p>
-              </div>
-              </div>
-              <span className="rounded-full bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide">Confirmation</span>
+              <span className="rounded-full bg-red-50 text-red-700 border border-red-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide">
+                {t("cancelConfirm.confirmation")}
+              </span>
             </div>
 
             {/* SCROLLABLE BODY */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 lg:px-10 py-6">
-            <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
-              <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                <span>Release Warning</span>
-              </p>
-              <p className="text-amber-700 leading-relaxed">
-                Cancelling will permanently void this payout and release all{" "}
-                <strong className="font-extrabold text-amber-900">
-                  {selectedPayout.items?.length || selectedPayout.items_count} orders
-                </strong>{" "}
-                back to the unpaid deliveries queue so they can be re-disbursed.
-              </p>
-            </div>
-
+              <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
+                <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span>{t("cancelConfirm.warningTitle")}</span>
+                </p>
+                <p className="text-amber-700 leading-relaxed">
+                  {t("cancelConfirm.warningBody", {
+                    count:
+                      selectedPayout.items?.length ||
+                      selectedPayout.items_count,
+                  })}
+                </p>
+              </div>
             </div>
             {/* FIXED FOOTER */}
             <div className="shrink-0 border-t border-gray-200 bg-white/95 px-5 sm:px-8 lg:px-10 py-4 sm:py-5 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
@@ -2070,7 +2121,7 @@ export function DriverPayoutsManagement({
                 onClick={() => setCancelConfirmModalOpen(false)}
                 className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 text-xs transition disabled:opacity-50"
               >
-                Keep Payout
+                {t("cancelConfirm.keepPayout")}
               </button>
               <button
                 type="button"
@@ -2081,12 +2132,12 @@ export function DriverPayoutsManagement({
                 {cancellingPayout ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>Cancelling...</span>
+                    <span>{t("cancelConfirm.cancelling")}</span>
                   </>
                 ) : (
                   <>
                     <XCircle className="h-4 w-4" />
-                    <span>Yes, Cancel & Release Orders</span>
+                    <span>{t("cancelConfirm.confirmButton")}</span>
                   </>
                 )}
               </button>

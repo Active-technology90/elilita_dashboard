@@ -8,9 +8,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  ArrowRight,
+
   Package,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { PayoutData } from "../../../utils/payoutReceipt";
 import { printPayoutReceipt, getFullMediaUrl } from "../../../utils/payoutReceipt";
 
@@ -25,6 +26,8 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { t } = useTranslation("payoutReceiptModal");
+
   if (!isOpen || !payout) return null;
 
   const handlePrint = () => {
@@ -42,7 +45,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "N/A";
+    : t("common.notAvailable");
 
   const paidDate = payout.paid_at
     ? new Date(payout.paid_at).toLocaleDateString("en-US", {
@@ -52,7 +55,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "Pending Settlement";
+    : t("status.pendingSettlement");
 
   const vo = payout.vendor_order_details;
   const paymentMethod =
@@ -62,7 +65,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
       .join(" ") ||
     (payout.gateway
       ? payout.gateway.charAt(0).toUpperCase() + payout.gateway.slice(1)
-      : "Electronic Transfer");
+      : t("common.electronicTransfer"));
 
   const items = vo?.items || [];
   const companyLogoUrl = getFullMediaUrl(payout.company_logo);
@@ -81,10 +84,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-gray-900">
-                Payout Receipt #{payout.id}
+                {t("header.title", { id: payout.id })}
               </h3>
               <p className="text-[11px] text-gray-500">
-                Official Vendor Disbursement Statement
+                {t("header.subtitle")}
               </p>
             </div>
           </div>
@@ -93,10 +96,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             <button
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold shadow-sm hover:bg-secondary/90 transition"
-              title="Print or Save PDF"
+              title={t("header.printTitle")}
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Print / Save PDF</span>
+              <span>{t("header.printButton")}</span>
             </button>
             <button
               onClick={onClose}
@@ -122,13 +125,13 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
               />
               <div>
                 <span className="text-[11px] font-extrabold uppercase tracking-widest text-secondary">
-                  Elilita Super App
+                  {t("brand.name")}
                 </span>
                 <h2 className="text-xl font-black text-gray-900 tracking-tight">
-                  Order Payment Receipt
+                  {t("brand.receiptTitle")}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Vendor Direct Settlement &amp; Disbursement
+                  {t("brand.receiptSubtitle")}
                 </p>
               </div>
             </div>
@@ -136,10 +139,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             <div className="flex items-center gap-3">
               <div className="text-left sm:text-right">
                 <div className="text-sm font-mono font-bold text-gray-900">
-                  #RECEIPT-{payout.id}
+                  {t("header.receiptNumber", { id: payout.id })}
                 </div>
                 <div className="text-xs text-secondary font-semibold">
-                  Order Ref: #{payout.vendor_order}
+                  {t("header.orderRef", { id: payout.vendor_order })}
                 </div>
               </div>
 
@@ -162,16 +165,15 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                 )}
                 <span>
                   {isCompleted
-                    ? "Paid & Settled"
+                    ? t("status.paidSettled")
                     : isFailed
-                    ? "Failed"
-                    : "Pending Settlement"}
+                    ? t("status.failed")
+                    : t("status.pendingSettlement")}
                 </span>
               </div>
             </div>
           </div>
-
-          {/* Parties Flow: Elilita -> Vendor */}
+    {/* Parties Flow: Elilita -> Vendor */}
           {/* <div className="p-4 rounded-2xl bg-gray-50/80 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"> */}
             {/* Payer */}
             {/* <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -231,18 +233,18 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             <div className="p-4 rounded-2xl bg-white border border-gray-200/80 space-y-2 text-xs">
               <div className="flex items-center gap-2 font-bold text-gray-400 uppercase tracking-wider text-[11px] mb-2">
                 <CreditCard className="h-3.5 w-3.5 text-secondary" />
-                <span>Settlement Metadata</span>
+                <span>{t("metadata.settlementTitle")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Payment Channel:</span>
+                <span className="text-gray-500">{t("metadata.paymentChannel")}:</span>
                 <span className="font-semibold text-gray-900">{paymentMethod}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Scheduled Date:</span>
+                <span className="text-gray-500">{t("metadata.scheduledDate")}:</span>
                 <span className="text-gray-800">{scheduledDate}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Settled At:</span>
+                <span className="text-gray-500">{t("metadata.settledAt")}:</span>
                 <span className="text-gray-800">{paidDate}</span>
               </div>
             </div>
@@ -250,24 +252,24 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             <div className="p-4 rounded-2xl bg-white border border-gray-200/80 space-y-2 text-xs">
               <div className="flex items-center gap-2 font-bold text-gray-400 uppercase tracking-wider text-[11px] mb-2">
                 <Building2 className="h-3.5 w-3.5 text-secondary" />
-                <span>Verification Details</span>
+                <span>{t("metadata.verificationTitle")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Reference ID:</span>
+                <span className="text-gray-500">{t("metadata.referenceId")}:</span>
                 <span className="font-mono font-semibold text-secondary truncate max-w-[140px]">
-                  {payout.reference || "N/A"}
+                  {payout.reference || t("common.notAvailable")}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Order ID:</span>
+                <span className="text-gray-500">{t("metadata.orderId")}:</span>
                 <span className="font-semibold text-gray-900">
                   #{payout.vendor_order}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Customer:</span>
+                <span className="text-gray-500">{t("metadata.customer")}:</span>
                 <span className="text-gray-800 truncate max-w-[140px]">
-                  {vo?.recipient_name || vo?.customer_name || "Customer"}
+                  {vo?.recipient_name || vo?.customer_name || t("common.customer")}
                 </span>
               </div>
             </div>
@@ -278,9 +280,11 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Package className="h-4 w-4 text-secondary" />
-                <span>Order Items ({items.length})</span>
+                <span>{t("items.title", { count: items.length })}</span>
               </h4>
-              <span className="text-xs text-gray-400">Order #{payout.vendor_order}</span>
+              <span className="text-xs text-gray-400">
+                {t("items.orderLabel", { id: payout.vendor_order })}
+              </span>
             </div>
 
             {items.length > 0 ? (
@@ -288,10 +292,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 font-semibold">
                     <tr>
-                      <th className="px-4 py-2.5">Item</th>
-                      <th className="px-4 py-2.5 text-center">Qty</th>
-                      <th className="px-4 py-2.5 text-right">Unit Price</th>
-                      <th className="px-4 py-2.5 text-right">Line Total</th>
+                      <th className="px-4 py-2.5">{t("items.columns.item")}</th>
+                      <th className="px-4 py-2.5 text-center">{t("items.columns.qty")}</th>
+                      <th className="px-4 py-2.5 text-right">{t("items.columns.unitPrice")}</th>
+                      <th className="px-4 py-2.5 text-right">{t("items.columns.lineTotal")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -314,11 +318,11 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
                               )}
                               <div>
                                 <span className="font-semibold text-gray-900 block">
-                                  {it.title || "Order Item"}
+                                  {it.title || t("items.fallbackItem")}
                                 </span>
                                 {it.sku && (
                                   <span className="text-[10px] text-gray-400 block">
-                                    SKU: {it.sku}
+                                    {t("items.sku")}: {it.sku}
                                   </span>
                                 )}
                               </div>
@@ -341,7 +345,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
               </div>
             ) : (
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200/80 text-xs text-gray-500 text-center">
-                Order items summarized under Vendor Order #{payout.vendor_order}.
+                {t("items.emptyMessage", { id: payout.vendor_order })}
               </div>
             )}
           </div>
@@ -349,12 +353,12 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
           {/* Financial Calculation Table */}
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Settlement Calculation Breakdown
+              {t("calculation.title")}
             </h4>
             <div className="rounded-2xl border border-gray-200 overflow-hidden divide-y divide-gray-100 bg-white">
               <div className="flex justify-between items-center px-4 py-3 text-xs sm:text-sm">
                 <span className="text-gray-600 font-medium">
-                  Gross Sales Total (Order #{payout.vendor_order})
+                  {t("calculation.grossTotal", { id: payout.vendor_order })}
                 </span>
                 <span className="font-semibold text-gray-900">
                   ETB {Number(payout.gross_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -362,7 +366,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
               </div>
               <div className="flex justify-between items-center px-4 py-3 text-xs sm:text-sm bg-red-50/40">
                 <span className="text-red-700 font-medium">
-                  Platform Commission Fee (Deduction)
+                  {t("calculation.platformCommission")}
                 </span>
                 <span className="font-semibold text-red-600">
                   - ETB {Number(payout.platform_fee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -371,10 +375,10 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
               <div className="flex justify-between items-center px-4 py-3.5 bg-secondary/5">
                 <div>
                   <span className="text-sm font-bold text-gray-900 block">
-                    Net Payout to Vendor
+                    {t("calculation.netPayout")}
                   </span>
                   <span className="text-[11px] text-gray-500 block">
-                    Disbursed to vendor account via {paymentMethod}
+                    {t("calculation.netPayoutSubtitle", { method: paymentMethod })}
                   </span>
                 </div>
                 <span className="text-xl font-black text-secondary">
@@ -387,7 +391,7 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
           {/* Footer certification */}
           <div className="pt-3 text-center border-t border-gray-100">
             <p className="text-[11px] text-gray-400">
-              Official digital payout receipt verified and disbursed by Elilita Super App.
+              {t("footer.certification")}
             </p>
           </div>
         </div>

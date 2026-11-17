@@ -1,4 +1,3 @@
-
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
@@ -6,6 +5,8 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./context/authContext.tsx";
 import { PWAInstallProvider } from "./context/PWAInstallContext.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { initI18n } from "./i18n";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -16,15 +17,26 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  
-  <BrowserRouter>
-    <PWAInstallProvider>
-      <AuthProvider>
-         <QueryClientProvider client={queryClient}>
-          <App />
-          </QueryClientProvider>
-      </AuthProvider>
-    </PWAInstallProvider>
-  </BrowserRouter>,
-);
+const root = createRoot(document.getElementById("root")!);
+
+async function bootstrap() {
+  try {
+    await initI18n();
+
+    root.render(
+      <BrowserRouter>
+        <PWAInstallProvider>
+          <AuthProvider>
+            <QueryClientProvider client={queryClient}>
+              <App />
+            </QueryClientProvider>
+          </AuthProvider>
+        </PWAInstallProvider>
+      </BrowserRouter>
+    );
+  } catch (error) {
+    console.error("Application initialization failed:", error);
+  }
+}
+
+bootstrap();

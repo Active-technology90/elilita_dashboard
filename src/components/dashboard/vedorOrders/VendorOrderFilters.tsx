@@ -1,4 +1,5 @@
 import { RefreshCw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { CompanyListItem } from "../../../types";
 import { SearchInput } from "../../ui/SearchInput";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
@@ -22,44 +23,6 @@ interface VendorOrderFiltersProps {
   hideCompanyFilter?: boolean;
 }
 
-const orderStatusOptions: SelectOption[] = [
-  { value: "", label: "All order statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "contacted", label: "Confirmed" },
-  { value: "processing", label: "Prepared" },
-  { value: "shipped", label: "In Transit" },
-  { value: "fulfilled", label: "Delivered" },
-  { value: "payment_rejected", label: "Payment Rejected" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-const deliveryStatusOptions: SelectOption[] = [
-  { value: "", label: "All delivery statuses" },
-  { value: "pending", label: "Assigned" },
-  { value: "accepted", label: "Accepted" },
-  { value: "picked_up", label: "Picked Up" },
-  { value: "out_for_delivery", label: "In Transit" },
-  { value: "delivered", label: "Completed" },
-  { value: "failed", label: "Failed" },
-];
-
-const paymentMethodOptions: SelectOption[] = [
-  { value: "", label: "All Payment Method" },
-    { value: "bank_transfer", label: "Bank Transfer" },
-    { value: "chapa", label: "Chapa" },
-    { value: "cod", label: "Cash on Delivery" },
-    { value: "telebirr", label: "Telebirr" },
-    { value: "arifpay", label: "ArifPay (Direct)" },
-];
-
-const pageSizeOptions: SelectOption[] = [
-  { value: "5", label: "5 / page" },
-  { value: "10", label: "10 / page" },
-  { value: "15", label: "15 / page" },
-  { value: "30", label: "30 / page" },
-  { value: "60", label: "60 / page" },
-];
-
 export function VendorOrderFilters({
   searchTerm,
   onSearchChange,
@@ -78,6 +41,91 @@ export function VendorOrderFilters({
   onRefresh,
   hideCompanyFilter = false,
 }: VendorOrderFiltersProps) {
+  const { t, i18n } = useTranslation("companyOrders");
+
+  const orderStatusOptions: SelectOption[] = [
+    { value: "", label: t("companyOrders.filters.orderStatus.all") },
+    { value: "pending", label: t("companyOrders.filters.orderStatus.pending") },
+    {
+      value: "contacted",
+      label: t("companyOrders.filters.orderStatus.contacted"),
+    },
+    {
+      value: "processing",
+      label: t("companyOrders.filters.orderStatus.processing"),
+    },
+    {
+      value: "shipped",
+      label: t("companyOrders.filters.orderStatus.shipped"),
+    },
+    {
+      value: "fulfilled",
+      label: t("companyOrders.filters.orderStatus.fulfilled"),
+    },
+    {
+      value: "payment_rejected",
+      label: t("companyOrders.filters.orderStatus.paymentRejected"),
+    },
+    {
+      value: "cancelled",
+      label: t("companyOrders.filters.orderStatus.cancelled"),
+    },
+  ];
+
+  const deliveryStatusOptions: SelectOption[] = [
+    { value: "", label: t("companyOrders.filters.deliveryStatus.all") },
+    {
+      value: "pending",
+      label: t("companyOrders.filters.deliveryStatus.pending"),
+    },
+    {
+      value: "accepted",
+      label: t("companyOrders.filters.deliveryStatus.accepted"),
+    },
+    {
+      value: "picked_up",
+      label: t("companyOrders.filters.deliveryStatus.pickedUp"),
+    },
+    {
+      value: "out_for_delivery",
+      label: t("companyOrders.filters.deliveryStatus.outForDelivery"),
+    },
+    {
+      value: "delivered",
+      label: t("companyOrders.filters.deliveryStatus.delivered"),
+    },
+    {
+      value: "failed",
+      label: t("companyOrders.filters.deliveryStatus.failed"),
+    },
+  ];
+
+  const paymentMethodOptions: SelectOption[] = [
+    { value: "", label: t("companyOrders.filters.paymentMethod.all") },
+    {
+      value: "bank_transfer",
+      label: t("companyOrders.filters.paymentMethod.bankTransfer"),
+    },
+    { value: "chapa", label: t("companyOrders.filters.paymentMethod.chapa") },
+    { value: "cod", label: t("companyOrders.filters.paymentMethod.cod") },
+    {
+      value: "telebirr",
+      label: t("companyOrders.filters.paymentMethod.telebirr"),
+    },
+    {
+      value: "arifpay",
+      label: t("companyOrders.filters.paymentMethod.arifpay"),
+    },
+  ];
+
+  const pageSizeOptions: SelectOption[] = [
+    { value: "5", label: t("companyOrders.pageSize.5") },
+    { value: "10", label: t("companyOrders.pageSize.10") },
+    { value: "15", label: t("companyOrders.pageSize.15") },
+    { value: "30", label: t("companyOrders.pageSize.30") },
+    { value: "60", label: t("companyOrders.pageSize.60") },
+  ];
+
   const hasFilters = Boolean(
     searchTerm ||
       orderStatusFilter ||
@@ -87,10 +135,15 @@ export function VendorOrderFilters({
   );
 
   const companyOptions: SelectOption[] = [
-    { value: "", label: "All companies" },
+    { value: "", label: t("companyOrders.filters.company.all") },
     ...companies.map((company) => ({
       value: String(company.id),
-      label: company.name,
+      // Amharic-aware company name (falls back to English `name` if `name_am` missing)
+      label:
+        i18n.language?.startsWith("am") &&
+        (company as any)?.name_am?.trim()
+          ? (company as any).name_am
+          : company.name,
     })),
   ];
 
@@ -103,7 +156,7 @@ export function VendorOrderFilters({
             onChange={onSearchChange}
             debounceMs={0}
             showClearButton
-            placeholder="Search by order ID, customer, or company..."
+            placeholder={t("companyOrders.filters.searchPlaceholder")}
             className="w-full"
           />
         </div>
@@ -113,7 +166,7 @@ export function VendorOrderFilters({
             value={orderStatusFilter}
             onChange={onOrderStatusChange}
             options={orderStatusOptions}
-            placeholder="Order status"
+            placeholder={t("companyOrders.filters.orderStatusPlaceholder")}
             className="w-full"
           />
         </div>
@@ -123,7 +176,7 @@ export function VendorOrderFilters({
             value={deliveryStatusFilter}
             onChange={onDeliveryStatusChange}
             options={deliveryStatusOptions}
-            placeholder="Delivery status"
+            placeholder={t("companyOrders.filters.deliveryStatusPlaceholder")}
             className="w-full"
           />
         </div>
@@ -133,7 +186,7 @@ export function VendorOrderFilters({
             value={paymentMethodFilter}
             onChange={onPaymentMethodChange}
             options={paymentMethodOptions}
-            placeholder="Payment method"
+            placeholder={t("companyOrders.filters.paymentMethodPlaceholder")}
             className="w-full"
           />
         </div>
@@ -144,7 +197,7 @@ export function VendorOrderFilters({
               value={selectedCompanyId}
               onChange={onCompanyChange}
               options={companyOptions}
-              placeholder="Company"
+              placeholder={t("companyOrders.filters.companyPlaceholder")}
               className="w-full"
             />
           </div>
@@ -155,7 +208,7 @@ export function VendorOrderFilters({
             value={String(pageSize)}
             onChange={(value) => onPageSizeChange?.(Number(value))}
             options={pageSizeOptions}
-            placeholder="10 / page"
+            placeholder={t("companyOrders.pageSize.10")}
             className="w-full"
           />
         </div>
@@ -166,7 +219,7 @@ export function VendorOrderFilters({
               type="button"
               onClick={onRefresh}
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50"
-              title="Refresh orders"
+              title={t("companyOrders.filters.refreshOrders")}
             >
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -179,7 +232,7 @@ export function VendorOrderFilters({
               className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
             >
               <X className="h-4 w-4" />
-              Clear
+              {t("companyOrders.filters.clear")}
             </button>
           )}
         </div>

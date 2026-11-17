@@ -7,10 +7,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  // ChevronRight,
   Filter,
-  // Sparkles,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   type ExportPeriod,
   type OrderExportFilterOptions,
@@ -31,35 +30,6 @@ interface OrderExportModalProps {
   onSuccess: (message: string) => void;
 }
 
-const PERIOD_OPTIONS = [
-  { value: "daily", label: "Daily (Today)" },
-  { value: "weekly", label: "Weekly (Last 7 Days)" },
-  { value: "monthly", label: "Monthly (This Month)" },
-  { value: "yearly", label: "Yearly (This Year)" },
-  { value: "custom", label: "Custom Date Range" },
-  { value: "all", label: "All Time" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "contacted", label: "Confirmed" },
-  { value: "processing", label: "Prepared" },
-  { value: "fulfilled", label: "Delivered" },
-  { value: "shipped", label: "In Transit" },
-  { value: "payment_rejected", label: "Payment Rejected" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-const PAYMENT_OPTIONS = [
-  { value: "", label: "All payment methods" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "chapa", label: "Chapa" },
-  { value: "cod", label: "Cash on Delivery" },
-  { value: "telebirr", label: "Telebirr" },
-  { value: "arifpay", label: "ArifPay (Direct)" },
-];
-
 export function OrderExportModal({
   isOpen,
   onClose,
@@ -68,6 +38,8 @@ export function OrderExportModal({
   companyName,
   onSuccess,
 }: OrderExportModalProps) {
+  const { t } = useTranslation("companyOrders");
+
   const [period, setPeriod] = useState<ExportPeriod>("monthly");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
@@ -78,6 +50,51 @@ export function OrderExportModal({
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Translation-driven option lists
+  const PERIOD_OPTIONS = useMemo(
+    () => [
+      { value: "daily", label: t("companyOrders.export.period.daily") },
+      { value: "weekly", label: t("companyOrders.export.period.weekly") },
+      { value: "monthly", label: t("companyOrders.export.period.monthly") },
+      { value: "yearly", label: t("companyOrders.export.period.yearly") },
+      { value: "custom", label: t("companyOrders.export.period.custom") },
+      { value: "all", label: t("companyOrders.export.period.all") },
+    ],
+    [t],
+  );
+
+  const STATUS_OPTIONS = useMemo(
+    () => [
+      { value: "", label: t("companyOrders.export.status.all") },
+      { value: "pending", label: t("companyOrders.export.status.pending") },
+      { value: "contacted", label: t("companyOrders.export.status.contacted") },
+      { value: "processing", label: t("companyOrders.export.status.processing") },
+      { value: "fulfilled", label: t("companyOrders.export.status.fulfilled") },
+      { value: "shipped", label: t("companyOrders.export.status.shipped") },
+      {
+        value: "payment_rejected",
+        label: t("companyOrders.export.status.paymentRejected"),
+      },
+      { value: "cancelled", label: t("companyOrders.export.status.cancelled") },
+    ],
+    [t],
+  );
+
+  const PAYMENT_OPTIONS = useMemo(
+    () => [
+      { value: "", label: t("companyOrders.export.payment.all") },
+      {
+        value: "bank_transfer",
+        label: t("companyOrders.export.payment.bankTransfer"),
+      },
+      { value: "chapa", label: t("companyOrders.export.payment.chapa") },
+      { value: "cod", label: t("companyOrders.export.payment.cod") },
+      { value: "telebirr", label: t("companyOrders.export.payment.telebirr") },
+      { value: "arifpay", label: t("companyOrders.export.payment.arifpay") },
+    ],
+    [t],
+  );
 
   // Reset transient state when modal opens
   useEffect(() => {
@@ -104,11 +121,10 @@ export function OrderExportModal({
       if (e.key === "Escape" && !isExporting) onClose();
     };
     window.addEventListener("keydown", onKey);
-    // Focus the close button for a11y
-    const t = setTimeout(() => closeButtonRef.current?.focus(), 50);
+    const timer = setTimeout(() => closeButtonRef.current?.focus(), 50);
     return () => {
       window.removeEventListener("keydown", onKey);
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [isOpen, isExporting, onClose]);
 
@@ -154,8 +170,7 @@ export function OrderExportModal({
   ]);
 
   const dateRange = getDateRangeForPeriod(period, customStart, customEnd);
-  const isCustomInvalid =
-    period === "custom" && (!customStart || !customEnd);
+  const isCustomInvalid = period === "custom" && (!customStart || !customEnd);
   const isCustomDateRangeInverted =
     period === "custom" &&
     customStart &&
@@ -168,11 +183,11 @@ export function OrderExportModal({
     !isExporting;
 
   const activeFilterCount = useMemo(() => {
-    let n = 0;
-    if (orderStatusFilter) n++;
-    if (paymentMethodFilter) n++;
-    if (period === "custom" && customStart && customEnd) n++;
-    return n;
+    let count = 0;
+    if (orderStatusFilter) count++;
+    if (paymentMethodFilter) count++;
+    if (period === "custom" && customStart && customEnd) count++;
+    return count;
   }, [orderStatusFilter, paymentMethodFilter, period, customStart, customEnd]);
 
   const resetFilters = useCallback(() => {
@@ -189,21 +204,18 @@ export function OrderExportModal({
     setIsExporting(true);
     setError(null);
     try {
-      const filename = buildOrdersExportFilename(
-        period,
-        companySlug,
-        dateRange,
-      );
+      const filename = buildOrdersExportFilename(period, companySlug, dateRange);
       downloadOrdersCsv(preview, filename, companyName || "All Companies");
       onSuccess(
-        `Exported ${preview.records.length} order record${
-          preview.records.length === 1 ? "" : "s"
-        } (${preview.periodLabel})`,
+        t("companyOrders.export.successMessage", {
+          count: preview.records.length,
+          period: preview.periodLabel,
+        }),
       );
       onClose();
     } catch (err) {
       console.error("Export failed:", err);
-      setError("Failed to export orders. Please try again.");
+      setError(t("companyOrders.export.exportFailed"));
     } finally {
       setIsExporting(false);
     }
@@ -216,6 +228,7 @@ export function OrderExportModal({
     companyName,
     onSuccess,
     onClose,
+    t,
   ]);
 
   if (!isOpen) return null;
@@ -257,13 +270,12 @@ export function OrderExportModal({
                 id="export-modal-title"
                 className="text-base font-extrabold text-secondary truncate"
               >
-                Export Orders
+                {t("companyOrders.export.title")}
               </h3>
-              <p
-                id="export-modal-desc"
-                className="text-xs text-gray-500 truncate"
-              >
-                Download {companyName || "all companies"} as CSV
+              <p id="export-modal-desc" className="text-xs text-gray-500 truncate">
+                {t("companyOrders.export.description", {
+                  company: companyName || t("companyOrders.export.allCompanies"),
+                })}
               </p>
             </div>
           </div>
@@ -272,7 +284,7 @@ export function OrderExportModal({
             onClick={onClose}
             disabled={isExporting}
             className="p-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-            aria-label="Close export dialog"
+            aria-label={t("companyOrders.export.closeDialog")}
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
@@ -287,14 +299,14 @@ export function OrderExportModal({
                 htmlFor="export-period"
                 className="block text-xs font-bold text-gray-500"
               >
-                Export Period
+                {t("companyOrders.export.periodLabel")}
               </label>
               {activeFilterCount > 0 && (
                 <button
                   onClick={resetFilters}
                   className="text-[11px] font-semibold text-secondary hover:underline"
                 >
-                  Reset
+                  {t("companyOrders.export.reset")}
                 </button>
               )}
             </div>
@@ -305,7 +317,7 @@ export function OrderExportModal({
                 setError(null);
               }}
               options={PERIOD_OPTIONS}
-              placeholder="Select period"
+              placeholder={t("companyOrders.export.periodPlaceholder")}
             />
           </section>
 
@@ -317,7 +329,7 @@ export function OrderExportModal({
                   htmlFor="custom-start"
                   className="block text-xs font-bold text-gray-500 mb-1.5"
                 >
-                  Start Date
+                  {t("companyOrders.export.startDate")}
                 </label>
                 <input
                   id="custom-start"
@@ -336,7 +348,7 @@ export function OrderExportModal({
                   htmlFor="custom-end"
                   className="block text-xs font-bold text-gray-500 mb-1.5"
                 >
-                  End Date
+                  {t("companyOrders.export.endDate")}
                 </label>
                 <input
                   id="custom-end"
@@ -362,8 +374,8 @@ export function OrderExportModal({
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-800">
                 {isCustomDateRangeInverted
-                  ? "Start date must be before end date."
-                  : "Please select both start and end dates for custom range."}
+                  ? t("companyOrders.export.dateRangeInverted")
+                  : t("companyOrders.export.dateRangeIncomplete")}
               </p>
             </div>
           )}
@@ -375,7 +387,10 @@ export function OrderExportModal({
                 htmlFor="export-status"
                 className="block text-xs font-bold text-gray-500 mb-1.5"
               >
-                Order Status <span className="text-gray-400 font-normal">(optional)</span>
+                {t("companyOrders.export.orderStatus")}{" "}
+                <span className="text-gray-400 font-normal">
+                  ({t("companyOrders.export.optional")})
+                </span>
               </label>
               <CustomSelect
                 value={orderStatusFilter}
@@ -384,7 +399,7 @@ export function OrderExportModal({
                   setError(null);
                 }}
                 options={STATUS_OPTIONS}
-                placeholder="All statuses"
+                placeholder={t("companyOrders.export.status.all")}
               />
             </div>
             <div>
@@ -392,7 +407,10 @@ export function OrderExportModal({
                 htmlFor="export-payment"
                 className="block text-xs font-bold text-gray-500 mb-1.5"
               >
-                Payment Method <span className="text-gray-400 font-normal">(optional)</span>
+                {t("companyOrders.export.paymentMethod")}{" "}
+                <span className="text-gray-400 font-normal">
+                  ({t("companyOrders.export.optional")})
+                </span>
               </label>
               <CustomSelect
                 value={paymentMethodFilter}
@@ -401,7 +419,7 @@ export function OrderExportModal({
                   setError(null);
                 }}
                 options={PAYMENT_OPTIONS}
-                placeholder="All methods"
+                placeholder={t("companyOrders.export.payment.all")}
               />
             </div>
           </section>
@@ -416,7 +434,9 @@ export function OrderExportModal({
               {activeFilterCount > 0 && (
                 <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-secondary bg-white px-2 py-0.5 rounded-full border border-secondary/10">
                   <Filter className="h-3 w-3" />
-                  {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"}
+                  {t("companyOrders.export.filterCount", {
+                    count: activeFilterCount,
+                  })}
                 </span>
               )}
             </div>
@@ -424,37 +444,38 @@ export function OrderExportModal({
             {preview.records.length === 0 ? (
               <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
                 <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <span>No orders found for the selected period.</span>
+                <span>{t("companyOrders.export.noOrders")}</span>
               </div>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Stat
-                    label="Records"
+                    label={t("companyOrders.export.stats.records")}
                     value={preview.summary.totalRecords}
                     className="text-gray-900"
                   />
                   <Stat
-                    label="Delivered"
+                    label={t("companyOrders.export.stats.delivered")}
                     value={preview.summary.deliveredCount}
                     className="text-emerald-600"
                   />
                   <Stat
-                    label="Total Amount"
-                    value={`ETB ${preview.summary.totalAmount.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}`}
+                    label={t("companyOrders.export.stats.totalAmount")}
+                    value={`ETB ${preview.summary.totalAmount.toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 0 },
+                    )}`}
                     className="text-gray-900"
                   />
                   <Stat
-                    label="Pending"
+                    label={t("companyOrders.export.stats.pending")}
                     value={preview.summary.pendingCount}
                     className="text-amber-600"
                   />
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-1.5 text-[11px] text-emerald-700">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Ready to export
+                  {t("companyOrders.export.readyToExport")}
                 </div>
               </>
             )}
@@ -479,7 +500,7 @@ export function OrderExportModal({
             disabled={isExporting}
             className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
           >
-            Cancel
+            {t("companyOrders.export.cancel")}
           </button>
           <button
             onClick={handleExport}
@@ -489,14 +510,14 @@ export function OrderExportModal({
             {isExporting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Exporting...
+                {t("companyOrders.export.exporting")}
               </>
             ) : (
               <>
                 <Download className="h-4 w-4" />
-                {`Export ${preview.records.length || 0} record${
-                  preview.records.length === 1 ? "" : "s"
-                }`}
+                {t("companyOrders.export.exportButton", {
+                  count: preview.records.length || 0,
+                })}
               </>
             )}
           </button>

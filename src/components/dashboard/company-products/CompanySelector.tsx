@@ -1,20 +1,12 @@
 // src/components/dashboard/CompanySelector.tsx
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Building2,
-  Search,
-  X,
-  AlertCircle,
-  Package,
-} from 'lucide-react';
-import { useAuth } from '../../../hooks/useAuth';
-import type { CompanyListItem } from '../../../types';
-import { searchProducts } from '../../../services/api';
+import { useState, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Building2, Search, X, AlertCircle, Package } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "../../../hooks/useAuth";
+import type { CompanyListItem } from "../../../types";
+import { searchProducts } from "../../../services/api";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface CompanySelectorProps {
   companies: CompanyListItem[];
   isLoading: boolean;
@@ -27,24 +19,24 @@ interface CompanySelectorProps {
   searchPlaceholder?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components (modernized)
-// ---------------------------------------------------------------------------
 function AccessDenied() {
+  const { t } = useTranslation("product");
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-3xl shadow-xl border border-gray-100 max-w-lg mx-auto overflow-hidden"
     >
-      <Header title="Company Selector" />
+      <Header title={t("companySelector.titleDefault")} />
       <div className="p-10 text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-50 mb-4">
           <AlertCircle className="h-8 w-8 text-red-500" />
         </div>
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Access Denied</h3>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
+          {t("companySelector.accessDenied.title")}
+        </h3>
         <p className="text-sm text-gray-500">
-          Only super administrators can switch companies.
+          {t("companySelector.accessDenied.message")}
         </p>
       </div>
     </motion.div>
@@ -61,15 +53,6 @@ function Header({
 }) {
   return (
     <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-100 bg-white/80 backdrop-blur-md">
-      {/* {onBack && (
-        <button
-          onClick={onBack}
-          className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      )} */}
       <div>
         <h2 className="text-lg xs:text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-secondary to-[#8B5CF6] bg-clip-text text-transparent">
           {title}
@@ -85,18 +68,20 @@ function Header({
 function SearchInput({
   value,
   onChange,
-  placeholder = "Search by name or type...",
+  placeholder,
 }: {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
 }) {
+  const { t } = useTranslation( "product");
   const [isFocused, setIsFocused] = useState(false);
   return (
     <div className="relative">
       <Search
-        className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 transition-colors ${isFocused ? 'text-secondary' : 'text-gray-400'
-          }`}
+        className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 transition-colors ${
+          isFocused ? "text-secondary" : "text-gray-400"
+        }`}
       />
       <input
         type="text"
@@ -109,20 +94,22 @@ function SearchInput({
           transition-all duration-200 outline-none
           focus:bg-white focus:border-secondary/60 focus:ring-4 focus:ring-secondary/10
           hover:border-gray-300 placeholder-gray-400"
-        aria-label="Search companies"
+        aria-label={t("common.actions.search")}
       />
       {value && (
         <button
-          onClick={() => onChange('')}
+          onClick={() => onChange("")}
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-          aria-label="Clear search"
+          aria-label={t("common.aria.clearSearch")}
         >
           <X className="h-4 w-4" />
         </button>
       )}
       {!value && !isFocused && (
         <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gray-100 text-[10px] text-gray-500 font-sans border border-gray-200">
-          <span className="text-xs"><Search /></span>
+          <span className="text-xs">
+            <Search />
+          </span>
         </kbd>
       )}
     </div>
@@ -177,6 +164,7 @@ function CompanyGridCard({
   imageError: boolean;
   onImageError: (id: number) => void;
 }) {
+  const { t } = useTranslation("product");
   const logoUrl = (company as any).logo || (company as any).logo_url;
   const showIcon = !logoUrl || imageError;
   const isActive = (company as any).is_active !== false;
@@ -196,10 +184,11 @@ function CompanyGridCard({
         focus:outline-none focus-visible:ring-4 focus-visible:ring-secondary/20
         active:scale-[0.98]"
     >
-      {/* Logo / Icon */}
-      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center
+      <div
+        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center
         border border-gray-200 bg-gray-50 overflow-hidden
-        group-hover:border-secondary/40 group-hover:shadow-md transition-all duration-300">
+        group-hover:border-secondary/40 group-hover:shadow-md transition-all duration-300"
+      >
         {showIcon ? (
           <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-secondary" />
         ) : (
@@ -212,26 +201,29 @@ function CompanyGridCard({
         )}
       </div>
 
-      {/* Info */}
       <div className="min-w-0 w-full">
         <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">
           {company.name}
         </p>
         <p className="text-xs text-gray-500 truncate capitalize mt-0.5">
-          {company.business_type || 'Company'}
+          {company.business_type || t("companySelector.card.companyFallback")}
         </p>
         <div className="mt-1 flex items-center justify-center gap-1">
           <span
             className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[9px] sm:text-[10px] font-semibold ${
               isActive
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-red-50 text-red-700 border-red-200'
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-red-50 text-red-700 border-red-200"
             }`}
           >
-            {isActive ? 'Active' : 'Inactive'}
+            {isActive
+              ? t("common.states.active")
+              : t("common.states.inactive")}
           </span>
           {!isActive && (
-            <span className="text-[9px] sm:text-[10px] text-gray-500">View only</span>
+            <span className="text-[9px] sm:text-[10px] text-gray-500">
+              {t("companySelector.card.viewOnly")}
+            </span>
           )}
         </div>
       </div>
@@ -255,7 +247,10 @@ function ProductCard({
       transition={{ duration: 0.2 }}
       onClick={() => {
         if (product.company_slug) {
-          onSelect(product.company_slug, product.company_name || product.company);
+          onSelect(
+            product.company_slug,
+            product.company_name || product.company,
+          );
         }
       }}
       className="group flex flex-col items-center gap-3 p-4 sm:p-5 rounded-2xl
@@ -265,10 +260,11 @@ function ProductCard({
         focus:outline-none focus-visible:ring-4 focus-visible:ring-secondary/20
         active:scale-[0.98]"
     >
-      {/* Product Image */}
-      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center
+      <div
+        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center
         border border-gray-200 bg-gray-50 overflow-hidden
-        group-hover:border-secondary/40 group-hover:shadow-md transition-all duration-300">
+        group-hover:border-secondary/40 group-hover:shadow-md transition-all duration-300"
+      >
         {product.primary_image ? (
           <img
             src={product.primary_image}
@@ -280,7 +276,6 @@ function ProductCard({
         )}
       </div>
 
-      {/* Product Info */}
       <div className="min-w-0 w-full">
         <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">
           {product.title}
@@ -296,28 +291,32 @@ function ProductCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
 export function CompanySelector({
   companies,
   isLoading,
   onSelect,
   onBack,
   allowSwitch = false,
-  subtitle = "Select a company to manage its products",
+  subtitle,
   disableProductSearch = false,
-  title = "Choose Company",
-  searchPlaceholder = "Search by name or type...",
+  title,
+  searchPlaceholder,
 }: CompanySelectorProps) {
+  const { t } = useTranslation("product");
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [productResults, setProductResults] = useState<any[]>([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
 
   const isSuperAdmin = !user?.memberships || user.memberships.length === 0;
   const hasAccess = isSuperAdmin || allowSwitch;
+
+  const resolvedTitle = title ?? t("companySelector.titleDefault");
+  const resolvedSubtitle = subtitle ?? t("companySelector.subtitleDefault");
+  const resolvedSearchPlaceholder =
+    searchPlaceholder ?? t("companySelector.searchPlaceholderDefault");
+
   if (!hasAccess) {
     return <AccessDenied />;
   }
@@ -325,10 +324,9 @@ export function CompanySelector({
   const filteredCompanies = companies.filter(
     (c) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.business_type?.toLowerCase().includes(searchTerm.toLowerCase())
+      c.business_type?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // Search products whenever searchTerm changes (only if product search is enabled)
   useEffect(() => {
     if (disableProductSearch) {
       setProductResults([]);
@@ -346,7 +344,7 @@ export function CompanySelector({
         const response = await searchProducts({ search: searchTerm });
         setProductResults(response.data.results || []);
       } catch (err) {
-        console.error('Failed to search products:', err);
+        console.error("Failed to search products:", err);
         setProductResults([]);
       } finally {
         setSearchingProducts(false);
@@ -361,56 +359,48 @@ export function CompanySelector({
     setImageErrors((prev) => ({ ...prev, [companyId]: true }));
   }, []);
 
+  const totalResults = filteredCompanies.length + productResults.length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-3xl  max-w-7xl mx-auto flex flex-col overflow-hidden backdrop-blur-sm"
-      style={{ maxHeight: 'calc(100vh - 120px)' }}
+      style={{ maxHeight: "calc(100vh - 120px)" }}
     >
-      {/* Header – fixed at top */}
-      <Header
-        title={title}
-        subtitle={subtitle}
-        onBack={onBack}
-      />
+      <Header title={resolvedTitle} subtitle={resolvedSubtitle} onBack={onBack} />
 
-      {/* Scrollable content area (search + grid) */}
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        {/* Sticky search */}
         <div className="sticky top-0 z-10 px-4 sm:px-6 pt-3 pb-2 bg-white/90 backdrop-blur-md">
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder={searchPlaceholder}
+            placeholder={resolvedSearchPlaceholder}
           />
           <div className="mt-3 border-b border-gray-100" />
         </div>
 
-        {/* Grid / skeleton / empty states */}
         <div className="px-4 sm:px-6 pb-6">
-          {/* Loading State */}
           {(isLoading || searchingProducts) && <SkeletonGrid />}
 
-          {/* No Companies Available */}
           {!isLoading && !searchingProducts && companies.length === 0 && (
             <EmptyState
               icon={Building2}
-              title="No companies available"
-              message="Please contact your administrator"
+              title={t("companySelector.empty.noCompanies")}
+              message={t("companySelector.empty.noCompaniesMessage")}
             />
           )}
 
-          {/* Search Results - Show both Companies and Products */}
           {!isLoading && !searchingProducts && searchTerm && (
             <>
-              {/* Companies Section */}
               {filteredCompanies.length > 0 && (
                 <>
                   <div className="flex items-center gap-2 mb-4 mt-2">
                     <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />
                     <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                      Companies ({filteredCompanies.length})
+                      {t("companySelector.sections.companies", {
+                        count: filteredCompanies.length,
+                      })}
                     </h3>
                   </div>
                   <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 mb-8">
@@ -429,13 +419,14 @@ export function CompanySelector({
                 </>
               )}
 
-              {/* Products Section - Only show if product search is enabled */}
               {!disableProductSearch && productResults.length > 0 && (
                 <>
                   <div className="flex items-center gap-2 mb-4 mt-2">
                     <Package className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />
                     <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                      Products ({productResults.length})
+                      {t("companySelector.sections.products", {
+                        count: productResults.length,
+                      })}
                     </h3>
                   </div>
                   <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -452,24 +443,24 @@ export function CompanySelector({
                 </>
               )}
 
-              {/* No Results */}
               {filteredCompanies.length === 0 && productResults.length === 0 && (
                 <EmptyState
                   icon={Search}
-                  title="No results found"
-                  message={`No companies or products match "${searchTerm}"`}
+                  title={t("companySelector.empty.noResults")}
+                  message={t("companySelector.empty.noResultsMessage", {
+                    searchTerm,
+                  })}
                 />
               )}
             </>
           )}
 
-          {/* No Search Term - Show All Companies */}
           {!isLoading && !searchingProducts && !searchTerm && (
             <>
               <div className="flex items-center gap-2 mb-4 mt-2">
                 <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-secondary" />
                 <h3 className="text-sm sm:text-base font-semibold text-gray-700">
-                  All Companies
+                  {t("companySelector.sections.allCompanies")}
                 </h3>
               </div>
               <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -490,18 +481,22 @@ export function CompanySelector({
         </div>
       </div>
 
-      {/* Footer – fixed at bottom */}
       {!isLoading && !searchingProducts && (
         <div className="px-6 py-2 border-t border-gray-100 bg-gray-50/80 backdrop-blur-sm text-center flex-shrink-0">
           <p className="text-xs sm:text-sm text-gray-500">
             {searchTerm ? (
               <>
-                Found {filteredCompanies.length + productResults.length}{' '}
-                result{(filteredCompanies.length + productResults.length) !== 1 ? 's' : ''}
+                {t("companySelector.footer.found", {
+                  count: totalResults,
+                  suffix: totalResults !== 1 ? "s" : "",
+                })}
               </>
             ) : (
               <>
-                Showing {companies.length} compan{companies.length !== 1 ? 'ies' : 'y'}
+                {t("companySelector.footer.showing", {
+                  count: companies.length,
+                  suffix: companies.length !== 1 ? "ies" : "y",
+                })}
               </>
             )}
           </p>

@@ -1,6 +1,7 @@
 // src/components/dashboard/ads/AdManagement.tsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Loader2,
   Plus,
@@ -31,7 +32,7 @@ import {
   Building2,
   Check,
   Zap,
-  Sparkles,
+  // Sparkles,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -47,12 +48,13 @@ import {
   getAdminAdPageSettings,
   getAdPricing,
   updateAdminAdPageSetting,
-  updateAdminPlacementSchedule,
+  // updateAdminPlacementSchedule,
   initializeAdPayment,
   verifyAdPayment,
 } from "../../services/api";
 import { useCurrentCompany } from "../../context/CurrentCompanyContext";
 import PageHeader from "../ui/PageHeader";
+import i18n from "../../i18n";
 
 // ----------------------------------------------------------------------
 // Centralized image URL resolver
@@ -129,14 +131,24 @@ async function checkImageDimensions(
         return;
       }
 
-      const direction = aspect > TARGET_ASPECT ? "wider" : "taller";
+      const direction =
+        aspect > TARGET_ASPECT
+          ? i18n.t("ads:wider")
+          : i18n.t("ads:taller");
       resolve({
         ok: false,
         width: w,
         height: h,
         aspect,
         severity: "error",
-        reason: `Your image is ${w}×${h} px and is ${direction} than the required ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px (${AD_IMAGE_SPEC.ratio}). Please resize your image to exactly ${AD_IMAGE_SPEC.width}×${AD_IMAGE_SPEC.height} px before uploading.`,
+        reason: i18n.t("ads:imageDimensionError", {
+          w,
+          h,
+          direction,
+          targetW: AD_IMAGE_SPEC.width,
+          targetH: AD_IMAGE_SPEC.height,
+          ratio: AD_IMAGE_SPEC.ratio,
+        }),
       });
     };
 
@@ -148,7 +160,7 @@ async function checkImageDimensions(
         height: 0,
         aspect: 0,
         severity: "error",
-        reason: "Could not read image dimensions. Please try another file.",
+        reason: i18n.t("ads:imageReadError"),
       });
     };
 
@@ -424,80 +436,70 @@ const StatCard: React.FC<{
 // ----------------------------------------------------------------------
 // Image Spec Info Panel
 // ----------------------------------------------------------------------
-const ImageSpecInfo: React.FC = () => (
-  <div className="rounded-2xl border border-secondary/15 bg-gradient-to-br from-secondary/[0.04] via-white to-secondary/[0.02] p-4 sm:p-5">
-    {/* Header */}
-    <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/20">
-        <ImageIcon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <h3 className="text-sm font-bold text-gray-900 sm:text-base">
-          Required image specifications
-        </h3>
-        <p className="mt-0.5 text-xs text-gray-500 sm:text-[13px]">
-          Your ad image must match these specifications exactly to be uploaded.
-        </p>
-      </div>
-    </div>
-
-    {/* Spec grid */}
-    <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-      {/* Dimensions */}
-      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
-          <Ruler className="h-4 w-4" />
+const ImageSpecInfo: React.FC = () => {
+  const { t } = useTranslation("ads");
+  return (
+    <div className="rounded-2xl border border-secondary/15 bg-gradient-to-br from-secondary/[0.04] via-white to-secondary/[0.02] p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-white shadow-sm shadow-secondary/20">
+          <ImageIcon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Dimensions
-          </p>
-          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
-            {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+          <h3 className="text-sm font-bold text-gray-900 sm:text-base">
+            {t("imageSpecTitle")}
+          </h3>
+          <p className="mt-0.5 text-xs text-gray-500 sm:text-[13px]">
+            {t("imageSpecDesc")}
           </p>
         </div>
       </div>
 
-      {/* Ratio & Format */}
-      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
-          <FileImage className="h-4 w-4" />
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+        <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+            <Ruler className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {t("dimensions")}
+            </p>
+            <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+              {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Ratio & Format
-          </p>
-          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
-            {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
-          </p>
-        </div>
-      </div>
 
-      {/* Max File Size */}
-      <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
-          <HardDrive className="h-4 w-4" />
+        <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+            <FileImage className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {t("ratioFormat")}
+            </p>
+            <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+              {AD_IMAGE_SPEC.ratio} · {AD_IMAGE_SPEC.formatLabel}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Max File Size
-          </p>
-          <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
-            {AD_IMAGE_SPEC.maxSizeMB} MB
-          </p>
+
+        <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
+            <HardDrive className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {t("maxFileSize")}
+            </p>
+            <p className="mt-0.5 truncate text-xs font-bold text-gray-900 sm:text-sm">
+              {AD_IMAGE_SPEC.maxSizeMB} MB
+            </p>
+          </div>
         </div>
       </div>
     </div>
-
-    {/* Optional tip — uncomment if needed */}
-    {/* <div className="mt-4 flex items-start gap-2 rounded-xl border border-secondary/10 bg-secondary/[0.04] px-3 py-2.5">
-      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-secondary" />
-      <p className="text-[11px] leading-relaxed text-gray-600 sm:text-xs">
-        Keep text and logos in the <strong className="text-gray-900">center area</strong> of the image for best results on all screen sizes.
-      </p>
-    </div> */}
-  </div>
-);
+  );
+};
 
 // ----------------------------------------------------------------------
 // Image Uploader — with strict dimension validation
@@ -508,6 +510,7 @@ const ImageUploader: React.FC<{
   existingImage?: string;
   error?: string;
 }> = ({ onFileChange, previewUrl, existingImage, error }) => {
+  const { t } = useTranslation("ads");
   const [preview, setPreview] = useState<string | null>(
     previewUrl || resolveAdImageUrl(existingImage) || null,
   );
@@ -534,10 +537,10 @@ const ImageUploader: React.FC<{
 
   const validateFile = (file: File): string | null => {
     if (!AD_IMAGE_SPEC.formats.includes(file.type as any)) {
-      return `Unsupported format. Please upload ${AD_IMAGE_SPEC.formatLabel}.`;
+      return t("unsupportedFormat", { formats: AD_IMAGE_SPEC.formatLabel });
     }
     if (file.size > AD_IMAGE_SPEC.maxSizeMB * 1024 * 1024) {
-      return `File is too large. Maximum size is ${AD_IMAGE_SPEC.maxSizeMB} MB.`;
+      return t("fileTooLarge", { size: AD_IMAGE_SPEC.maxSizeMB });
     }
     return null;
   };
@@ -553,19 +556,17 @@ const ImageUploader: React.FC<{
       return;
     }
 
-    // Check dimensions BEFORE showing preview or accepting the file
     const check = await checkImageDimensions(file);
     setDimCheck(check);
 
     if (check.severity === "error" || !check.ok) {
-      setFileError(check.reason || "Invalid image dimensions.");
+      setFileError(check.reason || t("invalidDimensions"));
       setPendingFile(null);
       setPreview(null);
       onFileChange(null);
       return;
     }
 
-    // Dimensions are OK — show preview and accept the file
     setFileError(null);
     setImageFailed(false);
 
@@ -605,12 +606,16 @@ const ImageUploader: React.FC<{
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-medium text-gray-700">
-          Advertisement Image <span className="text-red-500">*</span>
+          {t("adImage")} <span className="text-red-500">*</span>
         </label>
         <p className="mt-0.5 text-xs text-gray-500">
-          Required: {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px (
-          {AD_IMAGE_SPEC.ratio}) · {AD_IMAGE_SPEC.formatLabel} · Max{" "}
-          {AD_IMAGE_SPEC.maxSizeMB} MB
+          {t("required", {
+            width: AD_IMAGE_SPEC.width,
+            height: AD_IMAGE_SPEC.height,
+            ratio: AD_IMAGE_SPEC.ratio,
+            formats: AD_IMAGE_SPEC.formatLabel,
+            size: AD_IMAGE_SPEC.maxSizeMB,
+          })}
         </p>
       </div>
 
@@ -646,10 +651,13 @@ const ImageUploader: React.FC<{
           >
             <Upload className="mx-auto h-10 w-10 text-gray-400" />
             <p className="mt-2 text-sm font-medium text-gray-700">
-              Drag & drop an image here, or click to browse
+              {t("dragDrop")}
             </p>
             <p className="mt-1 text-xs text-gray-400">
-              {AD_IMAGE_SPEC.formatLabel} · up to {AD_IMAGE_SPEC.maxSizeMB} MB
+              {t("dragDropHint", {
+                formats: AD_IMAGE_SPEC.formatLabel,
+                size: AD_IMAGE_SPEC.maxSizeMB,
+              })}
             </p>
 
             <div className="mx-auto mt-4 flex max-w-xs items-center justify-center">
@@ -659,7 +667,7 @@ const ImageUploader: React.FC<{
               >
                 <div className="flex h-full items-center justify-center">
                   <span className="text-[10px] font-medium text-secondary/60">
-                    Required area · {AD_IMAGE_SPEC.ratio}
+                    {t("requiredArea", { ratio: AD_IMAGE_SPEC.ratio })}
                   </span>
                 </div>
               </div>
@@ -675,7 +683,7 @@ const ImageUploader: React.FC<{
                 <div className="text-center">
                   <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
                   <p className="mt-1 text-xs text-gray-500">
-                    Image failed to load. Please re-upload.
+                    {t("imageFailed")}
                   </p>
                 </div>
               ) : (
@@ -695,7 +703,7 @@ const ImageUploader: React.FC<{
                 className="bg-white px-4 py-2 rounded-xl text-sm font-medium text-gray-800 hover:bg-gray-100"
               >
                 <Upload className="w-4 h-4 inline mr-1" />
-                Change Image
+                {t("changeImage")}
               </button>
               <button
                 type="button"
@@ -703,70 +711,61 @@ const ImageUploader: React.FC<{
                 className="bg-white px-4 py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-gray-100"
               >
                 <Trash2 className="w-4 h-4 inline mr-1" />
-                Remove
+                {t("remove")}
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Dimension feedback — now only shows success or error */}
       {dimCheck && preview && pendingFile && dimCheck.ok && (
         <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3">
           <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-emerald-900">
-              Perfect size · {dimCheck.width} × {dimCheck.height} px
+              {t("perfectSize", {
+                width: dimCheck.width,
+                height: dimCheck.height,
+              })}
             </p>
             <p className="mt-0.5 text-[11px] text-emerald-700">
-              Matches the required {AD_IMAGE_SPEC.ratio} aspect ratio. Displays
-              edge-to-edge on all screens.
+              {t("perfectSizeDesc", { ratio: AD_IMAGE_SPEC.ratio })}
             </p>
           </div>
         </div>
       )}
 
-      {/* Large-file hint */}
       {pendingFile && pendingFile.size > 1.5 * 1024 * 1024 && (
         <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-blue-900">
-              Large file ({(pendingFile.size / 1024 / 1024).toFixed(2)} MB)
+              {t("largeFile", {
+                size: (pendingFile.size / 1024 / 1024).toFixed(2),
+              })}
             </p>
             <p className="mt-0.5 text-[11px] text-blue-700">
-              For faster uploads, consider compressing your image at{" "}
-              <a
-                href="https://tinypng.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium underline hover:no-underline"
-              >
-                tinypng.com
-              </a>
-              . Target under 500 KB for the best experience.
+              {t("largeFileDesc")}
             </p>
           </div>
         </div>
       )}
 
-      {/* Error message — this is now critical */}
       {(fileError || error) && (
         <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-red-900">
-              Image upload blocked
+              {t("imageUploadBlocked")}
             </p>
             <p className="mt-0.5 text-[11px] leading-5 text-red-800">
               {fileError || error}
             </p>
             <p className="mt-1.5 text-[11px] font-medium text-red-900">
-              💡 Please resize your image to{" "}
-              <span className="font-bold">
-                {AD_IMAGE_SPEC.width} × {AD_IMAGE_SPEC.height} px
-              </span>{" "}
-              before uploading.
+              {t("resizeHint", {
+                width: AD_IMAGE_SPEC.width,
+                height: AD_IMAGE_SPEC.height,
+              })}
             </p>
           </div>
         </div>
@@ -787,6 +786,7 @@ const AdCard: React.FC<{
   isReadOnly: boolean;
   isSuperAdmin: boolean;
 }> = ({ ad, onEdit, onDelete, onPay, isPaying, isReadOnly, isSuperAdmin }) => {
+  const { t } = useTranslation("ads");
   const [imageFailed, setImageFailed] = useState(false);
   const imageUrl = resolveAdImageUrl(ad.image);
 
@@ -803,10 +803,10 @@ const AdCard: React.FC<{
 
   const paymentLabel =
     ad.payment_status === "paid"
-      ? "Paid"
+      ? t("paymentPaid")
       : ad.payment_status === "pending"
-      ? "Unpaid"
-      : "Exempt";
+      ? t("paymentUnpaid")
+      : t("paymentExempt");
 
   return (
     <motion.div
@@ -814,10 +814,10 @@ const AdCard: React.FC<{
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -6 }}
       transition={{ duration: 0.2 }}
-      className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
+      className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
     >
       <div
-        className="relative w-full overflow-hidden bg-gray-100 flex items-center justify-center"
+        className="relative w-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0"
         style={{ aspectRatio: "3 / 1" }}
       >
         {imageUrl && !imageFailed ? (
@@ -831,140 +831,145 @@ const AdCard: React.FC<{
           <div className="text-center">
             <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
             <p className="mt-1 text-xs text-gray-400">
-              {imageFailed ? "Image failed to load" : "No image"}
+              {imageFailed ? t("imageFailed") : t("noImage")}
             </p>
           </div>
         )}
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
           {ad.payment_status && (
-            <Badge variant={paymentVariant}>
-              {paymentLabel}
-            </Badge>
+            <Badge variant={paymentVariant}>{paymentLabel}</Badge>
           )}
+
           {ad.payment_status==="paid" &&<Badge variant={ad.is_active ?  "active" : "inactive"}>
-            {ad.is_active ? "Live" : "Inactive"}
+           {ad.is_active ? t("statusLive") : t("statusInactive")}
           </Badge>}
+
         </div>
       </div>
 
-      <div className="p-5">
-        <h3 className="font-semibold text-lg text-gray-900 mb-1 truncate">
-          {ad.title}
-        </h3>
-        {isSuperAdmin && (
-          <p className="text-xs font-medium text-gray-500 mb-1 truncate">
-            {ad?.company_name}
-          </p>
-        )}
+      <div className="p-5 flex flex-col flex-1">
+        <div>
+          <h3 className="font-semibold text-lg text-gray-900 mb-1 truncate">
+            {ad.title}
+          </h3>
+          {isSuperAdmin && (
+            <p className="text-xs font-medium text-gray-500 mb-1 truncate">
+              {ad?.company_name}
+            </p>
+          )}
 
-        {/* Placements Status Pills */}
-        {ad.placements && ad.placements.filter((p) => p.is_active).length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {ad.placements.filter((p) => p.is_active).map((p) => {
-              const remainingDays = p.end_date
-                ? Math.max(0, Math.ceil((new Date(p.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                : 0;
-              const isExpired = remainingDays === 0;
+          {/* Placements Status Pills */}
+          {ad.placements && ad.placements.filter((p) => p.is_active).length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {ad.placements.filter((p) => p.is_active).map((p) => {
+                const remainingDays = p.end_date
+                  ? Math.max(0, Math.ceil((new Date(p.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                  : 0;
+                const isExpired = remainingDays === 0;
 
-              let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-              let statusLabel = `Live (${remainingDays}d)`;
+                let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+                let statusLabel = `Live (${remainingDays}d)`;
 
-              if (p.payment_status === "pending") {
-                badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
-                statusLabel = `Unpaid (ETB ${Number(p.price).toFixed(0)})`;
-              } else if (p.payment_status === "exempt") {
-                badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
-                statusLabel = "Exempt";
-              } else if (isExpired) {
-                badgeClass = "bg-gray-100 text-gray-500 border-gray-200";
-                statusLabel = "Expired";
-              }
+                if (p.payment_status === "pending") {
+                  badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+                  statusLabel = `Unpaid (ETB ${Number(p.price).toFixed(0)})`;
+                } else if (p.payment_status === "exempt") {
+                  badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                  statusLabel = "Exempt";
+                } else if (isExpired) {
+                  badgeClass = "bg-gray-100 text-gray-500 border-gray-200";
+                  statusLabel = "Expired";
+                }
 
-              return (
-                <span
-                  key={p.id}
-                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}`}
-                >
-                  <span className="capitalize">{p.page_name_display || p.page_name.replace("_", " ")}</span>: {statusLabel}
-                </span>
-              );
-            })}
-          </div>
-        ) : ad.target_pages && ad.target_pages.length > 0 ? (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {ad.target_pages.map((p) => (
-              <span
-                key={p}
-                className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-secondary/[0.06] text-secondary capitalize"
-              >
-                {p.replace("_", " ")}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        {ad.target_link && (
-          <a
-            href={ad.target_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center text-sm text-secondary hover:underline gap-1 mb-3"
-          >
-            <Globe className="w-3.5 h-3.5" />{" "}
-            {ad.target_link.replace(/^https?:\/\//, "")}
-          </a>
-        )}
-
-        {/* Unpaid / Pending Top-up Banner with Pay Now Button */}
-        {(() => {
-          const unpaidFee = Number(
-            ad.unpaid_placement_cost !== undefined
-              ? ad.unpaid_placement_cost
-              : ad.payment_status === "pending"
-              ? ad.total_cost || 0
-              : 0
-          );
-          if (unpaidFee <= 0) return null;
-          return (
-            <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-bold text-amber-950">
-                  Fee Due: ETB {unpaidFee.toFixed(2)}
-                </p>
-                <p className="text-[10px] text-amber-700">Payment required to activate placements</p>
-              </div>
-              {!isReadOnly && onPay && (
-                <Button
-                  size="sm"
-                  className="bg-[#F4C44E] text-[#4E3900] hover:bg-[#F0BC37] border border-[#E7C86E] shadow-sm text-xs font-bold"
-                  isLoading={isPaying}
-                  onClick={() => onPay(ad)}
-                >
-                  <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay Now
-                </Button>
-              )}
+                return (
+                  <span
+                    key={p.id}
+                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}`}
+                  >
+                    <span className="capitalize">{p.page_name_display || p.page_name.replace("_", " ")}</span>: {statusLabel}
+                  </span>
+                );
+              })}
             </div>
-          );
-        })()}
+          ) : ad.target_pages && ad.target_pages.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {ad.target_pages.map((p) => (
+                <span
+                  key={p}
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-secondary/[0.06] text-secondary capitalize"
+                >
+                  {p.replace("_", " ")}
+                </span>
+              ))}
+            </div>
+          ) : null}
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(ad)}
-            disabled={isReadOnly}
-          >
-            <Pencil className="w-4 h-4 mr-1" /> Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(ad)}
-            className="text-red-600 hover:bg-red-50"
-            disabled={isReadOnly}
-          >
-            <Trash2 className="w-4 h-4 mr-1" /> Delete
-          </Button>
+          {ad.target_link && (
+            <a
+              href={ad.target_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-sm text-secondary hover:underline gap-1 mb-3"
+            >
+              <Globe className="w-3.5 h-3.5" />{" "}
+              {ad.target_link.replace(/^https?:\/\//, "")}
+            </a>
+          )}
+        </div>
+
+        {/* Bottom Section: Unpaid Banner (if any) + Action Buttons pinned to bottom */}
+        <div className="mt-auto pt-2">
+          {/* Unpaid / Pending Top-up Banner with Pay Now Button */}
+          {(() => {
+            const unpaidFee = Number(
+              ad.unpaid_placement_cost !== undefined
+                ? ad.unpaid_placement_cost
+                : ad.payment_status === "pending"
+                ? ad.total_cost || 0
+                : 0
+            );
+            if (unpaidFee <= 0) return null;
+            return (
+              <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold text-amber-950">
+                    {t("fee", { amount: Number(ad.total_cost || 0).toFixed(2) })}
+                  </p>
+                  <p className="text-[10px] text-amber-700">{t("paymentRequired")}</p>
+                </div>
+                {!isReadOnly && onPay && (
+                  <Button
+                    size="sm"
+                    className="bg-[#F4C44E] text-[#4E3900] hover:bg-[#F0BC37] border border-[#E7C86E] shadow-sm text-xs font-bold"
+                    isLoading={isPaying}
+                    onClick={() => onPay(ad)}
+                  >
+                    <CreditCard className="w-3.5 h-3.5 mr-1" /> {t("payNow")}
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(ad)}
+              disabled={isReadOnly}
+            >
+              <Pencil className="w-4 h-4 mr-1" /> {t("edit")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(ad)}
+              className="text-red-600 hover:bg-red-50"
+              disabled={isReadOnly}
+            >
+              <Trash2 className="w-4 h-4 mr-1" /> {t("delete")}
+            </Button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -979,53 +984,54 @@ const DeleteModal: React.FC<{
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-}> = ({ isOpen, onClose, onConfirm, title }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6"
-        >
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              <h3 className="text-lg font-semibold">Delete Advertisement</h3>
+}> = ({ isOpen, onClose, onConfirm, title }) => {
+  const { t } = useTranslation("ads");
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-2xl z-50 p-6"
+          >
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                <h3 className="text-lg font-semibold">
+                  {t("deleteAdvertisement")}
+                </h3>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-gray-600">
-            Are you sure you want to delete{" "}
-            <span className="font-semibold">"{title}"</span>? This action cannot
-            be undone.
-          </p>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={onConfirm}>
-              Delete
-            </Button>
-          </div>
-        </motion.div>
-      </>
-    )}
-  </AnimatePresence>
-);
+            <p className="text-gray-600">{t("deleteConfirm", { title })}</p>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={onClose}>
+                {t("cancel")}
+              </Button>
+              <Button variant="danger" onClick={onConfirm}>
+                {t("delete")}
+              </Button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
 
 // ----------------------------------------------------------------------
 // Create/Edit Modal
@@ -1037,49 +1043,52 @@ const FormModal: React.FC<{
   title: string;
   children: React.ReactNode;
   isSubmitting: boolean;
-}> = ({ isOpen, onClose, onSubmit, title, children, isSubmitting }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
-        >
-          <form onSubmit={onSubmit}>
-            <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">
-              <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">{children}</div>
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-end gap-3">
-              <Button variant="outline" type="button" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" isLoading={isSubmitting}>
-                Save
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      </>
-    )}
-  </AnimatePresence>
-);
+}> = ({ isOpen, onClose, onSubmit, title, children, isSubmitting }) => {
+  const { t } = useTranslation("ads");
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 mx-auto w-auto max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-50"
+          >
+            <form onSubmit={onSubmit}>
+              <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">
+                <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">{children}</div>
+              <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-end gap-3">
+                <Button variant="outline" type="button" onClick={onClose}>
+                  {t("cancel")}
+                </Button>
+                <Button type="submit" isLoading={isSubmitting}>
+                  {t("save")}
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
 
 // ----------------------------------------------------------------------
 // Search & Filter Bar
@@ -1089,46 +1098,49 @@ const SearchFilterBar: React.FC<{
   onSearchChange: (query: string) => void;
   filterStatus: "all" | "active" | "inactive";
   onFilterChange: (status: "all" | "active" | "inactive") => void;
-}> = ({ searchQuery, onSearchChange, filterStatus, onFilterChange }) => (
-  <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
-    <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
-      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/40" />
-          <input
-            type="text"
-            placeholder="Search Ads by title..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="h-10 w-full rounded-xl border border-secondary/15 bg-white pl-10 pr-4 text-sm text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
-          />
-        </div>
+}> = ({ searchQuery, onSearchChange, filterStatus, onFilterChange }) => {
+  const { t } = useTranslation("ads");
+  return (
+    <div className="sticky -top-6 z-[2] -mt-6 w-full bg-white pt-6">
+      <div className="w-full rounded-xl border border-secondary/10 bg-white p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.035)]">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/40" />
+            <input
+              type="text"
+              placeholder={t("searchPlaceholder")}
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-10 w-full rounded-xl border border-secondary/15 bg-white pl-10 pr-4 text-sm text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
+            />
+          </div>
 
-        <div className="flex shrink-0 gap-2">
-          {(["all", "active", "inactive"] as const).map((status) => (
-            <motion.button
-              key={status}
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              onClick={() => onFilterChange(status)}
-              className={`h-10 rounded-xl border px-4 text-xs font-semibold capitalize transition ${
-                filterStatus === status
-                  ? "border-secondary bg-secondary text-white"
-                  : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
-              }`}
-            >
-              {status === "all"
-                ? "All"
-                : status === "active"
-                  ? "Active"
-                  : "Inactive"}
-            </motion.button>
-          ))}
+          <div className="flex shrink-0 gap-2">
+            {(["all", "active", "inactive"] as const).map((status) => (
+              <motion.button
+                key={status}
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onFilterChange(status)}
+                className={`h-10 rounded-xl border px-4 text-xs font-semibold capitalize transition ${
+                  filterStatus === status
+                    ? "border-secondary bg-secondary text-white"
+                    : "border-secondary/15 bg-white text-secondary hover:bg-secondary/[0.05]"
+                }`}
+              >
+                {status === "all"
+                  ? t("filterAll")
+                  : status === "active"
+                    ? t("filterActive")
+                    : t("filterInactive")}
+              </motion.button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ----------------------------------------------------------------------
 // Pagination
@@ -1138,6 +1150,7 @@ const Pagination: React.FC<{
   totalPages: number;
   onPageChange: (page: number) => void;
 }> = ({ currentPage, totalPages, onPageChange }) => {
+  const { t } = useTranslation("ads");
   if (totalPages <= 1) return null;
   return (
     <div className="flex justify-center items-center gap-3 mt-10">
@@ -1147,10 +1160,10 @@ const Pagination: React.FC<{
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
       >
-        <ChevronLeft className="w-4 h-4" /> Previous
+        <ChevronLeft className="w-4 h-4" /> {t("previous")}
       </Button>
       <span className="text-sm text-gray-500">
-        Page {currentPage} of {totalPages}
+        {t("pageOf", { current: currentPage, total: totalPages })}
       </span>
       <Button
         variant="outline"
@@ -1158,7 +1171,7 @@ const Pagination: React.FC<{
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
       >
-        Next <ChevronRight className="w-4 h-4" />
+        {t("next")} <ChevronRight className="w-4 h-4" />
       </Button>
     </div>
   );
@@ -1170,28 +1183,29 @@ const Pagination: React.FC<{
 const EmptyState: React.FC<{
   onCreateNew: () => void;
   isReadOnly: boolean;
-}> = ({ onCreateNew, isReadOnly }) => (
-  <motion.div
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200"
-  >
-    <MegaphoneOff className="mx-auto h-14 w-14 text-gray-300" />
-    <h3 className="mt-4 text-base font-semibold text-gray-900">
-      No advertisements yet
-    </h3>
-    <p className="mt-1 text-sm text-gray-500">
-      Launch your first Advertisement to reach more customers.
-    </p>
-    {!isReadOnly && (
-      <div className="mt-6">
-        <Button onClick={onCreateNew}>
-          <Plus className="w-4 h-4 mr-2" /> Create Advertisement
-        </Button>
-      </div>
-    )}
-  </motion.div>
-);
+}> = ({ onCreateNew, isReadOnly }) => {
+  const { t } = useTranslation("ads");
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200"
+    >
+      <MegaphoneOff className="mx-auto h-14 w-14 text-gray-300" />
+      <h3 className="mt-4 text-base font-semibold text-gray-900">
+        {t("noAdsTitle")}
+      </h3>
+      <p className="mt-1 text-sm text-gray-500">{t("noAdsDesc")}</p>
+      {!isReadOnly && (
+        <div className="mt-6">
+          <Button onClick={onCreateNew}>
+            <Plus className="w-4 h-4 mr-2" /> {t("createAdvertisement")}
+          </Button>
+        </div>
+      )}
+    </motion.div>
+  );
+};
 
 // ----------------------------------------------------------------------
 // Loading Skeleton
@@ -1221,6 +1235,7 @@ const LoadingSkeleton: React.FC = () => (
 // MAIN COMPONENT
 // ----------------------------------------------------------------------
 export default function AdManagement() {
+  const { t } = useTranslation("ads");
   const baseReadOnly = useReadOnly();
   const { user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
@@ -1357,10 +1372,10 @@ export default function AdManagement() {
     setSavingSlotId(settingId);
     try {
       await updateAdminAdPageSetting(settingId, { max_slots, price });
-      showToast("success", "Slot & pricing settings updated successfully");
+      showToast("success", t("slotsUpdated"));
       await fetchPageSettings();
     } catch (err: any) {
-      showToast("error", "Failed to update page settings");
+      showToast("error", t("slotsUpdateFailed"));
     } finally {
       setSavingSlotId(null);
     }
@@ -1374,11 +1389,11 @@ export default function AdManagement() {
       price: Number(setting.price || 0),
     };
     if (draft.slots < 1) {
-      showToast("error", "Max slots must be at least 1");
+      showToast("error", t("slotsMinError"));
       return;
     }
     if (draft.price < 0) {
-      showToast("error", "Price cannot be negative");
+      showToast("error", t("priceNegativeError"));
       return;
     }
     await handleUpdateSlotSetting(setting.id, draft.slots, draft.price);
@@ -1413,11 +1428,11 @@ export default function AdManagement() {
 
       setAds(adsList);
     } catch (error) {
-      showToast("error", "Failed to load advertisements");
+      showToast("error", t("loadFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, [isCompanyAdmin, companySlug, showToast]);
+  }, [isCompanyAdmin, companySlug, showToast, t]);
 
   // ------------------------------------------------------------
   // Effects
@@ -1434,13 +1449,13 @@ export default function AdManagement() {
       if (res.data?.checkout_url) {
         window.location.href = res.data.checkout_url;
       } else if (res.data?.status === "paid") {
-        showToast("success", "Advertisement activated at zero fee!");
+        showToast("success", t("paymentActivated"));
         await fetchAds();
       }
     } catch (err: any) {
       showToast(
         "error",
-        err.response?.data?.error || "Failed to initialize payment.",
+        err.response?.data?.error || t("paymentInitFailed"),
       );
     } finally {
       setIsPayingAdId(null);
@@ -1456,7 +1471,7 @@ export default function AdManagement() {
         .then((res) => {
           showToast(
             "success",
-            res.data?.message || "Payment verified! Your ad is now active.",
+            res.data?.message || t("paymentVerified"),
           );
           params.delete("ad_tx_ref");
           const newUrl =
@@ -1468,11 +1483,11 @@ export default function AdManagement() {
         .catch((err) => {
           showToast(
             "error",
-            err.response?.data?.error || "Payment verification failed.",
+            err.response?.data?.error || t("paymentVerifyFailed"),
           );
         });
     }
-  }, [fetchAds, showToast]);
+  }, [fetchAds, showToast, t]);
 
   // ------------------------------------------------------------
   // Handlers
@@ -1495,15 +1510,15 @@ export default function AdManagement() {
           await deleteAd(adToDelete.id);
         }
         setAds((prev) => prev.filter((ad) => ad.id !== adToDelete.id));
-        showToast("success", "Advertisement deleted successfully");
+        showToast("success", t("deleteSuccess"));
       } catch (error) {
-        showToast("error", "Failed to delete Advertisement");
+        showToast("error", t("deleteFailed"));
       } finally {
         setDeleteModalOpen(false);
         setAdToDelete(null);
       }
     }
-  }, [adToDelete, isReadOnly, isCompanyAdmin, companySlug, showToast]);
+  }, [adToDelete, isReadOnly, isCompanyAdmin, companySlug, showToast, t]);
 
   const handleStartDateChange = useCallback((val: string) => {
     setStartDate(val);
@@ -1520,8 +1535,6 @@ export default function AdManagement() {
     setTitle("");
     setTargetLink("");
     setTargetPages([]);
-    setStartDate("");
-    setEndDate("");
     setIsActive(true);
     setImageFile(null);
     setImagePreview(null);
@@ -1549,12 +1562,16 @@ export default function AdManagement() {
 
   const validateForm = useCallback(() => {
     const errors: { title?: string; image?: string } = {};
-    if (!title.trim()) errors.title = "Advertisement title is required";
+    if (!title.trim()) errors.title = t("titleRequired");
     if (!editingId && !imageFile)
-      errors.image = "Please select a valid image for the new Advertisement. Required size: 1200×400 px (3:1).";
+      errors.image = t("imageRequiredError", {
+        width: AD_IMAGE_SPEC.width,
+        height: AD_IMAGE_SPEC.height,
+        ratio: AD_IMAGE_SPEC.ratio,
+      });
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [title, editingId, imageFile]);
+  }, [title, editingId, imageFile, t]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -1580,14 +1597,14 @@ export default function AdManagement() {
           } else {
             await updateAd(editingId, formData);
           }
-          showToast("success", "Advertisement updated successfully");
+          showToast("success", t("updateSuccess"));
         } else {
           if (isCompanyAdmin && companySlug) {
             await createCompanyAd(companySlug, formData);
           } else {
             await createAd(formData);
           }
-          showToast("success", "New Advertisement created");
+          showToast("success", t("createSuccess"));
         }
         setModalOpen(false);
         fetchAds();
@@ -1597,9 +1614,7 @@ export default function AdManagement() {
           /timeout/i.test(error?.message || "");
         showToast(
           "error",
-          isTimeout
-            ? "Upload timed out. Please check your connection and try again."
-            : error?.message || "Failed to save Advertisement",
+          isTimeout ? t("uploadTimeout") : t("saveFailed"),
         );
       } finally {
         setIsSubmitting(false);
@@ -1620,6 +1635,7 @@ export default function AdManagement() {
       companySlug,
       showToast,
       fetchAds,
+      t,
     ],
   );
 
@@ -1663,18 +1679,18 @@ export default function AdManagement() {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <div className="w-full">
         <PageHeader
-          title={isCompanyAdmin ? "My Company Ads" : "Advertisements"}
+          title={
+            isCompanyAdmin ? t("pageTitleCompany") : t("pageTitleSuperAdmin")
+          }
           description={
-            isCompanyAdmin
-              ? "Manage advertisements and placements for your company."
-              : "Manage advertisement placements across the platform."
+            isCompanyAdmin ? t("pageDescCompany") : t("pageDescSuperAdmin")
           }
           icon={Megaphone}
           loading={isLoading && ads.length === 0}
           badge={
             isReadOnly ? (
               <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2.5 py-1 text-[10px] font-semibold text-gray-600 sm:text-xs">
-                View Only
+                {t("viewOnly")}
               </span>
             ) : undefined
           }
@@ -1688,7 +1704,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Sliders className="h-4 w-4 shrink-0" />
-                  <span>Slot Limits & Pricing</span>
+                  <span>{t("slotLimitsPricing")}</span>
                 </Button>
               )}
               {!isReadOnly && (
@@ -1698,7 +1714,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Plus className="h-4 w-4 shrink-0" />
-                  <span>New Ad</span>
+                  <span>{t("newAd")}</span>
                 </Button>
               )}
             </div>
@@ -1713,7 +1729,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Sliders className="h-3 w-3 shrink-0" />
-                  <span>Pricing & Slots</span>
+                  <span>{t("pricingSlots")}</span>
                 </Button>
               )}
               {!isReadOnly && (
@@ -1723,7 +1739,7 @@ export default function AdManagement() {
                   className="w-full shadow-sm sm:w-auto"
                 >
                   <Plus className="h-3 w-3 shrink-0" />
-                  <span>New</span>
+                  <span>{t("new")}</span>
                 </Button>
               )}
             </div>
@@ -1733,19 +1749,19 @@ export default function AdManagement() {
         {/* Stats Grid */}
         <div className="mb-6 hidden xs:grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Total Ads"
+            title={t("totalAds")}
             value={totalCount}
             icon={LayoutDashboard}
             color="from-blue-500 to-blue-600"
           />
           <StatCard
-            title="Active Ads"
+            title={t("activeAds")}
             value={activeCount}
             icon={Activity}
             color="from-emerald-500 to-emerald-600"
           />
           <StatCard
-            title="Inactive Ads"
+            title={t("inactiveAds")}
             value={totalCount - activeCount}
             icon={ImageIcon}
             color="from-gray-500 to-gray-600"
@@ -1801,18 +1817,17 @@ export default function AdManagement() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
-          title={editingId ? "Edit Advertisement" : "Create New Advertisement"}
+          title={editingId ? t("editAdvertisement") : t("createNewAdvertisement")}
           isSubmitting={isSubmitting}
         >
           <Input
-            label="Title"
+            label={t("title")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Summer Sale 2025"
+            placeholder={t("titlePlaceholder")}
             required
             error={formErrors.title}
           />
-          {/* Active status is only shown when editing an existing ad */}
           {editingId && (
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -1827,17 +1842,17 @@ export default function AdManagement() {
                   htmlFor="isActive"
                   className="text-sm font-medium text-gray-700 cursor-pointer"
                 >
-                  Active (visible to users once paid)
+                  {t("activeLabel")}
                 </label>
               </div>
             </div>
           )}
           <Input
-            label="Target Link (optional)"
+            label={t("targetLink")}
             type="url"
             value={targetLink}
             onChange={(e) => setTargetLink(e.target.value)}
-            placeholder="https://example.com/offer"
+            placeholder={t("targetLinkPlaceholder")}
           />
           {/* Schedule Section */}
           {!editingId ? (
@@ -1904,6 +1919,7 @@ export default function AdManagement() {
 
           {/* Placements Section with Upfront Checkbox Pricing */}
           <div className="space-y-3">
+
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <label className="block text-sm font-bold text-gray-900">
@@ -2110,7 +2126,6 @@ export default function AdManagement() {
                 transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
                 className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white rounded-3xl shadow-2xl z-50 overflow-hidden border border-gray-100 max-h-[92vh] flex flex-col"
               >
-                {/* Modal Header */}
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50/90 via-white to-gray-50/90">
                   <div className="flex items-center gap-3.5">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary/10 text-secondary border border-secondary/20 shadow-sm">
@@ -2118,10 +2133,10 @@ export default function AdManagement() {
                     </div>
                     <div>
                       <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                        Page Placement Slots & Pricing
+                        {t("slotsModalTitle")}
                       </h2>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Configure display slot capacity and placement fees per app screen.
+                        {t("slotsModalDesc")}
                       </p>
                     </div>
                   </div>
@@ -2134,26 +2149,14 @@ export default function AdManagement() {
                   </button>
                 </div>
 
-                {/* Modal Content */}
                 <div className="overflow-y-auto p-6 space-y-4 flex-1">
-                  {/* Informational Guidance Box on Slots */}
-                  {/* <div className="flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border border-blue-100 text-blue-950 shadow-xs">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 mt-0.5">
-                      <Info className="h-4 w-4" />
-                    </div>
-                    <div className="text-xs leading-relaxed">
-                      <span className="font-bold text-blue-900">How Slots Work:</span>{" "}
-                      <strong>Slots</strong> specify the maximum number of ads displayed concurrently on that screen. If more advertisers buy ads on a page than its slot limit, the system automatically <strong>rotates ads randomly</strong> on every page load to guarantee equal and fair exposure.
-                    </div>
-                  </div> */}
-
                   {pageSettings.length === 0 ? (
                     <div className="text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-gray-50/50">
                       <p className="text-sm font-medium text-gray-600">
-                        No placement settings found.
+                        {t("noSettingsFound")}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        Ensure database placement settings are initialized on your server.
+                        {t("noSettingsDesc")}
                       </p>
                     </div>
                   ) : (
@@ -2172,7 +2175,9 @@ export default function AdManagement() {
                           return <Store className="h-5 w-5 text-secondary" />;
                         if (setting.page_name === "company_detail")
                           return <Building2 className="h-5 w-5 text-secondary" />;
-                        return <LayoutDashboard className="h-5 w-5 text-gray-600" />;
+                        return (
+                          <LayoutDashboard className="h-5 w-5 text-gray-600" />
+                        );
                       };
 
                       const getBadgeBg = () => {
@@ -2185,12 +2190,18 @@ export default function AdManagement() {
                         return "bg-gray-50 border-gray-100 text-gray-700";
                       };
 
+                      const getPageDesc = (name: string) => {
+                        if (name === "home") return t("pageHomeDesc");
+                        if (name === "companies_list")
+                          return t("pageCompaniesListDesc");
+                        return t("pageCompanyDetailDesc");
+                      };
+
                       return (
                         <div
                           key={setting.id}
                           className="rounded-2xl border border-gray-200/80 bg-white p-4.5 shadow-xs hover:border-secondary/30 hover:shadow-md transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
                         >
-                          {/* Page Identity */}
                           <div className="flex items-center gap-3.5">
                             <div
                               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-xs ${getBadgeBg()}`}
@@ -2200,28 +2211,20 @@ export default function AdManagement() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="text-sm font-bold text-gray-900">
-                                  {setting.page_name_display || setting.page_name}
+                                  {setting.page_name_display ||
+                                    setting.page_name}
                                 </p>
-                                {/* <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded-md bg-gray-100 text-gray-600 border border-gray-200/70">
-                                  {setting.page_name}
-                                </span> */}
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5">
-                                {setting.page_name === "home"
-                                  ? "Main application landing carousel screen"
-                                  : setting.page_name === "companies_list"
-                                  ? "Stores/Services and companies directory screen"
-                                  : "Individual store storefront & menu screen"}
+                                {getPageDesc(setting.page_name)}
                               </p>
                             </div>
                           </div>
 
-                          {/* Controls (Slots + Price + Save) */}
                           <div className="flex items-center gap-3 justify-between md:justify-end flex-wrap sm:flex-nowrap border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
-                            {/* Slots Input */}
                             <div className="flex flex-col gap-1">
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                Max Slots
+                                {t("maxSlots")}
                               </label>
                               <div className="relative">
                                 <input
@@ -2241,10 +2244,9 @@ export default function AdManagement() {
                               </div>
                             </div>
 
-                            {/* Price Input */}
                             <div className="flex flex-col gap-1">
                               <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                Price  
+                                {t("price")}
                               </label>
                               <div className="relative flex items-center">
                                 <span className="absolute left-2.5 text-[10px] font-bold text-gray-400 select-none">
@@ -2267,7 +2269,6 @@ export default function AdManagement() {
                               </div>
                             </div>
 
-                            {/* Save Action */}
                             <div className="flex flex-col justify-end mt-5 pt-4 sm:pt-0">
                               <Button
                                 size="sm"
@@ -2282,14 +2283,14 @@ export default function AdManagement() {
                                 {isSaving ? (
                                   <>
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    <span>Saving</span>
+                                    <span>{t("saving")}</span>
                                   </>
                                 ) : modified ? (
-                                  "Save"
+                                  t("save")
                                 ) : (
                                   <span className="inline-flex items-center gap-1.5 text-white">
                                     <Check className="h-3.5 w-3.5 text-white stroke-[2.5]" />
-                                    <span>Saved</span>
+                                    <span>{t("saved")}</span>
                                   </span>
                                 )}
                               </Button>
@@ -2301,17 +2302,15 @@ export default function AdManagement() {
                   )}
                 </div>
 
-                {/* Modal Footer */}
                 <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-t border-gray-100">
-                  <p className="text-xs text-gray-500">
-                   </p>
+                  <p className="text-xs text-gray-500"></p>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setSlotsModalOpen(false)}
                     className="px-5 rounded-xl border-gray-300 text-gray-700 hover:bg-gray-100"
                   >
-                    Close
+                    {t("close")}
                   </Button>
                 </div>
               </motion.div>

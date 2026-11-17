@@ -1,4 +1,6 @@
+
 import { useState, useCallback, useEffect, memo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   GripVertical,
   AlignLeft,
@@ -43,8 +45,9 @@ import { createPortal } from "react-dom";
 import type { IntakeFormField } from "../../../types";
 
 /* -------------------------------------------------------------------------- */
-/*  Extended types to support field‑specific configuration                   */
+/*  Extended types to support field-specific configuration                   */
 /* -------------------------------------------------------------------------- */
+
 interface ExtendedIntakeFormField extends IntakeFormField {
   rows?: number;
   min?: number;
@@ -63,6 +66,7 @@ type FieldWithId = ExtendedIntakeFormField & { _id: string };
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
+
 const FIELD_ICONS: Record<IntakeFormField["type"], React.ReactNode> = {
   text: <AlignLeft className="h-3.5 w-3.5" />,
   textarea: <AlignJustify className="h-3.5 w-3.5" />,
@@ -80,21 +84,21 @@ const FIELD_ICONS: Record<IntakeFormField["type"], React.ReactNode> = {
   url: <AlignLeft className="h-3.5 w-3.5" />,
 };
 
-const FIELD_LABELS: Record<IntakeFormField["type"], string> = {
-  text: "Text",
-  textarea: "Textarea",
-  email: "Email",
-  phone: "Phone",
-  number: "Number",
-  date: "Date",
-  time: "Time",
-  datetime: "Date & Time",
-  select: "Select",
-  multiselect: "Multi Select",
-  radio: "Radio",
-  checkbox: "Checkbox",
-  file: "File Upload",
-  url: "Website URL",
+const FIELD_TYPE_KEYS: Record<IntakeFormField["type"], string> = {
+  text: "fieldTypes.text",
+  textarea: "fieldTypes.textarea",
+  email: "fieldTypes.email",
+  phone: "fieldTypes.phone",
+  number: "fieldTypes.number",
+  date: "fieldTypes.date",
+  time: "fieldTypes.time",
+  datetime: "fieldTypes.datetime",
+  select: "fieldTypes.select",
+  multiselect: "fieldTypes.multiselect",
+  radio: "fieldTypes.radio",
+  checkbox: "fieldTypes.checkbox",
+  file: "fieldTypes.file",
+  url: "fieldTypes.url",
 };
 
 const FIELD_TYPES: IntakeFormField["type"][] = [
@@ -121,7 +125,10 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-function generateFieldName(label: string, existingNames: Set<string>): string {
+function generateFieldName(
+  label: string,
+  existingNames: Set<string>,
+): string {
   let base = label
     .trim()
     .toLowerCase()
@@ -150,6 +157,7 @@ function generateFieldName(label: string, existingNames: Set<string>): string {
 /* -------------------------------------------------------------------------- */
 /*  Options Editor                                                            */
 /* -------------------------------------------------------------------------- */
+
 function OptionsEditor({
   options,
   onChange,
@@ -157,12 +165,16 @@ function OptionsEditor({
   options?: string[];
   onChange: (options: string[]) => void;
 }) {
+  const { t } = useTranslation("intakeForm");
+
   const safeOptions = options ?? [];
   const [newOption, setNewOption] = useState("");
 
   const addOption = () => {
     const trimmed = newOption.trim();
+
     if (!trimmed || safeOptions.includes(trimmed)) return;
+
     onChange([...safeOptions, trimmed]);
     setNewOption("");
   };
@@ -179,7 +191,10 @@ function OptionsEditor({
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-medium text-gray-600">Options</label>
+      <label className="text-xs font-medium text-gray-600">
+        {t("intakeForm.options")}
+      </label>
+
       <ul className="space-y-1">
         {safeOptions.map((opt, idx) => (
           <li key={idx} className="flex items-center gap-1">
@@ -189,17 +204,19 @@ function OptionsEditor({
               onChange={(e) => updateOption(idx, e.target.value)}
               className="flex-1 h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
             />
+
             <button
               type="button"
               onClick={() => removeOption(idx)}
               className="p-1 text-gray-400 hover:text-red-500"
-              aria-label="Remove option"
+              aria-label={t("intakeForm.removeOption")}
             >
               <X className="h-4 w-4" />
             </button>
           </li>
         ))}
       </ul>
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -208,15 +225,16 @@ function OptionsEditor({
           onKeyDown={(e) =>
             e.key === "Enter" && (e.preventDefault(), addOption())
           }
-          placeholder="New option"
+          placeholder={t("intakeForm.newOption")}
           className="flex-1 h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
         />
+
         <button
           type="button"
           onClick={addOption}
           className="px-3 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm"
         >
-          Add
+          {t("intakeForm.add")}
         </button>
       </div>
     </div>
@@ -224,8 +242,9 @@ function OptionsEditor({
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Field Type Select (portal‑based)                                          */
+/*  Field Type Select (portal-based)                                          */
 /* -------------------------------------------------------------------------- */
+
 function FieldTypeSelect({
   value,
   onChange,
@@ -233,14 +252,18 @@ function FieldTypeSelect({
   value: IntakeFormField["type"];
   onChange: (type: IntakeFormField["type"]) => void;
 }) {
+  const { t } = useTranslation("intakeForm");
+
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const [dropdownStyle, setDropdownStyle] =
+    useState<React.CSSProperties>({});
 
   const updatePosition = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
+
       setDropdownStyle({
         position: "fixed",
         left: rect.left,
@@ -254,9 +277,11 @@ function FieldTypeSelect({
   useEffect(() => {
     if (open) {
       updatePosition();
+
       window.addEventListener("scroll", updatePosition, true);
       window.addEventListener("resize", updatePosition);
     }
+
     return () => {
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
@@ -265,15 +290,20 @@ function FieldTypeSelect({
 
   useEffect(() => {
     if (!open) return;
+
     const handleClick = (e: MouseEvent) => {
       if (
         triggerRef.current?.contains(e.target as Node) ||
         dropdownRef.current?.contains(e.target as Node)
-      )
+      ) {
         return;
+      }
+
       setOpen(false);
     };
+
     document.addEventListener("mousedown", handleClick);
+
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
@@ -286,9 +316,14 @@ function FieldTypeSelect({
         className="flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-700 hover:bg-white transition w-full focus:outline-none focus:ring-2 focus:ring-secondary/20"
       >
         <span className="text-gray-500">{FIELD_ICONS[value]}</span>
-        <span className="flex-1 text-left">{FIELD_LABELS[value]}</span>
+
+        <span className="flex-1 text-left">
+          {t(`intakeForm.${FIELD_TYPE_KEYS[value]}`)}
+        </span>
+
         <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
       </button>
+
       {open &&
         createPortal(
           <div
@@ -310,8 +345,11 @@ function FieldTypeSelect({
                     : "text-gray-700"
                 }`}
               >
-                <span className="text-gray-500">{FIELD_ICONS[type]}</span>
-                {FIELD_LABELS[type]}
+                <span className="text-gray-500">
+                  {FIELD_ICONS[type]}
+                </span>
+
+                {t(`intakeForm.${FIELD_TYPE_KEYS[type]}`)}
               </button>
             ))}
           </div>,
@@ -324,6 +362,7 @@ function FieldTypeSelect({
 /* -------------------------------------------------------------------------- */
 /*  Delete Popover                                                            */
 /* -------------------------------------------------------------------------- */
+
 function DeletePopover({
   onDelete,
   fieldLabel,
@@ -331,6 +370,8 @@ function DeletePopover({
   onDelete: () => void;
   fieldLabel: string;
 }) {
+  const { t } = useTranslation("intakeForm");
+
   const [show, setShow] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -341,10 +382,13 @@ function DeletePopover({
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
+      if (ref.current && !ref.current.contains(e.target as Node)) {
         setShow(false);
+      }
     };
+
     document.addEventListener("mousedown", handleClick);
+
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
@@ -353,22 +397,24 @@ function DeletePopover({
       <button
         type="button"
         onClick={() => setShow(true)}
-        title="Delete field"
+        title={t("intakeForm.deleteField")}
         className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
       >
         <Trash2 className="h-4 w-4" />
       </button>
+
       {show && (
         <div
           className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl p-3 z-30 w-56"
           role="dialog"
-          aria-label="Delete confirmation"
+          aria-label={t("intakeForm.deleteField")}
         >
           <p className="text-sm text-gray-700 mb-2">
-            Delete “{fieldLabel}”?
+            {t("intakeForm.deleteConfirmation", { label: fieldLabel })}
             <br />
-            This field will be permanently removed.
+            {t("intakeForm.deleteWarning")}
           </p>
+
           <div className="flex gap-2 justify-end">
             <button
               ref={cancelRef}
@@ -376,8 +422,9 @@ function DeletePopover({
               onClick={() => setShow(false)}
               className="px-3 py-1 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
             >
-              Cancel
+              {t("intakeForm.cancel")}
             </button>
+
             <button
               type="button"
               onClick={() => {
@@ -386,7 +433,7 @@ function DeletePopover({
               }}
               className="px-3 py-1 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700"
             >
-              Delete
+              {t("intakeForm.delete")}
             </button>
           </div>
         </div>
@@ -398,6 +445,7 @@ function DeletePopover({
 /* -------------------------------------------------------------------------- */
 /*  Field Card                                                                */
 /* -------------------------------------------------------------------------- */
+
 const FieldCard = memo(function FieldCard({
   field,
   updateField,
@@ -409,7 +457,10 @@ const FieldCard = memo(function FieldCard({
   removeField: () => void;
   duplicateField: () => void;
 }) {
+  const { t } = useTranslation("intakeForm");
+
   const [collapsed, setCollapsed] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -447,42 +498,53 @@ const FieldCard = memo(function FieldCard({
           className="cursor-grab touch-none text-gray-400 hover:text-gray-600 active:cursor-grabbing shrink-0"
           {...attributes}
           {...listeners}
-          aria-label="Drag to reorder"
+          aria-label={t("intakeForm.dragToReorder")}
         >
           <GripVertical className="h-4 w-4" />
         </button>
+
         <span className="text-gray-500 shrink-0">
           {FIELD_ICONS[field.type]}
         </span>
+
         <span className="text-sm font-medium text-gray-900 truncate flex-1 min-w-0">
-          {field.label || "Untitled"}
+          {field.label || t("intakeForm.untitled")}
         </span>
+
         <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-gray-100 text-xs text-gray-600 shrink-0">
-          {FIELD_LABELS[field.type]}
+          {t(`intakeForm.${FIELD_TYPE_KEYS[field.type]}`)}
         </span>
+
         {field.required && (
           <span
             className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"
-            title="Required"
+            title={t("intakeForm.required")}
           />
         )}
+
         <button
           type="button"
           onClick={duplicateField}
-          title="Duplicate"
+          title={t("intakeForm.duplicate")}
           className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0"
         >
           <Copy className="h-3.5 w-3.5" />
         </button>
+
         <DeletePopover
           onDelete={removeField}
-          fieldLabel={field.label || "Untitled"}
+          fieldLabel={field.label || t("intakeForm.untitled")}
         />
+
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
           className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0"
-          aria-label={collapsed ? "Expand field" : "Collapse field"}
+          aria-label={
+            collapsed
+              ? t("intakeForm.expandField")
+              : t("intakeForm.collapseField")
+          }
         >
           {collapsed ? (
             <ChevronDown className="h-4 w-4" />
@@ -505,8 +567,10 @@ const FieldCard = memo(function FieldCard({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Label <span className="text-red-500">*</span>
+                    {t("intakeForm.label")}{" "}
+                    <span className="text-red-500">*</span>
                   </label>
+
                   <input
                     type="text"
                     value={field.label}
@@ -514,19 +578,22 @@ const FieldCard = memo(function FieldCard({
                       const label = e.target.value;
                       updateField({ label });
                     }}
-                    placeholder="e.g. Customer name"
+                    placeholder={t("intakeForm.customerNameExample")}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Field Type
+                    {t("intakeForm.fieldType")}
                   </label>
+
                   <FieldTypeSelect
                     value={field.type}
                     onChange={(type) => updateField({ type })}
                   />
                 </div>
+
                 <div className="flex items-end pb-1">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -537,8 +604,9 @@ const FieldCard = memo(function FieldCard({
                       }
                       className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
                     />
+
                     <span className="text-xs font-medium text-gray-600">
-                      Required
+                      {t("intakeForm.required")}
                     </span>
                   </label>
                 </div>
@@ -547,20 +615,23 @@ const FieldCard = memo(function FieldCard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Field Name (unique)
+                    {t("intakeForm.fieldName")}
                   </label>
+
                   <input
                     type="text"
                     value={field.name}
                     onChange={(e) => updateField({ name: e.target.value })}
-                    placeholder="e.g. customer_email"
+                    placeholder={t("intakeForm.customerEmailExample")}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Placeholder
+                    {t("intakeForm.placeholder")}
                   </label>
+
                   <input
                     type="text"
                     value={field.placeholder || ""}
@@ -572,25 +643,31 @@ const FieldCard = memo(function FieldCard({
                 </div>
               </div>
 
-              {/* Type‑specific configs — now supported via extended type */}
+              {/* Type-specific configurations */}
+
               {field.type === "file" && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-medium text-gray-600">
-                      Accepted Types
+                      {t("intakeForm.acceptedTypes")}
                     </label>
+
                     <input
                       type="text"
                       value={field.accept ?? ""}
-                      onChange={(e) => updateField({ accept: e.target.value })}
-                      placeholder=".pdf,.jpg,.png"
+                      onChange={(e) =>
+                        updateField({ accept: e.target.value })
+                      }
+                      placeholder={t("intakeForm.acceptedTypesExample")}
                       className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
                     />
                   </div>
+
                   <div>
                     <label className="text-xs font-medium text-gray-600">
-                      Max Size (MB)
+                      {t("intakeForm.maxSize")}
                     </label>
+
                     <input
                       type="number"
                       min={0}
@@ -605,10 +682,12 @@ const FieldCard = memo(function FieldCard({
                       className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
                     />
                   </div>
+
                   <div>
                     <label className="text-xs font-medium text-gray-600">
-                      Max Files
+                      {t("intakeForm.maxFiles")}
                     </label>
+
                     <input
                       type="number"
                       min={1}
@@ -641,8 +720,9 @@ const FieldCard = memo(function FieldCard({
 });
 
 /* -------------------------------------------------------------------------- */
-/*  Main Builder                                                             */
+/*  Main Builder                                                              */
 /* -------------------------------------------------------------------------- */
+
 export function IntakeFormBuilder({
   fields,
   onChange,
@@ -650,6 +730,8 @@ export function IntakeFormBuilder({
   fields: IntakeFormField[];
   onChange: (fields: IntakeFormField[]) => void;
 }) {
+  const { t } = useTranslation("intakeForm");
+
   const [preview, setPreview] = useState(false);
 
   // Transform incoming plain fields into the extended internal representation
@@ -672,7 +754,9 @@ export function IntakeFormBuilder({
   }, [fields]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -681,15 +765,30 @@ export function IntakeFormBuilder({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
+
       if (!over || active.id === over.id) return;
-      const oldIdx = fieldsWithId.findIndex((f) => f._id === active.id);
-      const newIdx = fieldsWithId.findIndex((f) => f._id === over.id);
+
+      const oldIdx = fieldsWithId.findIndex(
+        (f) => f._id === active.id,
+      );
+
+      const newIdx = fieldsWithId.findIndex(
+        (f) => f._id === over.id,
+      );
+
       if (oldIdx === -1 || newIdx === -1) return;
+
       const reordered = [...fieldsWithId];
       const [moved] = reordered.splice(oldIdx, 1);
+
       reordered.splice(newIdx, 0, moved);
+
       // Emit only plain IntakeFormField (strip _id)
-      onChange(reordered.map(({ _id, ...rest }) => rest as IntakeFormField));
+      onChange(
+        reordered.map(
+          ({ _id, ...rest }) => rest as IntakeFormField,
+        ),
+      );
     },
     [fieldsWithId, onChange],
   );
@@ -704,79 +803,145 @@ export function IntakeFormBuilder({
       options: undefined,
       _id: generateId(),
     };
-    const existingNames = new Set(fieldsWithId.map((f) => f.name));
-    newField.name = generateFieldName(newField.label, existingNames);
+
+    const existingNames = new Set(
+      fieldsWithId.map((f) => f.name),
+    );
+
+    newField.name = generateFieldName(
+      newField.label,
+      existingNames,
+    );
+
     const updated = [...fieldsWithId, newField];
-    onChange(updated.map(({ _id, ...rest }) => rest as IntakeFormField));
+
+    onChange(
+      updated.map(
+        ({ _id, ...rest }) => rest as IntakeFormField,
+      ),
+    );
   }, [fieldsWithId, onChange]);
 
   const updateField = useCallback(
-    (id: string, patch: Partial<ExtendedIntakeFormField>) => {
+    (
+      id: string,
+      patch: Partial<ExtendedIntakeFormField>,
+    ) => {
       const next = fieldsWithId.map((f) =>
         f._id === id ? { ...f, ...patch } : f,
       );
-      onChange(next.map(({ _id, ...rest }) => rest as IntakeFormField));
+
+      onChange(
+        next.map(
+          ({ _id, ...rest }) => rest as IntakeFormField,
+        ),
+      );
     },
     [fieldsWithId, onChange],
   );
 
   const removeField = useCallback(
     (id: string) => {
-      const filtered = fieldsWithId.filter((f) => f._id !== id);
-      onChange(filtered.map(({ _id, ...rest }) => rest as IntakeFormField));
+      const filtered = fieldsWithId.filter(
+        (f) => f._id !== id,
+      );
+
+      onChange(
+        filtered.map(
+          ({ _id, ...rest }) => rest as IntakeFormField,
+        ),
+      );
     },
     [fieldsWithId, onChange],
   );
 
   const duplicateField = useCallback(
     (id: string) => {
-      const idx = fieldsWithId.findIndex((f) => f._id === id);
+      const idx = fieldsWithId.findIndex(
+        (f) => f._id === id,
+      );
+
       if (idx === -1) return;
+
       const original = fieldsWithId[idx];
-      const existingNames = new Set(fieldsWithId.map((f) => f.name));
+
+      const existingNames = new Set(
+        fieldsWithId.map((f) => f.name),
+      );
+
       const copy: FieldWithId = {
         ...original,
         _id: generateId(),
-        name: generateFieldName(original.label + " copy", existingNames),
+        name: generateFieldName(
+          original.label + " copy",
+          existingNames,
+        ),
         label: original.label + " (copy)",
       };
+
       const next = [...fieldsWithId];
+
       next.splice(idx + 1, 0, copy);
-      onChange(next.map(({ _id, ...rest }) => rest as IntakeFormField));
+
+      onChange(
+        next.map(
+          ({ _id, ...rest }) => rest as IntakeFormField,
+        ),
+      );
     },
     [fieldsWithId, onChange],
   );
 
   const fieldCount = fieldsWithId.length;
-  const requiredCount = fieldsWithId.filter((f) => f.required).length;
 
-  /* ── Preview mode ────────────────────────────────────────────────────────── */
+  const requiredCount = fieldsWithId.filter(
+    (f) => f.required,
+  ).length;
+
+  /* ── Preview mode ─────────────────────────────────────────────────────── */
+
   if (preview) {
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-900">Form Preview</h3>
+          <h3 className="text-sm font-semibold text-gray-900">
+            {t("intakeForm.formPreview")}
+          </h3>
+
           <button
             type="button"
             onClick={() => setPreview(false)}
             className="text-sm text-secondary hover:underline"
           >
-            Back to Editor
+            {t("intakeForm.backToEditor")}
           </button>
         </div>
+
         <div className="space-y-4 max-h-96 overflow-y-auto p-4 border border-gray-200 rounded-xl bg-white">
           {fieldsWithId.map((field) => {
-            const { type, label, required, placeholder, options, description } =
-              field;
+            const {
+              type,
+              label,
+              required,
+              placeholder,
+              options,
+              description,
+            } = field;
+
             const id = `preview-${field._id}`;
+
             return (
               <div key={field._id}>
                 <label
                   htmlFor={id}
                   className="block text-sm font-medium text-gray-700"
                 >
-                  {label} {required && <span className="text-red-500">*</span>}
+                  {label}{" "}
+                  {required && (
+                    <span className="text-red-500">*</span>
+                  )}
                 </label>
+
                 {type === "text" && (
                   <input
                     id={id}
@@ -785,6 +950,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "textarea" && (
                   <textarea
                     id={id}
@@ -793,6 +959,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "email" && (
                   <input
                     id={id}
@@ -801,6 +968,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "phone" && (
                   <input
                     id={id}
@@ -809,6 +977,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "number" && (
                   <input
                     id={id}
@@ -817,6 +986,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "date" && (
                   <input
                     id={id}
@@ -824,6 +994,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "time" && (
                   <input
                     id={id}
@@ -831,6 +1002,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "datetime" && (
                   <input
                     id={id}
@@ -838,44 +1010,63 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {type === "select" && (
                   <select
                     id={id}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
                   >
-                    <option value="">{placeholder || "Select..."}</option>
+                    <option value="">
+                      {placeholder || t("intakeForm.selectPlaceholder")}
+                    </option>
+
                     {(options || []).map((opt, i) => (
                       <option key={i}>{opt}</option>
                     ))}
                   </select>
                 )}
+
                 {type === "multiselect" && (
                   <div className="mt-1 space-y-1">
                     {(options || []).map((opt, i) => (
-                      <label key={i} className="flex items-center gap-2">
+                      <label
+                        key={i}
+                        className="flex items-center gap-2"
+                      >
                         <input
                           type="checkbox"
                           className="h-4 w-4 text-secondary"
                         />
-                        <span className="text-sm text-gray-700">{opt}</span>
+
+                        <span className="text-sm text-gray-700">
+                          {opt}
+                        </span>
                       </label>
                     ))}
                   </div>
                 )}
+
                 {type === "radio" && (
                   <div className="mt-1 space-y-1">
                     {(options || []).map((opt, i) => (
-                      <label key={i} className="flex items-center gap-2">
+                      <label
+                        key={i}
+                        className="flex items-center gap-2"
+                      >
                         <input
                           type="radio"
                           name={`radio-${field._id}`}
                           className="h-4 w-4 text-secondary"
                         />
-                        <span className="text-sm text-gray-700">{opt}</span>
+
+                        <span className="text-sm text-gray-700">
+                          {opt}
+                        </span>
                       </label>
                     ))}
                   </div>
                 )}
+
                 {type === "checkbox" && (
                   <div className="mt-1">
                     <label className="flex items-center gap-2">
@@ -884,10 +1075,14 @@ export function IntakeFormBuilder({
                         type="checkbox"
                         className="h-4 w-4 text-secondary"
                       />
-                      <span className="text-sm text-gray-700">{label}</span>
+
+                      <span className="text-sm text-gray-700">
+                        {label}
+                      </span>
                     </label>
                   </div>
                 )}
+
                 {type === "file" && (
                   <input
                     id={id}
@@ -895,6 +1090,7 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-white hover:file:bg-[#5B46A0]"
                   />
                 )}
+
                 {type === "url" && (
                   <input
                     id={id}
@@ -903,8 +1099,11 @@ export function IntakeFormBuilder({
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 )}
+
                 {description && (
-                  <p className="text-xs text-gray-400 mt-1">{description}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {description}
+                  </p>
                 )}
               </div>
             );
@@ -914,20 +1113,26 @@ export function IntakeFormBuilder({
     );
   }
 
-  /* ── Editor ──────────────────────────────────────────────────────────────── */
+  /* ── Editor ───────────────────────────────────────────────────────────── */
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
-            Customer Intake Form
+            {t("intakeForm.customerIntakeForm")}
           </h3>
+
           <p className="text-xs text-gray-500 mt-0.5">
             {fieldCount > 0
-              ? `${fieldCount} field${fieldCount > 1 ? "s" : ""} · ${requiredCount} required`
-              : "Collect additional booking information."}
+              ? t("intakeForm.fieldCount", {
+                  count: fieldCount,
+                  required: requiredCount,
+                })
+              : t("intakeForm.collectAdditionalInformation")}
           </p>
         </div>
+
         <div className="flex gap-2">
           {fieldsWithId.length > 0 && (
             <button
@@ -936,7 +1141,7 @@ export function IntakeFormBuilder({
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
             >
               <Eye className="h-3.5 w-3.5" />
-              Preview
+              {t("intakeForm.preview")}
             </button>
           )}
         </div>
@@ -947,20 +1152,22 @@ export function IntakeFormBuilder({
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/10">
             <ClipboardList className="h-6 w-6 text-secondary" />
           </div>
+
           <h3 className="mt-3 text-sm font-semibold text-gray-900">
-            No intake fields yet
+            {t("intakeForm.noFieldsTitle")}
           </h3>
+
           <p className="mt-1 max-w-sm text-center text-xs text-gray-500">
-            Collect additional information from customers before processing
-            their request.
+            {t("intakeForm.noFieldsDescription")}
           </p>
+
           <button
             type="button"
             onClick={addField}
             className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-xl bg-secondary px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5B46A0] focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:ring-offset-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add your first field
+            {t("intakeForm.addFirstField")}
           </button>
         </div>
       ) : (
@@ -980,9 +1187,15 @@ export function IntakeFormBuilder({
                     <FieldCard
                       key={field._id}
                       field={field}
-                      updateField={(patch) => updateField(field._id, patch)}
-                      removeField={() => removeField(field._id)}
-                      duplicateField={() => duplicateField(field._id)}
+                      updateField={(patch) =>
+                        updateField(field._id, patch)
+                      }
+                      removeField={() =>
+                        removeField(field._id)
+                      }
+                      duplicateField={() =>
+                        duplicateField(field._id)
+                      }
                     />
                   ))}
                 </AnimatePresence>
@@ -997,7 +1210,7 @@ export function IntakeFormBuilder({
               className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#5B46A0] transition"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Field
+              {t("intakeForm.addField")}
             </button>
           </div>
         </>
