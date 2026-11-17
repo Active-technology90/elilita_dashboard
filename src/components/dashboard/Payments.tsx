@@ -16,6 +16,7 @@ import {
   Truck,
   Download,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useToast } from "../../hooks/useToast";
 import { Toast } from "../ui/Toast";
 import { Pagination } from "../ui/Pagination";
@@ -54,6 +55,7 @@ interface Payout extends PayoutData {
 }
 
 export default function Payments() {
+  const { t } = useTranslation("payments");
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -117,11 +119,11 @@ export default function Payments() {
 
   // Page Size dropdown options
   const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
+    { value: "5", label: t("pageSize.5") },
+    { value: "10", label: t("pageSize.10") },
+    { value: "15", label: t("pageSize.15") },
+    { value: "30", label: t("pageSize.30") },
+    { value: "60", label: t("pageSize.60") },
   ];
 
   // Active filter count for mobile badge
@@ -153,7 +155,7 @@ export default function Payments() {
       setPayouts(response.data.results || []);
       setTotalCount(response.data.count || 0);
     } catch (err: any) {
-      setError(err.message || "Failed to load payouts");
+      setError(err.message || t("errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -293,28 +295,32 @@ export default function Payments() {
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
-            {isDirectSplit ? "Direct Settled" : "Completed"}
+            {isDirectSplit
+              ? t("statusBadge.directSettled")
+              : t("statusBadge.completed")}
           </span>
         );
       case "pending":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-            {isDirectSplit ? "Pending Payout" : "Pending Settlement"}
+            {isDirectSplit
+              ? t("statusBadge.pendingPayout")
+              : t("statusBadge.pendingSettlement")}
           </span>
         );
       case "processing":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-800">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-            Processing
+            {t("statusBadge.processing")}
           </span>
         );
       case "failed":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold bg-red-100 text-red-800">
             <span className="h-1.5 w-1.5 rounded-full bg-red-600" />
-            Failed
+            {t("statusBadge.failed")}
           </span>
         );
       default:
@@ -344,14 +350,14 @@ export default function Payments() {
     const cols: Column<Payout>[] = [
       {
         key: "vendor_order",
-        header: "Order ID",
+        header: t("table.columns.orderId"),
         className: "whitespace-nowrap font-semibold text-secondary",
         render: (payout) => (
           <button
             type="button"
             onClick={() => setSelectedPayoutForDetail(payout)}
             className="inline-flex items-center gap-1 text-secondary font-bold hover:underline"
-            title="View order payout details"
+            title={t("table.viewOrderPayoutDetails")}
           >
             #{payout.vendor_order}
           </button>
@@ -362,7 +368,7 @@ export default function Payments() {
     if (isAllPayouts) {
       cols.push({
         key: "company_name",
-        header: "Company",
+        header: t("table.columns.company"),
         className: "min-w-[140px]",
         render: (payout) => (
           <div className="flex items-center gap-2">
@@ -388,34 +394,34 @@ export default function Payments() {
     cols.push(
       {
         key: "gross_amount",
-        header: "Gross (ETB)",
+        header: t("table.columns.gross"),
         className: "whitespace-nowrap",
         render: (payout) => Number(payout.gross_amount).toLocaleString(),
       },
       {
         key: "platform_fee",
-        header: "Platform Fee",
+        header: t("table.columns.platformFee"),
         className: "whitespace-nowrap text-red-600 font-medium",
         render: (payout) => `- ${Number(payout.platform_fee).toLocaleString()}`,
       },
       {
         key: "net_amount",
-        header: "Net (ETB)",
+        header: t("table.columns.net"),
         className: "whitespace-nowrap font-bold text-gray-900",
         render: (payout) => Number(payout.net_amount).toLocaleString(),
       },
       {
         key: "status",
-        header: "Status",
+        header: t("table.columns.status"),
         render: (payout) => getStatusBadge(payout.status, payout),
       },
       {
         key: "payment_method",
-        header: "Payment Method",
+        header: t("table.columns.paymentMethod"),
         render: (payout) => {
           const pm =
             payout.vendor_order_details?.payment_method || payout.gateway;
-          if (!pm) return "N/A";
+          if (!pm) return t("table.notAvailable");
           return pm
             .split("_")
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -424,13 +430,13 @@ export default function Payments() {
       },
       {
         key: "scheduled_at",
-        header: "Payout Date",
+        header: t("table.columns.payoutDate"),
         className: "whitespace-nowrap text-gray-500",
         render: (payout) => new Date(payout.scheduled_at).toLocaleDateString(),
       },
       {
         key: "actions",
-        header: "Actions",
+        header: t("table.columns.actions"),
         className: "whitespace-nowrap text-right",
         render: (payout) => (
           <div className="flex items-center justify-end gap-1.5">
@@ -438,20 +444,20 @@ export default function Payments() {
               type="button"
               onClick={() => setSelectedPayoutForDetail(payout)}
               className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 hover:text-gray-900"
-              title="View breakdown & details"
+              title={t("table.viewBreakdown")}
             >
               <Eye className="h-3.5 w-3.5 text-gray-500" />
-              <span>Details</span>
+              <span>{t("table.details")}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedPayoutForReceipt(payout)}
               className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-secondary transition hover:bg-secondary/10 hover:text-secondary/80"
-              title="Download / Print payout receipt"
+              title={t("table.downloadPrintReceipt")}
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Receipt</span>
+              <span>{t("table.receipt")}</span>
             </button>
           </div>
         ),
@@ -459,7 +465,7 @@ export default function Payments() {
     );
 
     return cols;
-  }, [isAllPayouts]);
+  }, [isAllPayouts, t]);
 
   // Error state
   if (error) {
@@ -470,14 +476,14 @@ export default function Payments() {
             <AlertCircle className="h-6 w-6" />
           </div>
           <h3 className="text-base font-bold text-gray-900 mb-1">
-            Unable to load payouts
+            {t("errorState.title")}
           </h3>
           <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">{error}</p>
           <button
             onClick={fetchPayouts}
             className="px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-xl hover:bg-secondary/90 transition shadow-sm"
           >
-            Retry
+            {t("errorState.retry")}
           </button>
         </div>
       </div>
@@ -500,7 +506,7 @@ export default function Payments() {
           }`}
         >
           <Package2 className="h-4 w-4" />
-          <span>Company Payouts</span>
+          <span>{t("category.companyPayouts")}</span>
         </button>
 
         <button
@@ -513,7 +519,7 @@ export default function Payments() {
           }`}
         >
           <Truck className="h-4 w-4" />
-          <span>Delivery Person Payouts</span>
+          <span>{t("category.deliveryPersonPayouts")}</span>
         </button>
       </div>
 
@@ -531,14 +537,14 @@ export default function Payments() {
           {/* Main Container */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
             <PageHeader
-              title="Payouts &amp; Receipts"
+              title={t("page.title")}
               icon={Package2}
               description={
                 isAllPayouts
-                  ? "Review vendor payouts, settlement receipts, and marketplace commission across all companies."
-                  : `Review payouts and settlement receipts for ${
-                      companyName || "the selected company"
-                    }.`
+                  ? t("page.descriptionAll")
+                  : t("page.descriptionCompany", {
+                      company: companyName || t("page.fallbackCompany"),
+                    })
               }
               actions={
                 <div className="flex flex-wrap items-center gap-2">
@@ -547,10 +553,10 @@ export default function Payments() {
                       type="button"
                       onClick={() => setShowExportModal(true)}
                       className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 sm:text-sm"
-                      title="Export daily / weekly / monthly / yearly reports"
+                      title={t("page.exportTooltip")}
                     >
                       <Download className="h-4 w-4" />
-                      <span>Export Report</span>
+                      <span>{t("page.exportReport")}</span>
                     </button>
                   )}
 
@@ -563,7 +569,9 @@ export default function Payments() {
                       >
                         <RefreshCw className="h-4 w-4" />
                         <span>
-                          {companySlug ? "Change company" : "Select company"}
+                          {companySlug
+                            ? t("page.changeCompany")
+                            : t("page.selectCompany")}
                         </span>
                       </button>
                       {companySlug && (
@@ -571,8 +579,8 @@ export default function Payments() {
                           type="button"
                           onClick={clearCompany}
                           className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                          aria-label="Clear selected company"
-                          title="Show payouts for all companies"
+                          aria-label={t("page.clearSelectedCompany")}
+                          title={t("page.showAllCompanies")}
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -581,53 +589,61 @@ export default function Payments() {
                   )}
                 </div>
               }
-           actionMobile={
-  <div className="flex items-center justify-end gap-1">
-    {canExport && (
-      <button
-        type="button"
-        onClick={() => setShowExportModal(true)}
-        className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[9px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
-        aria-label="Export report"
-        title="Export daily / weekly / monthly / yearly reports"
-      >
-        <Download className="h-3 w-3 shrink-0" />
-        <span className="whitespace-nowrap">Export</span>
-      </button>
-    )}
+              actionMobile={
+                <div className="flex items-center justify-end gap-1">
+                  {canExport && (
+                    <button
+                      type="button"
+                      onClick={() => setShowExportModal(true)}
+                      className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[9px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                      aria-label={t("page.exportReportAria")}
+                      title={t("page.exportTooltip")}
+                    >
+                      <Download className="h-3 w-3 shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {t("page.exportShort")}
+                      </span>
+                    </button>
+                  )}
 
-    {isSuperAdmin && (
-      <>
-        <button
-          type="button"
-          onClick={() => setIsCompanySelectorOpen(true)}
-          className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] font-semibold text-secondary shadow-sm transition active:scale-[0.97] hover:border-secondary/30 hover:bg-secondary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
-          aria-label={companySlug ? "Change company" : "Select company"}
-          title={
-            companySlug ? "Change the selected company" : "Select a company"
-          }
-        >
-          <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-          <span className="whitespace-nowrap">
-            {companySlug ? "" : "Select"}
-          </span>
-        </button>
+                  {isSuperAdmin && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsCompanySelectorOpen(true)}
+                        className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-1.5 text-[11px] font-semibold text-secondary shadow-sm transition active:scale-[0.97] hover:border-secondary/30 hover:bg-secondary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40"
+                        aria-label={
+                          companySlug
+                            ? t("page.changeCompanyAria")
+                            : t("page.selectCompanyAria")
+                        }
+                        title={
+                          companySlug
+                            ? t("page.changeCompanyTitle")
+                            : t("page.selectCompanyTitle")
+                        }
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                        <span className="whitespace-nowrap">
+                          {companySlug ? "" : t("page.selectShort")}
+                        </span>
+                      </button>
 
-        {companySlug && (
-          <button
-            type="button"
-            onClick={clearCompany}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition active:scale-[0.97] hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
-            aria-label="Clear selected company"
-            title="Show payouts for all companies"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        )}
-      </>
-    )}
-  </div>
-}
+                      {companySlug && (
+                        <button
+                          type="button"
+                          onClick={clearCompany}
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 shadow-sm transition active:scale-[0.97] hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+                          aria-label={t("page.clearSelectedCompany")}
+                          title={t("page.showAllCompanies")}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              }
               className="mb-5 sm:mb-6"
             />
             {/* Financial KPI Summary Cards */}
@@ -636,7 +652,7 @@ export default function Payments() {
               <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
-                    Settled Payouts
+                    {t("kpi.settledPayouts")}
                   </span>
                   <span className="text-lg sm:text-xl font-bold text-gray-900">
                     ETB{" "}
@@ -645,7 +661,9 @@ export default function Payments() {
                     })}
                   </span>
                   <span className="text-[11px] text-emerald-600 font-medium block mt-0.5">
-                    {stats.completedCount} transfers settled
+                    {t("kpi.transfersSettled", {
+                      count: stats.completedCount,
+                    })}
                   </span>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -657,7 +675,7 @@ export default function Payments() {
               <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
-                    Platform Fees
+                    {t("kpi.platformFees")}
                   </span>
                   <span className="text-lg sm:text-xl font-bold text-secondary">
                     ETB{" "}
@@ -666,7 +684,7 @@ export default function Payments() {
                     })}
                   </span>
                   <span className="text-[11px] text-gray-500 block mt-0.5">
-                    Marketplace commission
+                    {t("kpi.marketplaceCommission")}
                   </span>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
@@ -678,7 +696,7 @@ export default function Payments() {
               <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
-                    Pending Settlement
+                    {t("kpi.pendingSettlement")}
                   </span>
                   <span className="text-lg sm:text-xl font-bold text-amber-600">
                     ETB{" "}
@@ -687,7 +705,7 @@ export default function Payments() {
                     })}
                   </span>
                   <span className="text-[11px] text-amber-600/90 block mt-0.5">
-                    Awaiting order settlement
+                    {t("kpi.awaitingSettlement")}
                   </span>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
@@ -699,13 +717,13 @@ export default function Payments() {
               <div className="p-4 rounded-2xl bg-white border border-gray-200/90 shadow-xs flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
-                    Total Orders
+                    {t("kpi.totalOrders")}
                   </span>
                   <span className="text-lg sm:text-xl font-bold text-gray-900">
                     {stats.totalCount}
                   </span>
                   <span className="text-[11px] text-gray-500 block mt-0.5">
-                    Eligible for payout
+                    {t("kpi.eligibleForPayout")}
                   </span>
                 </div>
                 <div className="w-11 h-11 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
@@ -748,7 +766,7 @@ export default function Payments() {
                         setSearchTerm(value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search order ID, company..."
+                      placeholder={t("filters.searchPlaceholderMobile")}
                       loading={loading}
                       showMobileFilter={true}
                       onMobileFilterClick={() => setShowMobileFilterModal(true)}
@@ -766,7 +784,7 @@ export default function Payments() {
                         setCurrentPage(1);
                       }}
                       options={pageSizeOptions}
-                      placeholder="10 / page"
+                      placeholder={t("pageSize.10")}
                       className="w-full text-xs"
                     />
                   </div>
@@ -782,7 +800,7 @@ export default function Payments() {
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary/40" />
                       <input
                         type="text"
-                        placeholder="Search by Order ID, company, reference..."
+                        placeholder={t("filters.searchPlaceholderDesktop")}
                         value={searchTerm}
                         onChange={(e) => {
                           setSearchTerm(e.target.value);
@@ -801,13 +819,22 @@ export default function Payments() {
                           setCurrentPage(1);
                         }}
                         options={[
-                          { value: "", label: "All statuses" },
-                          { value: "pending", label: "Pending Settlement" },
-                          { value: "processing", label: "Processing" },
-                          { value: "completed", label: "Completed" },
-                          { value: "failed", label: "Failed" },
+                          { value: "", label: t("filters.status.all") },
+                          {
+                            value: "pending",
+                            label: t("filters.status.pendingSettlement"),
+                          },
+                          {
+                            value: "processing",
+                            label: t("filters.status.processing"),
+                          },
+                          {
+                            value: "completed",
+                            label: t("filters.status.completed"),
+                          },
+                          { value: "failed", label: t("filters.status.failed") },
                         ]}
-                        placeholder="All statuses"
+                        placeholder={t("filters.status.all")}
                         className="w-full"
                       />
                     </div>
@@ -821,14 +848,23 @@ export default function Payments() {
                           setCurrentPage(1);
                         }}
                         options={[
-                          { value: "", label: "All Payment Method" },
-                          { value: "bank_transfer", label: "Bank Transfer" },
-                          { value: "chapa", label: "Chapa" },
-                          { value: "cod", label: "Cash on Delivery" },
-                          { value: "telebirr", label: "Telebirr" },
-                          { value: "arifpay", label: "ArifPay (Direct)" },
+                          { value: "", label: t("filters.method.all") },
+                          {
+                            value: "bank_transfer",
+                            label: t("filters.method.bankTransfer"),
+                          },
+                          { value: "chapa", label: t("filters.method.chapa") },
+                          { value: "cod", label: t("filters.method.cod") },
+                          {
+                            value: "telebirr",
+                            label: t("filters.method.telebirr"),
+                          },
+                          {
+                            value: "arifpay",
+                            label: t("filters.method.arifpay"),
+                          },
                         ]}
-                        placeholder="All methods"
+                        placeholder={t("filters.method.allMethods")}
                         className="w-full"
                       />
                     </div>
@@ -842,12 +878,15 @@ export default function Payments() {
                           setCurrentPage(1);
                         }}
                         options={[
-                          { value: "", label: "All Time" },
-                          { value: "today", label: "Today" },
-                          { value: "week", label: "Last 7 Days" },
-                          { value: "month", label: "Last 30 Days" },
+                          { value: "", label: t("filters.date.allTime") },
+                          { value: "today", label: t("filters.date.today") },
+                          { value: "week", label: t("filters.date.last7Days") },
+                          {
+                            value: "month",
+                            label: t("filters.date.last30Days"),
+                          },
                         ]}
-                        placeholder="All Time"
+                        placeholder={t("filters.date.allTime")}
                         className="w-full"
                       />
                     </div>
@@ -861,7 +900,7 @@ export default function Payments() {
                           setCurrentPage(1);
                         }}
                         options={pageSizeOptions}
-                        placeholder="10 / page"
+                        placeholder={t("pageSize.10")}
                         className="w-full"
                       />
                     </div>
@@ -880,7 +919,7 @@ export default function Payments() {
                         className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-secondary/15 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.05]"
                       >
                         <X className="h-4 w-4" />
-                        Clear
+                        {t("filters.clear")}
                       </button>
                     )}
                   </div>
@@ -894,7 +933,7 @@ export default function Payments() {
               columns={columns}
               loading={loading}
               loadingRows={pageSize}
-              emptyMessage="No payouts found matching your criteria"
+              emptyMessage={t("table.empty")}
               stickyColumns={3}
             />
 
@@ -923,7 +962,7 @@ export default function Payments() {
                   {/* Header */}
                   <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
                     <h3 className="text-lg font-extrabold text-secondary">
-                      Payout Filters
+                      {t("mobileFilters.title")}
                     </h3>
                     <button
                       onClick={() => setShowMobileFilterModal(false)}
@@ -937,58 +976,82 @@ export default function Payments() {
                   <div className="p-4 space-y-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                        Status
+                        {t("mobileFilters.status")}
                       </label>
                       <CustomSelect
                         value={statusFilter}
                         onChange={(val) => setStatusFilter(val)}
                         options={[
-                          { value: "", label: "All statuses" },
-                          { value: "pending", label: "Pending Settlement" },
-                          { value: "processing", label: "Processing" },
-                          { value: "completed", label: "Completed" },
-                          { value: "failed", label: "Failed" },
+                          { value: "", label: t("filters.status.all") },
+                          {
+                            value: "pending",
+                            label: t("filters.status.pendingSettlement"),
+                          },
+                          {
+                            value: "processing",
+                            label: t("filters.status.processing"),
+                          },
+                          {
+                            value: "completed",
+                            label: t("filters.status.completed"),
+                          },
+                          { value: "failed", label: t("filters.status.failed") },
                         ]}
-                        placeholder="All statuses"
+                        placeholder={t("filters.status.all")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                        Payment Method
+                        {t("mobileFilters.paymentMethod")}
                       </label>
                       <CustomSelect
                         value={methodFilter}
                         onChange={(val) => setMethodFilter(val)}
                         options={[
-                          { value: "", label: "All methods" },
-                          { value: "telebirr", label: "Telebirr" },
-                          { value: "chapa", label: "Chapa" },
-                          { value: "arifpay", label: "ArifPay (Direct)" },
-                          { value: "bank_transfer", label: "Bank Deposit" },
+                          {
+                            value: "",
+                            label: t("filters.method.allMethods"),
+                          },
+                          {
+                            value: "telebirr",
+                            label: t("filters.method.telebirr"),
+                          },
+                          { value: "chapa", label: t("filters.method.chapa") },
+                          {
+                            value: "arifpay",
+                            label: t("filters.method.arifpay"),
+                          },
+                          {
+                            value: "bank_transfer",
+                            label: t("filters.method.bankDeposit"),
+                          },
                           {
                             value: "cash_on_delivery",
-                            label: "Cash on Delivery",
+                            label: t("filters.method.cod"),
                           },
                         ]}
-                        placeholder="All methods"
+                        placeholder={t("filters.method.allMethods")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1.5">
-                        Date Period
+                        {t("mobileFilters.datePeriod")}
                       </label>
                       <CustomSelect
                         value={dateFilter}
                         onChange={(val) => setDateFilter(val)}
                         options={[
-                          { value: "", label: "All Time" },
-                          { value: "today", label: "Today" },
-                          { value: "week", label: "Last 7 Days" },
-                          { value: "month", label: "Last 30 Days" },
+                          { value: "", label: t("filters.date.allTime") },
+                          { value: "today", label: t("filters.date.today") },
+                          { value: "week", label: t("filters.date.last7Days") },
+                          {
+                            value: "month",
+                            label: t("filters.date.last30Days"),
+                          },
                         ]}
-                        placeholder="All Time"
+                        placeholder={t("filters.date.allTime")}
                       />
                     </div>
 
@@ -1004,14 +1067,14 @@ export default function Payments() {
                           }}
                           className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 transition"
                         >
-                          Clear all
+                          {t("mobileFilters.clearAll")}
                         </button>
                       )}
                       <button
                         onClick={() => setShowMobileFilterModal(false)}
                         className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-xs font-bold hover:bg-secondary/90 transition shadow-sm"
                       >
-                        Apply Filters
+                        {t("mobileFilters.applyFilters")}
                       </button>
                     </div>
                   </div>
@@ -1044,7 +1107,9 @@ export default function Payments() {
               onClose={() => setShowExportModal(false)}
               payouts={payouts}
               companySlug={effectiveCompanySlug}
-              companyName={isAllPayouts ? "All Companies" : companyName}
+              companyName={
+                isAllPayouts ? t("page.allCompanies") : companyName
+              }
               onSuccess={(message) => showToast("success", message)}
             />
           )}

@@ -1,0 +1,72 @@
+export default {
+  common: {
+    notAvailable: "N/A",
+  },
+  status: {
+    directSettled: "Direct Settled",
+    paidSettled: "Paid & Settled",
+    failed: "Failed",
+    pendingPayout: "Pending Payout",
+    pendingSettlement: "Pending Settlement",
+  },
+  header: {
+    title: "Payout Details #{{id}}",
+    vendorOrder: "Vendor Order #{{id}}",
+  },
+  financial: {
+    grossTotal: "Gross Sales Total",
+    platformCommission: "Platform Commission",
+    netDisbursed: "Net Disbursed",
+  },
+  flow: {
+    disbursedBy: "Disbursed By",
+    directSplitSettlement: "{{gateway}} Split Settlement",
+    directVendorSettlement: "Direct Vendor Settlement",
+    beneficiaryVendor: "Beneficiary Vendor",
+  },
+  transfer: {
+    title: "Transfer Information",
+    paymentChannel: "Payment Channel",
+    electronic: "Electronic",
+    scheduledDate: "Scheduled Date",
+    paidAt: "Paid At",
+    reference: "Reference",
+  },
+  customer: {
+    title: "Customer & Shipping",
+    recipient: "Recipient",
+    fallback: "Customer",
+    phone: "Phone",
+    notSpecified: "Not specified",
+    address: "Address",
+    standardDelivery: "Standard Delivery",
+    deliveryFee: "Delivery Fee",
+  },
+  items: {
+    title: "Order Items ({{count}})",
+    orderLabel: "Order #{{id}}",
+    fallbackItem: "Item",
+    sku: "SKU",
+    emptyMessage: "Order items summarized under Vendor Order #{{id}}.",
+    columns: {
+      product: "Product / Item",
+      qty: "Qty",
+      unitPrice: "Unit Price",
+      lineTotal: "Line Total",
+    },
+  },
+  bankSlip: {
+    title: "Customer Bank Transfer Slip",
+    imageAlt: "Customer Deposit Slip",
+    bankLabel: "Bank",
+    fallbackBank: "Bank Deposit",
+    amountLabel: "Amount",
+    viewSlip: "View Slip",
+    receiptAlt: "Bank Transfer Receipt",
+  },
+  footer: {
+    payoutId: "Payout ID: #{{id}}",
+    printReceipt: "Print Payout Receipt",
+    close: "Close",
+  },
+};

@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Package,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { PayoutData } from "../../../utils/payoutReceipt";
 import { getFullMediaUrl } from "../../../utils/payoutReceipt";
 
@@ -30,6 +31,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
   onClose,
   onOpenReceipt,
 }) => {
+  const { t } = useTranslation("payoutDetailModal");
   const [bankSlipPreview, setBankSlipPreview] = useState<string | null>(null);
 
   if (!isOpen || !payout) return null;
@@ -53,7 +55,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "N/A";
+    : t("common.notAvailable");
 
   const paidDate = payout.paid_at
     ? new Date(payout.paid_at).toLocaleDateString("en-US", {
@@ -63,7 +65,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "Pending Settlement";
+    : t("status.pendingSettlement");
 
   const customerReceipt = vo?.receipt;
   const companyLogoUrl = getFullMediaUrl(payout.company_logo);
@@ -85,7 +87,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-bold text-gray-900">
-                    Payout Details #{payout.id}
+                    {t("header.title", { id: payout.id })}
                   </h3>
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
@@ -105,17 +107,17 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                     )}
                     {isCompleted
                       ? isDirectSettled
-                        ? "Direct Settled"
-                        : "Paid & Settled"
+                        ? t("status.directSettled")
+                        : t("status.paidSettled")
                       : isFailed
-                      ? "Failed"
+                      ? t("status.failed")
                       : isDirectSettled
-                      ? "Pending Payout"
-                      : "Pending Settlement"}
+                      ? t("status.pendingPayout")
+                      : t("status.pendingSettlement")}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Vendor Order #{payout.vendor_order}
+                  {t("header.vendorOrder", { id: payout.vendor_order })}
                 </p>
               </div>
             </div>
@@ -134,7 +136,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
                 <span className="text-xs font-medium text-gray-500 block mb-1">
-                  Gross Sales Total
+                  {t("financial.grossTotal")}
                 </span>
                 <span className="text-lg font-bold text-gray-900">
                   ETB {Number(payout.gross_amount || 0).toLocaleString()}
@@ -143,7 +145,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
 
               <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100">
                 <span className="text-xs font-medium text-red-600 block mb-1">
-                  Platform Commission
+                  {t("financial.platformCommission")}
                 </span>
                 <span className="text-lg font-bold text-red-600">
                   - ETB {Number(payout.platform_fee || 0).toLocaleString()}
@@ -152,7 +154,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
 
               <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/20">
                 <span className="text-xs font-medium text-secondary block mb-1">
-                  Net Disbursed
+                  {t("financial.netDisbursed")}
                 </span>
                 <span className="text-lg font-black text-secondary">
                   ETB {Number(payout.net_amount || 0).toLocaleString()}
@@ -170,12 +172,16 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                 />
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                    Disbursed By
+                    {t("flow.disbursedBy")}
                   </span>
                   <span className="font-bold text-gray-900 text-xs sm:text-sm">
                     {isDirectSettled
-                      ? `${payout.gateway ? payout.gateway.toUpperCase() : "Direct"} Split Settlement`
-                      : "Direct Vendor Settlement"}
+                      ? t("flow.directSplitSettlement", {
+                          gateway: payout.gateway
+                            ? payout.gateway.toUpperCase()
+                            : "Direct",
+                        })
+                      : t("flow.directVendorSettlement")}
                   </span>
                 </div>
               </div>
@@ -198,7 +204,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                 )}
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                    Beneficiary Vendor
+                    {t("flow.beneficiaryVendor")}
                   </span>
                   <span className="font-bold text-gray-900 text-xs sm:text-sm">
                     {payout.company_name}
@@ -216,29 +222,29 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
               <div className="p-4 rounded-2xl border border-gray-100 bg-white shadow-xs space-y-2.5 text-xs sm:text-sm">
                 <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
                   <CreditCard className="h-4 w-4 text-secondary" />
-                  <span>Transfer Information</span>
+                  <span>{t("transfer.title")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Payment Channel:</span>
+                  <span className="text-gray-500">{t("transfer.paymentChannel")}:</span>
                   <span className="font-medium text-gray-900">
                     {vo?.payment_method
                       ?.split("_")
                       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                      .join(" ") || "Electronic"}
+                      .join(" ") || t("transfer.electronic")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Scheduled Date:</span>
+                  <span className="text-gray-500">{t("transfer.scheduledDate")}:</span>
                   <span className="text-gray-800">{scheduledDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Paid At:</span>
+                  <span className="text-gray-500">{t("transfer.paidAt")}:</span>
                   <span className="text-gray-800">{paidDate}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Reference:</span>
+                  <span className="text-gray-500">{t("transfer.reference")}:</span>
                   <span className="font-mono text-xs font-semibold text-secondary truncate max-w-[140px]">
-                    {payout.reference || "N/A"}
+                    {payout.reference || t("common.notAvailable")}
                   </span>
                 </div>
               </div>
@@ -247,28 +253,28 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
               <div className="p-4 rounded-2xl border border-gray-100 bg-white shadow-xs space-y-2.5 text-xs sm:text-sm">
                 <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
                   <User className="h-4 w-4 text-secondary" />
-                  <span>Customer &amp; Shipping</span>
+                  <span>{t("customer.title")}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Recipient:</span>
+                  <span className="text-gray-500">{t("customer.recipient")}:</span>
                   <span className="font-semibold text-gray-900">
-                    {vo?.recipient_name || vo?.customer_name || "Customer"}
+                    {vo?.recipient_name || vo?.customer_name || t("customer.fallback")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Phone:</span>
+                  <span className="text-gray-500">{t("customer.phone")}:</span>
                   <span className="font-medium text-gray-900">
-                    {vo?.shipping_phone || "Not specified"}
+                    {vo?.shipping_phone || t("customer.notSpecified")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Address:</span>
+                  <span className="text-gray-500">{t("customer.address")}:</span>
                   <span className="font-medium text-gray-800 truncate max-w-[150px]">
-                    {vo?.shipping_address_text || "Standard Delivery"}
+                    {vo?.shipping_address_text || t("customer.standardDelivery")}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Delivery Fee:</span>
+                  <span className="text-gray-500">{t("customer.deliveryFee")}:</span>
                   <span className="text-gray-800">
                     ETB {Number(vo?.delivery_fee || 0).toLocaleString()}
                   </span>
@@ -281,9 +287,11 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <ShoppingBag className="h-4 w-4 text-secondary" />
-                  <span>Order Items ({items.length})</span>
+                  <span>{t("items.title", { count: items.length })}</span>
                 </h4>
-                <span className="text-xs text-gray-400">Order #{payout.vendor_order}</span>
+                <span className="text-xs text-gray-400">
+                  {t("items.orderLabel", { id: payout.vendor_order })}
+                </span>
               </div>
 
               {items.length > 0 ? (
@@ -291,10 +299,10 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                   <table className="w-full text-left text-xs sm:text-sm">
                     <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 font-semibold">
                       <tr>
-                        <th className="px-4 py-2.5">Product / Item</th>
-                        <th className="px-4 py-2.5 text-center">Qty</th>
-                        <th className="px-4 py-2.5 text-right">Unit Price</th>
-                        <th className="px-4 py-2.5 text-right">Line Total</th>
+                        <th className="px-4 py-2.5">{t("items.columns.product")}</th>
+                        <th className="px-4 py-2.5 text-center">{t("items.columns.qty")}</th>
+                        <th className="px-4 py-2.5 text-right">{t("items.columns.unitPrice")}</th>
+                        <th className="px-4 py-2.5 text-right">{t("items.columns.lineTotal")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -317,11 +325,11 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                                 )}
                                 <div>
                                   <span className="font-semibold text-gray-900 block">
-                                    {it.title || "Item"}
+                                    {it.title || t("items.fallbackItem")}
                                   </span>
                                   {it.sku && (
                                     <span className="text-[11px] text-gray-400 block">
-                                      SKU: {it.sku}
+                                      {t("items.sku")}: {it.sku}
                                     </span>
                                   )}
                                 </div>
@@ -344,7 +352,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                 </div>
               ) : (
                 <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200/80 text-xs text-gray-500 text-center">
-                  Order items summarized under Vendor Order #{payout.vendor_order}.
+                  {t("items.emptyMessage", { id: payout.vendor_order })}
                 </div>
               )}
             </div>
@@ -357,7 +365,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                     {customerReceipt.receipt_image ? (
                       <img
                         src={customerReceipt.receipt_image}
-                        alt="Customer Deposit Slip"
+                        alt={t("bankSlip.imageAlt")}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -366,10 +374,10 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                   </div>
                   <div>
                     <h5 className="text-xs font-bold text-gray-900">
-                      Customer Bank Transfer Slip
+                      {t("bankSlip.title")}
                     </h5>
                     <p className="text-[11px] text-gray-500">
-                      Bank: {customerReceipt.bank_name || "Bank Deposit"} • Amount: ETB {Number(customerReceipt.amount || 0).toLocaleString()}
+                      {t("bankSlip.bankLabel")}: {customerReceipt.bank_name || t("bankSlip.fallbackBank")} • {t("bankSlip.amountLabel")}: ETB {Number(customerReceipt.amount || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -379,7 +387,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                     onClick={() => setBankSlipPreview(customerReceipt.receipt_image)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-secondary text-secondary text-xs font-semibold hover:bg-secondary/10 transition"
                   >
-                    <span>View Slip</span>
+                    <span>{t("bankSlip.viewSlip")}</span>
                     <ExternalLink className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -390,7 +398,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
           {/* Footer Controls */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/80">
             <span className="text-xs text-gray-500">
-              Payout ID: #{payout.id}
+              {t("footer.payoutId", { id: payout.id })}
             </span>
 
             <div className="flex items-center gap-2">
@@ -402,13 +410,13 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-white text-xs font-semibold shadow-sm hover:bg-secondary/90 transition"
               >
                 <Printer className="h-3.5 w-3.5" />
-                <span>Print Payout Receipt</span>
+                <span>{t("footer.printReceipt")}</span>
               </button>
               <button
                 onClick={onClose}
                 className="px-4 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-100 transition"
               >
-                Close
+                {t("footer.close")}
               </button>
             </div>
           </div>
@@ -430,7 +438,7 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
             </button>
             <img
               src={bankSlipPreview}
-              alt="Bank Transfer Receipt"
+              alt={t("bankSlip.receiptAlt")}
               className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
             />
           </div>

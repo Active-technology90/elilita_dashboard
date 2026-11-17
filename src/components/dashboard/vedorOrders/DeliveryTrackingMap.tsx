@@ -27,10 +27,13 @@ import { db } from "../../../services/firebase";
 import { ref, onValue, off } from "firebase/database";
 import type { VendorOrder } from "../../../types";
 import { useToast } from "../../../hooks/useToast";
-
+import i18n from "../../../i18n";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 /* ──────────────────────────────────────────────────────────────────
    DEBUG HELPERS
    ────────────────────────────────────────────────────────────────── */
+   const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts);
 const DEBUG = false;
 
 const routeDebugEnabled = () => {
@@ -275,18 +278,18 @@ export const isWithinAddisAbaba = (
 };
 
 const formatDistance = (distance: number | null | undefined): string => {
-  if (distance == null) return "Distance unavailable";
-  if (distance < 1) return `${(distance * 1000).toFixed(0)} m`;
-  return `${distance.toFixed(1)} km`;
+  if (distance == null) return t("deliveryMap.route.distanceUnavailable");
+  if (distance < 1) return t("deliveryMap.route.meters", { count: Math.round(distance * 1000) });
+  return t("deliveryMap.route.kilometers", { value: distance.toFixed(1) });
 };
 
 const formatDuration = (minutes: number | null | undefined): string => {
-  if (minutes == null) return "ETA unavailable";
-  if (minutes < 1) return "< 1 min";
-  if (minutes < 60) return `~${Math.round(minutes)} min`;
+  if (minutes == null) return t("deliveryMap.route.etaUnavailable");
+  if (minutes < 1) return t("deliveryMap.route.lessThanMinute");
+  if (minutes < 60) return t("deliveryMap.route.approxMinutes", { count: Math.round(minutes) });
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
-  return `~${hours}h ${mins}m`;
+  return t("deliveryMap.route.approxHoursMinutes", { hours, minutes: mins });
 };
 
 const getInitials = (name: string): string => {
@@ -307,12 +310,12 @@ const getVehicleIcon = (type?: string): string => {
 
 const getVehicleName = (type?: string): string => {
   switch (type?.toLowerCase()) {
-    case "motorcycle": return "Motorcycle";
-    case "car": return "Car";
-    case "bicycle": return "Bicycle";
-    case "van": return "Van";
-    case "foot": return "On Foot";
-    default: return "Vehicle";
+    case "motorcycle": return t("deliveryMap.vehicle.motorcycle");
+    case "car": return t("deliveryMap.vehicle.car");
+    case "bicycle": return t("deliveryMap.vehicle.bicycle");
+    case "van": return t("deliveryMap.vehicle.van");
+    case "foot": return t("deliveryMap.vehicle.foot");
+    default: return t("deliveryMap.vehicle.generic");
   }
 };
 
@@ -384,7 +387,12 @@ const formatMapAddress = (value: any): string => {
 
 const getOrderDestination = (order: any): OrderDestination => {
   if (!order) {
-    return { address: "Address not available", lat: null, lon: null, source: "unknown" };
+    return {
+      address: t("deliveryMap.address.notAvailable"),
+      lat: null,
+      lon: null,
+      source: "unknown",
+    };
   }
 
   let lat: number | null = null;
@@ -451,14 +459,14 @@ const getOrderDestination = (order: any): OrderDestination => {
   }
 
   if (!address) {
-    address = "Address not available";
+    address = t("deliveryMap.address.notAvailable");
   }
 
   return { address, lat, lon, source };
 };
 
 const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } => {
-  if (!order) return { canAssign: false, reason: "Order not found" };
+  if (!order) return { canAssign: false, reason: t("deliveryMap.dispatch.orderNotFound") };
 
   const masterStatus = order.status?.toLowerCase();
   const deliveryStatus = order.delivery?.status?.toLowerCase();
@@ -466,11 +474,17 @@ const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } =>
 
   const blockedStatuses = ['delivered', 'cancelled', 'rejected', 'refunded', 'completed'];
   if (blockedStatuses.includes(masterStatus)) {
-    return { canAssign: false, reason: `Order status is ${masterStatus}. Delivery person assignment is unavailable.` };
+    return {
+      canAssign: false,
+      reason: t("deliveryMap.dispatch.blockedByOrderStatus", { status: masterStatus }),
+    };
   }
 
   if (deliveryStatus && blockedStatuses.includes(deliveryStatus)) {
-    return { canAssign: false, reason: `Delivery status is ${deliveryStatus}. Delivery person assignment is unavailable.` };
+    return {
+      canAssign: false,
+      reason: t("deliveryMap.dispatch.blockedByDeliveryStatus", { status: deliveryStatus }),
+    };
   }
 
   for (const vo of vendorOrders) {
@@ -479,7 +493,7 @@ const canAssignDriver = (order: any): { canAssign: boolean; reason?: string } =>
 
     if (['cancelled', 'rejected', 'refunded'].includes(voStatus) ||
         (voDeliveryStatus && ['cancelled', 'rejected', 'refunded'].includes(voDeliveryStatus))) {
-      return { canAssign: false, reason: "One or more vendor deliveries are cancelled or rejected." };
+      return { canAssign: false, reason: t("deliveryMap.dispatch.vendorCancelled") };
     }
   }
 
@@ -525,19 +539,19 @@ const normalizeOrder = (order: any): DispatchOrder => {
   };
 };
 
-const createCompanyPopup = (order: DispatchOrder): string => {
+const createCompanyPopup = (order: DispatchOrder, t: TFunction): string => {
   return `
     <div style="font-family:Inter,system-ui,sans-serif;min-width:240px;max-width:300px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
         <div style="background:#E8F5E9;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;">🏢</div>
         <div>
-          <div style="font-size:16px;font-weight:700;color:#111827;">Company Location</div>
+          <div style="font-size:16px;font-weight:700;color:#111827;">${t("popup.companyLocation")}</div>
           <div style="font-size:13px;color:#6B7280;">${escapeHtml(order.pickupName)}</div>
         </div>
       </div>
       ${order.companyAddress ? `
         <div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:8px;">
-          <div style="font-size:12px;color:#374151;">📍 ${escapeHtml(order.companyAddress)}</div>
+          <div style="font-size:12px;color:#374151;">${t("popup.addressLabel")} ${escapeHtml(order.companyAddress)}</div>
         </div>
       ` : ''}
       ${order.companyLat != null && order.companyLon != null ? `
@@ -548,12 +562,11 @@ const createCompanyPopup = (order: DispatchOrder): string => {
     </div>
   `;
 };
-
-const createCustomerPopup = (orders: DeliveryWithLocation[]): string => {
+const createCustomerPopup = (orders: DeliveryWithLocation[], t: TFunction): string => {
   const listItems = orders
     .map(
       (o) =>
-        `<li style="margin-bottom:6px;"><b>#${o.id}-${o.master_order_id || "N/A"}</b> – ${escapeHtml(o.recipient_name || o.customer_name || "Recipient")}</li>`,
+        `<li style="margin-bottom:6px;"><b>#${o.id}-${o.master_order_id || "N/A"}</b> – ${escapeHtml(o.recipient_name || o.customer_name || t("recipients.fallback"))}</li>`,
     )
     .join("");
   return `
@@ -561,8 +574,13 @@ const createCustomerPopup = (orders: DeliveryWithLocation[]): string => {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
         <div style="background:#FEF3C7;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;">📍</div>
         <div>
-          <div style="font-size:16px;font-weight:700;color:#111827;">Customer Location</div>
-          <div style="font-size:13px;color:#6B7280;">${orders.length} order${orders.length > 1 ? "s" : ""}</div>
+          <div style="font-size:16px;font-weight:700;color:#111827;">${t("popup.customerLocation")}</div>
+          <div style="font-size:13px;color:#6B7280;">${t(
+            orders.length > 1
+              ? "popup.orderPlural"
+              : "popup.orderSingular",
+            { count: orders.length },
+          )}</div>
         </div>
       </div>
       <ul style="background:#F9FAFB;border-radius:12px;padding:12px;list-style:none;margin:0;">${listItems}</ul>
@@ -570,33 +588,33 @@ const createCustomerPopup = (orders: DeliveryWithLocation[]): string => {
   `;
 };
 
-const createCustomerPopupForOrder = (order: DispatchOrder): string => {
+const createCustomerPopupForOrder = (order: DispatchOrder, t: TFunction): string => {
   return `
     <div style="font-family:Inter,system-ui,sans-serif;min-width:260px;max-width:320px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
         <div style="background:#FEF3C7;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;">📍</div>
         <div>
-          <div style="font-size:16px;font-weight:700;color:#111827;">Customer Location</div>
+          <div style="font-size:16px;font-weight:700;color:#111827;">${t("popup.customerLocation")}</div>
           <div style="font-size:13px;color:#6B7280;">${escapeHtml(order.customerName)}</div>
         </div>
       </div>
       <div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:8px;">
         <div style="font-size:12px;color:#374151;margin-bottom:6px;">
-          <strong>📍 Address:</strong> ${escapeHtml(order.address)}
+          <strong>${t("popup.addressLabel")}</strong> ${escapeHtml(order.address)}
         </div>
         ${order.customerPhone ? `
           <div style="font-size:12px;color:#374151;margin-bottom:6px;">
-            <strong>📞 Phone:</strong> ${escapeHtml(order.customerPhone)}
+            <strong>${t("popup.phoneLabel")}</strong> ${escapeHtml(order.customerPhone)}
           </div>
         ` : ''}
         ${order.customerLat != null && order.customerLon != null ? `
           <div style="font-size:12px;color:#374151;">
-            <strong>🌍 Coordinates:</strong> ${order.customerLat.toFixed(6)}, ${order.customerLon.toFixed(6)}
+            <strong>${t("popup.coordsLabel")}</strong> ${order.customerLat.toFixed(6)}, ${order.customerLon.toFixed(6)}
           </div>
         ` : ''}
       </div>
       <div style="font-size:11px;color:#6B7280;font-family:monospace;">
-        Order #${order.id}
+        ${t("popup.orderLabel", { id: order.id })}
       </div>
     </div>
   `;
@@ -607,6 +625,7 @@ const createDriverPopup = (
   orders: DeliveryWithLocation[],
   color: string,
   phone?: string,
+  t: TFunction
 ): string => {
   const safeName = escapeHtml(driverName);
   const safePhone = phone ? escapeHtml(phone) : "";
@@ -622,12 +641,12 @@ const createDriverPopup = (
 
       if (driverLat != null && driverLng != null) {
         const km = haversine(driverLat, driverLng, custLat, custLng).toFixed(1);
-        distStr = ` (${km} km)`;
+        distStr = ` (${t("deliveryMap.popup.distanceSuffix", { value: km })})`;
       }
 
       return `<li style="margin-bottom:4px;">
         <b>#${o.id}-${o.master_order_id || "N/A"}</b>
-        → ${escapeHtml(o.recipient_name || o.customer_name || "Recipient")}${distStr}
+        → ${escapeHtml(o.recipient_name || o.customer_name || t("deliveryMap.recipients.fallback"))}${distStr}
       </li>`;
     })
     .join("");
@@ -669,7 +688,7 @@ const createDriverPopup = (
             ${safeName}
           </div>
           <div style="font-size:13px;color:${color};display:flex;align-items:center;gap:4px;">
-            🟢 Live · ${orders.length} order${orders.length > 1 ? "s" : ""}
+            ${t("deliveryMap.popup.liveWithOrders", { count: orders.length })}
           </div>
         </div>
       </div>
@@ -693,7 +712,7 @@ const createDriverPopup = (
                   font-weight:600;
                 "
               >
-                📞 Call ${safeName}
+                ${t("deliveryMap.popup.callDriver", { name: safeName })}
               </a>`
           : ""
       }
@@ -705,29 +724,30 @@ const createDriverPopupForSelection = (
   driver: AvailableDriver,
   order: DispatchOrder,
   color: string,
-  isNearest: boolean = false
+  isNearest: boolean = false,
+  t: TFunction 
 ): string => {
   const safeName = escapeHtml(driver.name);
   const hasLocation = driver.current_lat != null && driver.current_lng != null;
   const isOutOfBounds = driver.is_in_addis_ababa === false;
   const locationLabel = driver.isLive
-    ? "🟢 Realtime GPS"
+    ? t?.("deliveryMap.popup.realtimeGps")
     : driver.location_source === "last_known"
-      ? "🕒 Last known location"
-      : "📡 Available location";
+      ? t?.("deliveryMap.popup.lastKnown")
+      : t?.("deliveryMap.popup.availableLocation");
 
   return `
     <div style="font-family:Inter,system-ui,sans-serif;min-width:280px;max-width:340px;">
       ${isOutOfBounds ? `
         <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span style="font-size:12px;font-weight:800;color:#B91C1C;">⚠️ OUTSIDE ADDIS ABABA</span>
-          <span style="font-size:10px;font-weight:700;color:#DC2626;">Not assignable</span>
+          <span style="font-size:12px;font-weight:800;color:#B91C1C;">${t?.("deliveryMap.popup.outsideAddis")}</span>
+          <span style="font-size:10px;font-weight:700;color:#DC2626;">${t?.("deliveryMap.popup.notAssignable")}</span>
         </div>
       ` : ""}
       ${isNearest && !isOutOfBounds ? `
         <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span style="font-size:12px;font-weight:800;color:#6750A4;">★ RECOMMENDED DELIVERY PERSON</span>
-          <span style="font-size:10px;font-weight:700;color:#6D28D9;">Best pickup ETA</span>
+          <span style="font-size:12px;font-weight:800;color:#6750A4;">${t?.("deliveryMap.popup.recommended")}</span>
+          <span style="font-size:10px;font-weight:700;color:#6D28D9;">${t?.("deliveryMap.popup.bestPickupEta")}</span>
         </div>
       ` : ""}
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -740,41 +760,41 @@ const createDriverPopupForSelection = (
           <div style="font-size:15px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${safeName}</div>
           <div style="font-size:11px;color:#6B7280;margin-top:2px;">
             ${locationLabel} · ${getVehicleName(driver.vehicle_type)}
-            ${driver.is_at_vendor ? ` · <span style="color:#B45309;font-weight:700;">🏬 At Store (${driver.active_orders_count || 1} orders - Batchable)</span>` : ""}
-            ${driver.is_en_route ? ` · <span style="color:#4338CA;font-weight:700;">🚗 En Route (${driver.active_orders_count} active)</span>` : ""}
-            ${!driver.is_at_vendor && !driver.is_en_route && (driver.active_orders_count === 0 || !driver.active_orders_count) ? ` · <span style="color:#15803D;font-weight:700;">🟢 Available</span>` : ""}
+            ${driver.is_at_vendor ? ` · <span style="color:#B45309;font-weight:700;">${t?.("deliveryMap.popup.atStore", { count: driver.active_orders_count || 1 })}</span>` : ""}
+            ${driver.is_en_route ? ` · <span style="color:#4338CA;font-weight:700;">${t?.("deliveryMap.popup.enRoute", { count: driver.active_orders_count ?? 0 })}</span>` : ""}
+            ${!driver.is_at_vendor && !driver.is_en_route && (driver.active_orders_count === 0 || !driver.active_orders_count) ? ` · <span style="color:#15803D;font-weight:700;">${t?.("deliveryMap.popup.available")}</span>` : ""}
           </div>
         </div>
       </div>
 
       ${hasLocation ? `
         <div style="background:#F9FAFB;border:1px solid #F3F4F6;border-radius:12px;padding:11px;margin-bottom:10px;">
-          <div style="font-size:10px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Dispatch route</div>
+          <div style="font-size:10px;font-weight:800;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">${t?.("deliveryMap.popup.dispatchRoute")}</div>
           <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#374151;margin-bottom:7px;">
             <span style="width:20px;height:20px;border-radius:7px;background:${isNearest ? "#6750A4" : color};color:white;display:flex;align-items:center;justify-content:center;font-size:10px;">1</span>
-            <span style="flex:1;">Delivery Person  → Pickup</span>
+            <span style="flex:1;">${t?.("deliveryMap.popup.driverToPickup")}</span>
             <strong>${formatDistance(driver.road_distance_to_pickup ?? driver.distance_to_pickup)}</strong>
             <span style="color:#9CA3AF;">${driver.road_eta_to_pickup != null ? formatDuration(driver.road_eta_to_pickup) : ""}</span>
           </div>
           <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#374151;margin-bottom:7px;">
             <span style="width:20px;height:20px;border-radius:7px;background:#6750A4;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;">2</span>
-            <span style="flex:1;">Pickup → Customer</span>
+            <span style="flex:1;">${t?.("deliveryMap.popup.pickupToCustomer")}</span>
             <strong>${formatDistance(driver.pickup_to_customer_distance)}</strong>
             <span style="color:#9CA3AF;">${driver.pickup_to_customer_eta != null ? formatDuration(driver.pickup_to_customer_eta) : ""}</span>
           </div>
           <div style="border-top:1px solid #E5E7EB;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;color:#111827;">
-            <span style="font-weight:700;">Total trip</span>
+            <span style="font-weight:700;">${t?.("deliveryMap.popup.totalTrip")}</span>
             <strong style="color:#6750A4;">${formatDistance(driver.total_route_distance)} · ${formatDuration(driver.total_eta_minutes)}</strong>
           </div>
         </div>
       ` : `
         <div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:8px;text-align:center;">
-          <span style="font-size:12px;color:#6B7280;">Location unavailable</span>
+          <span style="font-size:12px;color:#6B7280;">${t?.("deliveryMap.popup.locationUnavailable")}</span>
         </div>
       `}
 
       <div style="background:#F5F3FF;border-radius:10px;padding:9px 10px;margin-bottom:10px;font-size:11px;color:#5B4A85;">
-        <div style="font-weight:800;margin-bottom:3px;">Delivery destination</div>
+        <div style="font-weight:800;margin-bottom:3px;">${t?.("deliveryMap.popup.deliveryDestination")}</div>
         <div>${escapeHtml(order.address)}</div>
       </div>
 
@@ -783,14 +803,16 @@ const createDriverPopupForSelection = (
           display:block;background:${isOutOfBounds ? "#DC2626" : "#6750A4"};color:white;text-align:center;
           padding:10px;border-radius:10px;text-decoration:none;font-weight:700;font-size:12px;
         ">
-          ${isOutOfBounds ? "Outside service area" : `Call ${safeName}`}
+          ${isOutOfBounds
+            ? t?.("deliveryMap.popup.outsideServiceArea")
+            : t?.("deliveryMap.popup.callNamed", { name: safeName })}
         </a>
       ` : ""}
     </div>
   `;
 };
 
-const makeCompanyIcon = (): Leaflet.DivIcon => {
+const makeCompanyIcon = (t: TFunction): Leaflet.DivIcon => {
   const L = (window as any).L;
   return L.divIcon({
     className: "dispatch-marker dispatch-marker--pickup",
@@ -800,16 +822,19 @@ const makeCompanyIcon = (): Leaflet.DivIcon => {
         <span style="position:relative;font-size:20px;line-height:1;">🏪</span>
         <span style="position:absolute;right:-3px;bottom:-3px;width:12px;height:12px;border-radius:999px;background:#22C55E;border:2px solid white;box-shadow:0 2px 8px rgba(34,197,94,.35);"></span>
       </div>
-      <div style="position:absolute;left:50%;top:52px;transform:translateX(-50%);white-space:nowrap;background:white;color:#4B5563;border:1px solid #E5E7EB;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;box-shadow:0 4px 12px rgba(15,23,42,.10);">Pickup</div>
+      <div style="position:absolute;left:50%;top:52px;transform:translateX(-50%);white-space:nowrap;background:white;color:#4B5563;border:1px solid #E5E7EB;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;box-shadow:0 4px 12px rgba(15,23,42,.10);">${t?.("deliveryMap.popup.markerPickup")}</div>
     `,
     iconSize: [46, 46],
     iconAnchor: [23, 23],
   });
 };
 
-const makeCustomerIcon = (orders: DeliveryWithLocation[]): Leaflet.DivIcon => {
+const makeCustomerIcon = (orders: DeliveryWithLocation[], t: TFunction): Leaflet.DivIcon => {
   const L = (window as any).L;
-  const customerName = orders[0]?.recipient_name || orders[0]?.customer_name || "Recipient";
+  const customerName =
+    orders[0]?.recipient_name ||
+    orders[0]?.customer_name ||
+    t?.("deliveryMap.recipients.fallback");
 
   return L.divIcon({
     className: "dispatch-marker dispatch-marker--recipient",
@@ -826,7 +851,7 @@ const makeCustomerIcon = (orders: DeliveryWithLocation[]): Leaflet.DivIcon => {
   });
 };
 
-const makeDeliveryLocationIcon = (customerName: string): Leaflet.DivIcon => {
+const makeDeliveryLocationIcon = (customerName: string, t: TFunction  ): Leaflet.DivIcon => {
   const L = (window as any).L;
   return L.divIcon({
     className: "dispatch-marker dispatch-marker--delivery",
@@ -850,11 +875,16 @@ const makeDriverIcon = (
   isNearest?: boolean,
   isLive = true,
   isOutOfBounds = false,
+  t: TFunction
 ): Leaflet.DivIcon => {
   const L = (window as any).L;
-  const typeLabel = isInHouse ? "In-House" : "3PL";
+  const typeLabel = isInHouse
+    ? t("deliveryMap.popup.typeInHouse")
+    : t("deliveryMap.popup.typeThirdParty");
   const safeName = escapeHtml(driverName);
-  const statusLabel = isLive ? "Live" : "View only";
+  const statusLabel = isLive
+    ? t("deliveryMap.popup.statusLive")
+    : t("deliveryMap.popup.statusViewOnly");
   const statusColor = isOutOfBounds ? "#DC2626" : isLive ? "#22C55E" : "#9CA3AF";
   const borderColor = isOutOfBounds ? "#DC2626" : isNearest ? "#C4B5FD" : "#E5E7EB";
   const leftColor = isOutOfBounds ? "#DC2626" : isNearest ? "#6750A4" : color;
@@ -870,9 +900,9 @@ const makeDriverIcon = (
         <div style="min-width:0;display:flex;flex-direction:column;gap:2px;">
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="max-width:116px;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:800;color:#1F2937;">${safeName}</span>
-            ${isOutOfBounds ? `<span style="background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">OUTSIDE</span>` : isNearest ? `<span style="background:#F5F3FF;color:#6750A4;border:1px solid #DDD6FE;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">BEST</span>` : ""}
+            ${isOutOfBounds ? `<span style="background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">${t("deliveryMap.popup.markerOutside")}</span>` : isNearest ? `<span style="background:#F5F3FF;color:#6750A4;border:1px solid #DDD6FE;border-radius:999px;padding:2px 5px;font-size:8px;font-weight:800;">${t("deliveryMap.popup.markerBest")}</span>` : ""}
           </div>
-          <span style="font-size:9px;font-weight:700;color:${isOutOfBounds ? "#DC2626" : isLive ? "#6B7280" : "#9CA3AF"};">${isOutOfBounds ? "Outside Addis" : statusLabel} · ${typeLabel}${count > 1 ? ` · ${count} stops` : ""}</span>
+          <span style="font-size:9px;font-weight:700;color:${isOutOfBounds ? "#DC2626" : isLive ? "#6B7280" : "#9CA3AF"};">${isOutOfBounds ? t("deliveryMap.popup.statusOutsideAddis") : statusLabel} · ${typeLabel}${count > 1 ? ` · ${t("deliveryMap.popup.stops", { count })}` : ""}</span>
         </div>
         ${count > 1 ? `<span style="position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;background:#6750A4;color:white;border:2px solid white;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;box-sizing:border-box;">${count}</span>` : ""}
       </div>
@@ -891,6 +921,7 @@ export default function DeliveryTrackingMap({
   onAssignmentComplete,
   initialOrder,
 }: DeliveryTrackingMapProps) {
+    const {t} = useTranslation("deliveryMap");
   const { user } = useAuth();
   const { company } = useCurrentCompany();
   const readOnly = useReadOnly();
@@ -1908,19 +1939,21 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
 
         let marker = customerMarkers.current.get(key);
         if (!marker) {
-          const icon = makeCustomerIcon(orders);
-          const newMarker = L.marker([lat, lng], { icon }).bindPopup(
-            createCustomerPopup(orders),
-            { maxWidth: 320 }
-          );
-          newMarker.on("click", () => setActiveOrderId(orders[0].id));
-          cluster.addLayer(newMarker);
-          customerMarkers.current.set(key, newMarker);
-        } else {
-          marker.setLatLng([lat, lng]);
-          marker.setIcon(makeCustomerIcon(orders));
-          marker.setPopupContent(createCustomerPopup(orders));
-        }
+  const icon = makeCustomerIcon(orders, t);
+
+  const newMarker = L.marker([lat, lng], { icon }).bindPopup(
+    createCustomerPopup(orders, t),
+    { maxWidth: 320 }
+  );
+
+  newMarker.on("click", () => setActiveOrderId(orders[0].id));
+  cluster.addLayer(newMarker);
+  customerMarkers.current.set(key, newMarker);
+} else {
+  marker.setLatLng([lat, lng]);
+  marker.setIcon(makeCustomerIcon(orders, t));
+  marker.setPopupContent(createCustomerPopup(orders, t));
+}
       });
     }
 
@@ -1954,13 +1987,13 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
 
       if (pickup && showCompanyMarker) {
         if (!companyMarkerRef.current) {
-          companyMarkerRef.current = L.marker([pickup.lat, pickup.lon], { icon: makeCompanyIcon() })
-            .bindPopup(createCompanyPopup(normalizedOrder), { maxWidth: 320 })
+          companyMarkerRef.current = L.marker([pickup.lat, pickup.lon], { icon: makeCompanyIcon(t) })
+            .bindPopup(createCompanyPopup(normalizedOrder, t), { maxWidth: 320 })
             .addTo(mapRef.current);
         } else {
           companyMarkerRef.current.setLatLng([pickup.lat, pickup.lon]);
-          companyMarkerRef.current.setIcon(makeCompanyIcon());
-          companyMarkerRef.current.setPopupContent(createCompanyPopup(normalizedOrder));
+          companyMarkerRef.current.setIcon(makeCompanyIcon(t));
+          companyMarkerRef.current.setPopupContent(createCompanyPopup(normalizedOrder, t));
         }
       } else if (companyMarkerRef.current) {
         companyMarkerRef.current.remove();
@@ -1970,14 +2003,14 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
       if (customer && showDeliveryMarker) {
         if (!deliveryMarkerRef.current) {
           deliveryMarkerRef.current = L.marker([customer.lat, customer.lon], {
-            icon: makeDeliveryLocationIcon(normalizedOrder.customerName),
+            icon: makeDeliveryLocationIcon(normalizedOrder.customerName, t),
           })
-            .bindPopup(createCustomerPopupForOrder(normalizedOrder), { maxWidth: 340 })
+            .bindPopup(createCustomerPopupForOrder(normalizedOrder, t), { maxWidth: 340 })
             .addTo(mapRef.current);
         } else {
           deliveryMarkerRef.current.setLatLng([customer.lat, customer.lon]);
-          deliveryMarkerRef.current.setIcon(makeDeliveryLocationIcon(normalizedOrder.customerName));
-          deliveryMarkerRef.current.setPopupContent(createCustomerPopupForOrder(normalizedOrder));
+          deliveryMarkerRef.current.setIcon(makeDeliveryLocationIcon(normalizedOrder.customerName, t));
+          deliveryMarkerRef.current.setPopupContent(createCustomerPopupForOrder(normalizedOrder, t));
         }
       } else if (deliveryMarkerRef.current) {
         deliveryMarkerRef.current.remove();
@@ -2008,8 +2041,9 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             isNearest,
             driver.isLive === true,
             isOutOfBounds,
+            t
           );
-          const popup = createDriverPopupForSelection(driver, normalizedOrder, color, isNearest);
+          const popup = createDriverPopupForSelection(driver, normalizedOrder, color, isNearest, t) ;
           let marker: Leaflet.Marker;
 
           if (!existingMarker) {
@@ -2178,9 +2212,18 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
         if (driverLat != null && driverLng != null && isValidCoordinate(driverLat, driverLng)) {
           const existingMarker = driverMarkers.current.get(driverName);
           if (!existingMarker) {
-            const icon = makeDriverIcon(driverName, orders.length, color, isInHouse);
+            const icon = makeDriverIcon(
+  driverName,
+  orders.length,
+  color,
+  isInHouse,
+  false, // isNearest
+  true,  // isLive
+  false, // isOutOfBounds
+  t
+);
             const newMarker: Leaflet.Marker = L.marker([driverLat, driverLng], { icon }).bindPopup(
-              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone),
+              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone, t),
               { maxWidth: 320 }
             );
             newMarker.on("click", () => setActiveOrderId(orders[0].id));
@@ -2188,9 +2231,11 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             driverMarkers.current.set(driverName, newMarker);
           } else {
             animateMarkerTo(existingMarker, driverLat, driverLng);
-            existingMarker.setIcon(makeDriverIcon(driverName, orders.length, color, isInHouse));
+            existingMarker.setIcon(makeDriverIcon(driverName, orders.length, color, isInHouse, false, // isNearest
+  true,  // isLive
+  false, t ));
             existingMarker.setPopupContent(
-              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone)
+              createDriverPopup(driverName, orders, color, orders[0]?.delivery.delivery_person_phone , t)
             );
           }
 
@@ -2359,10 +2404,10 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
     setFollowDriver(prev => !prev);
   }, []);
 
-  const handleDriverMarkerClick = (driverId: number) => {
+   const handleDriverMarkerClick = (driverId: number) => {
     const driver = enhancedDrivers.find(d => d.id === driverId);
     if (!driver?.isLive) {
-      showToast("error", "This delivery person is not currently live. Please select a live delivery person.");
+      showToast("error", t("deliveryMap.errors.driverNotLive"));
       return;
     }
 
@@ -2370,7 +2415,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
     if (driver.is_in_addis_ababa === false) {
       showToast(
         "error",
-        `${driver.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+        t("deliveryMap.errors.driverOutsideAddisToast", { name: driver.name }),
       );
       return;
     }
@@ -2390,18 +2435,21 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
     if (!pendingDriverId || !onDriverSelect || !normalizedOrder) return;
 
     if (!normalizedOrder.canAssign) {
-      showToast("error", normalizedOrder.assignmentBlockedReason || "Unable to assign delivery person");
+      showToast(
+        "error",
+        normalizedOrder.assignmentBlockedReason || t("deliveryMap.errors.assignFailed"),
+      );
       return;
     }
 
     const driver = enhancedDrivers.find(d => d.id === pendingDriverId);
     if (!driver) {
-      showToast("error", "Selected delivery person not found. Please refresh delivery personnel.");
+      showToast("error", t("deliveryMap.errors.driverNotFound"));
       return;
     }
 
     if (!driver.isLive) {
-      showToast("error", "This delivery person is not currently live. Please select a live delivery person.");
+      showToast("error", t("deliveryMap.errors.driverNotLive"));
       return;
     }
 
@@ -2409,7 +2457,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
     if (driver.is_in_addis_ababa === false) {
       showToast(
         "error",
-        `${driver.name} is outside Addis Ababa and cannot be assigned to city deliveries.`,
+        t("deliveryMap.errors.driverOutsideAddisToast", { name: driver.name }),
       );
       return;
     }
@@ -2420,13 +2468,13 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
       setSelectedDriverId(pendingDriverId);
       setShowConfirmPanel(false);
       setPendingDriverId(null);
-      showToast("success", "Delivery person assigned successfully");
+      showToast("success", t("deliveryMap.errors.assignSuccess"));
 
       if (onAssignmentComplete) {
         onAssignmentComplete();
       }
     } catch (err) {
-      showToast("error", "Failed to assign delivery person. They may no longer be available.");
+      showToast("error", t("deliveryMap.errors.assignFailedGeneric"));
     } finally {
       setIsAssigning(false);
     }
@@ -2473,7 +2521,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
     };
   }, []);
 
-  const renderDriverSelectionSidebar = () => {
+   const renderDriverSelectionSidebar = () => {
     if (!normalizedOrder) return null;
 
     const bestDriver =
@@ -2512,18 +2560,22 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="truncate text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/55">
-                  Dispatch assignment
+                  {t("deliveryMap.selection.dispatchAssignment")}
                 </p>
                 <span
                   className={`rounded-full px-1.5 py-0.5 text-[8px] font-extrabold ${
                     normalizedOrder.canAssign ? "bg-white/15 text-white" : "bg-rose-500/25 text-rose-100"
                   }`}
                 >
-                  {normalizedOrder.canAssign ? "READY" : "BLOCKED"}
+                  {normalizedOrder.canAssign
+                    ? t("deliveryMap.selection.ready")
+                    : t("deliveryMap.selection.blocked")}
                 </span>
               </div>
               <div className="mt-0.5 flex min-w-0 items-center gap-2">
-                <h3 className="truncate text-sm font-bold text-white">Order #{normalizedOrder.id}</h3>
+                <h3 className="truncate text-sm font-bold text-white">
+                  {t("deliveryMap.selection.orderLabel", { id: normalizedOrder.id })}
+                </h3>
                 <span className="truncate text-[10px] text-white/65">· {normalizedOrder.customerName}</span>
               </div>
             </div>
@@ -2531,14 +2583,14 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             <div className="flex shrink-0 items-center gap-1">
               <div className="hidden items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[9px] font-semibold text-white/85 sm:flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live
+                {t("deliveryMap.popup.live")}
               </div>
               <button
                 type="button"
                 onClick={toggleSidebar}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white"
-                aria-label="Collapse delivery person assignment sidebar"
-                title="Collapse sidebar"
+                aria-label={t("deliveryMap.selection.collapseSidebarAria")}
+                title={t("deliveryMap.selection.collapseSidebarTitle")}
               >
                 <PanelLeftClose className="h-4 w-4" />
               </button>
@@ -2557,14 +2609,18 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <p className="shrink-0 text-[8px] font-extrabold uppercase tracking-[0.11em] text-white/45">Order route</p>
+                  <p className="shrink-0 text-[8px] font-extrabold uppercase tracking-[0.11em] text-white/45">
+                    {t("deliveryMap.selection.orderRoute")}
+                  </p>
                   {bestDriver && (
                     <span className="truncate rounded-full bg-emerald-400/15 px-1.5 py-0.5 text-[8px] font-bold text-emerald-100">
                       {bestDriver.name}
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 truncate text-[10px] font-semibold text-white/90">Delivery Person → Company → Customer</p>
+                <p className="mt-0.5 truncate text-[10px] font-semibold text-white/90">
+                  {t("deliveryMap.selection.orderRouteSummary")}
+                </p>
               </div>
               <ChevronDown
                 className={`h-3.5 w-3.5 shrink-0 text-white/55 transition-transform ${isOrderRouteExpanded ? "rotate-180" : ""}`}
@@ -2573,19 +2629,25 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
 
             <div className="grid grid-cols-3 border-t border-white/10">
               <div className="min-w-0 px-2 py-1.5">
-                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">To pickup</p>
+                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">
+                  {t("deliveryMap.selection.toPickup")}
+                </p>
                 <p className="mt-0.5 truncate text-[9px] font-bold text-white">
                   {bestDriver ? compactDistance(bestDriver.road_distance_to_pickup ?? bestDriver.distance_to_pickup) : "—"}
                 </p>
               </div>
               <div className="min-w-0 border-x border-white/10 px-2 py-1.5">
-                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">Pickup → customer</p>
+                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">
+                  {t("deliveryMap.selection.pickupToCustomer")}
+                </p>
                 <p className="mt-0.5 truncate text-[9px] font-bold text-white">
                   {bestDriver ? compactDistance(bestDriver.pickup_to_customer_distance) : "—"}
                 </p>
               </div>
               <div className="min-w-0 px-2 py-1.5">
-                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">Total ETA</p>
+                <p className="truncate text-[7px] font-bold uppercase tracking-wide text-white/40">
+                  {t("deliveryMap.selection.totalEta")}
+                </p>
                 <p className="mt-0.5 truncate text-[9px] font-bold text-white">
                   {bestDriver ? compactDuration(bestDriver.total_eta_minutes) : "—"}
                 </p>
@@ -2599,21 +2661,23 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                   {[
                     {
                       step: "1",
-                      label: "Delivery Person",
-                      title: bestDriver ? bestDriver.name : "Choose a live delivery person",
-                      detail: bestDriver?.isLive ? "Realtime GPS" : "Live GPS required",
+                      label: t("deliveryMap.selection.stepDriver"),
+                      title: bestDriver ? bestDriver.name : t("deliveryMap.selection.chooseDriver"),
+                      detail: bestDriver?.isLive
+                        ? t("deliveryMap.selection.realtimeGps")
+                        : t("deliveryMap.selection.liveGpsRequired"),
                     },
                     {
                       step: "2",
-                      label: "Company / pickup",
+                      label: t("deliveryMap.selection.stepPickup"),
                       title: normalizedOrder.pickupName,
-                      detail: normalizedOrder.companyAddress || "Pickup address unavailable",
+                      detail: normalizedOrder.companyAddress || t("deliveryMap.selection.pickupAddressUnavailable"),
                     },
                     {
                       step: "3",
-                      label: "Customer / delivery",
+                      label: t("deliveryMap.selection.stepDelivery"),
                       title: normalizedOrder.customerName,
-                      detail: normalizedOrder.address || "Delivery address unavailable",
+                      detail: normalizedOrder.address || t("deliveryMap.selection.deliveryAddressUnavailable"),
                     },
                   ].map((step) => (
                     <div key={step.step} className="relative flex min-w-0 items-start gap-2">
@@ -2645,7 +2709,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-300/25 bg-amber-500/15 px-2.5 py-2 text-[9px] text-amber-100">
               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
               <span className="line-clamp-2">
-                {outOfBoundsCount} driver{outOfBoundsCount === 1 ? "" : "s"} outside Addis Ababa — not assignable for city deliveries.
+                {t("deliveryMap.selection.outsideAddisBanner", { count: outOfBoundsCount })}
               </span>
             </div>
           )}
@@ -2660,9 +2724,15 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           >
             <div className="flex min-w-0 items-center gap-2">
               <Search className="h-3.5 w-3.5 shrink-0 text-white/65" />
-              <span className="text-[10px] font-bold text-white">Find & filter delivery personnel</span>
+              <span className="text-[10px] font-bold text-white">
+                {t("deliveryMap.selection.findFilterPersonnel")}
+              </span>
               <span className="truncate text-[8px] text-white/50">
-                {filteredAvailableDrivers.length} total · {liveDriverCount} live · {viewOnlyDriverCount} view only
+                {t("deliveryMap.selection.personnelCounts", {
+                  total: filteredAvailableDrivers.length,
+                  live: liveDriverCount,
+                  viewOnly: viewOnlyDriverCount,
+                })}
               </span>
             </div>
             <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-white/55 transition-transform ${isDriverToolsExpanded ? "rotate-180" : ""}`} />
@@ -2676,16 +2746,16 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search delivery person, phone, vehicle..."
+                  placeholder={t("deliveryMap.selection.searchPlaceholder")}
                   className="w-full rounded-lg border border-white/15 bg-white/10 py-2 pl-8 pr-2.5 text-[11px] text-white outline-none transition placeholder:text-white/40 focus:border-white/35 focus:bg-white/15 focus:ring-2 focus:ring-white/10"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/10 p-1">
                 {[
-                  { value: "all", label: "All" },
-                  { value: "in_house", label: "In-House" },
-                  { value: "third_party", label: "3PL" },
+                  { value: "all", label: t("deliveryMap.selection.filterAll") },
+                  { value: "in_house", label: t("deliveryMap.popup.typeInHouse") },
+                  { value: "third_party", label: t("deliveryMap.popup.typeThirdParty") },
                 ].map((option) => (
                   <button
                     key={option.value}
@@ -2702,19 +2772,22 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-white/40">Rank</span>
+                <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-white/40">
+                  {t("deliveryMap.selection.rankLabel")}
+                </span>
                 <select
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as SortOption)}
                   className="min-w-0 flex-1 rounded-lg border border-white/15 bg-[#6750A4] px-2 py-1.5 text-[9px] font-semibold text-white outline-none focus:border-white/35"
                 >
-                  <option value="recommended">Recommended</option>
-                  <option value="nearest_pickup">Nearest pickup</option>
-                  <option value="fastest_eta">Fastest total ETA</option>
-                  <option value="highest_rated">Highest rated</option>
+                  <option value="recommended">{t("deliveryMap.selection.sortRecommended")}</option>
+                  <option value="nearest_pickup">{t("deliveryMap.selection.sortNearestPickup")}</option>
+                  <option value="fastest_eta">{t("deliveryMap.selection.sortFastestEta")}</option>
+                  <option value="highest_rated">{t("deliveryMap.selection.sortHighestRated")}</option>
                 </select>
                 <span className="flex shrink-0 items-center gap-1 text-[8px] font-semibold text-emerald-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Live assignable
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{" "}
+                  {t("deliveryMap.selection.liveAssignable")}
                 </span>
               </div>
             </div>
@@ -2725,16 +2798,22 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           {loadingDrivers && (
             <div className="flex items-center justify-center rounded-xl border border-white/15 bg-white/10 py-8">
               <Loader2 className="h-4 w-4 animate-spin text-white" />
-              <span className="ml-2 text-[10px] text-white/65">Comparing delivery personnel...</span>
+              <span className="ml-2 text-[10px] text-white/65">
+                {t("deliveryMap.selection.comparingPersonnel")}
+              </span>
             </div>
           )}
 
           {!loadingDrivers && filteredAvailableDrivers.length === 0 && (
             <div className="rounded-xl border border-dashed border-white/20 bg-white/10 px-4 py-7 text-center">
               <Users className="mx-auto mb-2 h-6 w-6 text-white/35" />
-              <p className="text-[11px] font-bold text-white">No available delivery personnel</p>
+              <p className="text-[11px] font-bold text-white">
+                {t("deliveryMap.selection.noAvailablePersonnel")}
+              </p>
               <p className="mt-1 text-[9px] leading-4 text-white/50">
-                {normalizedOrder.canAssign ? "No delivery personnel match the current filter." : "Assignment is blocked for this order."}
+                {normalizedOrder.canAssign
+                  ? t("deliveryMap.selection.noMatchFilter")
+                  : t("deliveryMap.selection.assignmentBlocked")}
               </p>
             </div>
           )}
@@ -2799,20 +2878,26 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                           <p className="truncate text-[11px] font-extrabold text-white">{driver.name}</p>
                           {isOutOfBounds ? (
                             <span className="shrink-0 rounded-full bg-rose-500/30 px-1.5 py-0.5 text-[7px] font-extrabold text-rose-50">
-                              OUTSIDE ADDIS
+                              {t("deliveryMap.selection.outsideAddisBadge")}
                             </span>
                           ) : driver.recommendation_rank != null && driver.recommendation_rank <= 3 ? (
                             <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[7px] font-extrabold ${
                               isBest ? "bg-white text-[#6750A4]" : "bg-white/15 text-white/70"
                             }`}>
-                              {isBest ? "BEST" : `#${driver.recommendation_rank}`}
+                              {isBest
+                                ? t("deliveryMap.selection.bestBadge")
+                                : `#${driver.recommendation_rank}`}
                             </span>
                           ) : null}
                         </div>
                         <div className="mt-0.5 flex min-w-0 items-center gap-1 text-[8px] text-white/55">
                           <span className="truncate">{getVehicleIcon(driver.vehicle_type)} {getVehicleName(driver.vehicle_type)}</span>
                           <span>·</span>
-                          <span className="truncate">{driver.is_in_house ? "In-House" : driver.company_name || "3PL"}</span>
+                          <span className="truncate">
+                            {driver.is_in_house
+                              ? t("deliveryMap.popup.typeInHouse")
+                              : driver.company_name || t("deliveryMap.popup.typeThirdParty")}
+                          </span>
                           {driver.average_rating && (
                             <>
                               <span>·</span>
@@ -2831,37 +2916,47 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                               ? "bg-amber-200/15 text-amber-100"
                               : "bg-white/10 text-white/45"
                       }`}>
-                        {isOutOfBounds ? "OUTSIDE" : driver.isLive ? "LIVE" : hasLocation ? "VIEW" : "OFFLINE"}
+                        {isOutOfBounds
+                          ? t("deliveryMap.popup.markerOutside")
+                          : driver.isLive
+                            ? t("deliveryMap.popup.statusLive")
+                            : hasLocation
+                              ? t("deliveryMap.selection.statusViewShort")
+                              : t("deliveryMap.selection.statusOffline")}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]" title="Trip = Delivery Person → pickup → customer">
-                      <span className="shrink-0 font-semibold text-white/55">Trip</span>
+                    <div className="mt-2 flex min-w-0 items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1.5 text-[8px]" title={t("deliveryMap.selection.tripTooltip")}>
+                      <span className="shrink-0 font-semibold text-white/55">{t("deliveryMap.selection.tripLabel")}</span>
                       <strong className="truncate text-white">{compactDistance(driver.total_route_distance)}</strong>
                       <span className="text-white/25">•</span>
-                      <span className="shrink-0 text-white/40">Pickup</span>
+                      <span className="shrink-0 text-white/40">{t("deliveryMap.selection.pickupLabel")}</span>
                       <strong className="truncate text-white/90">{compactDistance(pickupDistance)}</strong>
                       <span className="text-white/25">•</span>
-                      <span className="shrink-0 text-white/40">Pickup ETA</span>
+                      <span className="shrink-0 text-white/40">{t("deliveryMap.selection.pickupEta")}</span>
                       <strong className="truncate text-white/90">{compactDuration(driver.road_eta_to_pickup)}</strong>
                     </div>
 
                     <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
                       <p className="truncate text-[8px] text-white/40">
-                        {driver.phone || driver.username || `Delivery Person #${index + 1}`}
+                        {driver.phone ||
+                          driver.username ||
+                          t("deliveryMap.selection.deliveryPersonFallback", { number: index + 1 })}
                         {isOutOfBounds
-                          ? " · outside Addis Ababa"
+                          ? ` ${t("deliveryMap.selection.outsideAddisSuffix")}`
                           : !driver.isLive
-                            ? " · realtime GPS required"
+                            ? ` ${t("deliveryMap.selection.realtimeGpsRequiredSuffix")}`
                             : ""}
                       </p>
 
                       {isSelected ? (
                         <span className="flex shrink-0 items-center gap-1 text-[8px] font-extrabold text-emerald-200">
-                          <Check className="h-3 w-3" /> Assigned
+                          <Check className="h-3 w-3" /> {t("deliveryMap.selection.assigned")}
                         </span>
                       ) : isPending ? (
-                        <span className="shrink-0 text-[8px] font-extrabold text-white">Confirm</span>
+                        <span className="shrink-0 text-[8px] font-extrabold text-white">
+                          {t("deliveryMap.selection.confirm")}
+                        </span>
                       ) : (
                         <button
                           onClick={(e) => {
@@ -2871,21 +2966,22 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                           disabled={!canSelect}
                           title={
                             !driver.isLive
-                              ? "Realtime GPS is required before this delivery person can be assigned"
+                              ? t("deliveryMap.selection.realtimeGpsRequiredTitle")
                               : isOutOfBounds
-                                ? "This delivery person is outside Addis Ababa"
+                                ? t("deliveryMap.selection.outsideAddisTitle")
                                 : undefined
                           }
                           className="shrink-0 rounded-md bg-white px-2.5 py-1 text-[8px] font-extrabold text-[#6750A4] transition hover:bg-white/90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
                         >
                           {!driver.isLive
-                            ? "View only"
+                            ? t("deliveryMap.selection.viewOnly")
                             : isOutOfBounds
-                              ? "Outside city"
+                              ? t("deliveryMap.selection.outsideCity")
                               : canSelect
-                                ? (isBest ? "Assign best" : "Select")
-                                : "View only"
-                          }
+                                ? (isBest
+                                    ? t("deliveryMap.selection.assignBest")
+                                    : t("deliveryMap.selection.select"))
+                                : t("deliveryMap.selection.viewOnly")}
                         </button>
                       )}
                     </div>
@@ -2905,24 +3001,24 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
         type="button"
         onClick={toggleSidebar}
         className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
-        aria-label="Expand sidebar"
-        title="Expand sidebar"
+        aria-label={t("deliveryMap.selection.expandSidebarAria")}
+        title={t("deliveryMap.selection.expandSidebarTitle")}
       >
         <PanelLeftOpen className="h-4 w-4" />
       </button>
       <div className="mt-4 h-px w-7 bg-white/15" />
-      <div className="mt-4 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white/85" title="Dispatch assignment">
+      <div className="mt-4 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white/85" title={t("deliveryMap.selection.dispatchAssignment")}>
         <Navigation2 className="h-4 w-4" />
       </div>
       {mode === "driver_selection" && (
         <>
-          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-white/10 text-white" title={`${availableDrivers.length} available delivery personnel`}>
+          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-white/10 text-white" title={t("deliveryMap.selection.availablePersonnelTitle", { count: availableDrivers.length })}>
             <Users className="h-3.5 w-3.5" />
             <span className="mt-0.5 text-[7px] font-extrabold">{availableDrivers.length}</span>
           </div>
-          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-emerald-300/15 text-emerald-100" title="Realtime connection">
+          <div className="mt-3 flex h-9 w-9 flex-col items-center justify-center rounded-xl bg-emerald-300/15 text-emerald-100" title={t("deliveryMap.selection.realtimeConnection")}>
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="mt-1 text-[6px] font-bold uppercase">Live</span>
+            <span className="mt-1 text-[6px] font-bold uppercase">{t("deliveryMap.popup.live")}</span>
           </div>
         </>
       )}
@@ -2935,19 +3031,28 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
         <div className="shrink-0 border-b border-white/10 px-4 pb-4 pt-5 lg:px-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">Dispatch center</p>
-              <h3 className="mt-1 text-base font-bold text-white">Live delivery personnel</h3>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">
+                {t("deliveryMap.tracking.dispatchCenter")}
+              </p>
+              <h3 className="mt-1 text-base font-bold text-white">
+                {t("deliveryMap.tracking.liveDeliveryPersonnel")}
+              </h3>
               <p className="mt-1 text-[11px] text-white/65">
-                {driverGroups.size} delivery {driverGroups.size === 1 ? "person" : "personnel"} · {liveDeliveries.length} active deliver{liveDeliveries.length === 1 ? "y" : "ies"}
+                {t("deliveryMap.tracking.personnelAndDeliverySummary", {
+                  drivers: driverGroups.size,
+                  deliveries: liveDeliveries.length,
+                })}
               </p>
             </div>
             <div className="rounded-xl border border-white/15 bg-white/10 px-2.5 py-2 text-right">
               <div className="flex items-center justify-end gap-1.5 text-[10px] font-semibold text-white/90">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Realtime
+                {t("deliveryMap.tracking.realtime")}
               </div>
               <p className="mt-0.5 text-[9px] text-white/50">
-                {activeRealtimeSubscriptions} channel{activeRealtimeSubscriptions === 1 ? "" : "s"}
+                {t("deliveryMap.tracking.channelsCount", {
+                  count: activeRealtimeSubscriptions,
+                })}
               </p>
             </div>
           </div>
@@ -2956,9 +3061,9 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
         <div className="shrink-0 border-b border-white/10 px-4 py-3">
           <div className="grid grid-cols-3 gap-1 rounded-xl bg-black/10 p-1">
             {[
-              { value: "all", label: "All" },
-              { value: "in_house", label: "In-House" },
-              { value: "third_party", label: "3PL" },
+              { value: "all", label: t("deliveryMap.tracking.filterAll") },
+              { value: "in_house", label: t("deliveryMap.popup.typeInHouse") },
+              { value: "third_party", label: t("deliveryMap.popup.typeThirdParty") },
             ].map((option) => (
               <button
                 key={option.value}
@@ -2979,16 +3084,20 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           {loading && !driverGroups.size && (
             <div className="flex items-center justify-center rounded-xl border border-white/15 bg-white/10 py-10">
               <Loader2 className="h-5 w-5 animate-spin text-white" />
-              <span className="ml-3 text-sm text-white/70">Loading live delivery personnel...</span>
+              <span className="ml-3 text-sm text-white/70">
+                {t("deliveryMap.tracking.loadingPersonnel")}
+              </span>
             </div>
           )}
 
           {!loading && !driverGroups.size && (
             <div className="rounded-xl border border-dashed border-white/20 bg-white/10 px-5 py-10 text-center">
               <Navigation className="mx-auto mb-3 h-8 w-8 text-white/30" />
-              <p className="text-sm font-semibold text-white">No active deliveries</p>
+              <p className="text-sm font-semibold text-white">
+                {t("deliveryMap.tracking.noActiveDeliveries")}
+              </p>
               <p className="mt-1 text-xs leading-5 text-white/55">
-                Delivery personnel will appear here when a delivery moves into live tracking.
+                {t("deliveryMap.tracking.noActiveDeliveriesDesc")}
               </p>
             </div>
           )}
@@ -3017,7 +3126,10 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
               if (distances.length) {
                 const min = Math.min(...distances).toFixed(1);
                 const max = Math.max(...distances).toFixed(1);
-                distanceDisplay = min === max ? `${min} km` : `${min}–${max} km`;
+                distanceDisplay =
+                  min === max
+                    ? t("deliveryMap.tracking.rangeSingle", { value: min })
+                    : t("deliveryMap.tracking.rangeMulti", { min, max });
               }
             }
 
@@ -3031,7 +3143,10 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                     ? "border-white/60 bg-white shadow-lg"
                     : "border-white/15 bg-white/10 hover:border-white/25 hover:bg-white/15"
                 }`}
-                aria-label={`Delivery Person ${driverName}, ${count} orders`}
+                aria-label={t("deliveryMap.tracking.driverAriaLabel", {
+                  name: driverName,
+                  count,
+                })}
               >
                 <div className="flex items-start gap-3">
                   <div className="relative shrink-0">
@@ -3060,24 +3175,42 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                                 : "bg-blue-50 text-blue-700"
                               : "bg-white/10 text-white/80"
                           }`}>
-                            {isInHouse ? "In-House" : "3PL"}
+                            {isInHouse
+                              ? t("deliveryMap.popup.typeInHouse")
+                              : t("deliveryMap.popup.typeThirdParty")}
                           </span>
                           <span>•</span>
-                          <span>{count} destination{count === 1 ? "" : "s"}</span>
+                          <span>
+                            {t("deliveryMap.tracking.destinationCount", { count })}
+                          </span>
                         </div>
                       </div>
                       <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${
                         isActive ? "bg-emerald-50 text-emerald-700" : "bg-emerald-400/15 text-emerald-200"
                       }`}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> LIVE
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{" "}
+                        {t("deliveryMap.tracking.liveBadge")}
                       </span>
                     </div>
 
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       {[
-                        ["Speed", speed != null ? `${Math.round(Number(speed))} km/h` : "—"],
-                        ["Range", distanceDisplay || "—"],
-                        ["Stops", String(count)],
+                        [
+                          t("deliveryMap.tracking.speedLabel"),
+                          speed != null
+                            ? t("deliveryMap.tracking.speedValue", {
+                                value: Math.round(Number(speed)),
+                              })
+                            : "—",
+                        ],
+                        [
+                          t("deliveryMap.tracking.rangeLabel"),
+                          distanceDisplay || "—",
+                        ],
+                        [
+                          t("deliveryMap.tracking.stopsLabel"),
+                          String(count),
+                        ],
                       ].map(([label, value]) => (
                         <div
                           key={label}
@@ -3095,9 +3228,17 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
 
                     {isActive && (
                       <div className="mt-3 rounded-lg bg-secondary/5 px-2.5 py-2">
-                        <p className="text-[9px] font-bold uppercase tracking-wide text-secondary/60">Current delivery</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-secondary/60">
+                          {t("deliveryMap.tracking.currentDelivery")}
+                        </p>
                         <p className="mt-0.5 truncate text-[11px] font-semibold text-gray-700">
-                          #{activeOrder.id} · {activeOrder.recipient_name || activeOrder.customer_name || "Recipient"}
+                          {t("deliveryMap.tracking.currentDeliveryValue", {
+                            id: activeOrder.id,
+                            name:
+                              activeOrder.recipient_name ||
+                              activeOrder.customer_name ||
+                              t("deliveryMap.recipients.fallback"),
+                          })}
                         </p>
                         <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-gray-500">
                           {activeDestination.address}
@@ -3117,33 +3258,34 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
   const renderOrderUnavailable = () => (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center bg-[#6750A4] px-6 text-center text-white">
       <AlertTriangle className="mb-3 h-8 w-8 text-amber-300" />
-      <p className="text-sm font-bold">Order data unavailable</p>
+      <p className="text-sm font-bold">
+        {t("deliveryMap.orderUnavailable.title")}
+      </p>
       <p className="mt-1 max-w-xs text-xs text-white/60">
-        Unable to load destination or pickup location for this order. Close and reopen the map.
+        {t("deliveryMap.orderUnavailable.description")}
       </p>
       <button
         onClick={onClose}
         className="mt-4 rounded-lg bg-white/15 px-4 py-2 text-xs font-bold text-white hover:bg-white/25"
       >
-        Close map
+        {t("deliveryMap.orderUnavailable.closeMap")}
       </button>
     </div>
   );
-
   const latestSyncAt = realtimeUpdatedAt || lastUpdated;
   const realtimeHealthy =
     (mode === "driver_selection" && availableDrivers.length > 0) ||
     activeRealtimeSubscriptions > 0 ||
     realtimeUpdatedAt !== null;
 
-  return createPortal(
+   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-gray-100">
       <header className="z-30 flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-2.5 shadow-sm sm:px-5 lg:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={toggleSidebar}
             className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary lg:flex"
-            aria-label="Toggle sidebar"
+            aria-label={t("deliveryMap.header.toggleSidebar")}
           >
             {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
           </button>
@@ -3155,28 +3297,39 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="truncate text-sm font-bold tracking-tight text-gray-900 sm:text-base lg:text-lg">
-                {mode === "driver_selection" ? "Delivery Person Assignment Map" : "Live Delivery Map"}
+                {mode === "driver_selection"
+                  ? t("deliveryMap.header.assignmentMapTitle")
+                  : t("deliveryMap.header.liveMapTitle")}
               </h2>
               <span className={`hidden items-center gap-1.5 rounded-full px-2 py-1 text-[9px] font-bold sm:flex ${
                 realtimeHealthy ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
               }`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${realtimeHealthy ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-                {realtimeHealthy ? "REALTIME" : "API SYNC"}
+                {realtimeHealthy
+                  ? t("deliveryMap.header.realtime")
+                  : t("deliveryMap.header.apiSync")}
               </span>
             </div>
             <p className="mt-0.5 truncate text-[10px] text-gray-500 sm:text-xs">
               {mode === "driver_selection" && normalizedOrder
-                ? `Order #${normalizedOrder.id} · ${normalizedOrder.customerName}`
-                : `${stats.liveVehicles} vehicle${stats.liveVehicles === 1 ? "" : "s"} currently live`}
+                ? t("deliveryMap.header.orderSubtitle", {
+                    id: normalizedOrder.id,
+                    name: normalizedOrder.customerName,
+                  })
+                : t("deliveryMap.header.liveVehiclesSubtitle", { count: stats.liveVehicles })}
             </p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
           <div className="mr-1 hidden text-right xl:block">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Last sync</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
+              {t("deliveryMap.header.lastSync")}
+            </p>
             <p className="text-[11px] font-semibold text-gray-600">
-              {latestSyncAt ? latestSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "Waiting..."}
+              {latestSyncAt
+                ? latestSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                : t("deliveryMap.header.waiting")}
             </p>
           </div>
 
@@ -3184,8 +3337,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             onClick={() => refetch()}
             disabled={isFetching}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary disabled:opacity-50"
-            aria-label="Refresh delivery data"
-            title="Refresh delivery data"
+            aria-label={t("deliveryMap.header.refreshAria")}
+            title={t("deliveryMap.header.refreshAria")}
           >
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </button>
@@ -3193,7 +3346,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           <button
             onClick={onClose}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-            aria-label="Close map"
+            aria-label={t("deliveryMap.header.closeAria")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -3245,16 +3398,20 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                     <MapIcon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold text-gray-800">Dispatch map</p>
+                    <p className="text-[11px] font-bold text-gray-800">
+                      {t("deliveryMap.overlay.dispatchMap")}
+                    </p>
                     <p className="text-[9px] text-gray-400">
-                      {mode === "driver_selection" ? "Live delivery person availability" : "Realtime fleet positions"}
+                      {mode === "driver_selection"
+                        ? t("deliveryMap.overlay.dispatchMapSubtitleSelection")
+                        : t("deliveryMap.overlay.dispatchMapSubtitleTracking")}
                     </p>
                   </div>
                 </div>
                 <div className="mt-2.5 flex items-center gap-3 border-t border-gray-100 pt-2 text-[9px] font-semibold text-gray-500">
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-secondary" /> Pickup</span>
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border-2 border-amber-400 bg-white" /> Recipient</span>
-                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Live delivery person</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-secondary" /> {t("deliveryMap.overlay.legendPickup")}</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border-2 border-amber-400 bg-white" /> {t("deliveryMap.overlay.legendRecipient")}</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" /> {t("deliveryMap.overlay.legendLiveDriver")}</span>
                 </div>
               </div>
             </div>
@@ -3268,19 +3425,32 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                     <Navigation2 className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Assignment route</p>
-                    <p className="text-xs font-bold text-gray-900">Delivery Person → {normalizedOrder.pickupName} → {normalizedOrder.customerName}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">
+                      {t("deliveryMap.overlay.assignmentRoute")}
+                    </p>
+                    <p className="text-xs font-bold text-gray-900">
+                      {t("deliveryMap.overlay.assignmentRouteSummary", {
+                        pickup: normalizedOrder.pickupName,
+                        customer: normalizedOrder.customerName,
+                      })}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-start gap-2 border-t border-gray-100 pt-3">
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-secondary">Pickup</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-secondary">
+                      {t("deliveryMap.overlay.pickupLabel")}
+                    </p>
                     <p className="mt-0.5 truncate text-[11px] font-semibold text-gray-700">{normalizedOrder.pickupName}</p>
-                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-4 text-gray-400">{normalizedOrder.companyAddress || "Address unavailable"}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-4 text-gray-400">
+                      {normalizedOrder.companyAddress || t("deliveryMap.overlay.addressUnavailable")}
+                    </p>
                   </div>
                   <div className="mt-4 h-px w-8 bg-secondary/30" />
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-secondary">Customer</p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-secondary">
+                      {t("deliveryMap.overlay.customerLabel")}
+                    </p>
                     <p className="mt-0.5 truncate text-[11px] font-semibold text-gray-700">{normalizedOrder.customerName}</p>
                     <p className="mt-0.5 line-clamp-2 text-[9px] leading-4 text-gray-400">{normalizedOrder.address}</p>
                   </div>
@@ -3296,8 +3466,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                 className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                   mapStyle === "street" ? "bg-secondary text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 }`}
-                aria-label="Street map"
-                title="Street map"
+                aria-label={t("deliveryMap.controls.streetMap")}
+                title={t("deliveryMap.controls.streetMap")}
               >
                 <MapIcon className="h-4 w-4" />
               </button>
@@ -3306,8 +3476,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                 className={`mt-1 flex h-9 w-9 items-center justify-center rounded-xl transition ${
                   mapStyle === "satellite" ? "bg-secondary text-white" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                 }`}
-                aria-label="Satellite map"
-                title="Satellite map"
+                aria-label={t("deliveryMap.controls.satelliteMap")}
+                title={t("deliveryMap.controls.satelliteMap")}
               >
                 <Satellite className="h-4 w-4" />
               </button>
@@ -3321,8 +3491,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                     className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                       showCompanyMarker ? "bg-secondary/10 text-secondary" : "text-gray-400 hover:bg-gray-100"
                     }`}
-                    aria-label="Toggle pickup marker"
-                    title="Pickup marker"
+                    aria-label={t("deliveryMap.controls.togglePickupMarker")}
+                    title={t("deliveryMap.controls.pickupMarker")}
                   >
                     <Store className="h-4 w-4" />
                   </button>
@@ -3331,8 +3501,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                     className={`mt-1 flex h-9 w-9 items-center justify-center rounded-xl transition ${
                       showDeliveryMarker ? "bg-secondary/10 text-secondary" : "text-gray-400 hover:bg-gray-100"
                     }`}
-                    aria-label="Toggle destination marker"
-                    title="Destination marker"
+                    aria-label={t("deliveryMap.controls.toggleDestinationMarker")}
+                    title={t("deliveryMap.controls.destinationMarker")}
                   >
                     <MapPin className="h-4 w-4" />
                   </button>
@@ -3343,8 +3513,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                   className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
                     showCustomerMarker ? "bg-secondary/10 text-secondary" : "text-gray-400 hover:bg-gray-100"
                   }`}
-                  aria-label="Toggle recipient markers"
-                  title="Recipient markers"
+                  aria-label={t("deliveryMap.controls.toggleRecipientMarkers")}
+                  title={t("deliveryMap.controls.recipientMarkers")}
                 >
                   <MapPin className="h-4 w-4" />
                 </button>
@@ -3355,8 +3525,8 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
               <button
                 onClick={fitAllMarkers}
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 transition hover:bg-secondary/5 hover:text-secondary"
-                aria-label="Fit all markers"
-                title="Fit all markers"
+                aria-label={t("deliveryMap.controls.fitAllMarkers")}
+                title={t("deliveryMap.controls.fitAllMarkers")}
               >
                 <Maximize2 className="h-4 w-4" />
               </button>
@@ -3366,8 +3536,10 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                   className={`mt-1 flex h-9 w-9 items-center justify-center rounded-xl transition ${
                     followDriver ? "bg-secondary text-white" : "text-gray-500 hover:bg-secondary/5 hover:text-secondary"
                   }`}
-                  aria-label="Follow selected delivery person"
-                  title={followDriver ? "Stop following delivery person" : "Follow selected delivery person"}
+                  aria-label={t("deliveryMap.controls.followDriver")}
+                  title={followDriver
+                    ? t("deliveryMap.controls.stopFollowingDriver")
+                    : t("deliveryMap.controls.followSelectedDriver")}
                 >
                   <Navigation className="h-4 w-4" />
                 </button>
@@ -3379,10 +3551,14 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
             <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/95 px-3 py-2 shadow-lg shadow-gray-900/10 backdrop-blur-md">
               <span className={`h-2 w-2 rounded-full ${realtimeHealthy ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
               <span className="text-[10px] font-bold text-gray-700">
-                {realtimeHealthy ? "Live updates on" : "Realtime reconnecting"}
+                {realtimeHealthy
+                  ? t("deliveryMap.overlay.liveUpdatesOn")
+                  : t("deliveryMap.overlay.realtimeReconnecting")}
               </span>
               {latestSyncAt && (
-                <span className="hidden text-[9px] text-gray-400 sm:inline">· {latestSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                <span className="hidden text-[9px] text-gray-400 sm:inline">
+                  · {latestSyncAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
               )}
             </div>
           </div>
@@ -3394,9 +3570,13 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                   <Loader2 className="h-5 w-5 animate-spin text-secondary" />
                 </div>
                 <p className="mt-3 text-sm font-semibold text-gray-800">
-                  {mode === "driver_selection" ? "Loading delivery map" : "Connecting to live deliveries"}
+                  {mode === "driver_selection"
+                    ? t("deliveryMap.overlay.loadingMapSelection")
+                    : t("deliveryMap.overlay.loadingMapTracking")}
                 </p>
-                <p className="mt-1 text-xs text-gray-400">Preparing map, delivery personnel and route data...</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  {t("deliveryMap.overlay.preparingMapData")}
+                </p>
               </div>
             </div>
           )}
@@ -3407,13 +3587,15 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                 <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-500">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
-                <h3 className="mt-3 text-sm font-bold text-gray-900">Unable to load delivery map</h3>
+                <h3 className="mt-3 text-sm font-bold text-gray-900">
+                  {t("deliveryMap.overlay.unableToLoadMap")}
+                </h3>
                 <p className="mt-1 text-xs leading-5 text-gray-500">{error}</p>
                 <button
                   onClick={() => refetch()}
                   className="mt-4 rounded-xl bg-secondary px-5 py-2.5 text-xs font-bold text-white transition hover:opacity-90"
                 >
-                  Try again
+                  {t("deliveryMap.overlay.tryAgain")}
                 </button>
               </div>
             </div>
@@ -3424,7 +3606,9 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
               <div className="flex items-start gap-2.5">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                 <div>
-                  <p className="text-xs font-bold text-red-700">Delivery person assignment unavailable</p>
+                  <p className="text-xs font-bold text-red-700">
+                    {t("deliveryMap.overlay.assignmentUnavailable")}
+                  </p>
                   <p className="mt-0.5 text-[10px] text-red-600">{normalizedOrder.assignmentBlockedReason}</p>
                 </div>
               </div>
@@ -3437,8 +3621,12 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/10 text-secondary">
                   <Navigation className="h-6 w-6" />
                 </div>
-                <h3 className="mt-4 text-base font-bold text-gray-900">No active deliveries</h3>
-                <p className="mt-1.5 text-xs leading-5 text-gray-500">Live vehicles will appear automatically when a delivery moves out for delivery.</p>
+                <h3 className="mt-4 text-base font-bold text-gray-900">
+                  {t("deliveryMap.overlay.noActiveDeliveries")}
+                </h3>
+                <p className="mt-1.5 text-xs leading-5 text-gray-500">
+                  {t("deliveryMap.overlay.noActiveDeliveriesDesc")}
+                </p>
               </div>
             </div>
           )}
@@ -3473,18 +3661,29 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                           <div className="flex items-center gap-1.5">
                             <p className="truncate text-sm font-bold text-gray-900">{driver.name}</p>
                             {isOutOfBounds ? (
-                              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[8px] font-extrabold text-rose-700">OUTSIDE ADDIS</span>
+                              <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[8px] font-extrabold text-rose-700">
+                                {t("deliveryMap.confirm.outsideAddisBadge")}
+                              </span>
                             ) : isNearest ? (
-                              <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[8px] font-extrabold text-secondary">BEST MATCH</span>
+                              <span className="rounded-full bg-secondary/10 px-1.5 py-0.5 text-[8px] font-extrabold text-secondary">
+                                {t("deliveryMap.confirm.bestMatchBadge")}
+                              </span>
                             ) : null}
                           </div>
-                          <p className="mt-0.5 text-[10px] text-gray-500">{getVehicleName(driver.vehicle_type)} · {driver.is_in_house ? "In-House" : driver.company_name || "3PL"}</p>
+                          <p className="mt-0.5 text-[10px] text-gray-500">
+                            {getVehicleName(driver.vehicle_type)} ·{" "}
+                            {driver.is_in_house
+                              ? t("deliveryMap.popup.typeInHouse")
+                              : driver.company_name || t("deliveryMap.popup.typeThirdParty")}
+                          </p>
                         </div>
                         <span className={`flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold ${
                           isOutOfBounds ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"
                         }`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${isOutOfBounds ? "bg-rose-500" : "bg-emerald-500"}`} />
-                          {isOutOfBounds ? "OUTSIDE" : "LIVE"}
+                          {isOutOfBounds
+                            ? t("deliveryMap.popup.markerOutside")
+                            : t("deliveryMap.popup.statusLive")}
                         </span>
                       </div>
 
@@ -3492,9 +3691,11 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                         <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
                           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
                           <div>
-                            <p className="text-[11px] font-bold text-rose-700">Outside service area</p>
+                            <p className="text-[11px] font-bold text-rose-700">
+                              {t("deliveryMap.confirm.outsideServiceAreaTitle")}
+                            </p>
                             <p className="mt-0.5 text-[10px] text-rose-600">
-                              This delivery person is outside Addis Ababa and cannot be assigned to city deliveries.
+                              {t("deliveryMap.confirm.outsideServiceAreaDescription")}
                             </p>
                           </div>
                         </div>
@@ -3502,11 +3703,15 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
 
                       <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-gray-50 p-3">
                         <div>
-                          <p className="text-[9px] uppercase tracking-wide text-gray-400">Destination</p>
+                          <p className="text-[9px] uppercase tracking-wide text-gray-400">
+                            {t("deliveryMap.confirm.destinationLabel")}
+                          </p>
                           <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold text-gray-700">{normalizedOrder.address}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] uppercase tracking-wide text-gray-400">Route</p>
+                          <p className="text-[9px] uppercase tracking-wide text-gray-400">
+                            {t("deliveryMap.confirm.routeLabel")}
+                          </p>
                           <p className="mt-0.5 text-[11px] font-semibold text-gray-700">
                             {driver.road_distance_to_customer != null
                               ? `${formatDistance(driver.road_distance_to_customer)}${
@@ -3515,14 +3720,18 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                                     : ""
                                 }`
                               : driver.road_distance_to_pickup != null
-                                ? `Pickup ${formatDistance(driver.road_distance_to_pickup)}${
+                                ? `${t("deliveryMap.confirm.pickupPrefix", {
+                                    distance: formatDistance(driver.road_distance_to_pickup),
+                                  })}${
                                     driver.road_eta_to_pickup != null
                                       ? ` · ${formatDuration(driver.road_eta_to_pickup)}`
                                       : ""
-                                  } · customer leg unavailable`
+                                  } · ${t("deliveryMap.confirm.customerLegUnavailable")}`
                                 : driver.distance_to_customer != null
-                                  ? `${formatDistance(driver.distance_to_customer)}${!hasPickupCoords ? " (direct)" : ""}`
-                                  : "Route unavailable"}
+                                  ? `${formatDistance(driver.distance_to_customer)}${
+                                      !hasPickupCoords ? ` ${t("deliveryMap.confirm.directSuffix")}` : ""
+                                    }`
+                                  : t("deliveryMap.confirm.routeUnavailable")}
                           </p>
                         </div>
                       </div>
@@ -3532,7 +3741,7 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                           onClick={handleCancelSelection}
                           className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-600 transition hover:bg-gray-50"
                         >
-                          Cancel
+                          {t("deliveryMap.confirm.cancel")}
                         </button>
                         <button
                           onClick={handleConfirmAssignment}
@@ -3549,10 +3758,10 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
                             <Check className="h-4 w-4" />
                           )}
                           {isAssigning
-                            ? "Assigning..."
+                            ? t("deliveryMap.confirm.assigning")
                             : isOutOfBounds
-                              ? "Outside service area"
-                              : "Assign delivery person"}
+                              ? t("deliveryMap.confirm.outsideServiceAreaTitle")
+                              : t("deliveryMap.confirm.assignAction")}
                         </button>
                       </div>
                     </div>
@@ -3565,11 +3774,15 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
           {mode === "tracking" && !loading && !error && driverGroups.size > 0 && (
             <div className="absolute bottom-3 right-16 z-20 hidden gap-2 md:flex sm:bottom-4 lg:right-20">
               <div className="rounded-xl border border-gray-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-md">
-                <p className="text-[9px] uppercase tracking-wide text-gray-400">Live vehicles</p>
+                <p className="text-[9px] uppercase tracking-wide text-gray-400">
+                  {t("deliveryMap.stats.liveVehicles")}
+                </p>
                 <p className="mt-0.5 text-sm font-extrabold text-gray-800">{stats.liveVehicles}</p>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-md">
-                <p className="text-[9px] uppercase tracking-wide text-gray-400">Deliveries today</p>
+                <p className="text-[9px] uppercase tracking-wide text-gray-400">
+                  {t("deliveryMap.stats.deliveriesToday")}
+                </p>
                 <p className="mt-0.5 text-sm font-extrabold text-gray-800">{stats.deliveriesToday}</p>
               </div>
             </div>
@@ -3580,7 +3793,11 @@ const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
       <button
         onClick={toggleSidebar}
         className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-white shadow-xl shadow-secondary/25 lg:hidden"
-        aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+        aria-label={
+          isSidebarOpen
+            ? t("deliveryMap.header.closeSidebarAria")
+            : t("deliveryMap.header.openSidebarAria")
+        }
       >
         {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
       </button>

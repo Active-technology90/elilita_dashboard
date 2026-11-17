@@ -20,6 +20,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
@@ -42,22 +43,6 @@ function useDebounce<T>(value: T, delay: number): T {
   }, [value, delay]);
   return debouncedValue;
 }
-
-const BOOKING_LABELS: Record<string, string> = {
-  direct: "Direct",
-  inquiry: "Inquiry",
-  contact: "Contact",
-};
-
-const PAGE_SIZE_OPTIONS: SelectOption[] = [
-  { value: "10", label: "10 / page" },
-  { value: "15", label: "15 / page" },
-  { value: "20", label: "20 / page" },
-  { value: "30", label: "30 / page" },
-  { value: "50", label: "50 / page" },
-  { value: "75", label: "75 / page" },
-  { value: "100", label: "100 / page" },
-];
 
 /* ---------- small presentational components ---------- */
 function ServiceImage({
@@ -102,6 +87,8 @@ function StatusBadge({
   onToggle?: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation("companyServices");
+
   return (
     <button
       type="button"
@@ -110,26 +97,41 @@ function StatusBadge({
         e.stopPropagation();
         onToggle?.();
       }}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition ${isActive
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold transition ${
+        isActive
           ? "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200/60"
           : "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200"
-        } ${!onToggle ? "cursor-default" : "cursor-pointer hover:shadow-xs active:scale-95"}`}
-      title={onToggle ? (isActive ? "Click to deactivate" : "Click to activate") : undefined}
+      } ${!onToggle ? "cursor-default" : "cursor-pointer hover:shadow-xs active:scale-95"}`}
+      title={
+        onToggle
+          ? isActive
+            ? t("statusBadge.deactivateHint")
+            : t("statusBadge.activateHint")
+          : undefined
+      }
     >
       {isActive ? (
         <CheckCircle className="h-3 w-3" />
       ) : (
         <XCircle className="h-3 w-3" />
       )}
-      <span>{isActive ? "Active" : "Inactive"}</span>
+      <span>
+        {isActive ? t("statusBadge.active") : t("statusBadge.inactive")}
+      </span>
     </button>
   );
 }
 
 function BookingBadge({ mode }: { mode: string }) {
+  const { t } = useTranslation("companyServices");
+  const bookingLabels: Record<string, string> = {
+    direct: t("bookingMode.direct"),
+    inquiry: t("bookingMode.inquiry"),
+    contact: t("bookingMode.contact"),
+  };
   return (
     <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-purple-50 text-purple-700">
-      {BOOKING_LABELS[mode] || mode}
+      {bookingLabels[mode] || mode}
     </span>
   );
 }
@@ -143,6 +145,8 @@ function ServicePreviewModal({
   onClose: () => void;
   onEdit: (offering: ServiceOffering) => void;
 }) {
+  const { t } = useTranslation("companyServices");
+
   if (!offering) return null;
 
   return (
@@ -150,7 +154,7 @@ function ServicePreviewModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Service Details Preview"
+        aria-label={t("preview.ariaLabel")}
         className="bg-white w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-xl flex flex-col overflow-hidden animate-scaleUp"
       >
         {/* Header */}
@@ -161,10 +165,10 @@ function ServicePreviewModal({
             </span>
             <div>
               <h3 className="text-base font-bold text-gray-900">
-                Service Preview
+                {t("preview.title")}
               </h3>
               <p className="text-xs text-gray-400">
-                Customer-facing view details & configuration
+                {t("preview.subtitle")}
               </p>
             </div>
           </div>
@@ -208,32 +212,46 @@ function ServicePreviewModal({
           {/* Pricing & Duration summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-gray-50/80 border border-gray-100 text-center">
             <div>
-              <p className="text-[11px] uppercase font-bold text-gray-400">Price</p>
+              <p className="text-[11px] uppercase font-bold text-gray-400">
+                {t("preview.price")}
+              </p>
               <p className="text-sm font-bold text-secondary mt-0.5">
                 {offering.pricing_type === "custom"
-                  ? "Quote"
+                  ? t("preview.quote")
                   : `${Number(offering.price || 0).toLocaleString()} ${offering.currency}`}
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase font-bold text-gray-400">Duration</p>
+              <p className="text-[11px] uppercase font-bold text-gray-400">
+                {t("preview.duration")}
+              </p>
               <p className="text-sm font-bold text-gray-800 mt-0.5">
-                {offering.duration_minutes ? `${offering.duration_minutes} min` : "—"}
+                {offering.duration_minutes
+                  ? t("preview.minutes", { count: offering.duration_minutes })
+                  : "—"}
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase font-bold text-gray-400">Type</p>
+              <p className="text-[11px] uppercase font-bold text-gray-400">
+                {t("preview.type")}
+              </p>
               <p className="text-sm font-bold text-gray-800 mt-0.5 capitalize">
                 {offering.service_type === "recurring"
-                  ? `Subscription (${offering.billing_cycle || "monthly"})`
-                  : "One-Off"}
+                  ? t("preview.subscription", {
+                      cycle: offering.billing_cycle || "monthly",
+                    })
+                  : t("preview.oneOff")}
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase font-bold text-gray-400">Payment</p>
+              <p className="text-[11px] uppercase font-bold text-gray-400">
+                {t("preview.payment")}
+              </p>
               <p className="text-sm font-bold text-gray-800 mt-0.5 capitalize">
                 {offering.payment_policy.replace("_", " ")}
-                {offering.payment_policy === "deposit" ? ` (${offering.deposit_percentage}%)` : ""}
+                {offering.payment_policy === "deposit"
+                  ? ` (${offering.deposit_percentage}%)`
+                  : ""}
               </p>
             </div>
           </div>
@@ -242,7 +260,7 @@ function ServicePreviewModal({
           {offering.description && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
-                Description
+                {t("preview.description")}
               </p>
               <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
                 {offering.description}
@@ -259,16 +277,16 @@ function ServicePreviewModal({
           {offering.tags && offering.tags.length > 0 && (
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Tags & Keywords
+                {t("preview.tags")}
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {offering.tags.map((t) => (
+                {offering.tags.map((tg) => (
                   <span
-                    key={t}
+                    key={tg}
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-secondary border border-secondary/15"
                   >
                     <Tag className="h-3 w-3 opacity-60" />
-                    <span>{t}</span>
+                    <span>{tg}</span>
                   </span>
                 ))}
               </div>
@@ -276,29 +294,34 @@ function ServicePreviewModal({
           )}
 
           {/* Intake Form Fields */}
-          {offering.intake_form_schema && offering.intake_form_schema.length > 0 && (
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Intake Form Questions ({offering.intake_form_schema.length})
-              </p>
-              <div className="space-y-1.5">
-                {offering.intake_form_schema.map((field, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs"
-                  >
-                    <span className="font-semibold text-gray-800">
-                      {i + 1}. {field.label}
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </span>
-                    <span className="text-gray-400 uppercase text-[10px] font-medium px-1.5 py-0.5 rounded bg-white border">
-                      {field.type}
-                    </span>
-                  </div>
-                ))}
+          {offering.intake_form_schema &&
+            offering.intake_form_schema.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  {t("preview.intakeForm", {
+                    count: offering.intake_form_schema.length,
+                  })}
+                </p>
+                <div className="space-y-1.5">
+                  {offering.intake_form_schema.map((field, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs"
+                    >
+                      <span className="font-semibold text-gray-800">
+                        {i + 1}. {field.label}
+                        {field.required && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </span>
+                      <span className="text-gray-400 uppercase text-[10px] font-medium px-1.5 py-0.5 rounded bg-white border">
+                        {field.type}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         {/* Footer */}
@@ -308,7 +331,7 @@ function ServicePreviewModal({
             onClick={onClose}
             className="px-4 py-2 text-xs font-medium text-gray-600 rounded-xl hover:bg-gray-100 transition"
           >
-            Close
+            {t("preview.close")}
           </button>
           <button
             type="button"
@@ -319,7 +342,7 @@ function ServicePreviewModal({
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-[#5B46A0] transition shadow-xs"
           >
             <Edit className="h-3.5 w-3.5" />
-            <span>Edit Service</span>
+            <span>{t("preview.editService")}</span>
           </button>
         </div>
       </div>
@@ -328,19 +351,20 @@ function ServicePreviewModal({
 }
 
 function ServiceTableSkeleton() {
+  const { t } = useTranslation("companyServices");
   return (
     <div className="hidden md:block overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase">
-            <th className="pb-3 pr-4">Image</th>
-            <th className="pb-3 pr-4">Service</th>
-            <th className="pb-3 pr-4">Price</th>
-            <th className="pb-3 pr-4">Duration</th>
-            <th className="pb-3 pr-4">Booking</th>
-            <th className="pb-3 pr-4">Status</th>
-            <th className="pb-3 pr-4">Bookings</th>
-            <th className="pb-3">Actions</th>
+            <th className="pb-3 pr-4">{t("table.image")}</th>
+            <th className="pb-3 pr-4">{t("table.service")}</th>
+            <th className="pb-3 pr-4">{t("table.price")}</th>
+            <th className="pb-3 pr-4">{t("table.duration")}</th>
+            <th className="pb-3 pr-4">{t("table.booking")}</th>
+            <th className="pb-3 pr-4">{t("table.status")}</th>
+            <th className="pb-3 pr-4">{t("table.bookings")}</th>
+            <th className="pb-3">{t("table.actions")}</th>
           </tr>
         </thead>
         <tbody className="animate-pulse">
@@ -414,6 +438,18 @@ function ServiceCardSkeleton() {
 }
 
 export default function CompanyServices() {
+  const { t } = useTranslation("companyServices");
+
+  const PAGE_SIZE_OPTIONS: SelectOption[] = [
+    { value: "10", label: t("pageSize.10") },
+    { value: "15", label: t("pageSize.15") },
+    { value: "20", label: t("pageSize.20") },
+    { value: "30", label: t("pageSize.30") },
+    { value: "50", label: t("pageSize.50") },
+    { value: "75", label: t("pageSize.75") },
+    { value: "100", label: t("pageSize.100") },
+  ];
+
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -488,7 +524,7 @@ export default function CompanyServices() {
     // Tag filter
     if (selectedTagFilter) {
       list = list.filter((o) =>
-        o.tags?.some((t) => t.toLowerCase() === selectedTagFilter.toLowerCase())
+        o.tags?.some((tg) => tg.toLowerCase() === selectedTagFilter.toLowerCase()),
       );
     }
 
@@ -499,8 +535,9 @@ export default function CompanyServices() {
         (o) =>
           o.title.toLowerCase().includes(term) ||
           (o.title_am && o.title_am.toLowerCase().includes(term)) ||
-          (o.service_category && o.service_category.toLowerCase().includes(term)) ||
-          (o.tags && o.tags.some((t) => t.toLowerCase().includes(term)))
+          (o.service_category &&
+            o.service_category.toLowerCase().includes(term)) ||
+          (o.tags && o.tags.some((tg) => tg.toLowerCase().includes(term))),
       );
     }
 
@@ -536,7 +573,7 @@ export default function CompanyServices() {
   >("details");
   const [editing, setEditing] = useState<ServiceOffering | null>(null);
   const [previewOffering, setPreviewOffering] = useState<ServiceOffering | null>(
-    null
+    null,
   );
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ServiceOffering | null>(null);
@@ -561,14 +598,17 @@ export default function CompanyServices() {
     try {
       if (id) {
         const result = await update(id, data);
-        showToast("success", "Service updated");
+        showToast("success", t("toasts.serviceUpdated"));
         return result;
       }
       const result = await create(data);
-      showToast("success", "Service created");
+      showToast("success", t("toasts.serviceCreated"));
       return result;
     } catch (err: any) {
-      showToast("error", err?.response?.data?.detail || "Save failed");
+      showToast(
+        "error",
+        err?.response?.data?.detail || t("toasts.saveFailed"),
+      );
       throw err;
     } finally {
       refetch();
@@ -577,7 +617,7 @@ export default function CompanyServices() {
 
   const handleEdit = async (
     offering: ServiceOffering,
-    step: "details" | "addons" | "gallery" = "details"
+    step: "details" | "addons" | "gallery" = "details",
   ) => {
     try {
       const fullOffering = await getDetail(offering.id);
@@ -585,7 +625,7 @@ export default function CompanyServices() {
       setModalInitialStep(step);
       setModalOpen(true);
     } catch {
-      showToast("error", "Failed to load service details");
+      showToast("error", t("toasts.loadDetailsFailed"));
     }
   };
 
@@ -594,10 +634,15 @@ export default function CompanyServices() {
     const newStatus = !offering.is_active;
     try {
       await update(offering.id, { is_active: newStatus });
-      showToast("success", `Service ${newStatus ? "activated" : "deactivated"}`);
+      showToast(
+        "success",
+        newStatus
+          ? t("toasts.serviceActivated")
+          : t("toasts.serviceDeactivated"),
+      );
       refetch();
     } catch {
-      showToast("error", "Failed to update service status");
+      showToast("error", t("toasts.updateStatusFailed"));
     } finally {
       setTogglingId(null);
     }
@@ -609,17 +654,19 @@ export default function CompanyServices() {
       const duplicatedData: Partial<ServiceOffering> = {
         ...full,
         id: undefined,
-        title: `${full.title} (Copy)`,
-        title_am: full.title_am ? `${full.title_am} (ኮፒ)` : undefined,
+        title: `${full.title} (${t("duplicate.copySuffix")})`,
+        title_am: full.title_am
+          ? `${full.title_am} (${t("duplicate.copySuffixAm")})`
+          : undefined,
         slug: undefined,
         order: (full.order || 0) + 1,
       };
       setEditing(duplicatedData as ServiceOffering);
       setModalInitialStep("details");
       setModalOpen(true);
-      showToast("success", "Duplicating service. Review and click save.");
+      showToast("success", t("toasts.duplicating"));
     } catch {
-      showToast("error", "Failed to duplicate service");
+      showToast("error", t("toasts.duplicateFailed"));
     }
   };
 
@@ -630,7 +677,7 @@ export default function CompanyServices() {
       setModalInitialStep("addons");
       setModalOpen(true);
     } catch {
-      showToast("error", "Failed to open add-ons");
+      showToast("error", t("toasts.openAddonsFailed"));
     }
   };
 
@@ -647,11 +694,11 @@ export default function CompanyServices() {
     if (!deleteTarget) return;
     try {
       await remove(deleteTarget.id);
-      showToast("success", "Service deleted");
+      showToast("success", t("toasts.serviceDeleted"));
       setDeleteTarget(null);
       refetch();
     } catch {
-      showToast("error", "Delete failed");
+      showToast("error", t("toasts.deleteFailed"));
       setDeleteTarget(null);
     }
   };
@@ -662,8 +709,8 @@ export default function CompanyServices() {
       <CompanySelector
         companies={serviceCompanies.length ? serviceCompanies : companies}
         isLoading={isLoadingCompanies}
-        title="Service Management"
-        searchPlaceholder="Search service companies..."
+        title={t("selector.title")}
+        searchPlaceholder={t("selector.searchPlaceholder")}
         onSelect={(slug, name) => {
           const membership = user?.memberships?.find(
             (m: any) => m.company_slug === slug,
@@ -680,7 +727,7 @@ export default function CompanyServices() {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
         <Wrench className="h-12 w-12 text-gray-300 mb-4" />
-        <p>Select a service company to manage offerings.</p>
+        <p>{t("noCompany")}</p>
       </div>
     );
   }
@@ -689,12 +736,12 @@ export default function CompanyServices() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Service Management"
-          description="This area is available only to companies configured as service businesses."
+          title={t("notService.title")}
+          description={t("notService.description")}
           icon={AlertCircle}
           badge={
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
-              Service company required
+              {t("notService.badge")}
             </span>
           }
           actions={
@@ -705,7 +752,7 @@ export default function CompanyServices() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("notService.switchCompany")}
               </button>
             ) : undefined
           }
@@ -720,12 +767,12 @@ export default function CompanyServices() {
 
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900">
-                {companyName || "The selected company"} is not a service company
+                {t("notService.heading", {
+                  company: companyName || t("notService.fallbackCompany"),
+                })}
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-600">
-                Service offerings, staff schedules, availability, and bookings are
-                disabled for this company. Select a company whose business type is
-                <span className="font-medium text-gray-800"> service</span> to continue.
+                {t("notService.body")}
               </p>
               {isSuperAdmin && (
                 <button
@@ -734,7 +781,7 @@ export default function CompanyServices() {
                   className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
                 >
                   <Repeat className="h-4 w-4" />
-                  Choose a service company
+                  {t("notService.chooseServiceCompany")}
                 </button>
               )}
             </div>
@@ -782,9 +829,9 @@ export default function CompanyServices() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={companyName || undefined}
-          description="Manage service offerings, pricing, duration, and booking options."
+          description={t("page.description")}
           icon={Wrench}
-          eyebrow="My Services"
+          eyebrow={t("page.eyebrow")}
           actions={
             <>
               {isSuperAdmin && (
@@ -794,7 +841,7 @@ export default function CompanyServices() {
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
                   <Repeat className="h-4 w-4" />
-                  Switch company
+                  {t("page.switchCompany")}
                 </button>
               )}
               <button
@@ -804,10 +851,10 @@ export default function CompanyServices() {
                   setModalInitialStep("details");
                   setModalOpen(true);
                 }}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90"
               >
                 <Plus className="h-4 w-4" />
-                Add service
+                {t("page.addService")}
               </button>
             </>
           }
@@ -819,7 +866,8 @@ export default function CompanyServices() {
                   onClick={clearCompany}
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
-                  <Repeat className="h-4 w-4" />                </button>
+                  <Repeat className="h-4 w-4" />
+                </button>
               )}
               <button
                 type="button"
@@ -828,10 +876,10 @@ export default function CompanyServices() {
                   setModalInitialStep("details");
                   setModalOpen(true);
                 }}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90"
               >
                 <Plus className="h-4 w-4" />
-                Add
+                {t("page.addShort")}
               </button>
             </>
           }
@@ -843,17 +891,19 @@ export default function CompanyServices() {
           <button
             type="button"
             onClick={() => setActiveTabFilter("all")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${activeTabFilter === "all"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              activeTabFilter === "all"
                 ? "bg-secondary text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
-            <span>All</span>
+            <span>{t("tabs.all")}</span>
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTabFilter === "all"
+              className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeTabFilter === "all"
                   ? "bg-white/20 text-white"
                   : "bg-white text-gray-600"
-                }`}
+              }`}
             >
               {counts.all}
             </span>
@@ -862,17 +912,19 @@ export default function CompanyServices() {
           <button
             type="button"
             onClick={() => setActiveTabFilter("one_off")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${activeTabFilter === "one_off"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              activeTabFilter === "one_off"
                 ? "bg-secondary text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
-            <span>One-Off</span>
+            <span>{t("tabs.oneOff")}</span>
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTabFilter === "one_off"
+              className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeTabFilter === "one_off"
                   ? "bg-white/20 text-white"
                   : "bg-white text-gray-600"
-                }`}
+              }`}
             >
               {counts.oneOff}
             </span>
@@ -881,17 +933,19 @@ export default function CompanyServices() {
           <button
             type="button"
             onClick={() => setActiveTabFilter("recurring")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${activeTabFilter === "recurring"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              activeTabFilter === "recurring"
                 ? "bg-secondary text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
-            <span>Subscriptions</span>
+            <span>{t("tabs.recurring")}</span>
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTabFilter === "recurring"
+              className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeTabFilter === "recurring"
                   ? "bg-white/20 text-white"
                   : "bg-white text-gray-600"
-                }`}
+              }`}
             >
               {counts.recurring}
             </span>
@@ -900,17 +954,19 @@ export default function CompanyServices() {
           <button
             type="button"
             onClick={() => setActiveTabFilter("active")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${activeTabFilter === "active"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              activeTabFilter === "active"
                 ? "bg-green-600 text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
-            <span>Active</span>
+            <span>{t("tabs.active")}</span>
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTabFilter === "active"
+              className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeTabFilter === "active"
                   ? "bg-white/20 text-white"
                   : "bg-white text-gray-600"
-                }`}
+              }`}
             >
               {counts.active}
             </span>
@@ -919,17 +975,19 @@ export default function CompanyServices() {
           <button
             type="button"
             onClick={() => setActiveTabFilter("inactive")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${activeTabFilter === "inactive"
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              activeTabFilter === "inactive"
                 ? "bg-gray-700 text-white shadow-xs"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            }`}
           >
-            <span>Inactive</span>
+            <span>{t("tabs.inactive")}</span>
             <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTabFilter === "inactive"
+              className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                activeTabFilter === "inactive"
                   ? "bg-white/20 text-white"
                   : "bg-white text-gray-600"
-                }`}
+              }`}
             >
               {counts.inactive}
             </span>
@@ -941,13 +999,14 @@ export default function CompanyServices() {
           <div className="mb-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-50 border border-secondary/20 text-xs text-secondary w-fit animate-fadeIn">
             <Tag className="h-3.5 w-3.5" />
             <span>
-              Filtering by tag: <strong className="font-bold underline">{selectedTagFilter}</strong>
+              {t("tagFilter.label")}:{" "}
+              <strong className="font-bold underline">{selectedTagFilter}</strong>
             </span>
             <button
               type="button"
               onClick={() => setSelectedTagFilter(null)}
               className="ml-1 p-0.5 rounded-full hover:bg-secondary/15 text-secondary transition"
-              title="Clear tag filter"
+              title={t("tagFilter.clear")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -970,10 +1029,10 @@ export default function CompanyServices() {
 
               <input
                 type="text"
-                placeholder="Search services..."
+                placeholder={t("search.placeholder")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                aria-label="Search services"
+                aria-label={t("search.ariaLabel")}
                 className="
           h-10 w-full min-w-0
           rounded-xl
@@ -998,8 +1057,8 @@ export default function CompanyServices() {
               type="button"
               onClick={refetch}
               disabled={loading}
-              title="Refresh services"
-              aria-label="Refresh services"
+              title={t("search.refresh")}
+              aria-label={t("search.refresh")}
               className="
         group
         inline-flex h-10 w-10
@@ -1044,7 +1103,7 @@ export default function CompanyServices() {
         sm:inline-flex
       "
             >
-              {totalItems} {totalItems === 1 ? "service" : "services"}
+              {t("search.serviceCount", { count: totalItems })}
             </span>
 
             {/* Page Size */}
@@ -1064,14 +1123,14 @@ export default function CompanyServices() {
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 flex items-start gap-2">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-medium">Unable to load services</p>
+              <p className="font-medium">{t("error.title")}</p>
               <p className="text-xs text-red-600 mt-1">{error}</p>
               <button
                 onClick={refetch}
                 className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red-700 hover:text-red-800 underline"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                Retry
+                {t("error.retry")}
               </button>
             </div>
           </div>
@@ -1088,10 +1147,10 @@ export default function CompanyServices() {
             <div className="py-16 text-center">
               <Wrench className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-700">
-                No services yet
+                {t("empty.noServices")}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Create your first service offering to get started.
+                {t("empty.noServicesHint")}
               </p>
               <button
                 type="button"
@@ -1102,24 +1161,24 @@ export default function CompanyServices() {
                 className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-[#5B4592] transition"
               >
                 <Plus className="h-4 w-4" />
-                Add Service
+                {t("empty.addService")}
               </button>
             </div>
           ) : (
             <div className="py-16 text-center">
               <Search className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-semibold text-gray-700">
-                No matching services
+                {t("empty.noMatches")}
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Try another search term or clear your search.
+                {t("empty.noMatchesHint")}
               </p>
               <button
                 type="button"
                 onClick={() => setSearchInput("")}
                 className="mt-4 text-sm font-semibold text-secondary hover:underline"
               >
-                Clear Search
+                {t("empty.clearSearch")}
               </button>
             </div>
           )
@@ -1130,14 +1189,14 @@ export default function CompanyServices() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase">
-                    <th className="pb-3 pr-4">Image</th>
-                    <th className="pb-3 pr-4">Service</th>
-                    <th className="pb-3 pr-4">Price</th>
-                    <th className="pb-3 pr-4">Duration</th>
-                    <th className="pb-3 pr-4">Booking</th>
-                    <th className="pb-3 pr-4">Status</th>
-                    <th className="pb-3 pr-4">Bookings</th>
-                    <th className="pb-3">Actions</th>
+                    <th className="pb-3 pr-4">{t("table.image")}</th>
+                    <th className="pb-3 pr-4">{t("table.service")}</th>
+                    <th className="pb-3 pr-4">{t("table.price")}</th>
+                    <th className="pb-3 pr-4">{t("table.duration")}</th>
+                    <th className="pb-3 pr-4">{t("table.booking")}</th>
+                    <th className="pb-3 pr-4">{t("table.status")}</th>
+                    <th className="pb-3 pr-4">{t("table.bookings")}</th>
+                    <th className="pb-3">{t("table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1170,11 +1229,12 @@ export default function CompanyServices() {
                                 key={tag}
                                 type="button"
                                 onClick={() => setSelectedTagFilter(tag)}
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${selectedTagFilter === tag
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${
+                                  selectedTagFilter === tag
                                     ? "bg-secondary text-white shadow-xs"
                                     : "bg-purple-50 text-secondary hover:bg-purple-100 border border-secondary/15"
-                                  }`}
-                                title={`Filter by tag "${tag}"`}
+                                }`}
+                                title={t("tags.filterBy", { tag })}
                               >
                                 <Tag className="h-2.5 w-2.5 opacity-60" />
                                 <span className="truncate max-w-[85px]">{tag}</span>
@@ -1193,12 +1253,12 @@ export default function CompanyServices() {
                       </td>
                       <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
                         {o.pricing_type === "custom"
-                          ? "Quote"
+                          ? t("preview.quote")
                           : `${Number(o.price || 0).toLocaleString()} ${o.currency}`}
                       </td>
                       <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">
                         {o.duration_minutes
-                          ? `${o.duration_minutes} min`
+                          ? t("preview.minutes", { count: o.duration_minutes })
                           : "—"}
                       </td>
                       <td className="py-3 pr-4">
@@ -1219,8 +1279,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handlePreview(o)}
                             className="p-1.5 text-gray-500 hover:text-secondary rounded-lg hover:bg-purple-50 transition"
-                            title="Preview service"
-                            aria-label={`Preview ${o.title}`}
+                            title={t("actions.preview")}
+                            aria-label={t("actions.previewAria", { title: o.title })}
                             type="button"
                           >
                             <Eye className="h-4 w-4" />
@@ -1228,8 +1288,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleOpenAddons(o)}
                             className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
-                            title="Manage add-ons"
-                            aria-label={`Manage add-ons for ${o.title}`}
+                            title={t("actions.manageAddons")}
+                            aria-label={t("actions.manageAddonsAria", { title: o.title })}
                             type="button"
                           >
                             <Sparkles className="h-4 w-4" />
@@ -1237,8 +1297,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleDuplicate(o)}
                             className="p-1.5 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition"
-                            title="Duplicate service"
-                            aria-label={`Duplicate ${o.title}`}
+                            title={t("actions.duplicate")}
+                            aria-label={t("actions.duplicateAria", { title: o.title })}
                             type="button"
                           >
                             <Copy className="h-4 w-4" />
@@ -1246,8 +1306,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleEdit(o, "details")}
                             className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
-                            title="Edit service"
-                            aria-label={`Edit ${o.title}`}
+                            title={t("actions.edit")}
+                            aria-label={t("actions.editAria", { title: o.title })}
                             type="button"
                           >
                             <Edit className="h-4 w-4" />
@@ -1255,8 +1315,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => setDeleteTarget(o)}
                             className="p-1.5 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition"
-                            title="Delete service"
-                            aria-label={`Delete ${o.title}`}
+                            title={t("actions.delete")}
+                            aria-label={t("actions.deleteAria", { title: o.title })}
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1303,8 +1363,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handlePreview(o)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
-                            title="Preview service"
-                            aria-label={`Preview ${o.title}`}
+                            title={t("actions.preview")}
+                            aria-label={t("actions.previewAria", { title: o.title })}
                             type="button"
                           >
                             <Eye className="h-4 w-4" />
@@ -1312,8 +1372,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleOpenAddons(o)}
                             className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
-                            title="Manage add-ons"
-                            aria-label={`Manage add-ons for ${o.title}`}
+                            title={t("actions.manageAddons")}
+                            aria-label={t("actions.manageAddonsAria", { title: o.title })}
                             type="button"
                           >
                             <Sparkles className="h-4 w-4" />
@@ -1321,8 +1381,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleDuplicate(o)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
-                            title="Duplicate service"
-                            aria-label={`Duplicate ${o.title}`}
+                            title={t("actions.duplicate")}
+                            aria-label={t("actions.duplicateAria", { title: o.title })}
                             type="button"
                           >
                             <Copy className="h-4 w-4" />
@@ -1330,8 +1390,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => handleEdit(o, "details")}
                             className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
-                            title="Edit service"
-                            aria-label={`Edit ${o.title}`}
+                            title={t("actions.edit")}
+                            aria-label={t("actions.editAria", { title: o.title })}
                             type="button"
                           >
                             <Edit className="h-4 w-4" />
@@ -1339,8 +1399,8 @@ export default function CompanyServices() {
                           <button
                             onClick={() => setDeleteTarget(o)}
                             className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition"
-                            title="Delete service"
-                            aria-label={`Delete ${o.title}`}
+                            title={t("actions.delete")}
+                            aria-label={t("actions.deleteAria", { title: o.title })}
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1354,7 +1414,7 @@ export default function CompanyServices() {
                           <Tag className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                           <span className="truncate">
                             {o.pricing_type === "custom"
-                              ? "Quote"
+                              ? t("preview.quote")
                               : `${Number(o.price || 0).toLocaleString()} ${o.currency}`}
                           </span>
                         </div>
@@ -1362,7 +1422,9 @@ export default function CompanyServices() {
                           <Clock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                           <span className="truncate">
                             {o.duration_minutes
-                              ? `${o.duration_minutes} min`
+                              ? t("preview.minutes", {
+                                  count: o.duration_minutes,
+                                })
                               : "—"}
                           </span>
                         </div>
@@ -1387,10 +1449,11 @@ export default function CompanyServices() {
                               key={tag}
                               type="button"
                               onClick={() => setSelectedTagFilter(tag)}
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${selectedTagFilter === tag
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${
+                                selectedTagFilter === tag
                                   ? "bg-secondary text-white"
                                   : "bg-purple-50 text-secondary border border-secondary/15"
-                                }`}
+                              }`}
                             >
                               <Tag className="h-2.5 w-2.5 opacity-60" />
                               <span>{tag}</span>
@@ -1402,7 +1465,7 @@ export default function CompanyServices() {
                       {/* Bookings count */}
                       <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
                         <Activity className="h-3 w-3" />
-                        <span>{o.total_bookings ?? 0} bookings</span>
+                        <span>{t("bookingsCount", { count: o.total_bookings ?? 0 })}</span>
                       </div>
                     </div>
                   </div>
@@ -1414,10 +1477,14 @@ export default function CompanyServices() {
             {totalPages > 1 && (
               <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-sm text-gray-500">
-                  Showing{" "}
-                  {Math.min((currentPage - 1) * pageSize + 1, totalItems)} –{" "}
-                  {Math.min(currentPage * pageSize, totalItems)} of{" "}
-                  {totalItems} services
+                  {t("pagination.showing", {
+                    from: Math.min(
+                      (currentPage - 1) * pageSize + 1,
+                      totalItems,
+                    ),
+                    to: Math.min(currentPage * pageSize, totalItems),
+                    total: totalItems,
+                  })}
                 </p>
                 <Pagination
                   currentPage={currentPage}

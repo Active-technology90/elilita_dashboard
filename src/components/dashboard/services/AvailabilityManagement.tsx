@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
@@ -34,19 +35,6 @@ import { validateAvailabilitySlot } from "../../../utils/availabilityValidator";
 import { validateBlackout } from "../../../utils/blackoutValidator";
 import { CustomSelect } from "../../ui/CustomSelect";
 // import type { ValidationResult } from "../../../types/validation";
-
-// ---------------------------------------------------------------------------
-//  Constants
-// ---------------------------------------------------------------------------
-const DAYS = [
-  { value: 0, label: "Monday" },
-  { value: 1, label: "Tuesday" },
-  { value: 2, label: "Wednesday" },
-  { value: 3, label: "Thursday" },
-  { value: 4, label: "Friday" },
-  { value: 5, label: "Saturday" },
-  { value: 6, label: "Sunday" },
-];
 
 // ---------------------------------------------------------------------------
 //  Local Types
@@ -119,10 +107,20 @@ const DayCard = ({
   onDeleteSlot: (slot: AvailabilitySlot) => void;
   formatTime: (time: string) => string;
 }) => {
-  const dayInfo = DAYS.find((d) => d.value === day) ?? {
-    value: day,
-    label: "Unknown",
-  };
+  const { t } = useTranslation("availability");
+
+  const dayInfo = (() => {
+    const labels = [
+      t("days.monday"),
+      t("days.tuesday"),
+      t("days.wednesday"),
+      t("days.thursday"),
+      t("days.friday"),
+      t("days.saturday"),
+      t("days.sunday"),
+    ];
+    return { value: day, label: labels[day] ?? t("days.unknown") };
+  })();
   const hasSlots = slots.length > 0;
 
   return (
@@ -155,7 +153,7 @@ const DayCard = ({
               hasSlots ? "bg-emerald-500" : "bg-gray-400"
             }`}
           />
-          {hasSlots ? "Open" : "Closed"}
+          {hasSlots ? t("status.open") : t("status.closed")}
         </span>
       </div>
 
@@ -173,8 +171,7 @@ const DayCard = ({
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <Users className="h-3.5 w-3.5" />
                   <span>
-                    Max {slot.max_bookings} booking
-                    {slot.max_bookings !== 1 ? "s" : ""}
+                    {t("slot.maxBookings", { count: slot.max_bookings })}
                   </span>
                 </div>
               </div>
@@ -196,7 +193,7 @@ const DayCard = ({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-400 mt-2 italic">No availability</p>
+        <p className="text-sm text-gray-400 mt-2 italic">{t("noAvailability")}</p>
       )}
 
       <button
@@ -204,7 +201,7 @@ const DayCard = ({
         className="mt-4 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition"
       >
         <Plus className="h-4 w-4" />
-        {hasSlots ? "Add time slot" : "Add Availability"}
+        {hasSlots ? t("addTimeSlot") : t("addAvailability")}
       </button>
     </motion.div>
   );
@@ -234,6 +231,8 @@ const SlotFormModal = ({
   existingSlots: AvailabilitySlot[];
   defaultDay?: number;
 }) => {
+  const { t } = useTranslation("availability");
+
   const normalizeTimeForInput = (time?: string | null): string => {
     if (!time) return "";
 
@@ -313,7 +312,7 @@ const SlotFormModal = ({
 
       onClose();
     } catch (err: unknown) {
-      const msg = extractErrorMessage(err, "Failed to save slot");
+      const msg = extractErrorMessage(err, t("errors.saveSlotFailed"));
 
       setFieldErrors({
         general: msg,
@@ -325,6 +324,25 @@ const SlotFormModal = ({
 
   if (!isOpen) return null;
 
+  const dayLabels = [
+    t("days.monday"),
+    t("days.tuesday"),
+    t("days.wednesday"),
+    t("days.thursday"),
+    t("days.friday"),
+    t("days.saturday"),
+    t("days.sunday"),
+  ];
+  const DAYS = [
+    { value: 0, label: dayLabels[0] },
+    { value: 1, label: dayLabels[1] },
+    { value: 2, label: dayLabels[2] },
+    { value: 3, label: dayLabels[3] },
+    { value: 4, label: dayLabels[4] },
+    { value: 5, label: dayLabels[5] },
+    { value: 6, label: dayLabels[6] },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <motion.div
@@ -335,7 +353,7 @@ const SlotFormModal = ({
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-secondary">
-            {isEdit ? "Edit Availability Slot" : "Add Availability Slot"}
+            {isEdit ? t("slotModal.editTitle") : t("slotModal.addTitle")}
           </h3>
           <button
             onClick={onClose}
@@ -355,24 +373,8 @@ const SlotFormModal = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Day
+              {t("slotModal.day")}
             </label>
-            {/* <select
-              value={form.day_of_week}
-              onChange={(e) =>
-                handleChange("day_of_week", Number(e.target.value))
-              }
-              className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-secondary/20 ${fieldErrors.day_of_week
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-gray-300 focus:border-secondary"
-                }`}
-            >
-              {DAYS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select> */}
             <CustomSelect
               value={String(form.day_of_week)}
               onChange={(value) => handleChange("day_of_week", Number(value))}
@@ -380,7 +382,7 @@ const SlotFormModal = ({
                 value: String(day.value),
                 label: day.label,
               }))}
-              placeholder="Select day"
+              placeholder={t("slotModal.selectDay")}
               className={`w-full ${
                 fieldErrors.day_of_week
                   ? "border-red-500 focus:border-red-500"
@@ -398,7 +400,7 @@ const SlotFormModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Time
+                {t("slotModal.startTime")}
               </label>
               <input
                 type="time"
@@ -418,7 +420,7 @@ const SlotFormModal = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Time
+                {t("slotModal.endTime")}
               </label>
               <input
                 type="time"
@@ -440,7 +442,7 @@ const SlotFormModal = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Max Bookings
+              {t("slotModal.maxBookings")}
             </label>
             <input
               type="number"
@@ -468,7 +470,7 @@ const SlotFormModal = ({
               onClick={onClose}
               className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
             >
-              Cancel
+              {t("slotModal.cancel")}
             </button>
             <button
               type="submit"
@@ -495,7 +497,7 @@ const SlotFormModal = ({
                   />
                 </svg>
               )}
-              {isEdit ? "Update Slot" : "Save Slot"}
+              {isEdit ? t("slotModal.update") : t("slotModal.save")}
             </button>
           </div>
         </form>
@@ -508,6 +510,8 @@ const SlotFormModal = ({
 //  Main Component
 // ---------------------------------------------------------------------------
 export default function AvailabilityManagement() {
+  const { t } = useTranslation("availability");
+
   // ---------- Hooks ----------
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
@@ -544,7 +548,7 @@ export default function AvailabilityManagement() {
   );
 
   const [blackoutForm, setBlackoutForm] = useState({
-    title: "Public Holiday",
+    title: t("defaultBlackoutTitle"),
     date: "",
     is_full_day: true,
     start_time: "09:00",
@@ -637,7 +641,7 @@ export default function AvailabilityManagement() {
     if (!time) return "";
     const [h, m] = time.split(":");
     const hour = parseInt(h, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
+    const ampm = hour >= 12 ? t("time.pm") : t("time.am");
     const h12 = hour % 12 || 12;
     return `${h12}:${m} ${ampm}`;
   };
@@ -648,8 +652,8 @@ export default function AvailabilityManagement() {
       <CompanySelector
         companies={serviceCompanies.length ? serviceCompanies : companies}
         isLoading={isLoadingCompanies}
-        title="Availability"
-        searchPlaceholder="Search service companies..."
+        title={t("selector.title")}
+        searchPlaceholder={t("selector.searchPlaceholder")}
         onSelect={(slug, name) => {
           const membership = user?.memberships?.find(
             (m: any) => m.company_slug === slug,
@@ -666,12 +670,12 @@ export default function AvailabilityManagement() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Availability Management"
-          description="This area is available only to companies configured as service businesses."
+          title={t("notService.title")}
+          description={t("notService.description")}
           icon={Calendar}
           badge={
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
-              Service company required
+              {t("notService.badge")}
             </span>
           }
           actions={
@@ -682,7 +686,7 @@ export default function AvailabilityManagement() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("notService.switchCompany")}
               </button>
             ) : undefined
           }
@@ -697,15 +701,12 @@ export default function AvailabilityManagement() {
 
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900">
-                {company?.name || "The selected company"} is not a service
-                company
+                {t("notService.heading", {
+                  company: company?.name || t("notService.fallbackCompany"),
+                })}
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-600">
-                Service offerings, staff schedules, availability, and bookings
-                are disabled for this company. Select a company whose business
-                type is
-                <span className="font-medium text-gray-800"> service</span> to
-                continue.
+                {t("notService.body")}
               </p>
               {isSuperAdmin && (
                 <button
@@ -714,7 +715,7 @@ export default function AvailabilityManagement() {
                   className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
                 >
                   <Repeat className="h-4 w-4" />
-                  Choose a service company
+                  {t("notService.chooseServiceCompany")}
                 </button>
               )}
             </div>
@@ -746,7 +747,7 @@ export default function AvailabilityManagement() {
         is_active: true,
       });
 
-      showToast("success", "Slot updated successfully");
+      showToast("success", t("toasts.slotUpdated"));
     } else {
       await create({
         day_of_week: data.day_of_week,
@@ -756,20 +757,9 @@ export default function AvailabilityManagement() {
         is_active: true,
       });
 
-      showToast("success", "Slot added successfully");
+      showToast("success", t("toasts.slotAdded"));
     }
   };
-  // const openAddModalForDay = (day: number) => {
-  //   setEditingSlot({
-  //     id: 0,
-  //     day_of_week: day,
-  //     start_time: "09:00",
-  //     end_time: "17:00",
-  //     max_bookings: 1,
-  //   } as AvailabilitySlot);
-
-  //   setIsSlotModalOpen(true);
-  // };
 
   const openEditModal = (slot: AvailabilitySlot) => {
     setEditingSlot(slot);
@@ -789,9 +779,12 @@ export default function AvailabilityManagement() {
     if (deleteTarget) {
       try {
         await remove(deleteTarget.id);
-        showToast("success", "Slot removed");
+        showToast("success", t("toasts.slotRemoved"));
       } catch (err: any) {
-        showToast("error", extractErrorMessage(err, "Failed to remove slot"));
+        showToast(
+          "error",
+          extractErrorMessage(err, t("errors.removeSlotFailed")),
+        );
       } finally {
         setDeleteTarget(null);
       }
@@ -825,7 +818,7 @@ export default function AvailabilityManagement() {
   const cancelEditBlackout = () => {
     setEditingBlackoutId(null);
     setBlackoutForm({
-      title: "Public Holiday",
+      title: t("defaultBlackoutTitle"),
       date: "",
       is_full_day: true,
       start_time: "09:00",
@@ -870,15 +863,15 @@ export default function AvailabilityManagement() {
 
       if (editingBlackoutId) {
         await updateBlackoutDate(companySlug, editingBlackoutId, payload);
-        showToast("success", "Closure updated");
+        showToast("success", t("toasts.closureUpdated"));
         setEditingBlackoutId(null);
       } else {
         await createBlackoutDate(companySlug, payload);
-        showToast("success", "Closure added");
+        showToast("success", t("toasts.closureAdded"));
       }
 
       setBlackoutForm({
-        title: "Public Holiday",
+        title: t("defaultBlackoutTitle"),
         date: "",
         is_full_day: true,
         start_time: "09:00",
@@ -887,7 +880,10 @@ export default function AvailabilityManagement() {
       setBlackoutErrors({});
       fetchBlackouts();
     } catch (err: any) {
-      showToast("error", extractErrorMessage(err, "Failed to save closure"));
+      showToast(
+        "error",
+        extractErrorMessage(err, t("errors.saveClosureFailed")),
+      );
     } finally {
       setBlackoutSubmitting(false);
     }
@@ -897,12 +893,26 @@ export default function AvailabilityManagement() {
     if (!companySlug) return;
     try {
       await deleteBlackoutDate(companySlug, id);
-      showToast("success", "Blackout removed");
+      showToast("success", t("toasts.blackoutRemoved"));
       fetchBlackouts();
     } catch (err: any) {
-      showToast("error", extractErrorMessage(err, "Failed to remove blackout"));
+      showToast(
+        "error",
+        extractErrorMessage(err, t("errors.removeBlackoutFailed")),
+      );
     }
   };
+
+  // Day labels for delete modal title
+  const dayLabels = [
+    t("days.monday"),
+    t("days.tuesday"),
+    t("days.wednesday"),
+    t("days.thursday"),
+    t("days.friday"),
+    t("days.saturday"),
+    t("days.sunday"),
+  ];
 
   // ---------- Render ----------
   return (
@@ -911,14 +921,17 @@ export default function AvailabilityManagement() {
 
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
-        title={`Delete ${DAYS.find((d) => d.value === deleteTarget?.day_of_week)?.label || ""} slot?`}
+        title={t("deleteSlotTitle", {
+          day:
+            dayLabels[deleteTarget?.day_of_week ?? -1] ?? "",
+        })}
         onConfirm={confirmDeleteSlot}
         onCancel={() => setDeleteTarget(null)}
       />
 
       <DeleteConfirmModal
         isOpen={blackoutDeleteTarget !== null}
-        title="Delete blackout date?"
+        title={t("deleteBlackoutTitle")}
         onConfirm={() => {
           if (blackoutDeleteTarget !== null) {
             handleDeleteBlackout(blackoutDeleteTarget);
@@ -940,9 +953,9 @@ export default function AvailabilityManagement() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={company?.name || undefined}
-          description="Configure booking schedules, working hours, and closure dates."
+          description={t("page.description")}
           icon={Calendar}
-          eyebrow="Availability Management"
+          eyebrow={t("page.eyebrow")}
           actions={
             isSuperAdmin ? (
               <button
@@ -951,7 +964,7 @@ export default function AvailabilityManagement() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("page.switchCompany")}
               </button>
             ) : undefined
           }
@@ -973,31 +986,31 @@ export default function AvailabilityManagement() {
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <StatCard
             icon={Calendar}
-            label="Working Days"
+            label={t("summary.workingDays")}
             value={summary.workingDays}
             color="bg-purple-600"
           />
           <StatCard
             icon={Clock}
-            label="Total Slots"
+            label={t("summary.totalSlots")}
             value={summary.totalSlots}
             color="bg-blue-600"
           />
           <StatCard
             icon={Users}
-            label="Max Bookings / Slot"
+            label={t("summary.maxBookings")}
             value={summary.maxDaily}
             color="bg-emerald-600"
           />
           <StatCard
             icon={Calendar}
-            label="Weekly Hours"
+            label={t("summary.weeklyHours")}
             value={`${summary.weeklyHours}h`}
             color="bg-indigo-600"
           />
           <StatCard
             icon={CalendarOff}
-            label="Blocked Dates"
+            label={t("summary.blockedDates")}
             value={summary.blockedDates}
             color="bg-secondary"
           />
@@ -1008,10 +1021,10 @@ export default function AvailabilityManagement() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                Weekly Schedule
+                {t("weeklySchedule.title")}
               </h2>
               <p className="text-sm text-gray-500">
-                Manage your weekly availability
+                {t("weeklySchedule.subtitle")}
               </p>
             </div>
             <button
@@ -1023,8 +1036,8 @@ export default function AvailabilityManagement() {
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-purple-800 transition shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden md:block">Add Availability</span>
-              <span className=" md:hidden">Add</span>
+              <span className="hidden md:block">{t("addAvailability")}</span>
+              <span className=" md:hidden">{t("addShort")}</span>
             </button>
           </div>
 
@@ -1036,11 +1049,11 @@ export default function AvailabilityManagement() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {DAYS.map((day) => (
+              {[0, 1, 2, 3, 4, 5, 6].map((dayValue) => (
                 <DayCard
-                  key={day.value}
-                  day={day.value}
-                  slots={groupedSlots[day.value] || []}
+                  key={dayValue}
+                  day={dayValue}
+                  slots={groupedSlots[dayValue] || []}
                   onAddClick={openAddModalForDay}
                   onEditSlot={openEditModal}
                   onDeleteSlot={handleDeleteSlot}
@@ -1066,7 +1079,7 @@ export default function AvailabilityManagement() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-gray-900">
-                    Blackout Dates
+                    {t("blackouts.title")}
                   </h3>
 
                   {!blackoutLoading && blackouts.length > 0 && (
@@ -1077,13 +1090,13 @@ export default function AvailabilityManagement() {
 
                   {editingBlackoutId && (
                     <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                      Editing
+                      {t("blackouts.editing")}
                     </span>
                   )}
                 </div>
 
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Block bookings for holidays, closures, or unavailable hours.
+                  {t("blackouts.subtitle")}
                 </p>
               </div>
             </div>
@@ -1094,7 +1107,7 @@ export default function AvailabilityManagement() {
                 onClick={cancelEditBlackout}
                 className="inline-flex h-8 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
               >
-                Cancel editing
+                {t("blackouts.cancelEditing")}
               </button>
             )}
           </div>
@@ -1107,13 +1120,15 @@ export default function AvailabilityManagement() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  {editingBlackoutId ? "Edit closure" : "Add closure"}
+                  {editingBlackoutId
+                    ? t("blackouts.form.editTitle")
+                    : t("blackouts.form.addTitle")}
                 </p>
 
                 <p className="mt-0.5 text-xs text-gray-400">
                   {editingBlackoutId
-                    ? "Update the selected blackout period."
-                    : "Create a date or time period when bookings are unavailable."}
+                    ? t("blackouts.form.editSubtitle")
+                    : t("blackouts.form.addSubtitle")}
                 </p>
               </div>
             </div>
@@ -1122,12 +1137,13 @@ export default function AvailabilityManagement() {
               {/* Reason */}
               <div className="lg:col-span-4">
                 <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                  Reason <span className="text-red-500">*</span>
+                  {t("blackouts.form.reason")}{" "}
+                  <span className="text-red-500">*</span>
                 </label>
 
                 <input
                   type="text"
-                  placeholder="e.g. Ethiopian New Year"
+                  placeholder={t("blackouts.form.reasonPlaceholder")}
                   value={blackoutForm.title}
                   onChange={(e) =>
                     handleBlackoutFormChange("title", e.target.value)
@@ -1150,7 +1166,8 @@ export default function AvailabilityManagement() {
               {/* Date */}
               <div className="lg:col-span-3">
                 <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                  Date <span className="text-red-500">*</span>
+                  {t("blackouts.form.date")}{" "}
+                  <span className="text-red-500">*</span>
                 </label>
 
                 <input
@@ -1177,7 +1194,7 @@ export default function AvailabilityManagement() {
               {/* Closure Type */}
               <div className="lg:col-span-5">
                 <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                  Closure type
+                  {t("blackouts.form.closureType")}
                 </label>
 
                 <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-white p-1">
@@ -1192,7 +1209,7 @@ export default function AvailabilityManagement() {
                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                     }`}
                   >
-                    Full day
+                    {t("blackouts.form.fullDay")}
                   </button>
 
                   <button
@@ -1206,7 +1223,7 @@ export default function AvailabilityManagement() {
                         : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
                     }`}
                   >
-                    Partial hours
+                    {t("blackouts.form.partialHours")}
                   </button>
                 </div>
               </div>
@@ -1216,7 +1233,8 @@ export default function AvailabilityManagement() {
                 <>
                   <div className="lg:col-span-3">
                     <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                      Start time <span className="text-red-500">*</span>
+                      {t("blackouts.form.startTime")}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
 
                     <input
@@ -1241,7 +1259,8 @@ export default function AvailabilityManagement() {
 
                   <div className="lg:col-span-3">
                     <label className="mb-1.5 block text-xs font-medium text-gray-700">
-                      End time <span className="text-red-500">*</span>
+                      {t("blackouts.form.endTime")}{" "}
+                      <span className="text-red-500">*</span>
                     </label>
 
                     <input
@@ -1280,19 +1299,19 @@ export default function AvailabilityManagement() {
                   {blackoutSubmitting ? (
                     <>
                       <Loader2Icon className="h-4 w-4 animate-spin" />
-                      Saving...
+                      {t("blackouts.form.saving")}
                     </>
                   ) : (
                     <>
                       {editingBlackoutId ? (
                         <>
                           <Pencil className="h-3.5 w-3.5" />
-                          Update closure
+                          {t("blackouts.form.updateClosure")}
                         </>
                       ) : (
                         <>
                           <CalendarOff className="h-3.5 w-3.5" />
-                          Add closure
+                          {t("blackouts.form.addClosure")}
                         </>
                       )}
                     </>
@@ -1305,7 +1324,7 @@ export default function AvailabilityManagement() {
                     onClick={cancelEditBlackout}
                     className="inline-flex h-10 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-xs font-medium text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
                   >
-                    Cancel
+                    {t("blackouts.form.cancel")}
                   </button>
                 )}
               </div>
@@ -1318,18 +1337,17 @@ export default function AvailabilityManagement() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-gray-800">
-                  Scheduled closures
+                  {t("blackouts.list.title")}
                 </h4>
 
                 <p className="mt-0.5 text-[11px] text-gray-400">
-                  Existing dates that block customer bookings
+                  {t("blackouts.list.subtitle")}
                 </p>
               </div>
 
               {!blackoutLoading && blackouts.length > 0 && (
                 <span className="rounded-lg bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-600">
-                  {blackouts.length}{" "}
-                  {blackouts.length === 1 ? "closure" : "closures"}
+                  {t("blackouts.list.count", { count: blackouts.length })}
                 </span>
               )}
             </div>
@@ -1349,12 +1367,11 @@ export default function AvailabilityManagement() {
                 </div>
 
                 <h3 className="text-sm font-semibold text-gray-800">
-                  No scheduled closures
+                  {t("blackouts.list.emptyTitle")}
                 </h3>
 
                 <p className="mt-1 max-w-sm text-xs leading-5 text-gray-500">
-                  Your business currently has no blackout dates. Add a holiday
-                  or unavailable period above to stop customers from booking.
+                  {t("blackouts.list.emptyDescription")}
                 </p>
               </div>
             ) : (
@@ -1399,7 +1416,9 @@ export default function AvailabilityManagement() {
                                   : "bg-blue-50 text-blue-700"
                               }`}
                             >
-                              {b.is_full_day ? "Full day" : "Partial"}
+                              {b.is_full_day
+                                ? t("blackouts.list.fullDay")
+                                : t("blackouts.list.partial")}
                             </span>
                           </div>
 
@@ -1412,7 +1431,7 @@ export default function AvailabilityManagement() {
 
                             <span>
                               {b.is_full_day
-                                ? "Unavailable all day"
+                                ? t("blackouts.list.unavailableAllDay")
                                 : `${formatTime(
                                     b.start_time || "",
                                   )} – ${formatTime(b.end_time || "")}`}
@@ -1429,7 +1448,7 @@ export default function AvailabilityManagement() {
                           className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-secondary transition hover:bg-blue-50 hover:text-blue-600"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                          Edit
+                          {t("blackouts.list.edit")}
                         </button>
 
                         <button
@@ -1438,7 +1457,7 @@ export default function AvailabilityManagement() {
                           className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-red-600 transition hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          {t("blackouts.list.delete")}
                         </button>
                       </div>
                     </div>

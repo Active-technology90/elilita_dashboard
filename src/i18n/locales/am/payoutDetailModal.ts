@@ -1,0 +1,72 @@
+export default {
+  common: {
+    notAvailable: "የለም",
+  },
+  status: {
+    directSettled: "በቀጥታ ተከፍሏል",
+    paidSettled: "ተከፍሏል እና ተስተካክሏል",
+    failed: "አልተሳካም",
+    pendingPayout: "ክፍያ በመጠባበቅ ላይ",
+    pendingSettlement: "ማዕቀፍ በመጠባበቅ ላይ",
+  },
+  header: {
+    title: "የክፍያ ዝርዝሮች #{{id}}",
+    vendorOrder: "የአቅራቢ ትዕዛዝ #{{id}}",
+  },
+  financial: {
+    grossTotal: "ጠቅላላ የሽያጭ መጠን",
+    platformCommission: "የመድረክ ኮሚሽን",
+    netDisbursed: "ተጣራ የተከፈለ",
+  },
+  flow: {
+    disbursedBy: "የተከፈለው በ",
+    directSplitSettlement: "የ{{gateway}} የተከፋፈለ ማዕቀፍ",
+    directVendorSettlement: "የቀጥታ የአቅራቢ ማዕቀፍ",
+    beneficiaryVendor: "ተጠቃሚ አቅራቢ",
+  },
+  transfer: {
+    title: "የዝውውር መረጃ",
+    paymentChannel: "የክፍያ መንገድ",
+    electronic: "ኤሌክትሮኒክ",
+    scheduledDate: "የተያዘው ቀን",
+    paidAt: "የተከፈለበት ጊዜ",
+    reference: "ማጣቀሻ",
+  },
+  customer: {
+    title: "ደንበኛ እና ማድረሻ",
+    recipient: "ተቀባይ",
+    fallback: "ደንበኛ",
+    phone: "ስልክ",
+    notSpecified: "አልተገለጸም",
+    address: "አድራሻ",
+    standardDelivery: "መደበኛ ማድረሻ",
+    deliveryFee: "የማድረሻ ክፍያ",
+  },
+  items: {
+    title: "የትዕዛዝ ዕቃዎች ({{count}})",
+    orderLabel: "ትዕዛዝ #{{id}}",
+    fallbackItem: "ዕቃ",
+    sku: "SKU",
+    emptyMessage: "የትዕዛዝ ዕቃዎች በአቅራቢ ትዕዛዝ #{{id}} ስር ተጠቃለዋል።",
+    columns: {
+      product: "ምርት / ዕቃ",
+      qty: "ብዛት",
+      unitPrice: "የአንድ ዋጋ",
+      lineTotal: "የመስመር ጠቅላላ",
+    },
+  },
+  bankSlip: {
+    title: "የደንበኛ የባንክ ዝውውር ስሊፕ",
+    imageAlt: "የደንበኛ ተቀማጭ ስሊፕ",
+    bankLabel: "ባንክ",
+    fallbackBank: "የባንክ ተቀማጭ",
+    amountLabel: "መጠን",
+    viewSlip: "ስሊፕ ተመልከት",
+    receiptAlt: "የባንክ ዝውውር ደረሰኝ",
+  },
+  footer: {
+    payoutId: "የክፍያ መለያ: #{{id}}",
+    printReceipt: "የክፍያ ደረሰኝ አትም",
+    close: "ዝጋ",
+  },
+};

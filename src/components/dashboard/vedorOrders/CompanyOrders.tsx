@@ -132,9 +132,9 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
     <div className="flex flex-col gap-0.5">
       <span className="text-sm font-medium text-gray-900">
         {isToday
-          ? t("common.time.today")
+          ? t("companyOrders.common.time.yesterday")
           : isYesterday
-            ? t("common.time.yesterday")
+            ? t("companyOrders.common.time.yesterday")
             : formatDate}
       </span>
       <span className="text-xs text-gray-500 font-mono">{formatTime}</span>
@@ -646,7 +646,7 @@ export default function CompanyOrders() {
               >
                 <Download className="h-3.5 w-3.5 shrink-0" />
                 <span className="whitespace-nowrap">
-                  {t("companyOrders.export")}
+                  {t("companyOrders.exports")}
                 </span>
               </button>
             )}
