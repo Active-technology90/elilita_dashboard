@@ -949,7 +949,7 @@ export default function CompanyManagement() {
      ────────────────────────────────────────────────────────────── */
   const validateBasicInfo = () => {
     const errors: Record<string, string> = {};
-    if (formData.slug && !/^[a-z0-9-]+$/.test(formData.slug)) {
+    if (editingSlug && formData.slug && !/^[a-z0-9-]+$/.test(formData.slug)) {
       errors.slug =
         "Slug must contain only lowercase letters, numbers, and hyphens";
     }
@@ -960,7 +960,6 @@ export default function CompanyManagement() {
       errors.sub_category = "Please select a subcategory";
     if (!formData.business_type)
       errors.business_type = "Please select a business type";
-    if (!formData.slug.trim()) errors.slug = "Slug is required";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

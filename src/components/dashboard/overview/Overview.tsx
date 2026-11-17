@@ -6,6 +6,8 @@ import {
   ShoppingBag,
   Building2,
   DollarSign,
+  CalendarDays,
+  Briefcase,
 } from "lucide-react";
 // import {
 //   BarChart,
@@ -213,12 +215,18 @@ export type DashboardTab =
   | "companyUser"
   | "users"
   | "adminSubscriptions"
-  | "add advertisment";
+  | "add advertisment"
+  | "serviceOfferings"
+  | "serviceBookings"
+  | "serviceSubscriptions"
+  | "serviceStaff";
 
 export default function Overview({
   onNavigate,
+  isServiceCompany: propIsServiceCompany,
 }: {
   onNavigate?: (tab: DashboardTab) => void;
+  isServiceCompany?: boolean;
 }) {
   // const readOnly = useReadOnly();
 
@@ -238,6 +246,47 @@ export default function Overview({
     useState<AnalyticsOverviewResponse>(EMPTY_ANALYTICS);
 
   const [companiesList, setCompaniesList] = useState<any[]>([]);
+
+  // Determine if currently viewed scope is a service company
+  const currentCompanyMeta = useMemo(() => {
+    return companiesList.find((c: any) => c.slug === company?.slug);
+  }, [companiesList, company?.slug]);
+
+  const isServiceCompany = useMemo(() => {
+    if (propIsServiceCompany !== undefined && propIsServiceCompany !== null) {
+      return propIsServiceCompany;
+    }
+    if (
+      analytics?.business_type === "service" ||
+      analytics?.selected_company?.business_type === "service"
+    ) {
+      return true;
+    }
+    if (currentCompanyMeta?.business_type === "service") {
+      return true;
+    }
+    if (
+      !isSuperAdmin &&
+      user?.memberships?.some(
+        (m: any) =>
+          m.company_slug === company?.slug &&
+          companiesList.find((c: any) => c.slug === m.company_slug)
+            ?.business_type === "service",
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }, [
+    propIsServiceCompany,
+    analytics?.business_type,
+    analytics?.selected_company?.business_type,
+    currentCompanyMeta,
+    isSuperAdmin,
+    user?.memberships,
+    company?.slug,
+    companiesList,
+  ]);
 
   // Local state for non-super admin "All Companies" selection
   // Does not affect global context
@@ -1330,7 +1379,11 @@ export default function Overview({
     "
   >
     <span className="font-semibold text-secondary">
-      {isSuperAdmin ? "Total Payment Flow" : "Total Orders"}
+      {isSuperAdmin
+        ? "Total Payment Flow"
+        : isServiceCompany
+        ? "Total Bookings"
+        : "Total Orders"}
     </span>
 
     <span>·</span>
@@ -1393,6 +1446,33 @@ export default function Overview({
           ]}
           onClick={() =>
             onNavigate?.("payments")
+          }
+        />
+      ) : isServiceCompany ? (
+        <SummaryCard
+          title="Total Bookings"
+          value={
+            summaryData?.orders?.toLocaleString() || "0"
+          }
+          icon={CalendarDays}
+          featured
+          changePercent={secondaryMetricChanges.orders}
+          comparisonLabel={comparisonLabel}
+          sparklineData={sparklineData}
+          subStats={[
+            {
+              label: "Completed",
+              value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} Completed`,
+              title: "Completed Bookings",
+            },
+            {
+              label: "Avg. Booking Value",
+              value: formatCurrency(summaryData?.avgOrderValue || 0),
+              title: "Average Booking Value",
+            },
+          ]}
+          onClick={() =>
+            onNavigate?.("serviceBookings")
           }
         />
       ) : (
@@ -1475,6 +1555,42 @@ export default function Overview({
               }
             />
           </>
+        ) : isServiceCompany ? (
+          <>
+            <SummaryCard
+              title="Total Payments"
+              changePercent={paymentChangePercent}
+              value={formatCurrency(periodPaymentsTotal)}
+              icon={DollarSign}
+              onClick={() =>
+                onNavigate?.("payments")
+              }
+            />
+
+            <SummaryCard
+              title="Total Services"
+              changePercent={secondaryMetricChanges.products}
+              value={
+                summaryData?.products?.toLocaleString() || "0"
+              }
+              icon={Briefcase}
+              onClick={() =>
+                onNavigate?.("serviceOfferings")
+              }
+            />
+
+            <SummaryCard
+              title="Staff Members"
+              changePercent={secondaryMetricChanges.users}
+              value={
+                summaryData?.users?.toLocaleString() || "0"
+              }
+              icon={Users}
+              onClick={() =>
+                onNavigate?.("serviceStaff")
+              }
+            />
+          </>
         ) : (
           <>
             <SummaryCard
@@ -1542,17 +1658,18 @@ export default function Overview({
           productTrendData={productTrendData}
           topProductNames={topProductNames}
           onNavigate={onNavigate}
+          isServiceCompany={isServiceCompany}
         />
       </section>
 
-      {/* Recent orders */}
+      {/* Recent orders / bookings */}
       <section className="space-y-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
             Recent activity
           </p>
           <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-            Latest orders
+            {isServiceCompany ? "Latest bookings" : "Latest orders"}
           </h2>
         </div>
 
@@ -1561,6 +1678,7 @@ export default function Overview({
           recentOrders={recentOrders}
           onNavigate={onNavigate}
           isSuperAdmin={isSuperAdmin}
+          isServiceCompany={isServiceCompany}
         />
       </section>
     </div>

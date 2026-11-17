@@ -439,24 +439,8 @@ export default function CompanyForm({
         </div>
       </div>
 
-      {/* Slug / Business Type */}
+      {/* Business Type & Head Company */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label className={labelClassName}>
-            Slug <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            placeholder="e.g., my-company-slug"
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            disabled={!!editingSlug || !isEditingActive}
-            className={`${inputClassName(formErrors.slug)} font-mono`}
-          />
-          {formErrors.slug && (
-            <p className="mt-1 text-xs text-red-500">{formErrors.slug}</p>
-          )}
-        </div>
         <div>
           <label className={labelClassName}>
             Business Type <span className="text-red-500">*</span>
@@ -476,22 +460,20 @@ export default function CompanyForm({
             </p>
           )}
         </div>
-      </div>
-
-      {/* Head Company */}
-      <div>
-        <label className={labelClassName}>Head Company (Optional)</label>
-        <CustomSelect
-          value={formData.head_company ? String(formData.head_company) : ""}
-          onChange={(value) =>
-            setFormData({
-              ...formData,
-              head_company: value ? Number(value) : null,
-            })
-          }
-          options={headCompanyOptions}
-          placeholder="Select Head Company (Optional)"
-        />
+        <div>
+          <label className={labelClassName}>Head Company (Optional)</label>
+          <CustomSelect
+            value={formData.head_company ? String(formData.head_company) : ""}
+            onChange={(value) =>
+              setFormData({
+                ...formData,
+                head_company: value ? Number(value) : null,
+              })
+            }
+            options={headCompanyOptions}
+            placeholder="Select Head Company (Optional)"
+          />
+        </div>
       </div>
 
       {/* Category / Subcategory */}
@@ -1781,7 +1763,7 @@ export default function CompanyForm({
                 Slug
               </p>
               <p className="font-mono text-sm text-gray-700">
-                {formData.slug || "—"}
+                {formData.slug || (editingSlug ? editingSlug : "Auto-generated on creation")}
               </p>
             </div>
             <div>
@@ -2428,9 +2410,15 @@ export default function CompanyForm({
             <span className="text-xs text-gray-600">
               {formData.name ? "✅" : "❌"} Name
             </span>
-            <span className="text-xs text-gray-600">
-              {formData.slug ? "✅" : "❌"} Slug
-            </span>
+            {editingSlug ? (
+              <span className="text-xs text-gray-600">
+                {formData.slug ? "✅" : "❌"} Slug
+              </span>
+            ) : (
+              <span className="text-xs text-emerald-600 font-medium">
+                ⚡ Auto Slug
+              </span>
+            )}
             <span className="text-xs text-gray-600">
               {isValidEthiopianPhone(formData.contact_phone) ? "✅" : "❌"}{" "}
               Phone

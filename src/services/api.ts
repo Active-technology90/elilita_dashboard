@@ -968,8 +968,14 @@ export const deleteAd = async (id: number) => api.delete(`/ads/admin/${id}/`);
 
 export const getAdminAdPageSettings = () =>
   api.get("/ads/admin/page-settings/");
+export const getAdPricing = (params?: { company_slug?: string }) =>
+  api.get("/ads/pricing/", { params });
 export const updateAdminAdPageSetting = (id: number, data: any) =>
   api.patch(`/ads/admin/page-settings/${id}/`, data);
+export const updateAdminPlacementSchedule = (
+  placementId: number,
+  data: { start_date?: string; payment_status?: string; is_active?: boolean },
+) => api.patch(`/ads/admin/placements/${placementId}/schedule/`, data);
 
 export const initializeAdPayment = (adId: number, returnUrl?: string) =>
   api.post<{ checkout_url?: string; message?: string; status?: string }>(

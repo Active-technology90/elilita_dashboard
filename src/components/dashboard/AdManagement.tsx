@@ -30,6 +30,8 @@ import {
   Store,
   Building2,
   Check,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -43,7 +45,9 @@ import {
   updateCompanyAd,
   deleteCompanyAd,
   getAdminAdPageSettings,
+  getAdPricing,
   updateAdminAdPageSetting,
+  updateAdminPlacementSchedule,
   initializeAdPayment,
   verifyAdPayment,
 } from "../../services/api";
@@ -155,6 +159,19 @@ async function checkImageDimensions(
 // ----------------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------------
+interface AdPlacement {
+  id: number;
+  page_name: string;
+  page_name_display?: string;
+  start_date: string;
+  end_date: string;
+  price: number | string;
+  payment_status: "pending" | "paid" | "exempt";
+  tx_ref?: string;
+  is_active: boolean;
+  is_currently_running?: boolean;
+}
+
 interface Ad {
   id: number;
   company: number;
@@ -164,6 +181,8 @@ interface Ad {
   image: string;
   target_link?: string;
   target_pages: string[];
+  placements?: AdPlacement[];
+  unpaid_placement_cost?: number | string;
   start_date?: string;
   end_date?: string;
   total_cost?: string | number;
@@ -822,9 +841,9 @@ const AdCard: React.FC<{
               {paymentLabel}
             </Badge>
           )}
-          <Badge variant={ad.is_active ? "active" : "inactive"}>
+          {ad.payment_status==="paid" &&<Badge variant={ad.is_active ?  "active" : "inactive"}>
             {ad.is_active ? "Live" : "Inactive"}
-          </Badge>
+          </Badge>}
         </div>
       </div>
 
@@ -838,8 +857,40 @@ const AdCard: React.FC<{
           </p>
         )}
 
-        {/* Target Pages Pills */}
-        {ad.target_pages && ad.target_pages.length > 0 && (
+        {/* Placements Status Pills */}
+        {ad.placements && ad.placements.filter((p) => p.is_active).length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
+            {ad.placements.filter((p) => p.is_active).map((p) => {
+              const remainingDays = p.end_date
+                ? Math.max(0, Math.ceil((new Date(p.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                : 0;
+              const isExpired = remainingDays === 0;
+
+              let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+              let statusLabel = `Live (${remainingDays}d)`;
+
+              if (p.payment_status === "pending") {
+                badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+                statusLabel = `Unpaid (ETB ${Number(p.price).toFixed(0)})`;
+              } else if (p.payment_status === "exempt") {
+                badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                statusLabel = "Exempt";
+              } else if (isExpired) {
+                badgeClass = "bg-gray-100 text-gray-500 border-gray-200";
+                statusLabel = "Expired";
+              }
+
+              return (
+                <span
+                  key={p.id}
+                  className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}`}
+                >
+                  <span className="capitalize">{p.page_name_display || p.page_name.replace("_", " ")}</span>: {statusLabel}
+                </span>
+              );
+            })}
+          </div>
+        ) : ad.target_pages && ad.target_pages.length > 0 ? (
           <div className="flex flex-wrap gap-1 mb-2">
             {ad.target_pages.map((p) => (
               <span
@@ -850,7 +901,7 @@ const AdCard: React.FC<{
               </span>
             ))}
           </div>
-        )}
+        ) : null}
 
         {ad.target_link && (
           <a
@@ -864,27 +915,37 @@ const AdCard: React.FC<{
           </a>
         )}
 
-        {/* Unpaid Banner with Pay Now Button */}
-        {ad.payment_status === "pending" && (
-          <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-bold text-amber-950">
-                Fee: ETB {Number(ad.total_cost || 0).toFixed(2)}
-              </p>
-              <p className="text-[10px] text-amber-700">Payment required to display live</p>
+        {/* Unpaid / Pending Top-up Banner with Pay Now Button */}
+        {(() => {
+          const unpaidFee = Number(
+            ad.unpaid_placement_cost !== undefined
+              ? ad.unpaid_placement_cost
+              : ad.payment_status === "pending"
+              ? ad.total_cost || 0
+              : 0
+          );
+          if (unpaidFee <= 0) return null;
+          return (
+            <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold text-amber-950">
+                  Fee Due: ETB {unpaidFee.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-amber-700">Payment required to activate placements</p>
+              </div>
+              {!isReadOnly && onPay && (
+                <Button
+                  size="sm"
+                  className="bg-[#F4C44E] text-[#4E3900] hover:bg-[#F0BC37] border border-[#E7C86E] shadow-sm text-xs font-bold"
+                  isLoading={isPaying}
+                  onClick={() => onPay(ad)}
+                >
+                  <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay Now
+                </Button>
+              )}
             </div>
-            {!isReadOnly && onPay && (
-              <Button
-                size="sm"
-                className="bg-[#F4C44E] text-[#4E3900] hover:bg-[#F0BC37] border border-[#E7C86E] shadow-sm text-xs font-bold"
-                isLoading={isPaying}
-                onClick={() => onPay(ad)}
-              >
-                <CreditCard className="w-3.5 h-3.5 mr-1" /> Pay Now
-              </Button>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
           <Button
@@ -1203,13 +1264,31 @@ export default function AdManagement() {
   // Role / permission determination
   // ------------------------------------------------------------
   const isSuperAdmin = !user?.memberships?.length;
+  const companySlug = company?.slug ?? null;
+  const companyRole = (() => {
+    if (!user || !company?.slug) return "";
+    if (isSuperAdmin) return "admin";
+    const membership = user.memberships?.find(
+      (m: any) => m.company_slug === company.slug,
+    );
+    return membership?.role || "";
+  })();
+  const isCompanyAdmin = !isSuperAdmin && Boolean(company?.slug);
+  const canManageAds = isSuperAdmin || companyRole === "owner";
+  const isReadOnly = baseReadOnly || !canManageAds;
+
   const [slotDrafts, setSlotDrafts] = useState<
     Record<number, { slots: number; price: number }>
   >({});
 
   const fetchPageSettings = useCallback(async () => {
     try {
-      const res = await getAdminAdPageSettings();
+      let res;
+      if (isSuperAdmin) {
+        res = await getAdminAdPageSettings();
+      } else {
+        res = await getAdPricing(companySlug ? { company_slug: companySlug } : undefined);
+      }
       const settingsList = res.data?.results || res.data || [];
       setPageSettings(settingsList);
 
@@ -1221,7 +1300,27 @@ export default function AdManagement() {
     } catch (err) {
       console.error("Failed to load ad page settings", err);
     }
-  }, []);
+  }, [isSuperAdmin, companySlug]);
+
+  const getPagePrice = useCallback(
+    (pageName: string): number => {
+      const s = pageSettings.find((p) => p.page_name === pageName);
+      return Number(s?.price || 0);
+    },
+    [pageSettings],
+  );
+
+  const getEffectivePagePrice = useCallback(
+    (pageName: string): number => {
+      if (isSuperAdmin) return 0;
+      if (pageName === "company_detail") {
+        const s = pageSettings.find((p) => p.page_name === "company_detail");
+        if (s?.has_free_slot) return 0;
+      }
+      return getPagePrice(pageName);
+    },
+    [isSuperAdmin, pageSettings, getPagePrice],
+  );
 
   useEffect(() => {
     fetchPageSettings();
@@ -1284,31 +1383,6 @@ export default function AdManagement() {
     }
     await handleUpdateSlotSetting(setting.id, draft.slots, draft.price);
   };
-
-  // const fixedPlacementPrice = useMemo(() => {
-  //   if (!targetPages || targetPages.length === 0 || !pageSettings.length) return 0;
-  //   return targetPages.reduce((sum, page) => {
-  //     const setting = pageSettings.find((s) => s.page_name === page);
-  //     return sum + (Number(setting?.price) || 0);
-  //   }, 0);
-  // }, [targetPages, pageSettings]);
-
-  const companyRole = (() => {
-    if (!user || !company?.slug) return "";
-    if (isSuperAdmin) return "admin";
-    const membership = user.memberships?.find(
-      (m: any) => m.company_slug === company.slug,
-    );
-    return membership?.role || "";
-  })();
-
-  const isCompanyAdmin = !isSuperAdmin && Boolean(company?.slug);
-
-  const canManageAds = isSuperAdmin || companyRole === "owner";
-  const isReadOnly = baseReadOnly || !canManageAds;
-
-  // Extract primitive for stable deps
-  const companySlug = company?.slug ?? null;
 
   // ------------------------------------------------------------
   // Data fetching
@@ -1431,16 +1505,23 @@ export default function AdManagement() {
     }
   }, [adToDelete, isReadOnly, isCompanyAdmin, companySlug, showToast]);
 
+  const handleStartDateChange = useCallback((val: string) => {
+    setStartDate(val);
+    if (val) {
+      const d = new Date(val);
+      d.setDate(d.getDate() + 7);
+      setEndDate(d.toISOString().slice(0, 10));
+    }
+  }, []);
+
   const openCreateModal = useCallback(() => {
     if (isReadOnly) return;
     setEditingId(null);
     setTitle("");
     setTargetLink("");
     setTargetPages([]);
-    const today = new Date().toISOString().slice(0, 10);
-    const inAWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-    setStartDate(today);
-    setEndDate(inAWeek);
+    setStartDate("");
+    setEndDate("");
     setIsActive(true);
     setImageFile(null);
     setImagePreview(null);
@@ -1487,8 +1568,10 @@ export default function AdManagement() {
       if (imageFile) formData.append("image", imageFile);
       formData.append("target_pages", JSON.stringify(targetPages));
       formData.append("target_link", targetLink || "");
-      if (startDate) formData.append("start_date", startDate);
-      if (endDate) formData.append("end_date", endDate);
+      if (editingId && isSuperAdmin && startDate) {
+        formData.append("start_date", startDate);
+        if (endDate) formData.append("end_date", endDate);
+      }
 
       try {
         if (editingId) {
@@ -1756,96 +1839,246 @@ export default function AdManagement() {
             onChange={(e) => setTargetLink(e.target.value)}
             placeholder="https://example.com/offer"
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Campaign Start Date
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
-              />
+          {/* Schedule Section */}
+          {!editingId ? (
+            <div className="rounded-2xl border border-secondary/20 bg-secondary/[0.04] p-4 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary border border-secondary/20">
+                <Zap className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-gray-900 tracking-tight">Instant 7-Day Campaign</h4>
+                  <span className="text-[10px] font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full">
+                    7 Days
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
+                  Placements activate immediately once payment is verified and run continuously for 7 consecutive days.
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Campaign End Date
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-secondary focus:ring-1 focus:ring-secondary outline-none"
-              />
+          ) : isSuperAdmin ? (
+            <div className="rounded-2xl border border-purple-200 bg-purple-50/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-950">SuperAdmin Schedule Control</span>
+                <span className="text-[10px] text-purple-700 font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md">
+                  Auto +7 Days
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-medium outline-none focus:border-secondary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
+                    Calculated End Date
+                  </label>
+                  <input
+                    type="text"
+                    value={endDate}
+                    disabled
+                    className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-medium text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-bold text-blue-950">Campaign Schedule: 7-Day Term</p>
+                <p className="mt-0.5 text-[11px] text-blue-800 leading-relaxed">
+                  Campaign placements run for 7 days upon activation. Any newly added placement screen will activate for a fresh 7-day term upon payment.
+                </p>
+              </div>
+            </div>
+          )}
 
+          {/* Placements Section with Upfront Checkbox Pricing */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">
-              Ad Placements
-            </label>
-            <p className="text-xs text-gray-500">
-              Select which application screens this advertisement should appear on.
-            </p>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={targetPages.includes("home")}
-                  onChange={(e) => {
-                    if (e.target.checked)
-                      setTargetPages([...targetPages, "home"]);
-                    else
-                      setTargetPages(targetPages.filter((p) => p !== "home"));
-                  }}
-                  className="w-4 h-4 text-secondary rounded border-gray-300"
-                />
-                <span className="text-sm font-medium text-gray-800">Home Page</span>
-                <span className="text-[11px] text-gray-500">
-                  (Main banner carousel)
-                </span>
-              </label>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <label className="block text-sm font-bold text-gray-900">
+                  Target Placements
+                </label>
+                <p className="text-xs text-gray-500">
+                  Select which application screens this advertisement should appear on.
+                </p>
+              </div>
+              {(() => {
+                const currentEditingAd = editingId ? ads.find((a) => a.id === editingId) : null;
+                const paidPages = currentEditingAd?.placements
+                  ? currentEditingAd.placements
+                      .filter((p) => p.payment_status === "paid" || p.payment_status === "exempt")
+                      .map((p) => p.page_name)
+                  : [];
+                const newlySelected = targetPages.filter((p) => !paidPages.includes(p));
+                const newlySelectedFee = newlySelected.reduce((sum, p) => sum + getEffectivePagePrice(p), 0);
+                const totalInitialFee = targetPages.reduce((sum, p) => sum + getEffectivePagePrice(p), 0);
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={targetPages.includes("companies_list")}
-                  onChange={(e) => {
-                    if (e.target.checked)
-                      setTargetPages([...targetPages, "companies_list"]);
-                    else
-                      setTargetPages(
-                        targetPages.filter((p) => p !== "companies_list"),
-                      );
-                  }}
-                  className="w-4 h-4 text-secondary rounded border-gray-300"
-                />
-                <span className="text-sm font-medium text-gray-800">Companies / Services List Page</span>
-                <span className="text-[11px] text-gray-500">
-                  (Directory banner)
-                </span>
-              </label>
+                return (
+                  <span className="text-xs font-bold text-secondary px-3 py-1 rounded-xl bg-secondary/10 border border-secondary/20">
+                    {isSuperAdmin
+                      ? "ETB 0.00 (Admin Exempt)"
+                      : editingId
+                      ? `+ETB ${newlySelectedFee.toFixed(2)} Due Now`
+                      : `ETB ${totalInitialFee.toFixed(2)} Total`}
+                  </span>
+                );
+              })()}
+            </div>
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={targetPages.includes("company_detail")}
-                  onChange={(e) => {
-                    if (e.target.checked)
-                      setTargetPages([...targetPages, "company_detail"]);
-                    else
-                      setTargetPages(
-                        targetPages.filter((p) => p !== "company_detail"),
-                      );
-                  }}
-                  className="w-4 h-4 text-secondary rounded border-gray-300"
-                />
-                <span className="text-sm font-medium text-gray-800">Company Detail Page</span>
-                <span className="text-[11px] text-gray-500">
-                  (Storefront banner)
-                </span>
-              </label>
+            <div className="space-y-2.5">
+              {[
+                {
+                  id: "home",
+                  label: "Home Page",
+                  desc: "Main application landing carousel screen",
+                },
+                {
+                  id: "companies_list",
+                  label: "Companies / Services List",
+                  desc: "Stores & services directory banner",
+                },
+                {
+                  id: "company_detail",
+                  label: "Company Detail Page",
+                  desc: "Individual store storefront & menu banner",
+                },
+              ].map((item) => {
+                const isChecked = targetPages.includes(item.id);
+                const setting = pageSettings.find((p) => p.page_name === item.id);
+                const basePrice = getPagePrice(item.id);
+
+                const currentEditingAd = editingId ? ads.find((a) => a.id === editingId) : null;
+                const isAlreadyPaidOnThisAd = Boolean(
+                  currentEditingAd?.placements?.some(
+                    (p) =>
+                      p.page_name === item.id &&
+                      (p.payment_status === "paid" || p.payment_status === "exempt") &&
+                      p.is_active
+                  )
+                );
+
+                // Home sold out check (Option A: hard cap 7 slots)
+                const isHome = item.id === "home";
+                const isHomeSoldOut =
+                  isHome &&
+                  !isSuperAdmin &&
+                  Boolean(
+                    setting?.is_sold_out ||
+                      (setting?.active_count !== undefined &&
+                        setting.active_count >= (setting.max_slots || 7))
+                  );
+                const isHomeDisabled = isHomeSoldOut && !isAlreadyPaidOnThisAd;
+
+                // Company Detail 3-ad bundle check
+                const isDetail = item.id === "company_detail";
+                const hasFreeDetailSlot = isDetail && !isSuperAdmin && Boolean(setting?.has_free_slot);
+                const detailUsedSlots = Number(setting?.used_slots || 0);
+                const isDetailLimitReached =
+                  isDetail &&
+                  !isSuperAdmin &&
+                  Boolean(setting?.has_active_pass) &&
+                  detailUsedSlots >= 3 &&
+                  !isAlreadyPaidOnThisAd;
+
+                const isDisabled = isHomeDisabled || isDetailLimitReached;
+
+                // Price display & subtext
+                let priceLabel = `ETB ${basePrice.toFixed(2)}`;
+                let subtext = "/ 7 days";
+                let badgeNode = null;
+
+                if (isHome) {
+                  if (isHomeSoldOut) {
+                    badgeNode = (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-100/90 border border-red-200 px-2 py-0.5 rounded-lg">
+                        🔴 Sold Out ({setting?.active_count || 7}/7)
+                      </span>
+                    );
+                    subtext = "Slots reopen as ads expire";
+                  } else if (setting?.available_slots !== undefined) {
+                    badgeNode = (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                        🟢 {setting.available_slots} / {setting.max_slots || 7} Slots Available
+                      </span>
+                    );
+                  }
+                } else if (isDetail) {
+                  if (hasFreeDetailSlot) {
+                    priceLabel = "ETB 0.00";
+                    badgeNode = (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100/90 border border-purple-200 px-2 py-0.5 rounded-lg">
+                        🎉 Free (Pass Slot {detailUsedSlots + 1} of 3)
+                      </span>
+                    );
+                    subtext = "Included in active Storefront Pass";
+                  } else if (isDetailLimitReached) {
+                    badgeNode = (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-lg">
+                        ⚠️ Limit Reached (3/3 active)
+                      </span>
+                    );
+                    subtext = "Max 3 storefront ads reached";
+                  } else {
+                    subtext = "/ 7 days · includes up to 3 ads";
+                  }
+                }
+
+                return (
+                  <label
+                    key={item.id}
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
+                      isDisabled
+                        ? "opacity-60 bg-gray-50 border-gray-200 cursor-not-allowed"
+                        : isChecked
+                        ? "border-secondary/40 bg-secondary/[0.03] shadow-xs cursor-pointer"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50 cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isDisabled}
+                        onChange={(e) => {
+                          if (isDisabled) return;
+                          if (e.target.checked) {
+                            setTargetPages([...targetPages, item.id]);
+                          } else {
+                            setTargetPages(targetPages.filter((p) => p !== item.id));
+                          }
+                        }}
+                        className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary disabled:cursor-not-allowed"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-gray-900">
+                            {item.label}
+                          </span>
+                          {badgeNode}
+                        </div>
+                        <p className="text-[11px] text-gray-500">{item.desc}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-block text-xs font-bold text-gray-900 bg-white border border-gray-200 px-2.5 py-1 rounded-xl shadow-xs">
+                        {priceLabel}
+                      </span>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{subtext}</p>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

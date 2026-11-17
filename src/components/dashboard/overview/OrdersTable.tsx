@@ -15,6 +15,7 @@ interface Order {
   paymentStatus: string;
   vendors: string | number;
   date: string;
+  serviceName?: string;
 }
 
 interface OrdersTableProps {
@@ -22,6 +23,7 @@ interface OrdersTableProps {
   recentOrders: Order[];
   onNavigate?: (tab: any) => void;
   isSuperAdmin: boolean;
+  isServiceCompany?: boolean;
 }
 
 export default function OrdersTable({
@@ -29,13 +31,18 @@ export default function OrdersTable({
   recentOrders,
   onNavigate,
   isSuperAdmin,
+  isServiceCompany,
 }: OrdersTableProps) {
   const hasRecentOrdersData = recentOrders.length > 0;
 
   const handleViewAll = () => {
-    onNavigate?.(
-      isSuperAdmin ? "masterOrders" : "companyOrders",
-    );
+    if (isServiceCompany) {
+      onNavigate?.("serviceBookings");
+    } else {
+      onNavigate?.(
+        isSuperAdmin ? "masterOrders" : "companyOrders",
+      );
+    }
   };
 
   return (
@@ -225,9 +232,15 @@ export default function OrdersTable({
                         text-[9px]
                         text-gray-500
                       "
-                      title={String(order.vendors)}
+                      title={String(
+                        isServiceCompany
+                          ? order.serviceName || "Service"
+                          : order.vendors,
+                      )}
                     >
-                      {order.vendors}
+                      {isServiceCompany
+                        ? order.serviceName || "Service"
+                        : order.vendors}
                     </p>
                   </div>
                 </article>
@@ -235,8 +248,14 @@ export default function OrdersTable({
             ) : (
               <EmptyState
                 compact
-                title="No recent orders"
-                description="New orders will appear here as soon as customers start placing them."
+                title={
+                  isServiceCompany ? "No recent bookings" : "No recent orders"
+                }
+                description={
+                  isServiceCompany
+                    ? "New bookings will appear here as soon as customers start scheduling services."
+                    : "New orders will appear here as soon as customers start placing them."
+                }
               />
             )}
           </div>
@@ -263,15 +282,26 @@ export default function OrdersTable({
                         bg-secondary/[0.02]
                       "
                     >
-                      {[
-                        "Order",
-                        "Customer",
-                        "Amount",
-                        "Status",
-                        "Payment",
-                        "Companies",
-                        "Date",
-                      ].map((head) => (
+                      {(isServiceCompany
+                        ? [
+                            "Booking",
+                            "Customer",
+                            "Price",
+                            "Status",
+                            "Payment",
+                            "Service",
+                            "Date",
+                          ]
+                        : [
+                            "Order",
+                            "Customer",
+                            "Amount",
+                            "Status",
+                            "Payment",
+                            "Companies",
+                            "Date",
+                          ]
+                      ).map((head) => (
                         <th
                           key={head}
                           className="
@@ -386,9 +416,15 @@ export default function OrdersTable({
                             text-[11px]
                             text-gray-500
                           "
-                          title={String(order.vendors)}
+                          title={String(
+                            isServiceCompany
+                              ? order.serviceName || "Service"
+                              : order.vendors,
+                          )}
                         >
-                          {order.vendors}
+                          {isServiceCompany
+                            ? order.serviceName || "Service"
+                            : order.vendors}
                         </td>
 
                         <td

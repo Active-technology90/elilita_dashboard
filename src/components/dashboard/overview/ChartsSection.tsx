@@ -40,6 +40,7 @@ interface ChartsSectionProps {
   productTrendData: any[];
   topProductNames: string[];
   onNavigate?: (tab: DashboardTab) => void;
+  isServiceCompany?: boolean;
 }
 
 const CARD =
@@ -73,6 +74,7 @@ export default function ChartsSection({
   productTrendData,
   topProductNames,
   onNavigate,
+  isServiceCompany,
 }: ChartsSectionProps) {
   return (
     <div className="space-y-3">
@@ -221,7 +223,7 @@ export default function ChartsSection({
                 <div className="mb-1 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                   <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                    Orders
+                    {isServiceCompany ? "Bookings" : "Orders"}
                   </span>
                 </div>
                 <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
@@ -254,7 +256,9 @@ export default function ChartsSection({
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [`${value ?? 0} orders`]}
+                          formatter={(value) => [
+                            `${value ?? 0} ${isServiceCompany ? "bookings" : "orders"}`,
+                          ]}
                           contentStyle={{
                             borderRadius: "8px",
                             border: "1px solid rgba(107,114,128,0.14)",
@@ -294,8 +298,12 @@ export default function ChartsSection({
               ) : (
                 <EmptyState
                   compact
-                  title="No order status data"
-                  description="Status distribution will be shown after orders are placed."
+                  title={isServiceCompany ? "No booking status data" : "No order status data"}
+                  description={
+                    isServiceCompany
+                      ? "Status distribution will be shown after bookings are made."
+                      : "Status distribution will be shown after orders are placed."
+                  }
                 />
               )}
             </>
@@ -315,15 +323,17 @@ export default function ChartsSection({
                   <div className="mb-1 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                     <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-secondary/80">
-                      Products
+                      {isServiceCompany ? "Services" : "Products"}
                     </span>
                   </div>
 
                   <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
-                    Sales trend
+                    {isServiceCompany ? "Booking trend" : "Sales trend"}
                   </h3>
                   <p className="mt-0.5 text-[10px] text-gray-500">
-                    Monthly product comparison
+                    {isServiceCompany
+                      ? "Monthly service comparison"
+                      : "Monthly product comparison"}
                   </p>
                 </div>
 
@@ -410,8 +420,16 @@ export default function ChartsSection({
                 </div>
               ) : (
                 <EmptyState
-                  title="No product trend data"
-                  description="Product sales trend will appear after products generate sales over time."
+                  title={
+                    isServiceCompany
+                      ? "No service trend data"
+                      : "No product trend data"
+                  }
+                  description={
+                    isServiceCompany
+                      ? "Service booking trend will appear after services generate bookings over time."
+                      : "Product sales trend will appear after products generate sales over time."
+                  }
                 />
               )}
             </>
@@ -432,13 +450,17 @@ export default function ChartsSection({
                     </span>
                   </div>
                   <h3 className="text-sm font-bold tracking-[-0.01em] text-gray-900">
-                    Top products
+                    {isServiceCompany ? "Top services" : "Top products"}
                   </h3>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => onNavigate?.("products")}
+                  onClick={() =>
+                    onNavigate?.(
+                      isServiceCompany ? "serviceOfferings" : "products",
+                    )
+                  }
                   className="rounded-md border border-secondary/10 bg-secondary/[0.035] px-2 py-1 text-[10px] font-semibold text-secondary transition hover:bg-secondary hover:text-white"
                 >
                   View all
@@ -496,8 +518,16 @@ export default function ChartsSection({
               ) : (
                 <EmptyState
                   compact
-                  title="No top products yet"
-                  description="Top products will be listed here once product sales are available."
+                  title={
+                    isServiceCompany
+                      ? "No top services yet"
+                      : "No top products yet"
+                  }
+                  description={
+                    isServiceCompany
+                      ? "Top services will be listed here once service bookings are available."
+                      : "Top products will be listed here once product sales are available."
+                  }
                 />
               )}
             </>

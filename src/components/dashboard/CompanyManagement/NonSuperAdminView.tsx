@@ -127,8 +127,7 @@ export default function NonSuperAdminView({
           !!formData.name.trim() &&
           formData.category !== 0 &&
           formData.sub_category !== 0 &&
-          !!formData.business_type &&
-          !!formData.slug.trim()
+          !!formData.business_type
         );
       case 1:
         return (

@@ -159,7 +159,6 @@ const SERVICE_BLOCKED_TABS: Tab[] = [
   "masterOrders",
   "companyOrders",
   "disputes",
-  "add advertisment",
 ];
 
 // ════════════════════════════════════════════════════════════
@@ -558,6 +557,10 @@ export default function AdminDashboard() {
           companiesList.find((c: any) => c.slug === m.company_slug)
             ?.business_type === "service",
       ));
+
+  const isCurrentScopeService =
+    (!!company?.slug && currentCompanyMeta?.business_type === "service") ||
+    isServiceCompany;
 
   // Master Orders is only shown to super admins on non-service companies
   const showMasterOrders = isSuperAdmin && !isServiceCompany;
@@ -1033,7 +1036,11 @@ export default function AdminDashboard() {
           return isMarketing ? (
             <MarketingOverview key={componentKey} />
           ) : (
-            <Overview key={componentKey} onNavigate={navigateFromOverview} />
+            <Overview
+              key={componentKey}
+              onNavigate={navigateFromOverview}
+              isServiceCompany={isCurrentScopeService}
+            />
           );
         case "leads":
           return <LeadsManagement key={componentKey} />;
@@ -1098,7 +1105,11 @@ export default function AdminDashboard() {
 
         default:
           return (
-            <Overview key={componentKey} onNavigate={navigateFromOverview} />
+            <Overview
+              key={componentKey}
+              onNavigate={navigateFromOverview}
+              isServiceCompany={isCurrentScopeService}
+            />
           );
       }
     })();
@@ -1355,7 +1366,7 @@ export default function AdminDashboard() {
                 />
               )}
 
-              {!isDispatcher && !isServiceCompany && (
+              {!isDispatcher && (
                 <SidebarItem
                   icon={<Target className="h-5 w-5" />}
                   label="Ads Management"
@@ -1376,7 +1387,7 @@ export default function AdminDashboard() {
                   disabled={isCompanyInactive}
                 />
               )}
-              {!isDispatcher && (
+              {/* {!isDispatcher && (
                 <SidebarItem
                  icon={<Wallet className="h-5 w-5" />}
                   label="Platform Fees"
@@ -1385,7 +1396,7 @@ export default function AdminDashboard() {
                   onClick={() => navigate("platformfee")}
                   disabled={isCompanyInactive}
                 />
-              )}
+              )} */}
 
               <div
                 className={`mb-1 mt-3 px-2.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-white/45 ${

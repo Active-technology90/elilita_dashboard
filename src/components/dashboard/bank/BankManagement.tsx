@@ -99,6 +99,11 @@ const BANK_NAME_ALIASES: Record<string, string> = {
   tsedey: "tsedey bank",
   amhara: "amhara bank",
   rammis: "rammis bank",
+  telebirr: "telebirr",
+  "telebirr mobile money": "telebirr",
+  "tele birr": "telebirr",
+  cbebirr: "cbe birr",
+  "cbe birr": "cbe birr",
 };
 
 const getBankIdentityKey = (name: string) => {
@@ -247,6 +252,8 @@ const FRONTEND_ETHIOPIAN_BANKS: AvailableBank[] = [
   { id: "tsedey-bank", bank_name: "Tsedey Bank", logo: "/tsedey bank.jfif" },
   { id: "amhara-bank", bank_name: "Amhara Bank", logo: "/amahara.png" },
   { id: "rammis-bank", bank_name: "Rammis Bank", logo: "/rammis.jfif" },
+  { id: "telebirr", bank_name: "Telebirr", logo: "/telebirr.png" },
+  { id: "cbe-birr", bank_name: "CBE Birr", logo: "/cbebirr.png" },
 ];
 
 // ------------------------------------------------------------------
@@ -303,9 +310,20 @@ const BankLogo = ({
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
 
+  const fallbackCatalogLogo = useMemo(() => {
+    if (!name) return null;
+    const key = getBankIdentityKey(name);
+    const match = FRONTEND_ETHIOPIAN_BANKS.find(
+      (b) => getBankIdentityKey(b.bank_name) === key,
+    );
+    return match?.logo || null;
+  }, [name]);
+
+  const effectiveLogo = logo || fallbackCatalogLogo;
+
   useEffect(() => {
     setImageFailed(false);
-  }, [logo]);
+  }, [effectiveLogo]);
 
   const sizeClasses = {
     sm: "h-9 w-9 sm:h-10 sm:w-10",
@@ -323,9 +341,9 @@ const BankLogo = ({
     <span
       className={`${sizeClasses[size]} rounded-xl border border-gray-200/80 bg-white shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden`}
     >
-      {logo && !imageFailed ? (
+      {effectiveLogo && !imageFailed ? (
         <img
-          src={logo}
+          src={effectiveLogo}
           alt={`${name} logo`}
           className={`${imageSizeClasses[size]} object-contain`}
           onError={() => setImageFailed(true)}
