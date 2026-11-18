@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Wallet, 
   TrendingUp, 
   Building2, 
   Edit3, 
   CheckCircle2, 
-  AlertCircle,
   X,
   Percent
 } from "lucide-react";
@@ -31,7 +30,7 @@ const fetchGlobalFee = async (): Promise<number> => {
   return 5.0; 
 };
 
-const updateGlobalFee = async (fee: number) => {
+const updateGlobalFee = async (_fee: number) => {
   return new Promise((resolve) => setTimeout(resolve, 500));
 };
 
@@ -44,7 +43,7 @@ const fetchCompanies = async (): Promise<Company[]> => {
   ];
 };
 
-const updateCompanyFee = async (companyId: number, fee: number | null) => {
+const updateCompanyFee = async (_companyId: number, _fee: number | null) => {
   return new Promise((resolve) => setTimeout(resolve, 500));
 };
 

@@ -938,10 +938,6 @@ const SuperAdminUsers: React.FC = () => {
   const [createUserServerErrors, setCreateUserServerErrors] = useState<
     Record<string, string | string[]>
   >({});
-  const [updatingUser, setUpdatingUser] = useState(false);
-  const [updateUserServerErrors, setUpdateUserServerErrors] = useState<
-    Record<string, string | string[]>
-  >({});
 
   const fetchAllUsers = useCallback(async (): Promise<User[]> => {
     let page = 1;
@@ -1076,14 +1072,11 @@ const SuperAdminUsers: React.FC = () => {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
-    setUpdateUserServerErrors({});
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = async (updatedData: Partial<User>) => {
     if (!editingUser) return;
-    setUpdatingUser(true);
-    setUpdateUserServerErrors({});
 
     try {
       await updateUser(editingUser.id, updatedData);
@@ -1094,15 +1087,12 @@ const SuperAdminUsers: React.FC = () => {
       const backendErrors = err?.response?.data;
       let message = err.message || t("userUpdateFailed");
       if (backendErrors && typeof backendErrors === "object") {
-        setUpdateUserServerErrors(backendErrors);
         message = Object.entries(backendErrors)
           .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
           .join("; ");
       }
       showToast("error", message);
       throw new Error(message);
-    } finally {
-      setUpdatingUser(false);
     }
   };
 
@@ -1390,10 +1380,7 @@ const SuperAdminUsers: React.FC = () => {
 
       <EditUserModal
         isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setUpdateUserServerErrors({});
-        }}
+        onClose={() => setIsEditModalOpen(false)}
         user={editingUser}
         onSave={handleSaveEdit}
       />

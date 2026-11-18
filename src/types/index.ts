@@ -170,9 +170,12 @@ export interface CompanyListItem {
   head_company_detail?: HeadCompanyMini | null;
   category: number;
   category_name: string;
+  category_name_am: string;
   sub_category: number;
   sub_category_name: string;
+  sub_category_name_am: string;
   business_type: string;
+  business_type_am: string;
   address?: string;
   address_am?: string;
   minimum_order_total?: string;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -192,9 +192,7 @@ export function ImageGallery({
     setUploadError(null);
     try {
       for (let i = 0; i < files.length; i++) {
-        const formData = new FormData();
-        formData.append("image", files[i]);
-        await uploadProductImage(companySlug, productId, formData);
+        await uploadProductImage(companySlug, productId, files[i]);
       }
       onImagesChange();
     } catch (err) {

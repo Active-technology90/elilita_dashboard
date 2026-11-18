@@ -350,6 +350,7 @@ export default function CompanyManagement() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  console.log(currentStep)
   const [formData, setFormData] = useState<CompanyFormData>({
     ...EMPTY_COMPANY_FORM,
   });

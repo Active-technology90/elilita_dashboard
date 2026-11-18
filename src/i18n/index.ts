@@ -30,7 +30,6 @@ export async function initI18n() {
       const namespaces = Object.keys(resources.en);
 
       await i18n.use(initReactI18next).init({
-        compatibilityJSON: "v4",
         defaultNS,
         fallbackLng: DEFAULT_LANGUAGE,
         interpolation: {

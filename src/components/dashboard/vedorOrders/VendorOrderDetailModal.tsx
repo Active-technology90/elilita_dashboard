@@ -374,7 +374,7 @@ const buildOrderTimeline = (order: any) => {
 
 const getDisplayStatus = (
   status: string,
-  t: ((key: string, opts?: Record<string, any>) => string) | undefined,
+  t?: any,
   customLabels?: Record<string, string>,
 ) => {
   const tr = typeof t === "function" ? t : (key: string) => key;
@@ -447,7 +447,7 @@ const Card = ({
   status?: string;
   isCOD?: boolean;
   className?: string;
-  t?: (key: string, opts?: Record<string, any>) => string; // ← optional now
+  t?: any;
 }) => {
   // Defensive: if t is missing, fall back to a passthrough so we don't crash.
   const tr = typeof t === "function" ? t : (key: string) => title ?? key;
@@ -487,7 +487,7 @@ const StatusBadge = ({
 }: {
   status: string;
   customLabels?: Record<string, string>;
-  t?: (key: string, opts?: Record<string, any>) => string;
+  t?: any;
 }) => {
   const s = status?.toLowerCase();
   const styles: Record<string, string> = {
@@ -2956,7 +2956,7 @@ const ReceiptReviewCard = ({
   orderStatus?: string;
   receiptHistory?: any[];
   fulfillmentType?: string;
-  t: (key: string, opts?: Record<string, any>) => string;
+  t: any;
 }) => {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -4631,7 +4631,7 @@ export function VendorOrderDetailModal({
                                   ETB
                                 </span>
                               </span>
-                              <StatusBadge t={t} status={ord.status} t={t} />
+                              <StatusBadge t={t} status={ord.status} />
                               <span className="text-xs text-secondary opacity-0 group-hover:opacity-100 transition">
                                 {t("vendorOrderDetail.viewAction")}
                               </span>

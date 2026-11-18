@@ -68,7 +68,6 @@ export const PayoutReceiptModal: React.FC<PayoutReceiptModalProps> = ({
       : t("common.electronicTransfer"));
 
   const items = vo?.items || [];
-  const companyLogoUrl = getFullMediaUrl(payout.company_logo);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">

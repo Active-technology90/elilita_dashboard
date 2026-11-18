@@ -33,7 +33,7 @@ import type { TFunction } from "i18next";
 /* ──────────────────────────────────────────────────────────────────
    DEBUG HELPERS
    ────────────────────────────────────────────────────────────────── */
-   const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts);
+   const t = (key: string, opts?: Record<string, any>): string => (opts ? (i18n.t as any)(key, opts) : (i18n.t as any)(key)) as string;
 const DEBUG = false;
 
 const routeDebugEnabled = () => {
@@ -624,8 +624,8 @@ const createDriverPopup = (
   driverName: string,
   orders: DeliveryWithLocation[],
   color: string,
-  phone?: string,
-  t: TFunction
+  phone: string | undefined = undefined,
+  t: TFunction = i18n.t as unknown as TFunction
 ): string => {
   const safeName = escapeHtml(driverName);
   const safePhone = phone ? escapeHtml(phone) : "";
@@ -851,7 +851,7 @@ const makeCustomerIcon = (orders: DeliveryWithLocation[], t: TFunction): Leaflet
   });
 };
 
-const makeDeliveryLocationIcon = (customerName: string, t: TFunction  ): Leaflet.DivIcon => {
+const makeDeliveryLocationIcon = (customerName: string, _t?: TFunction): Leaflet.DivIcon => {
   const L = (window as any).L;
   return L.divIcon({
     className: "dispatch-marker dispatch-marker--delivery",
@@ -871,11 +871,11 @@ const makeDriverIcon = (
   driverName: string,
   count: number,
   color: string,
-  isInHouse?: boolean,
-  isNearest?: boolean,
+  isInHouse = false,
+  isNearest = false,
   isLive = true,
   isOutOfBounds = false,
-  t: TFunction
+  t: TFunction = i18n.t as unknown as TFunction
 ): Leaflet.DivIcon => {
   const L = (window as any).L;
   const typeLabel = isInHouse
