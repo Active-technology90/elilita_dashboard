@@ -59,7 +59,7 @@ export default {
   editSubCategory: "ንዑስ ምድብ አርትዕ",
   newSubCategory: "አዲስ ንዑስ ምድብ",
   nameEnglish: "ስም (እንግሊዝኛ)",
-  nameAmharic: "ስም (አማርኛ)",
+  nameAmharic: "ስም",
   slug: "ስለግ",
   slugPlaceholder: "ለምሳሌ beverages",
   category: "ምድብ",
@@ -101,5 +101,5 @@ export default {
   sortMostCompanies: "ብዙ ኩባንያዎች",
   sortFewestCompanies: "ጥቂት ኩባንያዎች",
   sortActiveFirst: "ንቁ መጀመሪያ",
-  sortInactiveFirst: "የተቦዘነ መጀመሪያ",
+  sortInactiveFirst: "ንቁ ያልሆነመጀመሪያ",
 };

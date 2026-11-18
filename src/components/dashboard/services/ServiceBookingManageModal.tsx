@@ -1,4 +1,6 @@
+
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   User,
@@ -33,7 +35,7 @@ import type { ServiceBooking, BookingAction } from "../../../types";
 import {
   reviewReceipt,
   confirmCODServiceBookingPayment,
-} from "../../../services/api"; // <<< NEW: import COD confirm function
+} from "../../../services/api";
 import { useToast } from "../../../hooks/useToast";
 import { ConfirmationModal } from "../../ui/confimationModal";
 
@@ -43,40 +45,40 @@ const STATUS_CONFIG: Record<
   { label: string; icon: React.ReactNode; color: string; desc: string }
 > = {
   pending: {
-    label: "Pending",
+    label: "status.pending",
     icon: <AlertCircle className="h-5 w-5" />,
     color: "bg-amber-50 text-amber-700 border-amber-200",
-    desc: "Awaiting confirmation",
+    desc: "status.pendingDescription",
   },
   confirmed: {
-    label: "Confirmed",
+    label: "status.confirmed",
     icon: <CheckCircle className="h-5 w-5" />,
     color: "bg-green-50 text-green-700 border-green-200",
-    desc: "Customer accepted booking",
+    desc: "status.confirmedDescription",
   },
   in_progress: {
-    label: "In Progress",
+    label: "status.inProgress",
     icon: <Loader2 className="h-5 w-5 animate-spin" />,
     color: "bg-blue-50 text-blue-700 border-blue-200",
-    desc: "Service currently running",
+    desc: "status.inProgressDescription",
   },
   completed: {
-    label: "Completed",
+    label: "status.completed",
     icon: <CheckCircle className="h-5 w-5" />,
     color: "bg-purple-50 text-secondary border-purple-200",
-    desc: "Service finished successfully",
+    desc: "status.completedDescription",
   },
   cancelled: {
-    label: "Cancelled",
+    label: "status.cancelled",
     icon: <XCircle className="h-5 w-5" />,
     color: "bg-red-50 text-red-700 border-red-200",
-    desc: "Booking has been cancelled",
+    desc: "status.cancelledDescription",
   },
   no_show: {
-    label: "No Show",
+    label: "status.noShow",
     icon: <AlertCircle className="h-5 w-5" />,
     color: "bg-gray-100 text-gray-600 border-gray-200",
-    desc: "Customer did not appear",
+    desc: "status.noShowDescription",
   },
 };
 
@@ -94,6 +96,7 @@ const containerVariants = {
   hidden: { opacity: 0, scale: 0.95 },
   visible: { opacity: 1, scale: 1, transition: { staggerChildren: 0.05 } },
 };
+
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
@@ -119,7 +122,7 @@ const formatCurrency = (value: string | number) => {
       });
 };
 
-// ─── Sub‑components ────────────────────────────────────────
+// ─── Sub-components ────────────────────────────────────────
 const StatusBadge = ({
   status,
   large = false,
@@ -127,22 +130,32 @@ const StatusBadge = ({
   status: string;
   large?: boolean;
 }) => {
+  const { t } = useTranslation("serviceBookingManage");
+
   const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? {
     label: status,
     icon: <AlertCircle className="h-5 w-5" />,
     color: "bg-gray-50 text-gray-700 border-gray-200",
     desc: "",
   };
+
   return (
     <span
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${config.color} ${large ? "text-sm font-semibold" : "text-xs font-medium"}`}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${config.color} ${
+        large ? "text-sm font-semibold" : "text-xs font-medium"
+      }`}
     >
-      {config.icon} {config.label}
+      {config.icon} {config.label.startsWith("status.") ? t(config.label) : config.label}
     </span>
   );
 };
 
-const Card = ({ children, title, icon: Icon, className = "" }: any) => (
+const Card = ({
+  children,
+  title,
+  icon: Icon,
+  className = "",
+}: any) => (
   <motion.div
     variants={itemVariants}
     className={`bg-white/80 backdrop-blur-sm rounded-2xl border border-purple-100/20 p-4 md:p-5 shadow-md hover:shadow-lg transition-shadow duration-300 ${className}`}
@@ -162,7 +175,9 @@ const Card = ({ children, title, icon: Icon, className = "" }: any) => (
 
 const CopyButton = ({ text }: { text?: string | null }) => {
   const [copied, setCopied] = useState(false);
+
   if (!text) return null;
+
   return (
     <button
       onClick={() => {
@@ -181,78 +196,75 @@ const CopyButton = ({ text }: { text?: string | null }) => {
   );
 };
 
-// ─── Booking Timeline Builder (Enhanced) ───────────────────
-const buildBookingTimeline = (booking: ServiceBooking) => {
+// ─── Booking Timeline Builder ─────────────────────────────
+const buildBookingTimeline = (
+  booking: ServiceBooking,
+  t: (key: string) => string,
+) => {
   const events: any[] = [];
 
-  // 1. Booking Created
   if (booking.created_at) {
     events.push({
       id: "created",
-      label: "Booking Created",
+      label: t("timeline.bookingCreated"),
       icon: "📅",
       time: booking.created_at,
-      actor: booking.customer_name || "Customer",
+      actor: booking.customer_name || t("common.customer"),
       status: "completed",
     });
   }
 
-  // 2. Confirmed (only if status reached confirmed or beyond)
   if (["confirmed", "in_progress", "completed"].includes(booking.status)) {
     events.push({
       id: "confirmed",
-      label: "Confirmed",
+      label: t("status.confirmed"),
       icon: "✅",
-      time: booking.updated_at || booking.created_at, // Ideally a confirmed_at field
-      actor: "Admin",
+      time: booking.updated_at || booking.created_at,
+      actor: t("common.admin"),
       status: "completed",
     });
   }
 
-  // 3. In Progress
   if (["in_progress", "completed"].includes(booking.status)) {
     events.push({
       id: "in_progress",
-      label: "In Progress",
+      label: t("status.inProgress"),
       icon: "🔧",
       time: booking.updated_at || booking.created_at,
-      actor: "Staff",
+      actor: t("common.staff"),
       status: "completed",
     });
   }
 
-  // 4. Completed
   if (booking.status === "completed") {
     events.push({
       id: "completed",
-      label: "Completed",
+      label: t("status.completed"),
       icon: "🏁",
       time: booking.updated_at || booking.created_at,
-      actor: "System",
+      actor: t("common.system"),
       status: "completed",
     });
   }
 
-  // 5. COD Payment Collected (if applicable)
   if (booking.payment_method === "cod" && booking.payment_status === "paid") {
     events.push({
       id: "cod_paid",
-      label: "COD Payment Collected",
+      label: t("timeline.codPaymentCollected"),
       icon: "💰",
-      time: booking.updated_at || booking.created_at, // ideally a paid_at timestamp
-      actor: "Admin",
+      time: booking.updated_at || booking.created_at,
+      actor: t("common.admin"),
       status: "completed",
     });
   }
 
-  // 6. Pending (if still pending and no other events)
   if (booking.status === "pending" && events.length === 1) {
     events.push({
       id: "pending",
-      label: "Awaiting Confirmation",
+      label: t("timeline.awaitingConfirmation"),
       icon: "⏳",
       time: booking.created_at,
-      actor: "Waiting for admin",
+      actor: t("timeline.waitingForAdmin"),
       status: "pending",
     });
   }
@@ -260,10 +272,11 @@ const buildBookingTimeline = (booking: ServiceBooking) => {
   events.sort(
     (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
   );
+
   return events;
 };
 
-// ─── Receipt Review Card (Enhanced with COD) ──────────────
+// ─── Receipt Review Card ───────────────────────────────────
 const ReceiptReviewCard = ({
   receipt,
   paymentMethod,
@@ -285,8 +298,9 @@ const ReceiptReviewCard = ({
   bookingStatus: ServiceBooking["status"];
   bookingId: number;
   companySlug: string;
-  onCODComplete?: () => Promise<void>; // optional – mark booking as completed
+  onCODComplete?: () => Promise<void>;
 }) => {
+  const { t } = useTranslation("serviceBookingManage");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submittingAction, setSubmittingAction] = useState<
@@ -303,17 +317,19 @@ const ReceiptReviewCard = ({
   // ─── Chapa ────────────────────────────────────────────
   if (paymentMethod === "chapa") {
     return (
-      <Card title="Payment Information" icon={CreditCard}>
+      <Card title={t("payment.information")} icon={CreditCard}>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-2 bg-white px-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-2 shadow-inner">
               <ShieldCheck className="h-8 w-8 text-indigo-600" />
             </div>
-            <p className="text-sm font-semibold text-gray-700">Verified by</p>
+            <p className="text-sm font-semibold text-gray-700">
+              {t("payment.verifiedBy")}
+            </p>
             <img src="/chapa.png" alt="Chapa" className="h-8 object-contain" />
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Payment automatically confirmed via Chapa
+            {t("payment.automaticallyConfirmedByChapa")}
           </p>
         </div>
       </Card>
@@ -327,7 +343,7 @@ const ReceiptReviewCard = ({
 
     return (
       <>
-        <Card title="Cash on Delivery" icon={Banknote}>
+        <Card title={t("payment.cashOnDelivery")} icon={Banknote}>
           <div className="flex flex-col items-center text-center">
             {isPaid ? (
               <div className="flex items-center gap-3">
@@ -335,15 +351,15 @@ const ReceiptReviewCard = ({
                   <ShieldCheck className="h-6 w-6 text-emerald-600" />
                 </div>
                 <p className="text-sm font-black text-emerald-700 uppercase tracking-wide">
-                  Payment Collected
+                  {t("payment.paymentCollected")}
                 </p>
               </div>
             ) : (
               <>
                 <p className="text-xs text-gray-500 mb-4 max-w-xs leading-relaxed">
                   {canCollect
-                    ? "Collect the cash payment from the customer now."
-                    : "Payment collection will be available once the service is in progress."}
+                    ? t("payment.collectCashNow")
+                    : t("payment.collectionAvailableWhenInProgress")}
                 </p>
                 <button
                   onClick={() => setShowCODConfirm(true)}
@@ -357,12 +373,12 @@ const ReceiptReviewCard = ({
                   {codConfirming ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Processing...
+                      {t("common.processing")}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4" />
-                      Confirm Payment Collected
+                      {t("payment.confirmPaymentCollected")}
                     </>
                   )}
                 </button>
@@ -378,14 +394,13 @@ const ReceiptReviewCard = ({
             setShowCODConfirm(false);
             setCodConfirming(true);
             try {
-              // Confirm COD payment via API
               await confirmCODServiceBookingPayment(
                 companySlug,
                 Number(bookingId),
               );
-              showToast("success", "COD payment confirmed");
 
-              // After payment is confirmed, either mark booking as completed or just refresh
+              showToast("success", t("payment.codPaymentConfirmed"));
+
               if (onCODComplete) {
                 await onCODComplete();
               } else {
@@ -394,15 +409,19 @@ const ReceiptReviewCard = ({
             } catch (err: any) {
               showToast(
                 "error",
-                err.response?.data?.detail || "COD confirmation failed",
+                err.response?.data?.detail || t("payment.codConfirmationFailed"),
               );
             } finally {
               setCodConfirming(false);
             }
           }}
-          title="Confirm COD Payment"
-          description="Have you collected the cash from the customer?"
-          confirmText={codConfirming ? "Processing..." : "Yes, Confirm Payment"}
+          title={t("payment.confirmCODPayment")}
+          description={t("payment.cashCollectionConfirmation")}
+          confirmText={
+            codConfirming
+              ? t("common.processing")
+              : t("payment.yesConfirmPayment")
+          }
           confirmVariant="primary"
           loading={codConfirming}
           autoClose={false}
@@ -411,14 +430,14 @@ const ReceiptReviewCard = ({
     );
   }
 
-  // ─── Bank Transfer (receipt) ──────────────────────────
+  // ─── Bank Transfer ────────────────────────────────────
   if (!receipt) {
     return (
-      <Card title="Payment Receipt" icon={Banknote}>
+      <Card title={t("payment.paymentReceipt")} icon={Banknote}>
         <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl">
           <AlertCircle className="h-6 w-6 text-gray-300 mx-auto mb-2" />
           <p className="text-gray-500 text-sm">
-            Waiting for customer to upload receipt...
+            {t("payment.waitingForReceipt")}
           </p>
         </div>
       </Card>
@@ -436,27 +455,41 @@ const ReceiptReviewCard = ({
 
   const handleConfirm = async () => {
     if (!pendingAction || !receipt) return;
+
     setShowConfirm(false);
     setSubmitting(true);
     setSubmittingAction(pendingAction);
+
     try {
       await reviewReceipt(receipt.id, {
         status: pendingAction,
         admin_notes: notes || undefined,
       });
-      showToast("success", `Receipt ${pendingAction}`);
+
+      showToast(
+        "success",
+        t(
+          pendingAction === "approved"
+            ? "payment.receiptApproved"
+            : "payment.receiptRejected",
+        ),
+      );
+
       setNotes("");
       setPendingAction(null);
       await onUpdate();
     } catch (err: any) {
-      showToast("error", err.response?.data?.detail || "Review failed");
+      showToast(
+        "error",
+        err.response?.data?.detail || t("payment.reviewFailed"),
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Card title="Payment Receipt" icon={Banknote}>
+    <Card title={t("payment.paymentReceipt")} icon={Banknote}>
       <div className="space-y-3">
         {receipt.receipt_image && (
           <div
@@ -465,7 +498,7 @@ const ReceiptReviewCard = ({
           >
             <img
               src={receipt.receipt_image}
-              alt="Receipt"
+              alt={t("payment.receiptImage")}
               className="w-full h-full object-cover group-hover:scale-105 transition"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition flex items-center justify-center">
@@ -473,16 +506,18 @@ const ReceiptReviewCard = ({
             </div>
           </div>
         )}
+
         <div className="bg-gradient-to-r from-purple-50/50 to-indigo-50/50 p-4 rounded-xl border border-purple-100">
           <p className="text-[10px] text-secondary font-bold uppercase tracking-widest mb-1">
-            Bank Details
+            {t("payment.bankDetails")}
           </p>
           <p className="font-semibold text-sm text-gray-900">
-            {receipt.bank_name || "Not Specified"}
+            {receipt.bank_name || t("common.notSpecified")}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Status:</span>
+          <span className="text-xs text-gray-500">{t("common.status")}:</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
               paymentStatus === "paid"
@@ -493,21 +528,23 @@ const ReceiptReviewCard = ({
             }`}
           >
             {paymentStatus === "paid"
-              ? "Confirmed"
+              ? t("payment.confirmed")
               : paymentStatus === "payment_failed"
-                ? "Payment Failed"
-                : "Pending Verification"}
+                ? t("payment.paymentFailed")
+                : t("payment.pendingVerification")}
           </span>
         </div>
+
         {canReview && (
           <div className="pt-2 space-y-3">
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add review notes..."
+              placeholder={t("payment.addReviewNotes")}
               rows={2}
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-secondary/30 transition resize-none"
             />
+
             <div className="flex gap-2">
               <button
                 onClick={() => handleActionClick("approved")}
@@ -516,12 +553,14 @@ const ReceiptReviewCard = ({
               >
                 {submittingAction === "approved" ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Approving...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("payment.approving")}
                   </>
                 ) : (
-                  "Approve"
+                  t("common.approve")
                 )}
               </button>
+
               <button
                 onClick={() => handleActionClick("rejected")}
                 disabled={submitting}
@@ -529,20 +568,25 @@ const ReceiptReviewCard = ({
               >
                 {submittingAction === "rejected" ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Rejecting...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("payment.rejecting")}
                   </>
                 ) : (
-                  "Reject"
+                  t("common.reject")
                 )}
               </button>
             </div>
           </div>
         )}
+
         {receiptHistory.length > 0 && (
           <div className="mt-5 pt-4 border-t border-gray-100">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">
-              Receipt History ({receiptHistory.length})
+              {t("payment.receiptHistory", {
+                count: receiptHistory.length,
+              })}
             </p>
+
             <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
               {receiptHistory.map((h: any) => (
                 <div
@@ -552,8 +596,9 @@ const ReceiptReviewCard = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[10px] font-bold text-gray-700">
-                        {h.bank_name || "Unknown Bank"}
+                        {h.bank_name || t("payment.unknownBank")}
                       </span>
+
                       <span
                         className={`text-[9px] px-1.5 py-0.2 rounded-full border font-bold uppercase ${
                           h.status === "approved"
@@ -561,18 +606,22 @@ const ReceiptReviewCard = ({
                             : "bg-rose-50 text-rose-700 border-rose-100"
                         }`}
                       >
-                        {h.status}
+                        {h.status === "approved"
+                          ? t("common.approved")
+                          : t("common.rejected")}
                       </span>
                     </div>
+
                     {h.admin_notes && (
                       <p className="text-[9px] text-rose-600 bg-rose-50/50 px-2 py-0.5 rounded border border-rose-100 mt-1 italic">
                         <span className="text-amber-600 font-semibold">
-                          Remark:
+                          {t("payment.remark")}:
                         </span>{" "}
                         "{h.admin_notes}"
                       </p>
                     )}
                   </div>
+
                   {h.receipt_image && (
                     <button
                       type="button"
@@ -581,7 +630,7 @@ const ReceiptReviewCard = ({
                     >
                       <img
                         src={h.receipt_image}
-                        alt="Prior Receipt"
+                        alt={t("payment.previousReceipt")}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -602,20 +651,20 @@ const ReceiptReviewCard = ({
         onConfirm={handleConfirm}
         title={
           pendingAction === "approved"
-            ? "Approve Bank Receipt"
-            : "Reject Bank Receipt"
+            ? t("payment.approveBankReceipt")
+            : t("payment.rejectBankReceipt")
         }
         description={
           pendingAction === "approved"
-            ? "Are you sure you want to approve this bank transfer receipt? The booking will be confirmed and marked as paid."
-            : "Are you sure you want to reject this receipt? The customer will be notified and asked to re-upload their bank receipt."
+            ? t("payment.approveReceiptDescription")
+            : t("payment.rejectReceiptDescription")
         }
         confirmText={
           submitting
-            ? "Processing..."
+            ? t("common.processing")
             : pendingAction === "approved"
-            ? "Approve Receipt"
-            : "Reject Receipt"
+              ? t("payment.approveReceipt")
+              : t("payment.rejectReceipt")
         }
         confirmVariant={pendingAction === "approved" ? "primary" : "danger"}
         loading={submitting}
@@ -624,12 +673,13 @@ const ReceiptReviewCard = ({
         {pendingAction === "rejected" && (
           <div className="mt-3">
             <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Rejection Reason / Notes for Customer:
+              {t("payment.rejectionReason")}
             </label>
+
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Receipt image blurry, incorrect amount, or invalid transaction reference..."
+              placeholder={t("payment.rejectionNotesPlaceholder")}
               rows={3}
               className="w-full text-xs sm:text-sm border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition resize-none"
             />
@@ -639,6 +689,7 @@ const ReceiptReviewCard = ({
     </Card>
   );
 };
+
 // ─── Main Component ────────────────────────────────────────
 export function ServiceBookingManageModal({
   booking: initialBooking,
@@ -664,6 +715,8 @@ export function ServiceBookingManageModal({
   allBookings?: ServiceBooking[];
   onRefresh?: () => Promise<void>;
 }) {
+  const { t } = useTranslation("serviceBookingManage");
+
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<BookingAction | null>(
     null,
@@ -672,7 +725,7 @@ export function ServiceBookingManageModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const customer = initialBooking.customer_name || "Unknown";
+  const customer = initialBooking.customer_name || t("common.unknown");
   const customerPhone = initialBooking.customer_phone;
   const company = initialBooking.company;
   const offering = initialBooking.offering;
@@ -684,11 +737,19 @@ export function ServiceBookingManageModal({
   const receiptHistory = initialBooking.receipt_history || [];
 
   const isAtHome = initialBooking.location_type === "customer_location";
+
   const addressText = isAtHome
     ? initialBooking.service_address_text
     : (company as any)?.address;
-  const lat = isAtHome ? initialBooking.latitude : (company as any)?.latitude;
-  const lng = isAtHome ? initialBooking.longitude : (company as any)?.longitude;
+
+  const lat = isAtHome
+    ? initialBooking.latitude
+    : (company as any)?.latitude;
+
+  const lng = isAtHome
+    ? initialBooking.longitude
+    : (company as any)?.longitude;
+
   const hasCoordinates =
     lat != null &&
     lng != null &&
@@ -699,13 +760,15 @@ export function ServiceBookingManageModal({
     if (hasCoordinates) {
       return `https://www.google.com/maps?q=${lat},${lng}`;
     }
+
     if (addressText && addressText.trim()) {
       return `https://www.google.com/maps?q=${encodeURIComponent(addressText.trim())}`;
     }
+
     return null;
   }, [hasCoordinates, lat, lng, addressText]);
 
-  const timeline = buildBookingTimeline(initialBooking);
+  const timeline = buildBookingTimeline(initialBooking, t);
 
   const allowedActions: BookingAction[] = useMemo(() => {
     const statusToAction: Record<string, BookingAction> = {
@@ -715,11 +778,11 @@ export function ServiceBookingManageModal({
       cancelled: "cancel",
       no_show: "no_show",
     };
+
     let actions = (ALLOWED_TRANSITIONS[initialBooking.status] || [])
       .map((s) => statusToAction[s])
       .filter(Boolean) as BookingAction[];
 
-    // HIDE the manual "Complete" button for COD that isn't paid yet
     if (
       paymentMethod === "cod" &&
       paymentStatus !== "paid" &&
@@ -733,6 +796,7 @@ export function ServiceBookingManageModal({
 
   const previousBookings = useMemo(() => {
     if (!allBookings.length || !customerPhone || !company?.id) return [];
+
     return allBookings
       .filter(
         (b) =>
@@ -751,11 +815,14 @@ export function ServiceBookingManageModal({
   const handleAction = useCallback(
     async (action: BookingAction) => {
       const destructive: BookingAction[] = ["cancel", "no_show"];
+
       if (destructive.includes(action)) {
         setConfirmAction(action);
         return;
       }
+
       setActionLoading(true);
+
       try {
         const statusMap: Record<BookingAction, ServiceBooking["status"]> = {
           confirm: "confirmed",
@@ -764,6 +831,7 @@ export function ServiceBookingManageModal({
           cancel: "cancelled",
           no_show: "no_show",
         };
+
         await onStatusUpdate(initialBooking, statusMap[action]);
       } finally {
         setActionLoading(false);
@@ -774,7 +842,9 @@ export function ServiceBookingManageModal({
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmAction) return;
+
     setActionLoading(true);
+
     try {
       const statusMap: Record<BookingAction, ServiceBooking["status"]> = {
         confirm: "confirmed",
@@ -783,6 +853,7 @@ export function ServiceBookingManageModal({
         cancel: "cancelled",
         no_show: "no_show",
       };
+
       await onStatusUpdate(initialBooking, statusMap[confirmAction]);
     } finally {
       setActionLoading(false);
@@ -791,7 +862,6 @@ export function ServiceBookingManageModal({
   }, [confirmAction, onStatusUpdate, initialBooking]);
 
   const handleCODComplete = useCallback(async () => {
-    // The COD payment is already confirmed, now complete the booking
     await onStatusUpdate(initialBooking, "completed");
   }, [onStatusUpdate, initialBooking]);
 
@@ -799,12 +869,15 @@ export function ServiceBookingManageModal({
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", handler);
+
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
+
     try {
       if (onRefresh) await onRefresh();
     } finally {
@@ -821,6 +894,7 @@ export function ServiceBookingManageModal({
         className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
         onClick={onClose}
       />
+
       <motion.div
         ref={modalRef}
         variants={containerVariants}
@@ -836,12 +910,13 @@ export function ServiceBookingManageModal({
             <div className="mt-1.5 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-base sm:text-2xl font-black bg-gradient-to-r from-secondary to-secondary bg-clip-text text-transparent tracking-tight">
-                  Booking #{initialBooking.id}
+                  {t("header.bookingNumber", { id: initialBooking.id })}
                 </h2>
+
                 <StatusBadge status={initialBooking.status} large />
               </div>
+
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[9px] sm:text-xs font-bold">
-                {/* Scheduled date/time */}
                 <span className="flex items-center gap-1.5 sm:gap-2 bg-secondary/10 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-secondary/20 shadow-sm">
                   <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-secondary" />
                   <span className="font-mono text-[10px] sm:text-[12px] font-semibold text-gray-700">
@@ -850,7 +925,7 @@ export function ServiceBookingManageModal({
                     {String(initialBooking.scheduled_time).slice(0, 5)}
                   </span>
                 </span>
-                {/* Created timestamp (new) */}
+
                 <span className="flex items-center gap-1 sm:gap-2 bg-gray-100 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-gray-200 shadow-sm">
                   <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-500" />
                   <span className="font-mono text-[10px] sm:text-[12px] font-semibold text-gray-600">
@@ -859,13 +934,14 @@ export function ServiceBookingManageModal({
                       : "—"}
                   </span>
                 </span>
+
                 <span className="flex items-center gap-1 sm:gap-1.5 text-gray-600">
-                  <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-secondary" />{" "}
+                  <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-secondary" />
                   <span className="font-medium text-[10px] sm:text-sm truncate max-w-[120px] sm:max-w-[250px]">
                     {company?.name}
                   </span>
                 </span>
-                {/* Service Location Pill */}
+
                 <span
                   className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border shadow-sm ${
                     isAtHome
@@ -878,33 +954,37 @@ export function ServiceBookingManageModal({
                   ) : (
                     <Store className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600 shrink-0" />
                   )}
+
                   <span className="font-bold text-[10px] sm:text-[11px] whitespace-nowrap">
-                    {isAtHome ? "At Home" : "In Shop"}
+                    {isAtHome ? t("location.atHome") : t("location.inShop")}
                   </span>
                 </span>
               </div>
             </div>
+
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
                 className="group flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 active:scale-95 transition disabled:opacity-60 shadow-sm"
-                aria-label="Refresh"
-                title="Refresh booking data"
+                aria-label={t("common.refresh")}
+                title={t("header.refreshBookingData")}
               >
                 {refreshing ? (
                   <Loader2 className="h-4 w-4 text-secondary animate-spin" />
                 ) : (
                   <RefreshCw className="h-4 w-4 text-gray-500 group-hover:text-secondary" />
                 )}
+
                 <span className="hidden sm:inline text-sm font-medium text-gray-700 ml-1">
-                  Refresh
+                  {t("common.refresh")}
                 </span>
               </button>
+
               <button
                 onClick={onClose}
                 className="p-2 sm:p-3 rounded-xl bg-white border shadow-sm hover:bg-rose-50 hover:border-rose-200 transition"
-                aria-label="Close modal"
+                aria-label={t("common.closeModal")}
               >
                 <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
               </button>
@@ -917,15 +997,17 @@ export function ServiceBookingManageModal({
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card title="Customer" icon={User}>
+              <Card title={t("sections.customer")} icon={User}>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-secondary font-bold border border-purple-100 shadow-inner">
                     {getInitials(customer)}
                   </div>
+
                   <div className="min-w-0">
                     <p className="font-bold text-gray-900 truncate">
                       {customer}
                     </p>
+
                     <div className="flex items-center gap-2 mt-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-sm">
                       <PhoneCall className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{customerPhone}</span>
@@ -934,7 +1016,8 @@ export function ServiceBookingManageModal({
                   </div>
                 </div>
               </Card>
-              <Card title="Company" icon={Building}>
+
+              <Card title={t("sections.company")} icon={Building}>
                 <div className="flex items-center gap-3">
                   {company?.logo && (
                     <img
@@ -942,10 +1025,12 @@ export function ServiceBookingManageModal({
                       className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0"
                     />
                   )}
+
                   <div className="min-w-0">
                     <p className="font-bold text-gray-900 truncate">
                       {company?.name}
                     </p>
+
                     {company?.sub_category_name && (
                       <p className="text-xs text-gray-500 truncate">
                         {company.sub_category_name}
@@ -955,8 +1040,9 @@ export function ServiceBookingManageModal({
                 </div>
               </Card>
             </div>
+
             {offering && (
-              <Card title="Service" icon={Briefcase}>
+              <Card title={t("sections.service")} icon={Briefcase}>
                 <div className="flex gap-4">
                   {offering.primary_image && (
                     <img
@@ -964,17 +1050,22 @@ export function ServiceBookingManageModal({
                       className="w-20 h-20 rounded-xl object-cover border shadow-sm shrink-0"
                     />
                   )}
+
                   <div className="min-w-0">
                     <p className="font-bold text-gray-900 truncate">
                       {offering.title}
                     </p>
+
                     <p className="text-sm text-gray-500 truncate">
-                      {offering.service_category || "Uncategorized"}
+                      {offering.service_category || t("common.uncategorized")}
                     </p>
+
                     <div className="flex gap-3 mt-2 text-xs">
                       <span className="bg-gray-100 px-2 py-1 rounded-md flex items-center gap-1">
-                        <Clock className="h-3 w-3" />{" "}
-                        {offering.duration_minutes} min
+                        <Clock className="h-3 w-3" />
+                        {t("service.durationMinutes", {
+                          minutes: offering.duration_minutes,
+                        })}
                       </span>
                     </div>
                   </div>
@@ -986,13 +1077,12 @@ export function ServiceBookingManageModal({
             <Card
               title={
                 isAtHome
-                  ? "Service Location • At Customer Location (Home)"
-                  : "Service Location • In Shop / Studio"
+                  ? t("location.serviceLocationAtCustomerHome")
+                  : t("location.serviceLocationInShop")
               }
               icon={MapPin}
             >
               <div className="space-y-3">
-                {/* Mode description header */}
                 <div
                   className={`flex items-center justify-between p-3 rounded-xl border ${
                     isAtHome
@@ -1014,19 +1104,22 @@ export function ServiceBookingManageModal({
                         <Store className="h-4 w-4" />
                       )}
                     </div>
+
                     <div className="min-w-0">
                       <p className="text-xs font-black uppercase tracking-wider">
                         {isAtHome
-                          ? "Customer Location (At Home)"
-                          : "In Shop (Provider Studio)"}
+                          ? t("location.customerLocationAtHome")
+                          : t("location.inShopProviderStudio")}
                       </p>
+
                       <p className="text-xs text-gray-600 truncate">
                         {isAtHome
-                          ? "Specialist will travel to the customer's specified address"
-                          : "Customer will visit the company / shop premises"}
+                          ? t("location.specialistTravelsToCustomer")
+                          : t("location.customerVisitsCompany")}
                       </p>
                     </div>
                   </div>
+
                   <span
                     className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border shrink-0 ${
                       isAtHome
@@ -1034,11 +1127,12 @@ export function ServiceBookingManageModal({
                         : "bg-emerald-100/80 text-emerald-800 border-emerald-300"
                     }`}
                   >
-                    {isAtHome ? "Home Dispatch" : "In-Shop Visit"}
+                    {isAtHome
+                      ? t("location.homeDispatch")
+                      : t("location.inShopVisit")}
                   </span>
                 </div>
 
-                {/* Address info block */}
                 <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -1046,26 +1140,28 @@ export function ServiceBookingManageModal({
                         <MapPin className="h-3 w-3 text-secondary" />
                         <span>
                           {isAtHome
-                            ? "Service Delivery Address / Landmark"
-                            : "Provider / Studio Address"}
+                            ? t("location.serviceDeliveryAddress")
+                            : t("location.providerStudioAddress")}
                         </span>
                       </div>
+
                       <p className="text-sm font-semibold text-gray-900 break-words leading-relaxed">
                         {addressText ||
                           (isAtHome
-                            ? "No specific street address provided"
-                            : "Shop address not specified")}
+                            ? t("location.noStreetAddress")
+                            : t("location.shopAddressNotSpecified"))}
                       </p>
                     </div>
+
                     {addressText && <CopyButton text={addressText} />}
                   </div>
 
-                  {/* Lat/Long coordinates if available */}
                   {hasCoordinates && (
                     <div className="flex items-center gap-2 pt-2 border-t border-gray-200/60 text-xs text-gray-600 font-mono">
                       <span className="text-[11px] font-semibold text-gray-400 font-sans">
-                        GPS Coordinates:
+                        {t("location.gpsCoordinates")}:
                       </span>
+
                       <span className="bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-700">
                         {lat}, {lng}
                       </span>
@@ -1073,14 +1169,15 @@ export function ServiceBookingManageModal({
                   )}
                 </div>
 
-                {/* Customer Arrival / Delivery Notes */}
                 {initialBooking.customer_notes && (
                   <div className="flex items-start gap-2 bg-purple-50/50 rounded-xl p-3 border border-purple-100">
                     <MessageSquare className="h-4 w-4 text-secondary shrink-0 mt-0.5" />
+
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">
-                        Customer Arrival Notes
+                        {t("location.customerArrivalNotes")}
                       </p>
+
                       <p className="text-xs text-gray-700 mt-0.5 italic">
                         "{initialBooking.customer_notes}"
                       </p>
@@ -1088,7 +1185,6 @@ export function ServiceBookingManageModal({
                   </div>
                 )}
 
-                {/* Google Maps Link / Direction button */}
                 {mapsUrl && (
                   <div className="pt-1">
                     <a
@@ -1098,11 +1194,13 @@ export function ServiceBookingManageModal({
                       className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-secondary/40 hover:text-secondary text-xs font-semibold shadow-sm transition group"
                     >
                       <Navigation className="h-3.5 w-3.5 text-secondary group-hover:scale-110 transition-transform" />
+
                       <span>
                         {isAtHome
-                          ? "Open Customer Destination in Google Maps"
-                          : "Open Shop Location in Google Maps"}
+                          ? t("location.openCustomerDestinationInMaps")
+                          : t("location.openShopLocationInMaps")}
                       </span>
+
                       <ExternalLink className="h-3 w-3 text-gray-400 group-hover:text-secondary ml-1" />
                     </a>
                   </div>
@@ -1120,29 +1218,39 @@ export function ServiceBookingManageModal({
                   <div className="p-1.5 bg-gradient-to-br from-secondary/20 to-secondary/20 rounded-lg shadow-inner">
                     <History className="h-4 w-4 text-secondary" />
                   </div>
+
                   <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary bg-clip-text text-transparent">
-                    Booking Timeline
+                    {t("sections.bookingTimeline")}
                   </h4>
+
                   <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                    {timeline.length} steps
+                    {t("common.steps", { count: timeline.length })}
                   </span>
                 </div>
+
                 <div className="relative pl-6 space-y-4">
                   <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200" />
+
                   {timeline.map((entry) => (
                     <div
                       key={entry.id}
                       className="relative flex items-start gap-4"
                     >
                       <div
-                        className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${entry.status === "completed" ? "bg-emerald-500 border-emerald-500" : "bg-amber-500 border-amber-500 animate-pulse"}`}
+                        className={`absolute left-[-20px] top-1 w-4 h-4 rounded-full border-2 ${
+                          entry.status === "completed"
+                            ? "bg-emerald-500 border-emerald-500"
+                            : "bg-amber-500 border-amber-500 animate-pulse"
+                        }`}
                       />
+
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-bold text-gray-900">
                             {entry.icon} {entry.label}
                           </span>
                         </div>
+
                         <div className="flex flex-wrap items-center gap-3 mt-0.5">
                           <span className="text-xs text-gray-400 font-mono">
                             {new Date(entry.time).toLocaleDateString("en-US", {
@@ -1156,6 +1264,7 @@ export function ServiceBookingManageModal({
                               minute: "2-digit",
                             })}
                           </span>
+
                           {entry.actor && (
                             <span className="text-xs text-gray-500 flex items-center gap-1">
                               <User className="h-3 w-3" />
@@ -1169,9 +1278,10 @@ export function ServiceBookingManageModal({
                 </div>
               </motion.div>
             )}
+
             {/* Intake */}
             {Object.keys(intakeData).length > 0 && (
-              <Card title="Intake Responses" icon={FileText}>
+              <Card title={t("sections.intakeResponses")} icon={FileText}>
                 <div className="divide-y divide-gray-100">
                   {Object.entries(intakeData).map(([key, value]) => (
                     <div
@@ -1181,6 +1291,7 @@ export function ServiceBookingManageModal({
                       <span className="text-gray-500 capitalize">
                         {key.replace(/_/g, " ")}
                       </span>
+
                       <span className="font-medium text-gray-800 text-right break-words">
                         {String(value)}
                       </span>
@@ -1189,6 +1300,7 @@ export function ServiceBookingManageModal({
                 </div>
               </Card>
             )}
+
             {/* Booking History */}
             {previousBookings.length > 0 && (
               <motion.div
@@ -1199,13 +1311,18 @@ export function ServiceBookingManageModal({
                   <div className="p-1.5 bg-gradient-to-br from-secondary/20 to-secondary/20 rounded-lg shadow-inner">
                     <History className="h-4 w-4 text-secondary" />
                   </div>
+
                   <h4 className="text-sm font-bold bg-gradient-to-r from-secondary to-secondary bg-clip-text text-transparent">
-                    Customer Booking History
+                    {t("sections.customerBookingHistory")}
                   </h4>
+
                   <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                    {previousBookings.length} bookings
+                    {t("common.bookings", {
+                      count: previousBookings.length,
+                    })}
                   </span>
                 </div>
+
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                   {previousBookings.map((b) => (
                     <div
@@ -1216,11 +1333,13 @@ export function ServiceBookingManageModal({
                         <span className="text-sm font-bold text-secondary">
                           #{b.id}
                         </span>
+
                         {b.company?.name && (
                           <span className="text-[10px] text-gray-500 truncate max-w-[120px] sm:max-w-[200px]">
                             {b.company.name}
                           </span>
                         )}
+
                         <span className="text-[10px] text-gray-400 font-mono">
                           {b.created_at
                             ? new Date(b.created_at).toLocaleDateString(
@@ -1234,10 +1353,12 @@ export function ServiceBookingManageModal({
                             : "—"}
                         </span>
                       </div>
+
                       <div className="flex items-center gap-3 shrink-0">
                         <StatusBadge status={b.status} />
+
                         <span className="text-xs text-secondary opacity-0 group-hover:opacity-100 transition">
-                          View →
+                          {t("common.view")} →
                         </span>
                       </div>
                     </div>
@@ -1256,24 +1377,31 @@ export function ServiceBookingManageModal({
             >
               <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-xl group-hover:scale-110 transition-transform duration-700" />
               <div className="absolute -left-20 -bottom-20 w-60 h-60 bg-white/5 rounded-full blur-2xl" />
+
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
                   <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md">
                     <Tag className="h-5 w-5" />
                   </div>
+
                   <div className="text-right">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                      Quoted Price
+                      {t("price.quotedPrice")}
                     </p>
+
                     <h3 className="text-2xl font-black">
                       {formatCurrency(initialBooking.quoted_price)}{" "}
                       {initialBooking.currency}
                     </h3>
                   </div>
                 </div>
+
                 <div className="space-y-2 pt-3 border-t border-white/10">
                   <div className="flex justify-between text-xs font-bold">
-                    <span className="opacity-60">Final Price</span>
+                    <span className="opacity-60">
+                      {t("price.finalPrice")}
+                    </span>
+
                     <span>
                       {initialBooking.final_price
                         ? `${formatCurrency(initialBooking.final_price)} ${initialBooking.currency}`
@@ -1281,36 +1409,10 @@ export function ServiceBookingManageModal({
                     </span>
                   </div>
                 </div>
-                {/* Editable Final Price */}
-                {/* <div className="mt-4">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-white/70 mb-1">
-                    Update Final Price
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={finalPrice}
-                      onChange={(e) => setFinalPrice(e.target.value)}
-                      className="flex-1 min-w-0 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm font-semibold text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div> */}
               </div>
             </motion.div>
 
-            {/* Company Notes */}
-            {/* <Card title="Company Notes" icon={FileText}>
-              <textarea
-                value={companyNotes}
-                onChange={(e) => setCompanyNotes(e.target.value)}
-                rows={3}
-                placeholder="Add internal notes about this booking..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-secondary/30 transition resize-none bg-gray-50/50"
-              />
-            </Card> */}
-
-            {/* Payment & Receipt Review (Enhanced with COD support) */}
+            {/* Payment & Receipt Review */}
             <ReceiptReviewCard
               receipt={receipt}
               paymentMethod={paymentMethod}
@@ -1323,12 +1425,12 @@ export function ServiceBookingManageModal({
               bookingStatus={initialBooking.status}
               bookingId={initialBooking.id}
               companySlug={company?.slug || ""}
-              onCODComplete={handleCODComplete} // <<< NEW
+              onCODComplete={handleCODComplete}
             />
 
-            {/* Assigned Staff (fixed to use `name` and `role_title`) */}
+            {/* Assigned Staff */}
             {staff && (
-              <Card title="Assigned Staff" icon={User}>
+              <Card title={t("sections.assignedStaff")} icon={User}>
                 <div className="flex items-center gap-3">
                   {staff.avatar ? (
                     <img
@@ -1340,12 +1442,14 @@ export function ServiceBookingManageModal({
                       {getInitials(staff.name)}
                     </div>
                   )}
+
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-800 truncate">
                       {staff.name}
                     </p>
+
                     <p className="text-xs text-gray-500 truncate">
-                      {staff.role_title || "Staff"}
+                      {staff.role_title || t("common.staff")}
                     </p>
                   </div>
                 </div>
@@ -1353,7 +1457,7 @@ export function ServiceBookingManageModal({
             )}
 
             {/* Status Update */}
-            <Card title="Update Status" icon={AlertCircle}>
+            <Card title={t("sections.updateStatus")} icon={AlertCircle}>
               <div className="flex flex-wrap gap-2">
                 {allowedActions.map((action) => (
                   <motion.button
@@ -1362,28 +1466,47 @@ export function ServiceBookingManageModal({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleAction(action)}
                     disabled={actionLoading}
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${["cancel", "no_show"].includes(action) ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100" : action === "complete" ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-purple-50 text-secondary border border-purple-200 hover:bg-purple-100"}`}
+                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${
+                      ["cancel", "no_show"].includes(action)
+                        ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+                        : action === "complete"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                          : "bg-purple-50 text-secondary border border-purple-200 hover:bg-purple-100"
+                    }`}
                   >
                     {action === "confirm" && (
                       <CheckCircle className="h-4 w-4" />
                     )}
-                    {action === "start" && <Loader2 className="h-4 w-4" />}
+
+                    {action === "start" && (
+                      <Loader2 className="h-4 w-4" />
+                    )}
+
                     {action === "complete" && (
                       <CheckCircle className="h-4 w-4" />
                     )}
-                    {action === "cancel" && <XCircle className="h-4 w-4" />}
+
+                    {action === "cancel" && (
+                      <XCircle className="h-4 w-4" />
+                    )}
+
                     {action === "no_show" && (
                       <AlertCircle className="h-4 w-4" />
                     )}
+
                     <span className="capitalize whitespace-nowrap">
-                      {action.replace(/_/g, " ")}
+                      {t(`actions.${action}`)}
                     </span>
                   </motion.button>
                 ))}
+
                 {allowedActions.length === 0 && (
-                  <p className="text-sm text-gray-400">No actions available</p>
+                  <p className="text-sm text-gray-400">
+                    {t("actions.noActionsAvailable")}
+                  </p>
                 )}
               </div>
+
               {actionLoading && (
                 <Loader2 className="h-5 w-5 animate-spin mx-auto mt-3 text-secondary" />
               )}
@@ -1392,7 +1515,7 @@ export function ServiceBookingManageModal({
         </div>
       </motion.div>
 
-      {/* Full‑screen receipt image viewer */}
+      {/* Full-screen receipt image viewer */}
       <AnimatePresence>
         {previewImage && (
           <motion.div
@@ -1408,13 +1531,15 @@ export function ServiceBookingManageModal({
             >
               <X className="h-6 w-6" />
             </button>
+
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full text-white/70 text-xs font-medium flex items-center gap-2">
               <ZoomIn className="h-3.5 w-3.5" />
-              <span>Click anywhere to close</span>
+              <span>{t("receiptViewer.clickAnywhereToClose")}</span>
             </div>
+
             <motion.img
               src={previewImage}
-              alt="Receipt"
+              alt={t("payment.receiptImage")}
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -1443,22 +1568,26 @@ export function ServiceBookingManageModal({
                 <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                   <AlertCircle className="h-6 w-6 text-red-600" />
                 </div>
+
                 <h3 className="text-xl font-bold">
                   {confirmAction === "cancel"
-                    ? "Cancel Booking"
-                    : "Mark as No Show"}
+                    ? t("confirmation.cancelBooking")
+                    : t("confirmation.markAsNoShow")}
                 </h3>
               </div>
+
               <p className="text-sm text-gray-600 mb-6">
-                This action cannot be undone. The customer will be notified.
+                {t("confirmation.destructiveActionWarning")}
               </p>
+
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setConfirmAction(null)}
                   className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border rounded-xl hover:bg-gray-50"
                 >
-                  Keep Booking
+                  {t("confirmation.keepBooking")}
                 </button>
+
                 <button
                   onClick={handleConfirmAction}
                   disabled={actionLoading}
@@ -1469,7 +1598,9 @@ export function ServiceBookingManageModal({
                   ) : (
                     <XCircle className="h-4 w-4" />
                   )}{" "}
-                  Confirm {confirmAction.replace(/_/g, " ")}
+                  {t("confirmation.confirmAction", {
+                    action: t(`actions.${confirmAction}`),
+                  })}
                 </button>
               </div>
             </motion.div>

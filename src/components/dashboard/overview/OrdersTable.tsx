@@ -1,4 +1,6 @@
+
 import { ArrowRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SkeletonChart, EmptyState } from "./LoadingStates";
 import {
   formatCurrency,
@@ -33,6 +35,8 @@ export default function OrdersTable({
   isSuperAdmin,
   isServiceCompany,
 }: OrdersTableProps) {
+  const { t } = useTranslation("ordersTable");
+
   const hasRecentOrdersData = recentOrders.length > 0;
 
   const handleViewAll = () => {
@@ -64,9 +68,7 @@ export default function OrdersTable({
         <SkeletonChart height="h-[220px] sm:h-[250px]" />
       ) : (
         <>
-          {/* Compact action row.
-              The page already provides the section title,
-              so we avoid repeating another large heading here. */}
+          {/* Compact action row */}
           <div className="mb-2 flex items-center justify-end">
             <button
               type="button"
@@ -95,7 +97,7 @@ export default function OrdersTable({
                 focus-visible:ring-secondary/15
               "
             >
-              View all
+              {t("viewAll")}
 
               <ArrowRight
                 className="
@@ -205,7 +207,9 @@ export default function OrdersTable({
                           ${statusClass(order.status)}
                         `}
                       >
-                        {order.status}
+                        {t(`statuses.${order.status}`, {
+                          defaultValue: order.status,
+                        })}
                       </span>
 
                       <span
@@ -221,7 +225,9 @@ export default function OrdersTable({
                           ${paymentStatusClass(order.paymentStatus)}
                         `}
                       >
-                        {order.paymentStatus}
+                        {t(`paymentStatuses.${order.paymentStatus}`, {
+                          defaultValue: order.paymentStatus,
+                        })}
                       </span>
                     </div>
 
@@ -234,12 +240,12 @@ export default function OrdersTable({
                       "
                       title={String(
                         isServiceCompany
-                          ? order.serviceName || "Service"
+                          ? order.serviceName || t("service")
                           : order.vendors,
                       )}
                     >
                       {isServiceCompany
-                        ? order.serviceName || "Service"
+                        ? order.serviceName || t("service")
                         : order.vendors}
                     </p>
                   </div>
@@ -249,12 +255,14 @@ export default function OrdersTable({
               <EmptyState
                 compact
                 title={
-                  isServiceCompany ? "No recent bookings" : "No recent orders"
+                  isServiceCompany
+                    ? t("empty.noRecentBookings")
+                    : t("empty.noRecentOrders")
                 }
                 description={
                   isServiceCompany
-                    ? "New bookings will appear here as soon as customers start scheduling services."
-                    : "New orders will appear here as soon as customers start placing them."
+                    ? t("empty.noRecentBookingsDescription")
+                    : t("empty.noRecentOrdersDescription")
                 }
               />
             )}
@@ -284,22 +292,22 @@ export default function OrdersTable({
                     >
                       {(isServiceCompany
                         ? [
-                            "Booking",
-                            "Customer",
-                            "Price",
-                            "Status",
-                            "Payment",
-                            "Service",
-                            "Date",
+                            t("columns.booking"),
+                            t("columns.customer"),
+                            t("columns.price"),
+                            t("columns.status"),
+                            t("columns.payment"),
+                            t("columns.service"),
+                            t("columns.date"),
                           ]
                         : [
-                            "Order",
-                            "Customer",
-                            "Amount",
-                            "Status",
-                            "Payment",
-                            "Companies",
-                            "Date",
+                            t("columns.order"),
+                            t("columns.customer"),
+                            t("columns.amount"),
+                            t("columns.status"),
+                            t("columns.payment"),
+                            t("columns.companies"),
+                            t("columns.date"),
                           ]
                       ).map((head) => (
                         <th
@@ -385,7 +393,9 @@ export default function OrdersTable({
                               ${statusClass(order.status)}
                             `}
                           >
-                            {order.status}
+                            {t(`statuses.${order.status}`, {
+                              defaultValue: order.status,
+                            })}
                           </span>
                         </td>
 
@@ -403,7 +413,9 @@ export default function OrdersTable({
                               ${paymentStatusClass(order.paymentStatus)}
                             `}
                           >
-                            {order.paymentStatus}
+                            {t(`paymentStatuses.${order.paymentStatus}`, {
+                              defaultValue: order.paymentStatus,
+                            })}
                           </span>
                         </td>
 
@@ -418,12 +430,12 @@ export default function OrdersTable({
                           "
                           title={String(
                             isServiceCompany
-                              ? order.serviceName || "Service"
+                              ? order.serviceName || t("service")
                               : order.vendors,
                           )}
                         >
                           {isServiceCompany
-                            ? order.serviceName || "Service"
+                            ? order.serviceName || t("service")
                             : order.vendors}
                         </td>
 

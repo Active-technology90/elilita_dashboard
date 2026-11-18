@@ -43,7 +43,7 @@ export default {
     switchCompany: "ኩባንያ ቀይር",
     heading: "{{company}} የአገልግሎት ኩባንያ አይደለም",
     fallbackCompany: "የተመረጠው ኩባንያ",
-    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ ተገኝነት እና ቦታ ማስያዝ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
+    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ ተገኝነት እና ቀጠሮ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
     chooseServiceCompany: "የአገልግሎት ኩባንያ ምረጥ",
   },
   toasts: {
@@ -63,7 +63,7 @@ export default {
   deleteSlotTitle: "የ{{day}} ክፍተት ይሰረዝ?",
   deleteBlackoutTitle: "የዝግ ቀን ይሰረዝ?",
   page: {
-    description: "የቦታ ማስያዝ መርሃ ግብሮችን፣ የስራ ሰዓቶችን እና የዝግ ቀኖችን ያዋቅሩ።",
+    description: "የቀጦሮ መርሃ ግብሮችን፣ የስራ ሰዓቶችን እና የዝግ ቀኖችን ያዋቅሩ።",
     eyebrow: "የተገኝነት አስተዳደር",
     switchCompany: "ኩባንያ ቀይር",
   },
@@ -80,14 +80,14 @@ export default {
   },
   blackouts: {
     title: "የዝግ ቀናት",
-    subtitle: "ለበዓላት፣ ለዝግጅቶች ወይም ለማይገኙ ሰዓታት ቦታ ማስያዝን ይዝጉ።",
+    subtitle: "ለበዓላት፣ ለዝግጅቶች ወይም ለማይገኙ ሰዓታት ቀጥሮን ይዝጉ።",
     editing: "በማርትዕ ላይ",
     cancelEditing: "ማርትዕ ሰርዝ",
     form: {
       editTitle: "ዝግጅት አርትዕ",
       addTitle: "ዝግጅት ጨምር",
       editSubtitle: "የተመረጠውን የዝግ ጊዜ አዘምን።",
-      addSubtitle: "ቦታ ማስያዝ የማይቻልበት ቀን ወይም ጊዜ ይፍጠሩ።",
+      addSubtitle: "ቀጠሮ የማይቻልበት ቀን ወይም ጊዜ ይፍጠሩ።",
       reason: "ምክንያት",
       reasonPlaceholder: "ለምሳሌ የኢትዮጵያ አዲስ ዓመት",
       date: "ቀን",
@@ -103,7 +103,7 @@ export default {
     },
     list: {
       title: "የተያዙ ዝግጅቶች",
-      subtitle: "የደንበኛ ቦታ ማስያዝን የሚዘጉ ነባር ቀናት",
+      subtitle: "የደንበኛ ቀጠሮን የሚዘጉ ነባር ቀናት",
       count: "{{count}} ዝግጅት",
       count_plural: "{{count}} ዝግጅቶች",
       emptyTitle: "የተያዙ ዝግጅቶች የሉም",

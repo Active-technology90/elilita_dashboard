@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import { CustomSelect } from "../../ui/CustomSelect";
 
 /* -------------------------------------------------------------------------- */
@@ -18,37 +19,14 @@ import { CustomSelect } from "../../ui/CustomSelect";
 /* -------------------------------------------------------------------------- */
 
 const VEHICLE_CHOICES = [
-  { value: "motorcycle", label: "Motorcycle" },
-  { value: "car", label: "Car" },
-  { value: "bicycle", label: "Bicycle" },
-  { value: "van", label: "Van" },
-  { value: "foot", label: "Foot" },
+  { value: "motorcycle", labelKey: "companyUsers.vehicles.motorcycle" },
+  { value: "car", labelKey: "companyUsers.vehicles.car" },
+  { value: "bicycle", labelKey: "companyUsers.vehicles.bicycle" },
+  { value: "van", labelKey: "companyUsers.vehicles.van" },
+  { value: "foot", labelKey: "companyUsers.vehicles.foot" },
 ] as const;
 
 export type VehicleType = (typeof VEHICLE_CHOICES)[number]["value"];
-
-const ROLE_OPTIONS = [
-  {
-    value: "admin",
-    label: "Admin",
-    icon: <Shield className="h-4 w-4 text-secondary" />,
-  },
-  {
-    value: "staff",
-    label: "Dispatcher",
-    icon: <User className="h-4 w-4 text-secondary" />,
-  },
-  {
-    value: "viewer",
-    label: "Viewer",
-    icon: <User className="h-4 w-4 text-secondary" />,
-  },
-  {
-    value: "delivery",
-    label: "Delivery Person",
-    icon: <Truck className="h-4 w-4 text-secondary" />,
-  },
-];
 
 const UserAvatar = ({
   user,
@@ -82,22 +60,11 @@ const UserAvatar = ({
   );
 };
 
-const getRoleLabel = (role?: string) =>
-  role === "staff"
-    ? "Dispatcher"
-    : role === "delivery"
-      ? "Delivery"
-      : role
-        ? role.charAt(0).toUpperCase() + role.slice(1)
-        : "—";
-
-const getVehicleLabel = (vehicle?: string) => {
-  if (!vehicle) return "—";
-  const found = VEHICLE_CHOICES.find((v) => v.value === vehicle);
-  return found?.label ?? vehicle;
-};
-
 /**
+ * Resolve the best user identifier for backend calls.
+ *
+ * Priority (first non-empty, non-"undefined"/"null
+ * /**
  * Resolve the best user identifier for backend calls.
  *
  * Priority (first non-empty, non-"undefined"/"null" wins):
@@ -144,10 +111,6 @@ interface EditUserModalProps {
     vehicle_type?: VehicleType | "";
   };
   onClose: () => void;
-  /**
-   * onSave receives the fully-resolved payload including `id`.
-   * The `id` here is already the *backend-ready* user PK.
-   */
   onSave: (updatedUser: {
     id: string;
     first_name: string;
@@ -158,7 +121,6 @@ interface EditUserModalProps {
     vehicle_type?: VehicleType;
   }) => void;
   updating: boolean;
-  /** Optional: pass backend field errors from parent */
   serverErrors?: Record<string, string | string[]>;
 }
 
@@ -170,7 +132,8 @@ export function EditUserModal({
   updating,
   serverErrors,
 }: EditUserModalProps) {
-  /* ─── Debug: log everything when the modal opens ──────── */
+  const { t } = useTranslation("companyUsers");
+
   useEffect(() => {
     if (!isOpen || !user) return;
 
@@ -191,7 +154,6 @@ export function EditUserModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, user?.id, (user as any)?.user_id]);
 
-  /* ─── Debug: log server errors when they change ───────── */
   useEffect(() => {
     if (!isOpen) return;
     if (serverErrors && Object.keys(serverErrors).length > 0) {
@@ -222,7 +184,6 @@ export function EditUserModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
 
-  /* ─── Normalize backend errors ─── */
   const normalizedServerErrors = useMemo(() => {
     const map: Record<string, string> = {};
     if (!serverErrors) return map;
@@ -244,7 +205,6 @@ export function EditUserModal({
     return normalizedServerErrors[field] || localErrors[field];
   };
 
-  /* ─── Sync form data when user changes ─── */
   useEffect(() => {
     if (user) {
       console.log("🔄 [EditUserModal] Syncing form data for user:", {
@@ -271,7 +231,6 @@ export function EditUserModal({
     }
   }, [user]);
 
-  /* ─── Reset vehicle_type when role changes away ─── */
   useEffect(() => {
     if (formData.role !== "delivery" && formData.vehicle_type) {
       console.log(
@@ -282,7 +241,6 @@ export function EditUserModal({
     }
   }, [formData.role, formData.vehicle_type]);
 
-  /* ─── Focus management ─── */
   useEffect(() => {
     if (isOpen && modalRef.current) {
       const focusable = modalRef.current.querySelectorAll(
@@ -292,7 +250,6 @@ export function EditUserModal({
     }
   }, [isOpen]);
 
-  /* ─── Close on Escape ─── */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) onClose();
@@ -303,7 +260,6 @@ export function EditUserModal({
 
   if (!isOpen || !user) return null;
 
-  /* ─── Handlers ─── */
   const handleInputChange = (field: string, value: string) => {
     console.log(`✏️ [EditUserModal] Changed "${field}" →`, value);
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -320,22 +276,21 @@ export function EditUserModal({
     const errors: typeof localErrors = {};
 
     if (!formData.first_name.trim()) {
-      errors.first_name = "First name is required";
+      errors.first_name = t("editModal.errors.firstNameRequired");
     }
     if (!formData.last_name.trim()) {
-      errors.last_name = "Last name is required";
+      errors.last_name = t("editModal.errors.lastNameRequired");
     }
     if (!formData.email.trim()) {
-      errors.email = "Email is required";
+      errors.email = t("editModal.errors.emailRequired");
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Invalid email address";
+      errors.email = t("editModal.errors.emailInvalid");
     }
     if (!formData.username.trim()) {
-      errors.username = "Username is required";
+      errors.username = t("editModal.errors.usernameRequired");
     }
     if (formData.role === "delivery" && !formData.vehicle_type) {
-      errors.vehicle_type =
-        "Vehicle type is required for delivery personnel";
+      errors.vehicle_type = t("editModal.errors.vehicleTypeRequired");
     }
 
     console.group("🧪 [EditUserModal] Validation");
@@ -354,7 +309,6 @@ export function EditUserModal({
   const handleSubmit = () => {
     console.group("🚀 [EditUserModal] Submit clicked");
 
-    // 1. Validate
     if (!validate()) {
       console.warn("❌ Validation failed — aborting submit");
       setTouched({
@@ -368,7 +322,6 @@ export function EditUserModal({
       return;
     }
 
-    // 2. Resolve the correct user ID
     const resolvedId = resolveUserId(user);
     console.log("🆔 Resolved user ID for API:", resolvedId);
 
@@ -384,14 +337,11 @@ export function EditUserModal({
           username: user?.username,
         },
       );
-      toast.error(
-        "Cannot save: missing user ID. Please refresh the page and try again.",
-      );
+      toast.error(t("editModal.errors.missingUserId"));
       console.groupEnd();
       return;
     }
 
-    // 3. Build payload
     const payload: {
       id: string;
       first_name: string;
@@ -420,11 +370,9 @@ export function EditUserModal({
     );
     console.groupEnd();
 
-    // 4. Hand off to parent
     onSave(payload);
   };
 
-  /* ─── Input class helper ─── */
   const inputClass = (
     field: "first_name" | "last_name" | "email" | "username",
   ) => {
@@ -448,54 +396,25 @@ export function EditUserModal({
         className="bg-white w-full max-w-[95%] sm:max-w-5xl rounded-xl sm:rounded-2xl shadow-xl transform transition-all duration-200 scale-100 overflow-hidden max-h-[90vh] sm:max-h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="sticky top-0 z-30 flex justify-between items-center p-4 sm:p-6 border-b border-secondary/20 bg-secondary/20 backdrop-blur-sm bg-opacity-95">
           <div>
             <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-secondary to-secondary-light bg-clip-text text-transparent">
-              Edit Profile & Role
+              {t("editModal.title")}
             </h2>
             <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              Update user information and permissions
+              {t("editModal.subtitle")}
             </p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100 flex-shrink-0"
-            aria-label="Close"
+            aria-label={t("editModal.closeAria")}
           >
             <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 overflow-y-auto">
-          {/* Debug strip — remove in production */}
-          {/* {import.meta.env.DEV && (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-[10px] font-mono text-gray-600">
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                <span>
-                  <strong>user.id:</strong> {String(user.id ?? "—")}
-                </span>
-                <span>
-                  <strong>user.user_id:</strong>{" "}
-                  {String((user as any).user_id ?? "—")}
-                </span>
-                <span>
-                  <strong>user.user?.id:</strong>{" "}
-                  {String((user as any).user?.id ?? "—")}
-                </span>
-                <span>
-                  <strong>username:</strong> {user.username || "—"}
-                </span>
-                <span className="text-emerald-700">
-                  <strong>→ will send:</strong>{" "}
-                  {resolveUserId(user) || "❌ NONE"}
-                </span>
-              </div>
-            </div>
-          )} */}
-
-          {/* User Info Card */}
           <div className="bg-gradient-to-r from-indigo-50/50 to-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 border border-indigo-100 shadow-sm">
             <UserAvatar user={user} size="lg" />
             <div className="flex-1 min-w-0">
@@ -511,15 +430,15 @@ export function EditUserModal({
               <div className="flex items-center gap-2 mt-1">
                 <Shield className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400 flex-shrink-0" />
                 <p className="text-[10px] sm:text-xs text-gray-500">
-                  Current role:{" "}
+                  {t("editModal.currentRolePrefix")}{" "}
                   <span className="font-semibold text-secondary">
-                    {getRoleLabel(user.role)}
+                    {t(`roles.${user.role}`)}
                   </span>
                   {user.role === "delivery" && user.vehicle_type && (
                     <>
                       {" · "}
                       <span className="font-semibold text-secondary">
-                        {getVehicleLabel(user.vehicle_type)}
+                        {t(`vehicles.${user.vehicle_type}`)}
                       </span>
                     </>
                   )}
@@ -528,12 +447,11 @@ export function EditUserModal({
             </div>
           </div>
 
-          {/* Editable Fields Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {/* First Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                First Name <span className="text-red-500">*</span>
+                {t("editModal.firstNameLabel")}{" "}
+                <span className="text-red-500">{t("editModal.requiredMark")}</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -555,10 +473,10 @@ export function EditUserModal({
               )}
             </div>
 
-            {/* Last Name */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-                Last Name <span className="text-red-500">*</span>
+                {t("editModal.lastNameLabel")}{" "}
+                <span className="text-red-500">{t("editModal.requiredMark")}</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
@@ -580,10 +498,10 @@ export function EditUserModal({
               )}
             </div>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email <span className="text-red-500">*</span>
+                {t("editModal.emailLabel")}{" "}
+                <span className="text-red-500">{t("editModal.requiredMark")}</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -602,10 +520,10 @@ export function EditUserModal({
               )}
             </div>
 
-            {/* Username */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Username <span className="text-red-500">*</span>
+                {t("editModal.usernameLabel")}{" "}
+                <span className="text-red-500">{t("editModal.requiredMark")}</span>
               </label>
               <div className="relative">
                 <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -627,12 +545,11 @@ export function EditUserModal({
               )}
             </div>
 
-            {/* Phone Number – DISABLED */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-                Phone Number{" "}
+                {t("editModal.phoneLabel")}{" "}
                 <span className="text-[10px] sm:text-xs text-gray-400 ml-1">
-                  (restricted)
+                  {t("editModal.phoneRestricted")}
                 </span>
               </label>
               <div className="relative">
@@ -642,35 +559,40 @@ export function EditUserModal({
                   value={user.phone_number}
                   disabled
                   className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-sm sm:text-base rounded-xl sm:rounded-2xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                  title="Phone number cannot be changed for security reasons"
+                  title={t("editModal.phoneAria")}
                 />
               </div>
               <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                Phone number cannot be edited
+                {t("editModal.phoneHint")}
               </p>
             </div>
 
-            {/* Role */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-                Role <span className="text-red-500">*</span>
+                {t("editModal.roleLabel")}{" "}
+                <span className="text-red-500">{t("editModal.requiredMark")}</span>
               </label>
               <CustomSelect
                 value={formData.role}
                 onChange={(value) => handleInputChange("role", value)}
-                options={ROLE_OPTIONS}
-                placeholder="Select Role"
+                options={[
+                  { value: "admin", label: t("roles.admin"), icon: <Shield className="h-4 w-4 text-secondary" /> },
+                  { value: "staff", label: t("roles.staff"), icon: <User className="h-4 w-4 text-secondary" /> },
+                  { value: "viewer", label: t("roles.viewer"), icon: <User className="h-4 w-4 text-secondary" /> },
+                  { value: "delivery", label: t("roles.delivery"), icon: <Truck className="h-4 w-4 text-secondary" /> },
+                ]}
+                placeholder={t("editModal.rolePlaceholder")}
                 className="w-full"
               />
             </div>
 
-            {/* VEHICLE TYPE — only when role = "delivery" */}
             {formData.role === "delivery" && (
               <div className="sm:col-span-2">
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
                   <span className="inline-flex items-center gap-1.5">
                     <Truck className="h-3.5 w-3.5" />
-                    Vehicle Type <span className="text-red-500">*</span>
+                    {t("editModal.vehicleTypeLabel")}{" "}
+                    <span className="text-red-500">{t("editModal.requiredMark")}</span>
                   </span>
                 </label>
                 <CustomSelect
@@ -680,13 +602,13 @@ export function EditUserModal({
                     setTouched((prev) => ({ ...prev, vehicle_type: true }));
                   }}
                   options={[
-                    { value: "", label: "Select Vehicle Type" },
+                    { value: "", label: t("editModal.vehicleTypePlaceholder") },
                     ...VEHICLE_CHOICES.map((v) => ({
                       value: v.value,
-                      label: v.label,
+                      label: t(v.labelKey),
                     })),
                   ]}
-                  placeholder="Select Vehicle Type"
+                  placeholder={t("editModal.vehicleTypePlaceholder")}
                   className={
                     getFieldError("vehicle_type") ? "border-red-500" : ""
                   }
@@ -698,7 +620,7 @@ export function EditUserModal({
                   </p>
                 ) : (
                   <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                    Select the type of vehicle this delivery person will use.
+                    {t("editModal.vehicleTypeHint")}
                   </p>
                 )}
               </div>
@@ -706,13 +628,12 @@ export function EditUserModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="sticky bottom-0 z-20 mt-auto px-4 sm:px-6 py-3 sm:py-5 border-t border-gray-100 bg-gray-50/95 backdrop-blur-sm flex flex-row gap-3 sm:gap-4 rounded-b-xl sm:rounded-b-2xl">
           <button
             onClick={onClose}
             className="flex-1 px-4 sm:px-6 py-1.5 sm:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium text-center justify-center"
           >
-            Cancel
+            {t("actions.cancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -722,10 +643,10 @@ export function EditUserModal({
             {updating ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />{" "}
-                Updating...
+                {t("actions.saving")}
               </>
             ) : (
-              "Save changes"
+              t("actions.save")
             )}
           </button>
         </div>

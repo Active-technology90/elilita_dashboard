@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   ArrowDown,
@@ -74,6 +75,11 @@ type PlanTier =
   | "premium"
   | "custom";
 
+type Translate = (
+  key: string,
+  options?: Record<string, unknown>,
+) => string;
+
 type PlanMeta = {
   name: string;
   positioning: string;
@@ -98,54 +104,54 @@ const GOLD = {
 const PLAN_META: Record<Exclude<PlanTier, "custom">, PlanMeta> = {
   free: {
     name: "Free",
-    positioning: "Start Selling",
-    purpose: "Establish your business presence on Elilita.",
-    audience: "New and small vendors",
+    positioning: "positioning.free",
+    purpose: "purpose.free",
+    audience: "audience.free",
     highlights: [
-      "Basic storefront and vendor profile",
-      "Limited product catalogue",
-      "Basic order and inventory management",
-      "Basic sales dashboard",
-      "Standard support",
+      "planHighlights.free.0",
+      "planHighlights.free.1",
+      "planHighlights.free.2",
+      "planHighlights.free.3",
+      "planHighlights.free.4",
     ],
   },
   basic: {
     name: "Basic",
-    positioning: "Grow Your Store",
-    purpose: "Get the tools you need to manage and grow your online business.",
-    audience: "Small and growing businesses",
+    positioning: "positioning.basic",
+    purpose: "purpose.basic",
+    audience: "audience.basic",
     highlights: [
-      "Professional storefront",
-      "Expanded product catalogue",
-      "Full order management",
-      "Basic analytics and promotions",
-      "Priority support and onboarding assistance",
+      "planHighlights.basic.0",
+      "planHighlights.basic.1",
+      "planHighlights.basic.2",
+      "planHighlights.basic.3",
+      "planHighlights.basic.4",
     ],
   },
   advanced: {
     name: "Advanced",
-    positioning: "Scale Your Business",
-    purpose: "Manage more products, orders, customers and marketing activities.",
-    audience: "Established businesses",
+    positioning: "positioning.advanced",
+    purpose: "purpose.advanced",
+    audience: "audience.advanced",
     highlights: [
-      "Advanced storefront and inventory",
-      "Advanced order management",
-      "Sales, product and order analytics",
-      "Featured products and marketing tools",
-      "Role-based staff access",
+      "planHighlights.advanced.0",
+      "planHighlights.advanced.1",
+      "planHighlights.advanced.2",
+      "planHighlights.advanced.3",
+      "planHighlights.advanced.4",
     ],
   },
   premium: {
     name: "Premium",
-    positioning: "Maximize Your Business",
-    purpose: "Get maximum visibility, analytics, marketing and operational capabilities.",
-    audience: "Large and high-volume businesses",
+    positioning: "positioning.premium",
+    purpose: "purpose.premium",
+    audience: "audience.premium",
     highlights: [
-      "Premium storefront and priority visibility",
-      "Unlimited product listing",
-      "Advanced analytics and customer insights",
-      "Premium promotional opportunities",
-      "Priority support and business assistance",
+      "planHighlights.premium.0",
+      "planHighlights.premium.1",
+      "planHighlights.premium.2",
+      "planHighlights.premium.3",
+      "planHighlights.premium.4",
     ],
   },
 };
@@ -160,73 +166,296 @@ const PLAN_ORDER: PlanTier[] = [
 
 type PlanFeatureItem = {
   label: string;
+  match: string;
   enabled: boolean;
 };
 
-const PLAN_FEATURES: Record<Exclude<PlanTier, "custom">, PlanFeatureItem[]> = {
+const PLAN_FEATURES: Record<
+  Exclude<PlanTier, "custom">,
+  PlanFeatureItem[]
+> = {
   free: [
-    { label: "Basic storefront and vendor profile", enabled: true },
-    { label: "Limited product catalogue and basic categories", enabled: true },
-    { label: "Basic inventory and stock information", enabled: true },
-    { label: "Receive, accept, reject and update orders", enabled: true },
-    { label: "Basic customer notifications", enabled: true },
-    { label: "1 staff account", enabled: true },
-    { label: "Basic sales dashboard and store status", enabled: true },
-    { label: "Standard support, Help Center and knowledge base", enabled: true },
-    { label: "Business analytics", enabled: false },
-    { label: "Promotional tools", enabled: false },
-    { label: "Featured products", enabled: false },
-    { label: "Advertising opportunities", enabled: false },
-    { label: "Advanced reports", enabled: false },
-    { label: "Premium visibility", enabled: false },
+    {
+      label: "features.basicStorefront",
+      match: "basic storefront and vendor profile",
+      enabled: true,
+    },
+    {
+      label: "features.limitedCatalogue",
+      match: "limited product catalogue and basic categories",
+      enabled: true,
+    },
+    {
+      label: "features.basicInventory",
+      match: "basic inventory and stock information",
+      enabled: true,
+    },
+    {
+      label: "features.orderManagement",
+      match: "receive, accept, reject and update orders",
+      enabled: true,
+    },
+    {
+      label: "features.customerNotifications",
+      match: "basic customer notifications",
+      enabled: true,
+    },
+    {
+      label: "features.staffOne",
+      match: "1 staff account",
+      enabled: true,
+    },
+    {
+      label: "features.basicDashboard",
+      match: "basic sales dashboard and store status",
+      enabled: true,
+    },
+    {
+      label: "features.standardSupport",
+      match: "standard support, help center and knowledge base",
+      enabled: true,
+    },
+    {
+      label: "features.businessAnalytics",
+      match: "business analytics",
+      enabled: false,
+    },
+    {
+      label: "features.promotionalTools",
+      match: "promotional tools",
+      enabled: false,
+    },
+    {
+      label: "features.featuredProducts",
+      match: "featured products",
+      enabled: false,
+    },
+    {
+      label: "features.advertising",
+      match: "advertising opportunities",
+      enabled: false,
+    },
+    {
+      label: "features.advancedReports",
+      match: "advanced reports",
+      enabled: false,
+    },
+    {
+      label: "features.premiumVisibility",
+      match: "premium visibility",
+      enabled: false,
+    },
   ],
+
   basic: [
-    { label: "Professional storefront", enabled: true },
-    { label: "Up to 100 products", enabled: true },
-    { label: "Multiple product categories and search visibility", enabled: true },
-    { label: "Full order management and order notifications", enabled: true },
-    { label: "Basic inventory management", enabled: true },
-    { label: "Basic sales reports and business insights", enabled: true },
-    { label: "Basic promotions, discounts and product highlighting", enabled: true },
+    {
+      label: "features.professionalStorefront",
+      match: "professional storefront",
+      enabled: true,
+    },
+    {
+      label: "features.publicProducts",
+      match: "up to 100 products",
+      enabled: true,
+    },
+    {
+      label: "features.multipleCategories",
+      match: "multiple product categories and search visibility",
+      enabled: true,
+    },
+    {
+      label: "features.fullOrderManagement",
+      match: "full order management and order notifications",
+      enabled: true,
+    },
+    {
+      label: "features.basicInventory",
+      match: "basic inventory management",
+      enabled: true,
+    },
+    {
+      label: "features.basicSalesReports",
+      match: "basic sales reports and business insights",
+      enabled: true,
+    },
+    {
+      label: "features.basicPromotions",
+      match: "basic promotions, discounts and product highlighting",
+      enabled: true,
+    },
     // { label: "Paid advertising opportunities", enabled: true },
-    { label: "2 staff accounts", enabled: true },
-    { label: "Standard priority support and onboarding assistance", enabled: true },
-    { label: "Featured products", enabled: false },
-    { label: "Advanced reports", enabled: false },
-    { label: "Advanced marketing", enabled: false },
-    { label: "Premium visibility", enabled: false },
-    { label: "Dedicated support", enabled: false },
+    {
+      label: "features.staffTwo",
+      match: "2 staff accounts",
+      enabled: true,
+    },
+    {
+      label: "features.prioritySupport",
+      match: "standard priority support and onboarding assistance",
+      enabled: true,
+    },
+    {
+      label: "features.featuredProducts",
+      match: "featured products",
+      enabled: false,
+    },
+    {
+      label: "features.advancedReports",
+      match: "advanced reports",
+      enabled: false,
+    },
+    {
+      label: "features.advancedMarketing",
+      match: "advanced marketing",
+      enabled: false,
+    },
+    {
+      label: "features.premiumVisibility",
+      match: "premium visibility",
+      enabled: false,
+    },
+    {
+      label: "features.dedicatedSupport",
+      match: "dedicated support",
+      enabled: false,
+    },
   ],
+
   advanced: [
-    { label: "All Basic plan features", enabled: true },
-    { label: "Advanced storefront customization", enabled: true },
-    { label: "Up to 500 products and bulk product management", enabled: true },
-    { label: "Advanced inventory management", enabled: true },
-    { label: "Advanced order dashboard, filtering and tracking", enabled: true },
-    { label: "Sales, product, order and revenue analytics", enabled: true },
-    { label: "Featured products and promotional campaigns", enabled: true },
+    {
+      label: "features.allBasicFeatures",
+      match: "all basic plan features",
+      enabled: true,
+    },
+    {
+      label: "features.advancedCustomization",
+      match: "advanced storefront customization",
+      enabled: true,
+    },
+    {
+      label: "features.bulkProducts",
+      match: "up to 500 products and bulk product management",
+      enabled: true,
+    },
+    {
+      label: "features.advancedInventory",
+      match: "advanced inventory management",
+      enabled: true,
+    },
+    {
+      label: "features.advancedOrderDashboard",
+      match: "advanced order dashboard, filtering and tracking",
+      enabled: true,
+    },
+    {
+      label: "features.salesAnalytics",
+      match: "sales, product, order and revenue analytics",
+      enabled: true,
+    },
+    {
+      label: "features.promotionalCampaigns",
+      match: "featured products and promotional campaigns",
+      enabled: true,
+    },
     // { label: "Advertising participation", enabled: true },
-    { label: "Customer insights and promotional targeting", enabled: true },
-    { label: "5 staff accounts with role-based access", enabled: true },
-    { label: "Staff activity monitoring", enabled: true },
-    { label: "Advanced and exportable reports", enabled: true },
-    { label: "Priority support", enabled: true },
-    { label: "Premium visibility", enabled: false },
-    { label: "Dedicated support", enabled: false },
+    {
+      label: "features.customerInsights",
+      match: "customer insights and promotional targeting",
+      enabled: true,
+    },
+    {
+      label: "features.staffFive",
+      match: "5 staff accounts with role-based access",
+      enabled: true,
+    },
+    {
+      label: "features.staffMonitoring",
+      match: "staff activity monitoring",
+      enabled: true,
+    },
+    {
+      label: "features.exportableReports",
+      match: "advanced and exportable reports",
+      enabled: true,
+    },
+    {
+      label: "features.prioritySupport",
+      match: "priority support",
+      enabled: true,
+    },
+    {
+      label: "features.premiumVisibility",
+      match: "premium visibility",
+      enabled: false,
+    },
+    {
+      label: "features.dedicatedSupport",
+      match: "dedicated support",
+      enabled: false,
+    },
   ],
+
   premium: [
-    { label: "All Advanced plan features", enabled: true },
-    { label: "Premium storefront customization and priority visibility", enabled: true },
-    { label: "Unlimited product listing", enabled: true },
-    { label: "Advanced inventory and bulk product management", enabled: true },
-    { label: "Advanced product analytics and performance comparison", enabled: true },
-    { label: "Priority featured products and premium promotional placement", enabled: true },
-    { label: "Advanced campaigns and featured vendor opportunities", enabled: true },
-    { label: "Advanced customer analytics and segmentation", enabled: true },
-    { label: "Advanced operations and business performance monitoring", enabled: true },
-    { label: "Multiple staff accounts with role-based permissions", enabled: true },
-    { label: "Advanced and historical reporting", enabled: true },
-    { label: "Priority support and dedicated account support where applicable", enabled: true },
+    {
+      label: "features.allAdvancedFeatures",
+      match: "all advanced plan features",
+      enabled: true,
+    },
+    {
+      label: "features.premiumCustomization",
+      match: "premium storefront customization and priority visibility",
+      enabled: true,
+    },
+    {
+      label: "features.unlimitedProducts",
+      match: "unlimited product listing",
+      enabled: true,
+    },
+    {
+      label: "features.advancedBulkManagement",
+      match: "advanced inventory and bulk product management",
+      enabled: true,
+    },
+    {
+      label: "features.productPerformance",
+      match: "advanced product analytics and performance comparison",
+      enabled: true,
+    },
+    {
+      label: "features.priorityFeatured",
+      match: "priority featured products and premium promotional placement",
+      enabled: true,
+    },
+    {
+      label: "features.advancedCampaigns",
+      match: "advanced campaigns and featured vendor opportunities",
+      enabled: true,
+    },
+    {
+      label: "features.customerSegmentation",
+      match: "advanced customer analytics and segmentation",
+      enabled: true,
+    },
+    {
+      label: "features.businessMonitoring",
+      match: "advanced operations and business performance monitoring",
+      enabled: true,
+    },
+    {
+      label: "features.multipleStaff",
+      match: "multiple staff accounts with role-based permissions",
+      enabled: true,
+    },
+    {
+      label: "features.historicalReports",
+      match: "advanced and historical reporting",
+      enabled: true,
+    },
+    {
+      label: "features.accountSupport",
+      match: "priority support and dedicated account support where applicable",
+      enabled: true,
+    },
   ],
 };
 
@@ -260,16 +489,29 @@ const resolvePlanTier = (
   return "custom";
 };
 
-const getPlanMeta = (plan: SubscriptionPlan): PlanMeta => {
+const getPlanMeta = (
+  plan: SubscriptionPlan,
+  t: Translate,
+): PlanMeta => {
   const tier = resolvePlanTier(plan);
 
-  if (tier !== "custom") return PLAN_META[tier];
+  if (tier !== "custom") {
+    const meta = PLAN_META[tier];
+
+    return {
+      name: meta.name,
+      positioning: t(meta.positioning),
+      purpose: t(meta.purpose),
+      audience: t(meta.audience),
+      highlights: meta.highlights.map((key) => t(key)),
+    };
+  }
 
   return {
     name: plan.name,
-    positioning: "Custom Plan",
-    purpose: plan.description || "Custom subscription configuration.",
-    audience: "Custom business needs",
+    positioning: t("positioning.custom"),
+    purpose: plan.description || t("purpose.custom"),
+    audience: t("audience.custom"),
     highlights: [],
   };
 };
@@ -292,8 +534,11 @@ const formatDate = (value?: string | null) => {
   }).format(date);
 };
 
-const formatLimit = (value?: number | null) => {
-  if (value === -1) return "Unlimited";
+const formatLimit = (
+  value: number | null | undefined,
+  t: Translate,
+) => {
+  if (value === -1) return t("usage.unlimited");
   return String(value ?? 0);
 };
 
@@ -306,6 +551,7 @@ const calculateUsage = (current: number, limit: number) => {
 const getDynamicPlanFeatures = (
   plan: SubscriptionPlan,
   tier: PlanTier,
+  t: Translate,
 ): PlanFeatureItem[] => {
   const staffCount = plan.max_staff_members ?? 5;
   const hasFeatured =
@@ -313,45 +559,66 @@ const getDynamicPlanFeatures = (
 
   const productsLabel =
     plan.max_products === -1
-      ? "Unlimited public products"
-      : `Up to ${formatLimit(plan.max_products)} public products`;
+      ? t("features.unlimitedProductsDynamic")
+      : t("features.publicProducts", {
+          count: formatLimit(plan.max_products, t),
+        });
 
   const staffLabel =
     staffCount === -1
-      ? "Unlimited staff accounts"
+      ? t("features.unlimitedStaff")
       : staffCount === 1
-        ? "1 staff account"
-        : `Up to ${formatLimit(staffCount)} staff accounts`;
+        ? t("features.oneStaff")
+        : t("features.staffAccounts", {
+            count: formatLimit(staffCount, t),
+          });
 
   const featuredLabel =
     plan.max_featured_products === -1
-      ? "Unlimited featured products"
+      ? t("features.featuredUnlimited")
       : plan.max_featured_products > 0
-        ? `Up to ${formatLimit(plan.max_featured_products)} featured products`
-        : "Featured products";
+        ? t("features.featuredCount", {
+            count: formatLimit(plan.max_featured_products, t),
+          })
+        : t("features.featuredGeneric");
 
   if (tier === "custom") {
     return [
       {
         label: productsLabel,
+        match: "products",
         enabled: plan.max_products !== 0,
       },
       {
         label: staffLabel,
+        match: "staff",
         enabled: staffCount !== 0,
       },
       {
         label: featuredLabel,
+        match: "featured",
         enabled: hasFeatured,
       },
-      { label: "Storefront & profile management", enabled: true },
-      { label: "Order & inventory management", enabled: true },
-      { label: "Standard customer notifications", enabled: true },
+      {
+        label: t("features.storefrontManagement"),
+        match: "storefront",
+        enabled: true,
+      },
+      {
+        label: t("features.orderInventoryManagement"),
+        match: "orders",
+        enabled: true,
+      },
+      {
+        label: t("features.standardNotifications"),
+        match: "notifications",
+        enabled: true,
+      },
     ];
   }
 
   return PLAN_FEATURES[tier].map((item) => {
-    const lower = item.label.toLowerCase();
+    const lower = item.match;
 
     // Match product quota entries
     if (
@@ -360,8 +627,12 @@ const getDynamicPlanFeatures = (
         (lower.includes("product") && lower.includes("up to"))) &&
       !lower.includes("featured")
     ) {
-      const extra = lower.includes("bulk") ? " & bulk management" : "";
+      const extra = lower.includes("bulk")
+        ? ` ${t("features.bulkManagement")}`
+        : "";
+
       return {
+        ...item,
         label: `${productsLabel}${extra}`,
         enabled: plan.max_products !== 0,
       };
@@ -370,8 +641,12 @@ const getDynamicPlanFeatures = (
     // Match staff quota entries
     if (lower.includes("staff")) {
       const hasRole = lower.includes("role");
+
       return {
-        label: hasRole ? `${staffLabel} with role-based access` : staffLabel,
+        ...item,
+        label: hasRole
+          ? `${staffLabel} ${t("features.roleBasedAccess")}`
+          : staffLabel,
         enabled: staffCount !== 0,
       };
     }
@@ -380,16 +655,21 @@ const getDynamicPlanFeatures = (
     if (lower.includes("featured product")) {
       const extraPromo =
         lower.includes("promotional") || lower.includes("placement");
+
       return {
+        ...item,
         label:
           extraPromo && hasFeatured
-            ? `${featuredLabel} & promotional placement`
+            ? `${featuredLabel} ${t("features.promotionalPlacement")}`
             : featuredLabel,
         enabled: hasFeatured,
       };
     }
 
-    return item;
+    return {
+      ...item,
+      label: t(item.label),
+    };
   });
 };
 
@@ -441,11 +721,13 @@ const UsageCard = ({
   label,
   current,
   limit,
+  t,
 }: {
   icon: ReactNode;
   label: string;
   current: number;
   limit: number;
+  t: Translate;
 }) => {
   const unlimited = limit === -1;
   const percentage = calculateUsage(current, limit);
@@ -458,7 +740,7 @@ const UsageCard = ({
           {label}
         </div>
         <span className="text-xs font-extrabold text-secondary">
-          {current} / {formatLimit(limit)}
+          {current} / {formatLimit(limit, t)}
         </span>
       </div>
 
@@ -471,14 +753,17 @@ const UsageCard = ({
 
       <p className="mt-2 text-[11px] text-secondary/50">
         {unlimited
-          ? "Unlimited on this plan."
-          : `${Math.max(0, limit - current)} remaining on your current limit.`}
+          ? t("usage.unlimitedOnPlan")
+          : t("usage.remaining", {
+              count: Math.max(0, limit - current),
+            })}
       </p>
     </div>
   );
 };
 
 export default function BillingPage() {
+  const { t } = useTranslation("billingPage");
   const { company } = useCurrentCompany();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -505,13 +790,11 @@ export default function BillingPage() {
       setActiveSub(subRes.data || null);
     } catch (error) {
       console.error("Failed to load billing data", error);
-      setLoadError(
-        "We could not load your subscription information. Check your connection and try again.",
-      );
+      setLoadError(t("alerts.loadErrorDescription"));
     } finally {
       setIsLoading(false);
     }
-  }, [company?.slug]);
+  }, [company?.slug, t]);
 
   const verifyPaymentAndFetch = useCallback(
     async (txRef: string, attempt = 1) => {
@@ -522,16 +805,20 @@ export default function BillingPage() {
         setIsLoading(true);
         setFeedback({
           tone: "info",
-          message: "Verifying your subscription payment…",
+          message: t("alerts.verifyingPayment"),
         });
 
         const res = await verifySubscriptionPayment(txRef);
 
         if (res.data?.message) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
           setFeedback({
             tone: "success",
-            message: "Payment verified. Your subscription is now up to date.",
+            message: t("alerts.paymentVerified"),
           });
           await fetchData();
           return;
@@ -540,7 +827,10 @@ export default function BillingPage() {
         console.error(`Payment verification attempt ${attempt} failed`, error);
         const errorMsg = error?.response?.data?.error || "";
 
-        if (attempt < MAX_RETRIES && errorMsg.toLowerCase().includes("pending")) {
+        if (
+          attempt < MAX_RETRIES &&
+          errorMsg.toLowerCase().includes("pending")
+        ) {
           window.setTimeout(() => {
             void verifyPaymentAndFetch(txRef, attempt + 1);
           }, RETRY_DELAY_MS);
@@ -550,15 +840,18 @@ export default function BillingPage() {
         setFeedback({
           tone: "error",
           message:
-            errorMsg ||
-            "We could not verify the payment yet. Refresh the page or try again in a moment.",
+            errorMsg || t("alerts.paymentVerificationFailed"),
         });
       }
 
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname,
+      );
       await fetchData();
     },
-    [fetchData],
+    [fetchData, t],
   );
 
   useEffect(() => {
@@ -578,7 +871,7 @@ export default function BillingPage() {
     if (!isAuthorized) {
       setFeedback({
         tone: "error",
-        message: "Only company owners and admins can manage subscriptions.",
+        message: t("alerts.unauthorized"),
       });
       return;
     }
@@ -592,7 +885,7 @@ export default function BillingPage() {
       if (res.data?.message) {
         setFeedback({
           tone: "success",
-          message: "Plan activated successfully.",
+          message: t("alerts.paymentInitialized"),
         });
         await fetchData();
         return;
@@ -605,7 +898,7 @@ export default function BillingPage() {
 
       setFeedback({
         tone: "error",
-        message: "The payment service did not return a checkout link. Please try again.",
+        message: t("alerts.checkoutLinkMissing"),
       });
     } catch (error: any) {
       console.error("Payment initialization failed", error);
@@ -613,7 +906,7 @@ export default function BillingPage() {
         tone: "error",
         message:
           error?.response?.data?.error ||
-          "Failed to initialize payment. Please try again.",
+          t("alerts.paymentInitializationFailed"),
       });
     } finally {
       setSubscribingTo(null);
@@ -636,40 +929,44 @@ export default function BillingPage() {
     switch (action) {
       case "current":
         return {
-          label: "Current Plan",
+          label: t("currentPlan"),
           icon: <Shield className="h-4 w-4" />,
           disabled: true,
           className:
             "cursor-not-allowed border border-secondary/15 bg-secondary/[0.06] text-secondary",
         };
+
       case "upgrade":
         // ✅ GOLD — upgrade CTA stays gold
         return {
-          label: "Upgrade Plan",
+          label: t("upgradePlan"),
           icon: <ArrowUp className="h-4 w-4" />,
           disabled: false,
           className: GOLD.button,
         };
+
       case "downgrade":
         return {
-          label: "Choose Lower Plan",
+          label: t("chooseLowerPlan"),
           icon: <ArrowDown className="h-4 w-4" />,
           disabled: false,
           className:
             "border border-secondary/15 bg-white text-secondary hover:border-secondary/30 hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:ring-offset-2",
         };
+
       case "free_locked":
         return {
-          label: "Free After Expiry",
+          label: t("freeAfterExpiry"),
           icon: <Clock className="h-4 w-4" />,
           disabled: true,
           className:
             "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
         };
+
       case "subscribe":
         // ✅ GOLD — subscribe CTA stays gold
         return {
-          label: "Choose Plan",
+          label: t("choosePlan"),
           icon: <CreditCard className="h-4 w-4" />,
           disabled: false,
           className: GOLD.button,
@@ -693,9 +990,16 @@ export default function BillingPage() {
   const isFree = currentPlanPrice === 0;
   const isExpired = activeSub?.is_expired ?? false;
   const daysRemaining = activeSub?.days_remaining;
+
   const currentPlanMeta = activeSub?.plan
-    ? getPlanMeta(activeSub.plan)
-    : PLAN_META.free;
+    ? getPlanMeta(activeSub.plan, t)
+    : {
+        ...PLAN_META.free,
+        positioning: t(PLAN_META.free.positioning),
+        purpose: t(PLAN_META.free.purpose),
+        audience: t(PLAN_META.free.audience),
+        highlights: PLAN_META.free.highlights.map((key) => t(key)),
+      };
 
   const currentProducts = activeSub?.current_products || 0;
   const currentFeaturedProducts = activeSub?.current_featured_products || 0;
@@ -717,20 +1021,26 @@ export default function BillingPage() {
           ? "Active"
           : "Pending";
 
-  /**
-   * ✅ STRICT PALETTE — no colored text.
-   * All statuses use secondary / secondary-muted tokens.
-   * "Expired" is only differentiated by lower opacity + darker border.
-   */
   const statusClass = isExpired
     ? "border-secondary/25 bg-secondary/[0.04] text-secondary/60"
     : "border-secondary/15 bg-secondary/[0.06] text-secondary";
 
+  const statusLabel =
+    status === "Expired"
+      ? t("subscriptionStatus.expired")
+      : status === "Free"
+        ? t("subscriptionStatus.free")
+        : status === "Expiring"
+          ? t("subscriptionStatus.expiring")
+          : status === "Active"
+            ? t("subscriptionStatus.active")
+            : t("subscriptionStatus.pending");
+
   return (
     <div className="mx-auto w-full max-w-[1500px] space-y-5 px-1 pb-8 sm:px-2">
       <PageHeader
-        title="Subscription"
-        description="Manage your plan, usage, renewal, and available plans."
+        title={t("pageTitle")}
+        description={t("pageDescription")}
         icon={CreditCard}
         loading={isLoading}
         className="mb-5 sm:mb-6"
@@ -755,9 +1065,9 @@ export default function BillingPage() {
             type="button"
             onClick={() => setFeedback(null)}
             className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold opacity-70 hover:opacity-100"
-            aria-label="Dismiss message"
+            aria-label={t("alerts.dismiss")}
           >
-            Dismiss
+            {t("alerts.dismiss")}
           </button>
         </div>
       )}
@@ -769,7 +1079,7 @@ export default function BillingPage() {
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
               <div>
                 <p className="font-semibold text-secondary">
-                  Subscription data unavailable
+                  {t("alerts.loadErrorTitle")}
                 </p>
                 <p className="mt-1 text-sm text-secondary/70">{loadError}</p>
               </div>
@@ -780,7 +1090,7 @@ export default function BillingPage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-secondary/15 bg-white px-4 text-sm font-semibold text-secondary shadow-sm hover:bg-secondary/[0.04]"
             >
               <RefreshCw className="h-4 w-4" />
-              Retry
+              {t("alerts.retry")}
             </button>
           </div>
         </div>
@@ -794,12 +1104,12 @@ export default function BillingPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary/60">
-                  Current subscription
+                  {t("currentSubscription")}
                 </span>
                 <span
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${statusClass}`}
                 >
-                  {status}
+                  {statusLabel}
                 </span>
               </div>
 
@@ -819,33 +1129,47 @@ export default function BillingPage() {
               <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
-                    Price
+                    {t("billingDetails.price")}
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-secondary">
-                    {isFree ? "Free" : `ETB ${formatEtb(currentPlanPrice)} / month`}
+                    {isFree
+                      ? t("billingDetails.free")
+                      : t("billingDetails.monthlyPrice", {
+                          price: formatEtb(currentPlanPrice),
+                        })}
                   </p>
                 </div>
+
                 <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
-                    Started
+                    {t("billingDetails.started")}
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-secondary">
                     {formatDate(activeSub?.start_date)}
                   </p>
                 </div>
+
                 <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
-                    {isFree ? "Trial / Period Ends" : "Renewal"}
+                    {isFree
+                      ? t("billingDetails.trialPeriodEnds")
+                      : t("billingDetails.renewal")}
                   </p>
                   <p className="mt-1 text-sm font-extrabold text-secondary">
-                    {activeSub?.end_date ? formatDate(activeSub.end_date) : (isFree ? "No expiry set" : "—")}
+                    {activeSub?.end_date
+                      ? formatDate(activeSub.end_date)
+                      : isFree
+                        ? t("billingDetails.noExpiry")
+                        : "—"}
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 flex items-center gap-2 text-xs text-secondary/60">
                 <Store className="h-4 w-4 text-secondary" />
-                Best suited for {currentPlanMeta.audience.toLowerCase()}.
+                {t("billingDetails.bestSuitedFor", {
+                  audience: currentPlanMeta.audience.toLowerCase(),
+                })}
               </div>
 
               {!isExpired &&
@@ -855,8 +1179,9 @@ export default function BillingPage() {
                 daysRemaining > 0 && (
                   <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-xs leading-5 text-secondary">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-                    Your plan period expires in {daysRemaining} day
-                    {daysRemaining === 1 ? "" : "s"}. Upgrade or renew your plan to ensure your storefront stays active and accessible to customers.
+                    {t("alerts.expiringWarning", {
+                      count: daysRemaining,
+                    })}
                   </div>
                 )}
 
@@ -864,8 +1189,10 @@ export default function BillingPage() {
                 <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-3 text-xs leading-5 text-red-800">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
                   <div>
-                    <span className="font-semibold">Your subscription has expired.</span>{" "}
-                    Your store and products are currently inactive on the shopping app. Choose a subscription plan below to reactivate your store automatically upon payment.
+                    <span className="font-semibold">
+                      {t("alerts.expiredTitle")}
+                    </span>{" "}
+                    {t("alerts.expiredDescription")}
                   </div>
                 </div>
               )}
@@ -874,21 +1201,24 @@ export default function BillingPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <UsageCard
                 icon={<Package className="h-4 w-4" />}
-                label="Public products"
+                label={t("usage.publicProducts")}
                 current={currentProducts}
                 limit={allowedProducts}
+                t={t}
               />
               <UsageCard
                 icon={<Zap className="h-4 w-4" />}
-                label="Featured products"
+                label={t("usage.featuredProducts")}
                 current={currentFeaturedProducts}
                 limit={allowedFeaturedProducts}
+                t={t}
               />
               <UsageCard
                 icon={<Users className="h-4 w-4" />}
-                label="Staff members"
+                label={t("usage.staffMembers")}
                 current={currentStaff}
                 limit={allowedStaff}
+                t={t}
               />
             </div>
           </div>
@@ -901,30 +1231,28 @@ export default function BillingPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-secondary" />
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/70">
-                Available plans
+                {t("plans.available")}
               </p>
             </div>
             <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-secondary">
               {isExpired
-                ? "Reactivate your business"
-                : "Pick the plan that fits your store"}
+                ? t("plans.reactivate")
+                : t("plans.choosePlan")}
             </h2>
             <p className="mt-1 text-xs text-secondary/55">
-              Clear monthly pricing, simple limits, and only the most important
-              features shown.
+              {t("plans.description")}
             </p>
           </div>
 
           <span className="w-fit rounded-full border border-secondary/15 bg-secondary/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
-            Monthly billing · ETB
+            {t("billingDetails.monthlyBilling")}
           </span>
         </div>
 
         {!isAuthorized && !isLoading && (
           <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-secondary/10 bg-secondary/[0.03] px-4 py-3 text-xs text-secondary/70">
             <Shield className="mt-0.5 h-4 w-4 shrink-0 text-secondary/60" />
-            Only company owners and admins can change the subscription. You can
-            still review plan benefits and limits.
+            {t("alerts.accessNotice")}
           </div>
         )}
 
@@ -938,10 +1266,10 @@ export default function BillingPage() {
           <div className="rounded-2xl border border-secondary/10 bg-white px-5 py-12 text-center shadow-sm">
             <CreditCard className="mx-auto h-6 w-6 text-secondary/40" />
             <p className="mt-3 text-sm font-semibold text-secondary">
-              No plans available
+              {t("alerts.noPlans")}
             </p>
             <p className="mt-1 text-xs text-secondary/50">
-              Subscription plans will appear here when they are configured.
+              {t("alerts.noPlansDescription")}
             </p>
           </div>
         ) : (
@@ -950,14 +1278,14 @@ export default function BillingPage() {
               const action = getPlanAction(plan);
               const button = getButtonConfig(action);
               const price = Number(plan.price || 0);
-              const meta = getPlanMeta(plan);
+              const meta = getPlanMeta(plan, t);
               const tier = resolvePlanTier(plan);
               const isCurrent = action === "current";
               const isUpgrade = action === "upgrade";
               const isAdvanced = tier === "advanced";
               const isPremium = tier === "premium";
 
-              const includedItems = getDynamicPlanFeatures(plan, tier);
+              const includedItems = getDynamicPlanFeatures(plan, tier, t);
 
               return (
                 <article
@@ -972,12 +1300,12 @@ export default function BillingPage() {
                 >
                   {isCurrent ? (
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
-                      Current Plan
+                      {t("currentPlan")}
                     </div>
                   ) : isUpgrade ? (
                     // ✅ GOLD badge — matches the gold upgrade CTA
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F4C44E] px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#4E3900] shadow-sm">
-                      ↑ Upgrade
+                      {t("upgradeBadge")}
                     </div>
                   ) : null}
 
@@ -989,11 +1317,13 @@ export default function BillingPage() {
 
                   <div className="mt-8 flex items-end gap-1.5">
                     <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-secondary">
-                      {price === 0 ? "Free" : `${formatEtb(price)} ETB`}
+                      {price === 0
+                        ? t("billingDetails.free")
+                        : `${formatEtb(price)} ETB`}
                     </span>
                     {price > 0 && (
                       <span className="pb-0.5 text-[11px] font-semibold text-secondary/45">
-                        /mo
+                        {t("billingDetails.monthly")}
                       </span>
                     )}
                   </div>
@@ -1005,7 +1335,7 @@ export default function BillingPage() {
                       <span className="mt-1 text-xs font-black leading-tight text-secondary">
                         {plan.max_products === -1
                           ? "Unlimited"
-                          : formatLimit(plan.max_products)}
+                          : formatLimit(plan.max_products, t)}
                       </span>
                       <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
                         Products
@@ -1017,7 +1347,7 @@ export default function BillingPage() {
                       <span className="mt-1 text-xs font-black leading-tight text-secondary">
                         {(plan.max_staff_members ?? 5) === -1
                           ? "Unlimited"
-                          : formatLimit(plan.max_staff_members ?? 5)}
+                          : formatLimit(plan.max_staff_members ?? 5, t)}
                       </span>
                       <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
                         Staff
@@ -1031,7 +1361,7 @@ export default function BillingPage() {
                           ? "Unlimited"
                           : plan.max_featured_products <= 0
                             ? "0"
-                            : formatLimit(plan.max_featured_products)}
+                            : formatLimit(plan.max_featured_products, t)}
                       </span>
                       <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
                         Featured
@@ -1040,7 +1370,7 @@ export default function BillingPage() {
                   </div> */}
 
                   <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.11em] text-secondary/50">
-                    What&apos;s included
+                    {t("plans.included")}
                   </p>
 
                   <ul className="mt-4 space-y-3">
@@ -1095,7 +1425,7 @@ export default function BillingPage() {
                       }`}
                       title={
                         !isAuthorized
-                          ? "Only company owners or admins can modify subscription plans"
+                          ? t("alerts.unauthorizedTooltip")
                           : undefined
                       }
                     >
@@ -1111,19 +1441,19 @@ export default function BillingPage() {
 
                     {action === "upgrade" && !isExpired && (
                       <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
-                        Starts after successful payment verification.
+                        {t("plans.startsAfterPayment")}
                       </p>
                     )}
 
                     {action === "downgrade" && (
                       <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
-                        Downgrade timing follows policy.
+                        {t("plans.downgradePolicy")}
                       </p>
                     )}
 
                     {action === "free_locked" && (
                       <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
-                        Free access becomes available after the paid plan ends.
+                        {t("plans.freeAfterPaid")}
                       </p>
                     )}
                   </div>
@@ -1141,18 +1471,18 @@ export default function BillingPage() {
               <BadgeCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-secondary">Plan notes</h3>
+              <h3 className="text-sm font-bold text-secondary">
+                {t("notes.title")}
+              </h3>
               <p className="mt-1 max-w-4xl text-xs leading-5 text-secondary/65">
-                Upgrades can be requested at any time. Paid features become
-                available after successful payment verification. Downgrades
-                follow the billing policy.
+                {t("notes.description")}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 rounded-xl border border-secondary/15 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
             <Shield className="h-3.5 w-3.5" />
-            Owner / Admin managed
+            {t("notes.managedBy")}
           </div>
         </div>
       </section>

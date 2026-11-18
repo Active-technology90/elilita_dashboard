@@ -39,6 +39,11 @@ import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
 import toast from "react-hot-toast";
+import i18n from "../../../i18n";
+import { useTranslation } from "react-i18next";
+
+/* Module-scope translator so helpers and JSX resolve the same keys */
+const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts);
 
 /* ──────────────────────────────────────────────────────────────────
    Role helpers
@@ -208,6 +213,7 @@ const StatCard = ({
    ────────────────────────────────────────────────────────────────── */
 
 export default function CompanyUsers() {
+  const { t } = useTranslation("companyUsers");
   const { user: currentUser } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -360,11 +366,11 @@ export default function CompanyUsers() {
   }, [tableSearch, roleFilter]);
 
   const pageSizeOptions: SelectOption[] = [
-    { value: "5", label: "5 / page" },
-    { value: "10", label: "10 / page" },
-    { value: "15", label: "15 / page" },
-    { value: "30", label: "30 / page" },
-    { value: "60", label: "60 / page" },
+    { value: "5", label: t("page.pageSizeLabel", { count: 5 }) },
+    { value: "10", label: t("page.pageSizeLabel", { count: 10 }) },
+    { value: "15", label: t("page.pageSizeLabel", { count: 15 }) },
+    { value: "30", label: t("page.pageSizeLabel", { count: 30 }) },
+    { value: "60", label: t("page.pageSizeLabel", { count: 60 }) },
   ];
 
   const roleCounts = useMemo(() => {
@@ -380,11 +386,23 @@ export default function CompanyUsers() {
   }, [users]);
 
   const roleOptions: SelectOption[] = [
-    { value: "all", label: "All roles" },
-    { value: "admin", label: `Admin (${roleCounts.admin})` },
-    { value: "staff", label: `Dispatcher (${roleCounts.staff})` },
-    { value: "viewer", label: `Viewer (${roleCounts.viewer})` },
-    { value: "delivery", label: `Delivery (${roleCounts.delivery})` },
+    { value: "all", label: t("page.allRolesLabel") },
+    {
+      value: "admin",
+      label: t("page.roleOptionAdmin", { count: roleCounts.admin }),
+    },
+    {
+      value: "staff",
+      label: t("page.roleOptionStaff", { count: roleCounts.staff }),
+    },
+    {
+      value: "viewer",
+      label: t("page.roleOptionViewer", { count: roleCounts.viewer }),
+    },
+    {
+      value: "delivery",
+      label: t("page.roleOptionDelivery", { count: roleCounts.delivery }),
+    },
   ];
 
   const filteredUsers = useMemo(() => {
@@ -515,7 +533,7 @@ export default function CompanyUsers() {
     const fallback =
       err?.response?.data?.detail ||
       err?.message ||
-      "Failed to create user. Please try again.";
+      t("page.toastCreateFailedFallback");
 
     return { detail: String(fallback) };
   };
@@ -531,28 +549,23 @@ export default function CompanyUsers() {
       setShowCreateModal(false);
       setCreateServerErrors({});
       await refetch();
-      toast.success("User created successfully");
+      toast.success(t("page.toastCreateSuccess"));
     } catch (err: any) {
       console.error("Create user error:", err);
       const parsed = extractServerErrors(err);
       setCreateServerErrors(parsed);
 
-      // Surface the first error message as a toast too
       const firstMsg =
         Object.values(parsed)
           .flat()
           .map(String)
-          .find(Boolean) || "Failed to create user";
+          .find(Boolean) || t("page.toastCreateFailed");
       toast.error(firstMsg);
     } finally {
       setCreatingUser(false);
     }
   };
 
-  /**
-   * handleEditUser — receives `updatedUser` from the modal.
-   * The `id` here is already the resolved backend PK (from EditUserModal.resolveUserId).
-   */
   const handleEditUser = async (updatedUser: {
     id: string;
     first_name: string;
@@ -571,7 +584,6 @@ export default function CompanyUsers() {
       return;
     }
 
-    // ── Find the original row being edited to double-check IDs ──
     const originalRow =
       (users || []).find(
         (u: any) =>
@@ -585,24 +597,18 @@ export default function CompanyUsers() {
     console.log("🆔 originalRow.user?.id   →", originalRow?.user?.id);
     console.log("🆔 payload.id (from modal)→", updatedUser.id);
 
-    // ── Resolve the real backend user PK ──
-    // Priority:
-    //   1. payload.id  (modal already resolved it — trust this)
-    //   2. originalRow.user_id
-    //   3. originalRow.user?.id
-    //   4. originalRow.id
     const resolvedUserId =
       resolveUserIdFromRow({
-        user_id: updatedUser.id,       // modal-resolved value takes top priority
-        id: originalRow?.user_id,      // fall back to original row's user_id
-        user: originalRow?.user,       // then nested user
+        user_id: updatedUser.id,
+        id: originalRow?.user_id,
+        user: originalRow?.user,
       }) || String(updatedUser.id);
 
     console.log("✅ resolvedUserId (for API) →", resolvedUserId);
 
     if (!resolvedUserId) {
       console.error("❌ No valid user ID — aborting save");
-      toast.error("Cannot save: missing user ID.");
+      toast.error(t("page.toastMissingUserId"));
       console.groupEnd();
       return;
     }
@@ -631,7 +637,7 @@ export default function CompanyUsers() {
       );
 
       console.log("✅ [CompanyUsers] Role updated successfully");
-      toast.success("User role updated successfully");
+      toast.success(t("page.toastUpdateSuccess"));
 
       setEditingUser(null);
       await refetch();
@@ -649,7 +655,7 @@ export default function CompanyUsers() {
         error?.response?.data?.user_role?.[0] ||
         error?.response?.data?.role?.[0] ||
         error?.message ||
-        "Failed to update user.";
+        t("page.toastUpdateFailed");
 
       toast.error(String(message));
       setEditServerErrors(error?.response?.data ?? {});
@@ -670,13 +676,13 @@ export default function CompanyUsers() {
       console.log("🗑️ [CompanyUsers] Deleting user id →", resolvedUserId);
 
       await removeUserFromCompany(companySlug, resolvedUserId);
-      toast.success("User removed successfully");
+      toast.success(t("page.toastDeleteSuccess"));
       setDeletingUser(null);
       await refetch();
     } catch (error: any) {
       console.error(error);
       toast.error(
-        error?.response?.data?.detail || "Failed to remove user.",
+        error?.response?.data?.detail || t("page.toastDeleteFailed"),
       );
     } finally {
       setDeleting(false);
@@ -695,10 +701,10 @@ export default function CompanyUsers() {
             <Shield className="h-5 w-5" />
           </div>
           <h3 className="mt-4 text-sm font-semibold text-secondary">
-            Access restricted
+            {t("page.accessRestrictedTitle")}
           </h3>
           <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-secondary/50">
-            You do not have permission to manage this company&apos;s users.
+            {t("page.accessRestrictedDescription")}
           </p>
         </div>
       </div>
@@ -709,9 +715,9 @@ export default function CompanyUsers() {
     return (
       <CompanySelector
         companies={companies}
-        title="Team & Dispatcher Management"
-        subtitle="Select a company to manage users, dispatchers and access."
-        searchPlaceholder="Search companies by name..."
+        title={t("page.selectCompanyTitle")}
+        subtitle={t("page.selectCompanySubtitle")}
+        searchPlaceholder={t("page.selectCompanySearchPlaceholder")}
         isLoading={isLoadingCompanies}
         disableProductSearch={true}
         onSelect={(slug, name) => {
@@ -738,7 +744,7 @@ export default function CompanyUsers() {
         <div className="rounded-2xl border border-secondary/10 bg-white px-6 py-12 text-center">
           <Building2 className="mx-auto h-8 w-8 text-secondary/30" />
           <p className="mt-3 text-xs font-medium text-secondary/55">
-            Select a company to manage its users.
+            {t("page.noCompanySelected")}
           </p>
         </div>
       </div>
@@ -753,15 +759,20 @@ export default function CompanyUsers() {
     <div className="rounded-2xl border border-gray-200/80 bg-white shadow-sm">
       <div className="p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title={isSuperAdmin ? companyName || "Company Users" : "All Users"}
-          eyebrow={isSuperAdmin ? "User Management" : undefined}
-          description="Manage dispatchers, delivery personnel and company access."
+          title={
+            isSuperAdmin
+              ? companyName || t("page.pageTitleSuperAdmin")
+              : t("page.pageTitleCompany")
+          }
+          eyebrow={isSuperAdmin ? t("page.pageEyebrowSuperAdmin") : undefined}
+          description={t("page.pageDescription")}
           icon={Users}
           badge={
             !loading ? (
               <span className="inline-flex items-center rounded-full border border-secondary/10 bg-secondary/[0.06] px-2.5 py-1 text-[10px] font-semibold text-secondary">
-                {filteredUsers.length}{" "}
-                {filteredUsers.length === 1 ? "user" : "users"}
+                {filteredUsers.length === 1
+                  ? t("page.userCountOne", { count: filteredUsers.length })
+                  : t("page.userCountMany", { count: filteredUsers.length })}
               </span>
             ) : undefined
           }
@@ -773,8 +784,12 @@ export default function CompanyUsers() {
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20"
               >
                 <Repeat className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Switch company</span>
-                <span className="sm:hidden">Switch</span>
+                <span className="hidden sm:inline">
+                  {t("page.switchCompany")}
+                </span>
+                <span className="sm:hidden">
+                  {t("page.switchCompanyShort")}
+                </span>
               </button>
             ) : undefined
           }
@@ -787,19 +802,31 @@ export default function CompanyUsers() {
             <StatsSkeleton />
           ) : (
             <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-              <StatCard title="Total" value={users?.length || 0} icon={Users} />
-              <StatCard title="Admins" value={roleCounts.admin} icon={Shield} />
               <StatCard
-                title="Dispatchers"
+                title={t("page.statTotal")}
+                value={users?.length || 0}
+                icon={Users}
+              />
+              <StatCard
+                title={t("page.statAdmins")}
+                value={roleCounts.admin}
+                icon={Shield}
+              />
+              <StatCard
+                title={t("page.statDispatchers")}
                 value={roleCounts.staff}
                 icon={Briefcase}
               />
               <StatCard
-                title="Delivery"
+                title={t("page.statDelivery")}
                 value={roleCounts.delivery}
                 icon={Truck}
               />
-              <StatCard title="Viewers" value={roleCounts.viewer} icon={Eye} />
+              <StatCard
+                title={t("page.statViewers")}
+                value={roleCounts.viewer}
+                icon={Eye}
+              />
             </section>
           )}
         </div>
@@ -810,11 +837,12 @@ export default function CompanyUsers() {
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <div className="flex-1 leading-5">
               <span className="font-bold">
-                Staff Limit Reached ({currentStaffCount}/{maxStaff}):{" "}
+                {t("page.limitReachedTitle", {
+                  current: currentStaffCount,
+                  max: maxStaff,
+                })}{" "}
               </span>
-              Your current subscription tier has reached its maximum staff
-              members limit. Please upgrade your subscription plan to add or
-              onboard more team members.
+              {t("page.limitReachedDescription")}
             </div>
           </div>
         )}
@@ -828,7 +856,10 @@ export default function CompanyUsers() {
               disabled={isLimitReached}
               title={
                 isLimitReached
-                  ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                  ? t("page.limitReachedTooltip", {
+                      current: currentStaffCount,
+                      max: maxStaff,
+                    })
                   : undefined
               }
               className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 active:scale-[0.98] ${
@@ -838,7 +869,7 @@ export default function CompanyUsers() {
               }`}
             >
               <UserPlus className="h-4 w-4" />
-              Add member
+              {t("page.addMember")}
             </button>
             <button
               type="button"
@@ -849,7 +880,10 @@ export default function CompanyUsers() {
               disabled={isLimitReached}
               title={
                 isLimitReached
-                  ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                  ? t("page.limitReachedTooltip", {
+                      current: currentStaffCount,
+                      max: maxStaff,
+                    })
                   : undefined
               }
               className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-secondary/20 bg-white px-4 text-sm font-semibold text-secondary shadow-sm transition hover:bg-secondary/[0.04] active:scale-[0.98] ${
@@ -859,7 +893,7 @@ export default function CompanyUsers() {
               }`}
             >
               <UserPlus className="h-4 w-4" />
-              Create user
+              {t("page.createUser")}
             </button>
           </div>
         )}
@@ -882,7 +916,7 @@ export default function CompanyUsers() {
                         setTableSearch(value);
                         setCurrentPage(1);
                       }}
-                      placeholder="Search team members"
+                      placeholder={t("page.searchPlaceholder")}
                       loading={loading}
                       showMobileFilter={true}
                       onMobileFilterClick={() =>
@@ -902,7 +936,7 @@ export default function CompanyUsers() {
                         setCurrentPage(1);
                       }}
                       options={pageSizeOptions}
-                      placeholder="10 / page"
+                      placeholder={t("page.pageSizeLabel", { count: 10 })}
                       className="h-10 w-full text-xs"
                     />
                   </div>
@@ -918,7 +952,7 @@ export default function CompanyUsers() {
                       setTableSearch(value);
                       setCurrentPage(1);
                     }}
-                    placeholder="Search team members"
+                    placeholder={t("page.searchPlaceholder")}
                     loading={loading}
                     showClearButton={true}
                     className="w-full"
@@ -940,7 +974,7 @@ export default function CompanyUsers() {
                       setCurrentPage(1);
                     }}
                     options={roleOptions}
-                    placeholder="All roles"
+                    placeholder={t("page.allRolesLabel")}
                     className="h-10 w-full text-xs"
                   />
                 </div>
@@ -953,7 +987,7 @@ export default function CompanyUsers() {
                       setCurrentPage(1);
                     }}
                     options={pageSizeOptions}
-                    placeholder="10 / page"
+                    placeholder={t("page.pageSizeLabel", { count: 10 })}
                     className="h-10 w-full text-xs"
                   />
                 </div>
@@ -966,7 +1000,10 @@ export default function CompanyUsers() {
                       disabled={isLimitReached}
                       title={
                         isLimitReached
-                          ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                          ? t("page.limitReachedTooltip", {
+                              current: currentStaffCount,
+                              max: maxStaff,
+                            })
                           : undefined
                       }
                       className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-secondary px-3.5 text-xs font-semibold text-white transition hover:bg-secondary/90 ${
@@ -976,7 +1013,7 @@ export default function CompanyUsers() {
                       }`}
                     >
                       <UserPlus className="h-4 w-4" />
-                      Add member
+                      {t("page.addMember")}
                     </button>
 
                     <button
@@ -988,7 +1025,10 @@ export default function CompanyUsers() {
                       disabled={isLimitReached}
                       title={
                         isLimitReached
-                          ? `Staff limit reached (${currentStaffCount}/${maxStaff})`
+                          ? t("page.limitReachedTooltip", {
+                              current: currentStaffCount,
+                              max: maxStaff,
+                            })
                           : undefined
                       }
                       className={`inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] ${
@@ -998,7 +1038,7 @@ export default function CompanyUsers() {
                       }`}
                     >
                       <UserPlus className="h-4 w-4" />
-                      Create user
+                      {t("page.createUser")}
                     </button>
                   </>
                 )}
@@ -1020,8 +1060,6 @@ export default function CompanyUsers() {
               canEdit={canManageUsers}
               canDelete={canManageUsers}
               onEdit={(member) => {
-                // ✅ Enrich the member with all possible user-id fields so
-                //    the modal's resolveUserId() can pick the correct one.
                 console.group("✏️ [CompanyUsers] Opening edit modal");
                 console.log("Raw member from table:", member);
                 console.log("member.id        →", (member as any)?.id);
@@ -1030,12 +1068,10 @@ export default function CompanyUsers() {
 
                 const enriched = {
                   ...member,
-                  // Ensure `id` reflects the real PK
                   id:
                     (member as any)?.user_id ??
                     (member as any)?.user?.id ??
                     (member as any)?.id,
-                  // Preserve nested user object if present
                   user: (member as any)?.user ?? null,
                 };
 
@@ -1067,10 +1103,10 @@ export default function CompanyUsers() {
             <div className="border-t border-secondary/10 px-6 py-14 text-center sm:py-16">
               <Users className="mx-auto h-8 w-8 text-secondary/30" />
               <p className="mt-3 text-sm font-semibold text-secondary">
-                No users found
+                {t("page.noUsersTitle")}
               </p>
               <p className="mt-1 text-xs text-secondary/50">
-                Try another search or role filter.
+                {t("page.noUsersDescription")}
               </p>
               {(tableSearch || roleFilter !== "all") && (
                 <button
@@ -1081,7 +1117,7 @@ export default function CompanyUsers() {
                   }}
                   className="mt-4 h-9 rounded-lg border border-secondary/15 bg-white px-3.5 text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04]"
                 >
-                  Clear filters
+                  {t("page.clearFilters")}
                 </button>
               )}
             </div>
@@ -1105,15 +1141,17 @@ export default function CompanyUsers() {
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-secondary/10 bg-white px-5 py-4">
               <div>
-                <h3 className="text-sm font-bold text-secondary">Filters</h3>
+                <h3 className="text-sm font-bold text-secondary">
+                  {t("page.filtersTitle")}
+                </h3>
                 <p className="mt-0.5 text-[11px] text-secondary/50">
-                  Narrow the user list by role.
+                  {t("page.filtersDescription")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMobileFilterModal(false)}
-                aria-label="Close filters"
+                aria-label={t("page.closeFiltersAria")}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-secondary/50 transition hover:bg-secondary/[0.05] hover:text-secondary"
               >
                 <X className="h-4 w-4" />
@@ -1123,7 +1161,7 @@ export default function CompanyUsers() {
             <div className="space-y-5 p-5">
               <div>
                 <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.06em] text-secondary/50">
-                  Role
+                  {t("editModal.roleLabel")}
                 </label>
                 <CustomSelect
                   value={roleFilter}
@@ -1138,7 +1176,7 @@ export default function CompanyUsers() {
                     )
                   }
                   options={roleOptions}
-                  placeholder="All roles"
+                  placeholder={t("page.allRolesLabel")}
                 />
               </div>
 
@@ -1153,14 +1191,14 @@ export default function CompanyUsers() {
                   disabled={!tableSearch && roleFilter === "all"}
                   className="h-11 rounded-lg border border-secondary/15 bg-white text-xs font-semibold text-secondary transition hover:bg-secondary/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Clear all
+                  {t("page.clearFilters")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowMobileFilterModal(false)}
                   className="h-11 rounded-lg bg-secondary text-xs font-semibold text-white transition hover:bg-secondary/90"
                 >
-                  Show {filteredUsers.length}
+                  {t("page.showCount", { count: filteredUsers.length })}
                 </button>
               </div>
             </div>

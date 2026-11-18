@@ -1,4 +1,5 @@
 export default {
+  
   statusBadge: {
     active: "ንቁ",
     inactive: "እንቅስቃሴ-አልባ",
@@ -33,9 +34,9 @@ export default {
     service: "አገልግሎት",
     price: "ዋጋ",
     duration: "ቆይታ",
-    booking: "ቦታ ማስያዝ",
+    booking: "ቀጠሮ",
     status: "ሁኔታ",
-    bookings: "ቦታ ማስያዞች",
+    bookings: "ቀጠሮ ማስያዞች",
     actions: "ተግባራት",
   },
   tags: {
@@ -65,11 +66,11 @@ export default {
     switchCompany: "ኩባንያ ቀይር",
     heading: "{{company}} የአገልግሎት ኩባንያ አይደለም",
     fallbackCompany: "የተመረጠው ኩባንያ",
-    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ ተገኝነት እና ቦታ ማስያዝ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
+    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ ተገኝነት እና ቀጠሮ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
     chooseServiceCompany: "የአገልግሎት ኩባንያ ምረጥ",
   },
   page: {
-    description: "የአገልግሎት አቅርቦቶችን፣ ዋጋን፣ ቆይታን እና የቦታ ማስያዝ አማራጮችን ያስተዳድሩ።",
+    description: "የአገልግሎት አቅርቦቶችን፣ ዋጋን፣ ቆይታን እና የቀጠሮ አማራጮችን ያስተዳድሩ።",
     eyebrow: "የእኔ አገልግሎቶች",
     switchCompany: "ኩባንያ ቀይር",
     addService: "አገልግሎት ጨምር",
@@ -123,7 +124,7 @@ export default {
     copySuffix: "ቅጂ",
     copySuffixAm: "ኮፒ",
   },
-  bookingsCount: "{{count}} ቦታ ማስያዝ",
+  bookingsCount: "{{count}} ቀጠሮ",
   bookingsCount_plural: "{{count}} ቦታ ማስያዞች",
   pagination: {
     showing: "ከ {{from}} – {{to}} ከ {{total}} አገልግሎቶች በማሳየት ላይ",

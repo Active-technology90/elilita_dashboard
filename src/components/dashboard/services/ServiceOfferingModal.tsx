@@ -1,4 +1,6 @@
+
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Loader2,
@@ -26,10 +28,10 @@ import type { IntakeFormField, ServiceOffering } from "../../../types";
 /* -------------------------------------------------------------------------- */
 /*  Utility                                                                   */
 /* -------------------------------------------------------------------------- */
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
-  return "Something went wrong";
+  return fallback;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -79,22 +81,6 @@ const defaultForm: ServiceFormState = {
   intake_form_schema: [],
 };
 
-// ----- Dropdown options -----
-const serviceTypeOptions = [
-  { value: "one_off", label: "One-Off Service (e.g. Haircut, Auto, Beauty)" },
-  {
-    value: "recurring",
-    label: "Recurring Subscription (e.g. Tutoring, Cleaning)",
-  },
-];
-
-const billingCycleOptions = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "yearly", label: "Yearly" },
-];
-
 /* -------------------------------------------------------------------------- */
 /*  Reusable Card                                                             */
 /* -------------------------------------------------------------------------- */
@@ -125,12 +111,15 @@ function ConfirmDiscardDialog({
   onKeep: () => void;
   onDiscard: () => void;
 }) {
+  const { t } = useTranslation("serviceOfferingModal");
+
   if (!open) return null;
+
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Discard changes?"
+      aria-label={t("discardDialog.ariaLabel")}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
     >
       <div className="bg-white rounded-2xl p-6 max-w-sm mx-4 shadow-xl">
@@ -140,10 +129,10 @@ function ConfirmDiscardDialog({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Discard changes?
+              {t("discardDialog.title")}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              You have unsaved changes that will be lost.
+              {t("discardDialog.description")}
             </p>
             <div className="mt-4 flex gap-2 justify-end">
               <button
@@ -151,13 +140,13 @@ function ConfirmDiscardDialog({
                 className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-xl hover:bg-gray-50"
                 autoFocus
               >
-                Keep editing
+                {t("discardDialog.keepEditing")}
               </button>
               <button
                 onClick={onDiscard}
                 className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700"
               >
-                Discard
+                {t("discardDialog.discard")}
               </button>
             </div>
           </div>
@@ -192,6 +181,8 @@ export function ServiceOfferingModal({
   onSaved?: () => void;
   onShowToast?: (type: "success" | "error", message: string) => void;
 }) {
+  const { t } = useTranslation("serviceOfferingModal");
+
   /* ── State ────────────────────────────────────────────────────────────── */
   const [step, setStep] = useState<"details" | "addons" | "gallery">(
     initialStep || "details"
@@ -299,26 +290,26 @@ export function ServiceOfferingModal({
   /* ── Validation ─────────────────────────────────────────────────────────── */
   const validateDetails = useCallback((): string[] => {
     const errors: string[] = [];
-    if (!form.title.trim()) errors.push("Title is required.");
+    if (!form.title.trim()) errors.push(t("validation.titleRequired"));
     if (form.title.length > 200)
-      errors.push("Title must be under 200 characters.");
+      errors.push(t("validation.titleMaxLength"));
     if (form.description.length > 500)
-      errors.push("Description must be under 500 characters.");
+      errors.push(t("validation.descriptionMaxLength"));
     if (form.pricing_type !== "custom") {
       const priceVal = Number(form.price);
       if (isNaN(priceVal) || priceVal < 0)
-        errors.push("Price must be a valid non‑negative number.");
+        errors.push(t("validation.priceInvalid"));
     }
     if (form.duration_minutes < 1)
-      errors.push("Duration must be at least 1 minute.");
+      errors.push(t("validation.durationInvalid"));
     if (form.payment_policy === "deposit") {
       const deposit = Number(form.deposit_percentage);
       if (isNaN(deposit) || deposit < 0 || deposit > 100) {
-        errors.push("Deposit percentage must be between 0 and 100.");
+        errors.push(t("validation.depositInvalid"));
       }
     }
     return errors;
-  }, [form]);
+  }, [form, t]);
 
   /* ── Submit details ─────────────────────────────────────────────────────── */
   const handleSubmitDetails = async (e: React.FormEvent) => {
@@ -352,10 +343,10 @@ export function ServiceOfferingModal({
       setStep("addons");
       onShowToast?.(
         "success",
-        existingId ? "Service updated" : "Service created",
+        existingId ? t("messages.serviceUpdated") : t("messages.serviceCreated"),
       );
     } catch (error) {
-      const msg = getErrorMessage(error);
+      const msg = getErrorMessage(error, t("messages.genericError"));
       setError(msg);
     } finally {
       setSaving(false);
@@ -370,19 +361,42 @@ export function ServiceOfferingModal({
 
   /* ── Options ────────────────────────────────────────────────────────────── */
   const pricingOptions = [
-    { value: "fixed", label: "Fixed" },
-    { value: "starting_at", label: "Starting At" },
-    { value: "hourly", label: "Hourly" },
-    { value: "custom", label: "Quote Based" },
+    { value: "fixed", label: t("options.pricing.fixed") },
+    { value: "starting_at", label: t("options.pricing.startingAt") },
+    { value: "hourly", label: t("options.pricing.hourly") },
+    { value: "custom", label: t("options.pricing.quoteBased") },
   ];
+
+  const serviceTypeOptions = [
+    { value: "one_off", label: t("options.serviceType.oneOff") },
+    { value: "recurring", label: t("options.serviceType.recurring") },
+  ];
+
+  const billingCycleOptions = [
+    { value: "weekly", label: t("options.billingCycle.weekly") },
+    { value: "monthly", label: t("options.billingCycle.monthly") },
+    { value: "quarterly", label: t("options.billingCycle.quarterly") },
+    { value: "yearly", label: t("options.billingCycle.yearly") },
+  ];
+
   const bookingOptions = [
-    { value: "direct", label: "Direct Booking" },
-    { value: "inquiry", label: "Inquiry / Lead" },
+    { value: "direct", label: t("options.booking.direct") },
+    { value: "inquiry", label: t("options.booking.inquiry") },
   ];
+
   const paymentOptions = [
-    { value: "upfront", label: "Pay Upfront" },
-    { value: "post_service", label: "Pay After Service" },
-    { value: "deposit", label: "Deposit Required" },
+    { value: "upfront", label: t("options.payment.upfront") },
+    { value: "post_service", label: t("options.payment.postService") },
+    { value: "deposit", label: t("options.payment.deposit") },
+  ];
+
+  const categoryOptions = [
+    { value: "Barber & Grooming", label: t("categories.barber") },
+    { value: "Hair & Beauty", label: t("categories.beauty") },
+    { value: "Education & Tutoring", label: t("categories.education") },
+    { value: "Fitness & Wellness", label: t("categories.fitness") },
+    { value: "Home Services", label: t("categories.home") },
+    { value: "Automotive", label: t("categories.automotive") },
   ];
 
   /* ── Render ─────────────────────────────────────────────────────────────── */
@@ -395,7 +409,11 @@ export function ServiceOfferingModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={offering ? "Edit service" : "Add service"}
+          aria-label={
+            offering || savedOfferingId
+              ? t("header.editService")
+              : t("header.addService")
+          }
           className="bg-white m-6 md:w-full max-w-4xl max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden animate-fade-in-up"
         >
           {/* ── Header ── */}
@@ -408,24 +426,25 @@ export function ServiceOfferingModal({
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
                     {offering || savedOfferingId
-                      ? "Edit Service"
-                      : "Add Service"}
+                      ? t("header.editService")
+                      : t("header.addService")}
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {offering
-                      ? "Update your service offering"
-                      : "Create a new service offering"}
+                      ? t("header.updateDescription")
+                      : t("header.createDescription")}
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleClose}
                 className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition"
-                aria-label="Close service editor"
+                aria-label={t("header.close")}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
+
             {/* Stepper */}
             <div className="mt-6 flex items-center justify-center gap-1 sm:gap-2">
               {/* Step 1: Details */}
@@ -450,7 +469,7 @@ export function ServiceOfferingModal({
                     step === "details" ? "text-secondary font-bold" : "text-gray-500"
                   }`}
                 >
-                  Details & Tags
+                  {t("steps.details")}
                 </span>
               </button>
 
@@ -487,7 +506,7 @@ export function ServiceOfferingModal({
                     step === "addons" ? "text-secondary font-bold" : "text-gray-500"
                   }`}
                 >
-                  Add-ons
+                  {t("steps.addons")}
                 </span>
               </button>
 
@@ -522,7 +541,7 @@ export function ServiceOfferingModal({
                     step === "gallery" ? "text-secondary font-bold" : "text-gray-500"
                   }`}
                 >
-                  Gallery
+                  {t("steps.gallery")}
                 </span>
               </button>
             </div>
@@ -539,21 +558,21 @@ export function ServiceOfferingModal({
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Basic Info */}
-                  <Card icon={<FileText size={18} />} title="Basic Information">
+                  <Card icon={<FileText size={18} />} title={t("sections.basicInformation")}>
                     <div className="space-y-4">
                       <div>
                         <label
                           htmlFor="service-title"
                           className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"
                         >
-                          Title <span className="text-red-500">*</span>
+                          {t("fields.title")} <span className="text-red-500">*</span>
                         </label>
                         <input
                           id="service-title"
                           type="text"
                           value={form.title}
                           onChange={(e) => updateForm("title", e.target.value)}
-                          placeholder="e.g. Premium Haircut"
+                          placeholder={t("placeholders.title")}
                           required
                           data-invalid={
                             error && !form.title.trim() ? true : undefined
@@ -564,7 +583,7 @@ export function ServiceOfferingModal({
 
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Title (Amharic)
+                          {t("fields.titleAmharic")}
                         </label>
                         <input
                           type="text"
@@ -578,7 +597,7 @@ export function ServiceOfferingModal({
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Description{" "}
+                          {t("fields.description")}{" "}
                           <span className="text-gray-400 font-normal">
                             ({form.description.length}/500)
                           </span>
@@ -591,12 +610,12 @@ export function ServiceOfferingModal({
                           rows={3}
                           maxLength={500}
                           className="w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary resize-none min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
-                          placeholder="Describe the service..."
+                          placeholder={t("placeholders.description")}
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Description (Amharic){" "}
+                          {t("fields.descriptionAmharic")}{" "}
                           <span className="text-gray-400 font-normal">
                             ({form.description_am.length}/500)
                           </span>
@@ -616,11 +635,11 @@ export function ServiceOfferingModal({
                   </Card>
 
                   {/* Pricing */}
-                  <Card icon={<DollarSign size={18} />} title="Pricing">
+                  <Card icon={<DollarSign size={18} />} title={t("sections.pricing")}>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Pricing Type
+                          {t("fields.pricingType")}
                         </label>
                         <CustomSelect
                           value={form.pricing_type}
@@ -631,13 +650,13 @@ export function ServiceOfferingModal({
                             )
                           }
                           options={pricingOptions}
-                          placeholder="Select..."
+                          placeholder={t("placeholders.select")}
                         />
                       </div>
                       {form.pricing_type !== "custom" && (
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                            Price (ETB)
+                            {t("fields.price")} (ETB)
                           </label>
                           <div className="relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
@@ -659,7 +678,7 @@ export function ServiceOfferingModal({
                       )}
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Duration (minutes)
+                          {t("fields.duration")}
                         </label>
                         <input
                           type="number"
@@ -681,12 +700,12 @@ export function ServiceOfferingModal({
                   {/* Booking & Contract */}
                   <Card
                     icon={<Calendar size={18} />}
-                    title="Booking & Contract Type"
+                    title={t("sections.bookingContract")}
                   >
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Service Type
+                          {t("fields.serviceType")}
                         </label>
                         <CustomSelect
                           value={form.service_type}
@@ -697,13 +716,13 @@ export function ServiceOfferingModal({
                             )
                           }
                           options={serviceTypeOptions}
-                          placeholder="Select service type..."
+                          placeholder={t("placeholders.selectServiceType")}
                         />
                       </div>
                       {form.service_type === "recurring" && (
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                            Billing Cycle
+                            {t("fields.billingCycle")}
                           </label>
                           <CustomSelect
                             value={form.billing_cycle}
@@ -714,13 +733,13 @@ export function ServiceOfferingModal({
                               )
                             }
                             options={billingCycleOptions}
-                            placeholder="Select cycle..."
+                            placeholder={t("placeholders.selectCycle")}
                           />
                         </div>
                       )}
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Booking Mode
+                          {t("fields.bookingMode")}
                         </label>
                         <CustomSelect
                           value={form.booking_mode}
@@ -731,17 +750,17 @@ export function ServiceOfferingModal({
                             )
                           }
                           options={bookingOptions}
-                          placeholder="Select..."
+                          placeholder={t("placeholders.select")}
                         />
                         <p className="text-xs text-gray-400 mt-1">
                           {form.booking_mode === "direct"
-                            ? "Customers choose a time and book instantly."
-                            : "Customers submit a request; provider confirms availability."}
+                            ? t("hints.directBooking")
+                            : t("hints.inquiryBooking")}
                         </p>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Payment Policy
+                          {t("fields.paymentPolicy")}
                         </label>
                         <CustomSelect
                           value={form.payment_policy}
@@ -752,13 +771,13 @@ export function ServiceOfferingModal({
                             )
                           }
                           options={paymentOptions}
-                          placeholder="Select..."
+                          placeholder={t("placeholders.select")}
                         />
                       </div>
                       {form.payment_policy === "deposit" && (
                         <div>
                           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                            Deposit Percentage
+                            {t("fields.depositPercentage")}
                           </label>
                           <div className="relative">
                             <input
@@ -784,12 +803,12 @@ export function ServiceOfferingModal({
                   {/* Category & Settings */}
                   <Card
                     icon={<Settings size={18} />}
-                    title="Category & Settings"
+                    title={t("sections.categorySettings")}
                   >
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Service Category
+                          {t("fields.serviceCategory")}
                         </label>
                         <input
                           type="text"
@@ -798,28 +817,21 @@ export function ServiceOfferingModal({
                             updateForm("service_category", e.target.value)
                           }
                           className="w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
-                          placeholder="e.g. Barber & Grooming, Education, Fitness..."
+                          placeholder={t("placeholders.serviceCategory")}
                         />
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          {[
-                            "Barber & Grooming",
-                            "Hair & Beauty",
-                            "Education & Tutoring",
-                            "Fitness & Wellness",
-                            "Home Services",
-                            "Automotive",
-                          ].map((cat) => (
+                          {categoryOptions.map((cat) => (
                             <button
-                              key={cat}
+                              key={cat.value}
                               type="button"
-                              onClick={() => updateForm("service_category", cat)}
+                              onClick={() => updateForm("service_category", cat.value)}
                               className={`text-[11px] px-2 py-0.5 rounded-md border transition ${
-                                form.service_category === cat
+                                form.service_category === cat.value
                                   ? "bg-secondary text-white border-secondary"
                                   : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-purple-50 hover:text-secondary"
                               }`}
                             >
-                              {cat}
+                              {cat.label}
                             </button>
                           ))}
                         </div>
@@ -827,7 +839,7 @@ export function ServiceOfferingModal({
 
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          Display Order
+                          {t("fields.displayOrder")}
                         </label>
                         <input
                           type="number"
@@ -840,7 +852,7 @@ export function ServiceOfferingModal({
                           placeholder="0"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                          Lower numbers appear first.
+                          {t("hints.displayOrder")}
                         </p>
                       </div>
 
@@ -855,7 +867,7 @@ export function ServiceOfferingModal({
                             className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
                           />
                           <span className="text-sm font-medium text-gray-700">
-                            Active Service
+                            {t("fields.activeService")}
                           </span>
                         </label>
                         <label className="flex items-center gap-3 cursor-pointer">
@@ -868,7 +880,7 @@ export function ServiceOfferingModal({
                             className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
                           />
                           <span className="text-sm font-medium text-gray-700">
-                            Featured Service
+                            {t("fields.featuredService")}
                           </span>
                         </label>
                       </div>
@@ -880,16 +892,16 @@ export function ServiceOfferingModal({
                 <div className="mt-6">
                   <Card
                     icon={<Tag size={18} />}
-                    title="Service Tags & Search Keywords"
+                    title={t("sections.tagsKeywords")}
                     className="col-span-full"
                   >
                     <p className="text-xs text-gray-500 mb-3">
-                      Tags help customers quickly discover your service via search and filtering (e.g. Haircut, Fade, Shaving, STEM, Gym, etc.).
+                      {t("hints.tagsDescription")}
                     </p>
                     <TagsInput
                       tags={form.tags}
                       onChange={(newTags) => updateForm("tags", newTags)}
-                      placeholder="Type tag and press Enter or comma (e.g. Haircut)..."
+                      placeholder={t("placeholders.tags")}
                       suggestions={[
                         "Haircut",
                         "Fade",
@@ -918,7 +930,7 @@ export function ServiceOfferingModal({
                 <div className="mt-6">
                   <Card
                     icon={<ClipboardList size={18} />}
-                    title="Custom Intake Form"
+                    title={t("sections.customIntakeForm")}
                     className="col-span-full"
                   >
                     <IntakeFormBuilder
@@ -933,7 +945,7 @@ export function ServiceOfferingModal({
             ) : step === "addons" ? (
               <Card
                 icon={<Sparkles size={18} />}
-                title="Service Add-ons & Extras"
+                title={t("sections.addonsExtras")}
                 className="h-full"
               >
                 {savedOfferingId || offering?.id ? (
@@ -945,14 +957,14 @@ export function ServiceOfferingModal({
                   />
                 ) : (
                   <div className="py-12 text-center text-gray-400">
-                    Service must be saved first to manage add-ons.
+                    {t("messages.saveBeforeAddons")}
                   </div>
                 )}
               </Card>
             ) : (
               <Card
                 icon={<ImageIcon size={18} />}
-                title="Service Images"
+                title={t("sections.serviceImages")}
                 className="h-full"
               >
                 {savedOfferingId || offering?.id ? (
@@ -963,7 +975,7 @@ export function ServiceOfferingModal({
                   />
                 ) : (
                   <div className="py-12 text-center text-gray-400">
-                    Service must be saved first to manage images.
+                    {t("messages.saveBeforeImages")}
                   </div>
                 )}
               </Card>
@@ -979,7 +991,7 @@ export function ServiceOfferingModal({
                   onClick={handleClose}
                   className="px-5 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
                 >
-                  Cancel
+                  {t("buttons.cancel")}
                 </button>
                 <button
                   type="submit"
@@ -988,7 +1000,7 @@ export function ServiceOfferingModal({
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-[#5B46A0] disabled:opacity-50 transition shadow-sm"
                 >
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {saving ? "Saving…" : "Continue to Add-ons"}
+                  {saving ? t("buttons.saving") : t("buttons.continueToAddons")}
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </>
@@ -1000,14 +1012,14 @@ export function ServiceOfferingModal({
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Back to Details
+                  {t("buttons.backToDetails")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep("gallery")}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-[#5B46A0] transition shadow-sm"
                 >
-                  <span>Continue to Images</span>
+                  <span>{t("buttons.continueToImages")}</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </>
@@ -1019,14 +1031,14 @@ export function ServiceOfferingModal({
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Back to Add-ons
+                  {t("buttons.backToAddons")}
                 </button>
                 <button
                   type="button"
                   onClick={handleFinish}
                   className="px-5 py-2.5 bg-secondary text-white text-sm font-medium rounded-xl hover:bg-[#5B46A0] transition shadow-sm"
                 >
-                  Done
+                  {t("buttons.done")}
                 </button>
               </>
             )}

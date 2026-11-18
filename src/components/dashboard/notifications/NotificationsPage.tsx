@@ -1,24 +1,35 @@
+
 // src/components/dashboard/notifications/NotificationsPage.tsx
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, Bell, CheckCheck } from "lucide-react";
 import { useNotifications } from "../../../context/NotificationsContext";
-import { getEventMeta, formatRelativeTime } from "./meta";
+import {
+  getEventMeta,
+  formatRelativeTime,
+  getNotificationContent,
+} from "./meta";
 import PageHeader from "../../ui/PageHeader";
 import { getNotificationRoute } from "../../../utils/notificationRouting";
 
 function getNotificationDateGroup(iso: string): string {
   try {
     const date = new Date(iso);
+
     if (Number.isNaN(date.getTime())) return "Earlier";
 
     const now = new Date();
+
     const startOfToday = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
     ).getTime();
+
     const startOfYesterday = startOfToday - 86_400_000;
+
     const startOfNotificationDay = new Date(
       date.getFullYear(),
       date.getMonth(),
@@ -27,6 +38,7 @@ function getNotificationDateGroup(iso: string): string {
 
     if (startOfNotificationDay >= startOfToday) return "Today";
     if (startOfNotificationDay >= startOfYesterday) return "Yesterday";
+
     return "Earlier";
   } catch {
     return "Earlier";
@@ -56,6 +68,7 @@ function NotificationSkeleton() {
   return (
     <div className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border border-gray-100 bg-white">
       <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gray-200/80 animate-pulse" />
+
       <div className="flex-1 min-w-0 space-y-2">
         <div className="h-3 w-32 max-w-[60%] rounded-full bg-gray-200/80 animate-pulse" />
         <div className="h-4 w-3/4 max-w-[80%] rounded-full bg-gray-200/80 animate-pulse" />
@@ -73,7 +86,9 @@ interface NotificationsPageProps {
 export default function NotificationsPage({
   onNotificationClick,
 }: NotificationsPageProps) {
-  const navigate = useNavigate(); // ✅ for routing
+  const navigate = useNavigate();
+  const { t } = useTranslation("notifications");
+
   const {
     notifications,
     unread,
@@ -89,6 +104,10 @@ export default function NotificationsPage({
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [markingAll, setMarkingAll] = useState(false);
 
+  // Number of notifications currently loaded
+  const notificationCount = notifications.length;
+
+  // Filter notifications correctly
   const filtered = useMemo(
     () =>
       filter === "unread"
@@ -97,20 +116,31 @@ export default function NotificationsPage({
     [notifications, filter],
   );
 
-  const grouped = useMemo(() => groupNotificationsByDate(filtered), [filtered]);
+  // Group filtered notifications by date
+  const grouped = useMemo(
+    () => groupNotificationsByDate(filtered),
+    [filtered],
+  );
 
-  const isInitialLoading = loading && notifications.length === 0;
-  const allCount = Math.max(totalCount, unread, notifications.length);
+  const isInitialLoading = loading && notificationCount === 0;
+
+  const allCount = Math.max(
+    totalCount,
+    unread,
+    notificationCount,
+  );
 
   const headerSubtitle = isInitialLoading
-    ? "Loading notifications..."
+    ? t("loadingNotifications")
     : unread > 0
-      ? `${unread} unread ${unread === 1 ? "notification" : "notifications"}`
-      : "You're all caught up";
+      ? t("unreadCount", { count: unread })
+      : t("allCaughtUp");
 
   const handleMarkAllRead = async () => {
     if (markingAll) return;
+
     setMarkingAll(true);
+
     try {
       await markAllRead();
     } finally {
@@ -131,27 +161,41 @@ export default function NotificationsPage({
       markRead([notification.id]);
     }
 
-    // If a parent passes onNotificationClick, respect it
+    // Respect parent-provided notification click handler
     if (onNotificationClick) {
       onNotificationClick(notification);
       return;
     }
 
     // Otherwise use the central router
-    const route = getNotificationRoute(notification.event, notification);
-    if (route) navigate(route);
+    const route = getNotificationRoute(
+      notification.event,
+      notification,
+    );
+
+    if (route) {
+      navigate(route);
+    }
+  };
+
+  const dateGroupLabels: Record<string, string> = {
+    Today: t("dateGroups.today"),
+    Yesterday: t("dateGroups.yesterday"),
+    Earlier: t("dateGroups.earlier"),
   };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <PageHeader
-        title="Notifications"
-        description={<span aria-live="polite">{headerSubtitle}</span>}
+        title={t("title")}
+        description={
+          <span aria-live="polite">{headerSubtitle}</span>
+        }
         icon={Bell}
         badge={
           unread > 0 && !isInitialLoading ? (
             <span className="inline-flex items-center rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary sm:text-xs">
-              {unread} unread
+              {t("unreadBadge", { count: unread })}
             </span>
           ) : undefined
         }
@@ -164,7 +208,10 @@ export default function NotificationsPage({
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-secondary px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/85 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 sm:w-auto sm:text-sm"
             >
               <CheckCheck className="h-4 w-4" />
-              {markingAll ? "Marking..." : "Mark all read"}
+
+              {markingAll
+                ? t("marking")
+                : t("markAllRead")}
             </button>
           ) : undefined
         }
@@ -176,7 +223,7 @@ export default function NotificationsPage({
       <div
         className="flex items-center gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit"
         role="group"
-        aria-label="Filter notifications"
+        aria-label={t("filterNotifications")}
       >
         {(["all", "unread"] as const).map((f) => {
           const count = f === "all" ? allCount : unread;
@@ -194,7 +241,8 @@ export default function NotificationsPage({
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              {f}
+              {t(`filters.${f}`)}
+
               <span
                 className={`text-[10px] sm:text-xs font-bold ${
                   active ? "text-secondary" : "text-gray-400"
@@ -211,7 +259,7 @@ export default function NotificationsPage({
       {isInitialLoading ? (
         <div
           className="space-y-2"
-          aria-label="Loading notifications"
+          aria-label={t("loadingNotifications")}
           aria-busy="true"
         >
           {Array.from({ length: 6 }).map((_, index) => (
@@ -227,20 +275,25 @@ export default function NotificationsPage({
               <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-gray-400" />
             )}
           </div>
+
           <p className="text-sm sm:text-base font-bold text-gray-900">
             {filter === "unread"
               ? unread > 0
-                ? "Unread notifications in older pages"
-                : "You're all caught up"
-              : "No notifications yet"}
+                ? t("empty.unreadOlderTitle")
+                : t("allCaughtUp")
+              : t("empty.noNotificationsTitle")}
           </p>
+
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-xs text-center">
             {filter === "unread"
               ? unread > 0
-                ? `You have ${unread} unread notifications in older pages. Load older notifications to view them.`
-                : "You have no unread notifications."
-              : "New orders, payments and deliveries will appear here."}
+                ? t("empty.unreadOlderDescription", {
+                    count: unread,
+                  })
+                : t("empty.noUnreadDescription")
+              : t("empty.noNotificationsDescription")}
           </p>
+
           {filter === "unread" && unread > 0 && hasMore && (
             <button
               type="button"
@@ -248,18 +301,26 @@ export default function NotificationsPage({
               disabled={loadingMore}
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-secondary/85 disabled:opacity-60"
             >
-              {loadingMore ? "Loading older..." : "Load older notifications"}
+              {loadingMore
+                ? t("loadingOlder")
+                : t("loadOlder")}
             </button>
           )}
         </div>
       ) : (
         <div className="space-y-5">
           {grouped.map((group) => (
-            <section key={group.label} aria-label={group.label}>
+            <section
+              key={group.label}
+              aria-label={
+                dateGroupLabels[group.label] ?? group.label
+              }
+            >
               <div className="flex items-center justify-between px-1 mb-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                  {group.label}
+                  {dateGroupLabels[group.label] ?? group.label}
                 </h2>
+
                 <span className="text-xs font-medium text-gray-400">
                   {group.items.length}
                 </span>
@@ -267,7 +328,11 @@ export default function NotificationsPage({
 
               <div className="space-y-2.5">
                 {group.items.map((n) => {
-                  const { Icon, label, color, bg } = getEventMeta(n.event);
+                  const { Icon, label, color, bg } =
+                    getEventMeta(n.event, t);
+
+                  // Translate backend notification content
+                  const content = getNotificationContent(n, t);
 
                   return (
                     <div
@@ -290,8 +355,12 @@ export default function NotificationsPage({
                         onClick={() => handleNotificationRead(n)}
                         aria-label={
                           n.is_read
-                            ? `Read notification: ${n.title}`
-                            : `Mark notification as read: ${n.title}`
+                            ? t("aria.readNotification", {
+                                title: content.title,
+                              })
+                            : t("aria.markNotificationRead", {
+                                title: content.title,
+                              })
                         }
                         className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 sm:gap-4"
                       >
@@ -313,7 +382,7 @@ export default function NotificationsPage({
                             </span>
 
                             <span className="text-[10px] font-medium text-gray-400 sm:text-[11px]">
-                              · {formatRelativeTime(n.created_at)}
+                              · {formatRelativeTime(n.created_at, t)}
                             </span>
 
                             {!n.is_read && (
@@ -322,7 +391,8 @@ export default function NotificationsPage({
                                   className="h-1.5 w-1.5 rounded-full bg-secondary"
                                   aria-hidden="true"
                                 />
-                                New
+
+                                {t("new")}
                               </span>
                             )}
                           </span>
@@ -334,11 +404,11 @@ export default function NotificationsPage({
                                 : "font-bold text-gray-950"
                             }`}
                           >
-                            {n.title}
+                            {content.title}
                           </span>
 
                           <span className="mt-1 block break-words whitespace-pre-line text-xs leading-5 text-gray-500 sm:text-sm">
-                            {n.body}
+                            {content.body}
                           </span>
                         </span>
                       </button>
@@ -346,8 +416,10 @@ export default function NotificationsPage({
                       <button
                         type="button"
                         onClick={() => handleNotificationRoute(n)}
-                        aria-label={`Open notification: ${n.title}`}
-                        title="Open details"
+                        aria-label={t("aria.openNotification", {
+                          title: content.title,
+                        })}
+                        title={t("openDetails")}
                         className="ml-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition-all duration-200 hover:border-secondary hover:bg-secondary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/60 focus-visible:ring-offset-2 sm:h-10 sm:w-10"
                       >
                         <ArrowRight className="h-4 w-4 transition-transform duration-200 hover:translate-x-0.5" />
@@ -371,13 +443,17 @@ export default function NotificationsPage({
                 {loadingMore ? (
                   <>
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-secondary/30 border-t-secondary" />
-                    <span>Loading more notifications...</span>
+                    <span>{t("loadingMore")}</span>
                   </>
                 ) : (
                   <>
-                    <span>Load more notifications</span>
+                    <span>{t("loadMore")}</span>
+
                     <span className="rounded-full bg-secondary/10 px-2 py-0.5 text-[10px] font-bold text-secondary">
-                      {notifications.length} of {allCount}
+                      {t("paginationCount", {
+                        current: notificationCount,
+                        total: allCount,
+                      })}
                     </span>
                   </>
                 )}

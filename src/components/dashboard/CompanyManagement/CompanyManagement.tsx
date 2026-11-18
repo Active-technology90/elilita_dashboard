@@ -1456,26 +1456,37 @@ export default function CompanyManagement() {
       setIsEditingActive(false);
       await fetchData();
       resetForm();
-    } catch (err: any) {
-      console.error("[handleSubmit] Failed:", err);
+   
+} catch (err: any) {
+  console.error("[Company Creation/Update Failed]", {
+    status: err?.response?.status,
+    responseData: err?.response?.data,
+    responseHeaders: err?.response?.headers,
+    requestUrl: err?.config?.url,
+    requestMethod: err?.config?.method,
+    message: err?.message,
+  });
 
-      if (err?.response?.status === 401) {
-        showToast("error", t("sessionExpired"));
-      } else {
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.detail ||
-          (typeof err?.response?.data === "object"
-            ? JSON.stringify(err.response.data)
-            : null) ||
-          t("operationFailed");
-        showToast("error", msg);
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  if (err?.response?.status === 401) {
+    showToast("error", t("sessionExpired"));
+  } else {
+    const responseData = err?.response?.data;
 
+    const msg =
+      responseData?.message ||
+      responseData?.detail ||
+      (typeof responseData === "string"
+        ? responseData
+        : responseData
+          ? JSON.stringify(responseData)
+          : t("operationFailed"));
+
+    showToast("error", msg);
+  }
+} finally {
+  setSubmitting(false);
+}
+  }
   /* ──────────────────────────────────────────────────────────────
      Form Reset & Modal Close
      ────────────────────────────────────────────────────────────── */

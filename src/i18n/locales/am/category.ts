@@ -47,7 +47,7 @@ export default {
   // Form modal
   nameEnglish: "ስም (እንግሊዝኛ)",
   nameEnglishPlaceholder: "ለምሳሌ Agro",
-  nameAmharic: "ስም (አማርኛ)",
+  nameAmharic: "ስም",
   nameAmharicPlaceholder: "ለምሳሌ አግሮ",
   slug: "ስለግ",
   slugPlaceholder: "ለምሳሌ agro",

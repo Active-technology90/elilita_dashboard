@@ -1,6 +1,9 @@
+
 // src/components/dashboard/notifications/NotificationBell.tsx
+
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   Bell,
@@ -14,7 +17,11 @@ import {
   useNotifications,
   type AppNotification,
 } from "../../../context/NotificationsContext";
-import { getEventMeta, formatRelativeTime } from "./meta";
+import {
+  getEventMeta,
+  formatRelativeTime,
+  getNotificationContent,
+} from "./meta";
 import {
   getNotificationRoute,
   extractVendorOrderId,
@@ -29,22 +36,43 @@ export default function NotificationBell({
   onViewAll,
   onNotificationClick,
 }: NotificationBellProps) {
-  const { notifications, unread, markAllRead, markRead, refetch, pushState, enablePush } =
-    useNotifications();
-  const navigate = useNavigate(); // ✅ for routing
+  const { t } = useTranslation("notifications");
+
+  const {
+    notifications,
+    unread,
+    markAllRead,
+    markRead,
+    refetch,
+    pushState,
+    enablePush,
+  } = useNotifications();
+
+  const navigate = useNavigate();
+
   const [open, setOpen] = useState(false);
   const [enablingPush, setEnablingPush] = useState(false);
+
   const ref = useRef<HTMLDivElement>(null);
 
   const handleEnablePush = async () => {
     if (enablingPush) return;
+
     setEnablingPush(true);
+
     try {
       await enablePush();
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        toast.success("Push notifications enabled on this device");
-      } else if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-        toast.error("Notifications were blocked in browser settings");
+
+      if (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        toast.success(t("push.enabled"));
+      } else if (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "denied"
+      ) {
+        toast.error(t("push.blocked"));
       }
     } finally {
       setEnablingPush(false);
@@ -58,22 +86,37 @@ export default function NotificationBell({
         setOpen(false);
       }
     };
-    if (open) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+
+    if (open) {
+      document.addEventListener("mousedown", handler);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
   }, [open]);
 
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
     };
-    if (open) window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    if (open) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
+  // Show the latest 8 notifications
   const recent = notifications.slice(0, 8);
 
-  // Use the shared helper so behavior matches everywhere
+  // Extract vendor order ID
   const getOrderId = (n: AppNotification): number | null =>
     extractVendorOrderId(n);
 
@@ -89,9 +132,10 @@ export default function NotificationBell({
     if (!n.is_read) {
       markRead([n.id]);
     }
+
     setOpen(false);
 
-    // If a parent passes onNotificationClick, respect it
+    // Respect parent-provided notification click handler
     if (onNotificationClick) {
       onNotificationClick(n);
       return;
@@ -99,6 +143,7 @@ export default function NotificationBell({
 
     // Otherwise use the central router
     const route = getNotificationRoute(n.event, n);
+
     if (route) {
       navigate(route);
     } else {
@@ -112,7 +157,10 @@ export default function NotificationBell({
         type="button"
         onClick={() => {
           setOpen((o) => !o);
-          if (!open) refetch();
+
+          if (!open) {
+            refetch();
+          }
         }}
         className={`
           relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg border transition-all cursor-pointer
@@ -122,11 +170,12 @@ export default function NotificationBell({
               : "border-transparent text-gray-500 hover:border-secondary/15 hover:bg-secondary/[0.04] hover:text-secondary"
           }
         `}
-        title="Notifications"
-        aria-label="Notifications"
+        title={t("title")}
+        aria-label={t("title")}
         aria-expanded={open}
       >
         <Bell className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+
         {unread > 0 && (
           <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
             {unread > 9 ? "9+" : unread}
@@ -162,12 +211,14 @@ export default function NotificationBell({
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                   <Bell className="h-4 w-4" />
                 </span>
+
                 <p className="font-bold text-sm sm:text-base text-gray-900">
-                  Notifications
+                  {t("title")}
                 </p>
+
                 {unread > 0 && (
                   <span className="text-[11px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
-                    {unread} new
+                    {t("newCount", { count: unread })}
                   </span>
                 )}
               </div>
@@ -178,17 +229,18 @@ export default function NotificationBell({
                     type="button"
                     onClick={() => markAllRead()}
                     className="flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-secondary hover:text-secondary/80 px-2 py-1 rounded-md hover:bg-secondary/10 transition-colors"
-                    title="Mark all as read"
+                    title={t("markAllRead")}
                   >
                     <CheckCheck className="h-3.5 w-3.5" />
-                    <span>Mark all</span>
+                    <span>{t("markAll")}</span>
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 sm:hidden"
-                  aria-label="Close notifications"
+                  aria-label={t("close")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -199,8 +251,9 @@ export default function NotificationBell({
             {pushState === "default" && (
               <div className="flex items-center justify-between gap-2 border-b border-secondary/10 bg-secondary/[0.05] px-3.5 sm:px-4 py-2 shrink-0">
                 <span className="text-[11px] font-medium text-gray-700">
-                  Enable device push alerts
+                  {t("push.enableDeviceAlerts")}
                 </span>
+
                 <button
                   type="button"
                   onClick={() => void handleEnablePush()}
@@ -208,7 +261,12 @@ export default function NotificationBell({
                   className="inline-flex items-center gap-1 rounded-lg bg-secondary px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-secondary/90 disabled:opacity-60 cursor-pointer"
                 >
                   <BellRing className="h-3 w-3" />
-                  <span>{enablingPush ? "Enabling..." : "Allow"}</span>
+
+                  <span>
+                    {enablingPush
+                      ? t("push.enabling")
+                      : t("push.allow")}
+                  </span>
                 </button>
               </div>
             )}
@@ -220,16 +278,22 @@ export default function NotificationBell({
                   <div className="h-12 w-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center mb-2.5">
                     <Bell className="h-6 w-6" />
                   </div>
+
                   <p className="text-sm font-semibold text-gray-800">
-                    You're all caught up
+                    {t("allCaughtUp")}
                   </p>
+
                   <p className="text-xs text-gray-400 mt-0.5 max-w-[220px]">
-                    No new notifications right now.
+                    {t("empty.noNewNotifications")}
                   </p>
                 </div>
               ) : (
                 recent.map((n) => {
-                  const { Icon, color, bg } = getEventMeta(n.event);
+                  const { Icon, color, bg } = getEventMeta(n.event, t);
+
+                  // Translate backend notification title and body
+                  const content = getNotificationContent(n, t);
+
                   const orderId = getOrderId(n);
 
                   return (
@@ -259,8 +323,12 @@ export default function NotificationBell({
                         onClick={() => handleNotificationCardClick(n)}
                         aria-label={
                           n.is_read
-                            ? `Notification: ${n.title}`
-                            : `Mark notification as read: ${n.title}`
+                            ? t("aria.notification", {
+                                title: content.title,
+                              })
+                            : t("aria.markNotificationRead", {
+                                title: content.title,
+                              })
                         }
                         className="flex min-w-0 flex-1 items-start gap-2.5 sm:gap-3 text-left cursor-pointer focus-visible:outline-none"
                       >
@@ -274,44 +342,52 @@ export default function NotificationBell({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p
                               className={`text-xs sm:text-sm font-bold truncate ${
-                                !n.is_read ? "text-gray-950" : "text-gray-800"
+                                !n.is_read
+                                  ? "text-gray-950"
+                                  : "text-gray-800"
                               }`}
                             >
-                              {n.title}
+                              {content.title}
                             </p>
+
                             {!n.is_read && (
                               <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-secondary flex-shrink-0" />
                             )}
                           </div>
 
                           <p className="text-xs text-gray-600 line-clamp-2 mt-0.5 break-words">
-                            {n.body}
+                            {content.body}
                           </p>
 
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className="text-[10px] text-gray-400">
-                              {formatRelativeTime(n.created_at)}
+                              {formatRelativeTime(n.created_at, t)}
                             </span>
 
                             {orderId != null && (
                               <span className="inline-flex items-center gap-1 rounded bg-secondary/10 px-1.5 py-0.5 text-[9px] font-bold text-secondary">
                                 <Package className="h-3 w-3" />
-                                Order #{orderId}
+
+                                {t("orderNumber", {
+                                  id: orderId,
+                                })}
                               </span>
                             )}
                           </div>
                         </div>
                       </button>
 
-                      {/* Arrow Action Button: marks read, closes dropdown, routes to order detail */}
+                      {/* Arrow Action Button */}
                       <button
                         type="button"
                         onClick={() => handleNotificationRouteClick(n)}
-                        aria-label={`Open details for ${n.title}`}
+                        aria-label={t("aria.openDetailsFor", {
+                          title: content.title,
+                        })}
                         title={
                           orderId != null
-                            ? `Open Order #${orderId}`
-                            : "Open details"
+                            ? t("openOrder", { id: orderId })
+                            : t("openDetails")
                         }
                         className="
                           group/btn flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full
@@ -341,7 +417,8 @@ export default function NotificationBell({
                   hover:bg-secondary/10 rounded-xl transition-all flex items-center justify-center gap-1.5
                 "
               >
-                <span>View all notifications</span>
+                <span>{t("viewAll")}</span>
+
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>

@@ -1,4 +1,6 @@
+
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Building2, ChevronDown, Search, Check } from "lucide-react";
 
 export function CompanySelect({
@@ -7,6 +9,8 @@ export function CompanySelect({
   handleCompanyChange,
   className,
 }: any) {
+  const { t } = useTranslation("companySelect");
+
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -14,8 +18,6 @@ export function CompanySelect({
   const ref = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-
-
 
   /* Close on outside click */
   useEffect(() => {
@@ -48,7 +50,7 @@ export function CompanySelect({
     setActiveIndex(0);
   }, [search]);
 
-  /* Auto‑scroll active item into view */
+  /* Auto-scroll active item into view */
   useEffect(() => {
     if (listRef.current && open && filtered.length > 0) {
       const activeEl = listRef.current.children[activeIndex] as HTMLElement;
@@ -88,7 +90,7 @@ export function CompanySelect({
 
   /* Selected label resolver (Stripe style) */
   const selectedLabel =
-    company?.label || company?.name || "All Companies";
+    company?.label || company?.name || t("allCompanies");
 
   const selectedLogo = company?.logo;
 
@@ -148,7 +150,7 @@ export function CompanySelect({
               ref={inputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search company..."
+              placeholder={t("searchPlaceholder")}
               className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
             />
           </div>
@@ -160,7 +162,7 @@ export function CompanySelect({
           >
             {filtered.length === 0 ? (
               <div className="p-6 text-sm text-gray-400 text-center">
-                No companies match your search
+                {t("noCompaniesFound")}
               </div>
             ) : (
               filtered.map((opt: any, index: number) => {

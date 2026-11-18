@@ -1,12 +1,16 @@
+
 // src/pages/SignIn.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { login as loginApi, getMe } from "../services/api";
 import { useAuth } from "../context/authContext";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SignIn(): React.JSX.Element {
+  const { t } = useTranslation("signIn");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,12 +46,14 @@ export default function SignIn(): React.JSX.Element {
       // STEP 2: Fetch Profile (detect deactivated accounts)
       // ─────────────────────────────────────────────────────
       let userData: any = null;
+
       try {
         const userResponse = await getMe();
         userData = userResponse.data;
       } catch (profileErr: any) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
+
         try {
           setUser(null);
         } catch {
@@ -60,16 +66,17 @@ export default function SignIn(): React.JSX.Element {
           profileErr?.response?.data?.message;
 
         if (status === 401 || status === 403) {
-          setError(
-            "Your account is deactivated or restricted. Please contact your administrator or support to reactivate your account.",
-          );
+          setError(t("errors.accountDeactivatedOrRestricted"));
         } else if (backendDetail) {
-          setError(`Unable to load profile: ${backendDetail}`);
-        } else {
           setError(
-            "Failed to load your profile. Please try again or contact support.",
+            t("errors.unableToLoadProfile", {
+              error: backendDetail,
+            }),
           );
+        } else {
+          setError(t("errors.profileLoadFailed"));
         }
+
         setLoading(false);
         return;
       }
@@ -78,15 +85,14 @@ export default function SignIn(): React.JSX.Element {
       if (userData && userData.is_active === false) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
+
         try {
           setUser(null);
         } catch {
           /* noop */
         }
 
-        setError(
-          "Your account is deactivated. Please contact your administrator or support to reactivate your account.",
-        );
+        setError(t("errors.accountDeactivated"));
         setLoading(false);
         return;
       }
@@ -99,6 +105,7 @@ export default function SignIn(): React.JSX.Element {
       const memberships = Array.isArray(userData?.memberships)
         ? userData.memberships
         : [];
+
       const hasActiveMembership = memberships.some(
         (m: any) => m?.is_active !== false,
       );
@@ -131,25 +138,20 @@ export default function SignIn(): React.JSX.Element {
       const errMessage = err?.message || "";
 
       if (status === 401) {
-        setError("Invalid username or password. Please try again.");
+        setError(t("errors.invalidCredentials"));
       } else if (status === 400) {
-        setError(
-          backendDetail || "Please enter a valid username and password.",
-        );
-      } else if (errMessage === "NO_REFRESH_TOKEN") {
-        setError("Your session has expired. Please sign in again.");
-      } else if (errMessage === "SESSION_EXPIRED") {
-        setError("Your session has expired. Please sign in again.");
+        setError(backendDetail || t("errors.validCredentialsRequired"));
+      } else if (
+        errMessage === "NO_REFRESH_TOKEN" ||
+        errMessage === "SESSION_EXPIRED"
+      ) {
+        setError(t("errors.sessionExpired"));
       } else if (status === 500 || status === 502 || status === 503) {
-        setError("Server is unavailable. Please try again in a moment.");
+        setError(t("errors.serverUnavailable"));
       } else if (!err?.response) {
-        setError(
-          "Cannot reach the server. Please check your internet connection.",
-        );
+        setError(t("errors.cannotReachServer"));
       } else {
-        setError(
-          backendDetail || "Login failed. Please check your credentials.",
-        );
+        setError(backendDetail || t("errors.loginFailed"));
       }
     } finally {
       setLoading(false);
@@ -165,13 +167,13 @@ export default function SignIn(): React.JSX.Element {
             <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-full border-4 border-white flex items-center justify-center mb-4 lg:mb-6">
               <img
                 src="/elilta1.jpg"
-                alt="Elilita Logo"
+                alt={t("logoAlt")}
                 className="w-full h-full object-cover rounded-full"
               />
             </div>
-            <h1 className="text-2xl lg:text-3xl font-bold mb-2">Elilita</h1>
+            <h1 className="text-2xl lg:text-3xl font-bold mb-2">{t("companyName")}</h1>
             <p className="text-xs lg:text-sm opacity-90 px-4">
-              Manage your company with full control
+              {t("companyTagline")}
             </p>
           </div>
         </div>
@@ -179,10 +181,10 @@ export default function SignIn(): React.JSX.Element {
         <div className="p-6 sm:p-8 md:p-10 flex flex-col justify-center">
           <div className="mb-4 sm:mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Welcome
+              {t("welcome")}
             </h2>
             <p className="text-gray-500 text-xs sm:text-sm mt-1">
-              Enter your credentials to access the panel
+              {t("subtitle")}
             </p>
           </div>
 
@@ -195,7 +197,7 @@ export default function SignIn(): React.JSX.Element {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-xs sm:text-sm text-gray-600 font-medium">
-                Username
+                {t("fields.username")}
               </label>
               <input
                 type="text"
@@ -209,7 +211,7 @@ export default function SignIn(): React.JSX.Element {
 
             <div>
               <label className="text-xs sm:text-sm text-gray-600 font-medium">
-                Password
+                {t("fields.password")}
               </label>
               <div className="relative mt-1">
                 <input
@@ -223,6 +225,11 @@ export default function SignIn(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  aria-label={
+                    showPassword
+                      ? t("actions.hidePassword")
+                      : t("actions.showPassword")
+                  }
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#6a5acd] transition-colors"
                 >
                   {showPassword ? (
@@ -265,16 +272,16 @@ export default function SignIn(): React.JSX.Element {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Signing in...
+                  {t("actions.signingIn")}
                 </span>
               ) : (
-                "Sign In"
+                t("actions.signIn")
               )}
             </button>
           </form>
 
           <div className="mt-6 text-[10px] sm:text-xs text-gray-400 text-center">
-            Secure Login • Elilita v1.0.0
+            {t("footer")}
           </div>
         </div>
       </div>

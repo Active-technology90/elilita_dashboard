@@ -1,4 +1,6 @@
+
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, Trash2, Star, Loader2, AlertCircle } from "lucide-react";
 import type { ServiceOfferingImage } from "../../../types";
 import {
@@ -20,6 +22,8 @@ export function ServiceOfferingImageGallery({
   offeringId,
   onShowToast,
 }: ServiceOfferingImageGalleryProps) {
+  const { t } = useTranslation("serviceOfferingImages");
+
   const [images, setImages] = useState<ServiceOfferingImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -35,7 +39,7 @@ export function ServiceOfferingImageGallery({
       const res = await getServiceOfferingImages(companySlug, offeringId);
       setImages(normalizeListResponse(res.data));
     } catch {
-      onShowToast?.("error", "Failed to load images");
+      onShowToast?.("error", t("messages.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -47,11 +51,11 @@ export function ServiceOfferingImageGallery({
 
   const uploadFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      onShowToast?.("error", "Please upload an image file");
+      onShowToast?.("error", t("messages.imageOnly"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      onShowToast?.("error", "Image must be less than 5MB");
+      onShowToast?.("error", t("messages.maxFileSize"));
       return;
     }
 
@@ -60,9 +64,9 @@ export function ServiceOfferingImageGallery({
       const isFirst = images.length === 0;
       await uploadServiceOfferingImage(companySlug, offeringId, file, isFirst);
       await loadImages();
-      onShowToast?.("success", "Image uploaded");
+      onShowToast?.("success", t("messages.uploadSuccess"));
     } catch {
-      onShowToast?.("error", "Upload failed");
+      onShowToast?.("error", t("messages.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -84,9 +88,9 @@ export function ServiceOfferingImageGallery({
         is_primary: true,
       });
       await loadImages();
-      onShowToast?.("success", "Primary image updated");
+      onShowToast?.("success", t("messages.primaryUpdated"));
     } catch {
-      onShowToast?.("error", "Failed to set primary image");
+      onShowToast?.("error", t("messages.primaryUpdateFailed"));
     } finally {
       setUpdatingId(null);
     }
@@ -97,9 +101,9 @@ export function ServiceOfferingImageGallery({
     try {
       await deleteServiceOfferingImage(companySlug, offeringId, imageId);
       await loadImages();
-      onShowToast?.("success", "Image deleted");
+      onShowToast?.("success", t("messages.deleteSuccess"));
     } catch {
-      onShowToast?.("error", "Delete failed");
+      onShowToast?.("error", t("messages.deleteFailed"));
     } finally {
       setDeletingId(null);
       setPendingDeleteId(null);
@@ -110,7 +114,7 @@ export function ServiceOfferingImageGallery({
     return (
       <div className="flex items-center justify-center py-12 text-gray-400">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        Loading images...
+        {t("loading")}
       </div>
     );
   }
@@ -119,9 +123,11 @@ export function ServiceOfferingImageGallery({
     <>
       <div className="space-y-4">
         <div>
-          <h4 className="text-base font-semibold text-gray-900">Service Images</h4>
+          <h4 className="text-base font-semibold text-gray-900">
+            {t("title")}
+          </h4>
           <p className="text-xs text-gray-500 mt-0.5">
-            Upload photos customers will see when browsing this service. Mark one as primary.
+            {t("description")}
           </p>
         </div>
 
@@ -165,8 +171,12 @@ export function ServiceOfferingImageGallery({
               ) : (
                 <>
                   <Upload className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Click or drag an image here</p>
-                  <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 5MB</p>
+                  <p className="text-sm text-gray-600">
+                    {t("upload.dropzone")}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {t("upload.formats")}
+                  </p>
                 </>
               )}
             </button>
@@ -181,12 +191,12 @@ export function ServiceOfferingImageGallery({
                 >
                   <img
                     src={img.image}
-                    alt={img.alt_text || "Service"}
+                    alt={img.alt_text || t("imageAlt")}
                     className="w-full h-full object-cover"
                   />
                   {img.is_primary && (
                     <span className="absolute top-2 left-2 bg-yellow-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      Primary
+                      {t("primary")}
                     </span>
                   )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
@@ -196,7 +206,7 @@ export function ServiceOfferingImageGallery({
                         onClick={() => handleSetPrimary(img.id)}
                         disabled={updatingId === img.id}
                         className="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600 disabled:opacity-50"
-                        title="Set as primary"
+                        title={t("actions.setPrimary")}
                       >
                         {updatingId === img.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -210,7 +220,7 @@ export function ServiceOfferingImageGallery({
                       onClick={() => setPendingDeleteId(img.id)}
                       disabled={deletingId === img.id}
                       className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50"
-                      title="Delete"
+                      title={t("actions.delete")}
                     >
                       {deletingId === img.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -233,7 +243,9 @@ export function ServiceOfferingImageGallery({
                 ) : (
                   <>
                     <Upload className="h-5 w-5 text-gray-400" />
-                    <span className="text-xs text-gray-500">Add more</span>
+                    <span className="text-xs text-gray-500">
+                      {t("upload.addMore")}
+                    </span>
                   </>
                 )}
               </button>
@@ -249,10 +261,12 @@ export function ServiceOfferingImageGallery({
               <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertCircle className="h-5 w-5 text-red-600" />
               </div>
-              <h3 className="font-semibold text-gray-900">Delete image?</h3>
+              <h3 className="font-semibold text-gray-900">
+                {t("deleteDialog.title")}
+              </h3>
             </div>
             <p className="text-sm text-gray-600 mb-5">
-              This image will be removed from the service listing.
+              {t("deleteDialog.description")}
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -260,14 +274,14 @@ export function ServiceOfferingImageGallery({
                 onClick={() => setPendingDeleteId(null)}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
               >
-                Cancel
+                {t("deleteDialog.cancel")}
               </button>
               <button
                 type="button"
                 onClick={() => handleDelete(pendingDeleteId)}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
-                Delete
+                {t("deleteDialog.confirm")}
               </button>
             </div>
           </div>

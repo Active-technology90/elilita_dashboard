@@ -1,5 +1,7 @@
+
 import { useMemo, useState } from "react";
 import { Plus, Trash2, Image as ImageIcon, Repeat } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
@@ -11,6 +13,8 @@ import { Toast } from "../../ui/Toast";
 import type { PortfolioItem } from "../../../types";
 
 export default function PortfolioManagement() {
+  const { t } = useTranslation("portfolio");
+
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -23,6 +27,7 @@ export default function PortfolioManagement() {
     () => companies.filter((c) => c.business_type === "service"),
     [companies],
   );
+
   const selectedCompany = companies.find((c) => c.slug === companySlug);
   const isServiceCompany = selectedCompany?.business_type === "service";
 
@@ -48,8 +53,8 @@ export default function PortfolioManagement() {
       <CompanySelector
         companies={serviceCompanies.length ? serviceCompanies : companies}
         isLoading={isLoadingCompanies}
-        title="Portfolio"
-        searchPlaceholder="Search service companies..."
+        title={t("selector.title")}
+        searchPlaceholder={t("selector.searchPlaceholder")}
         onSelect={(slug, name) => {
           const membership = user?.memberships?.find((m: any) => m.company_slug === slug);
           const role = membership?.role ?? (isSuperAdmin ? "admin" : "staff");
@@ -63,7 +68,7 @@ export default function PortfolioManagement() {
   if (!isServiceCompany) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-        Select a service company to manage portfolio.
+        {t("page.selectCompany")}
       </div>
     );
   }
@@ -71,28 +76,32 @@ export default function PortfolioManagement() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
     try {
       await create({ title, description, is_active: true });
       setTitle("");
       setDescription("");
-      showToast("success", "Portfolio item created");
+      showToast("success", t("toasts.created"));
     } catch {
-      showToast("error", "Failed to create portfolio item");
+      showToast("error", t("toasts.createFailed"));
     }
   };
 
   const handleUpload = async (portfolioId: number, file: File, isBefore: boolean) => {
     if (!companySlug) return;
+
     setUploadingId(portfolioId);
+
     try {
       const fd = new FormData();
       fd.append("image", file);
       fd.append("is_before", String(isBefore));
+
       await uploadPortfolioImage(companySlug, portfolioId, fd);
       refetch();
-      showToast("success", "Image uploaded");
+      showToast("success", t("toasts.uploaded"));
     } catch {
-      showToast("error", "Upload failed");
+      showToast("error", t("toasts.uploadFailed"));
     } finally {
       setUploadingId(null);
     }
@@ -100,24 +109,26 @@ export default function PortfolioManagement() {
 
   const handleDeleteImage = async (portfolioId: number, imageId: number) => {
     if (!companySlug) return;
+
     try {
       await deletePortfolioImage(companySlug, portfolioId, imageId);
       refetch();
     } catch {
-      showToast("error", "Failed to delete image");
+      showToast("error", t("toasts.deleteImageFailed"));
     }
   };
 
   return (
     <>
       <Toast toast={toast} />
+
       <DeleteConfirmModal
         isOpen={!!deleteTarget}
         title={deleteTarget?.title || ""}
         onConfirm={async () => {
           if (deleteTarget) {
             await remove(deleteTarget.id);
-            showToast("success", "Deleted");
+            showToast("success", t("toasts.deleted"));
             setDeleteTarget(null);
           }
         }}
@@ -127,52 +138,70 @@ export default function PortfolioManagement() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Portfolio</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {t("page.title")}
+            </h1>
+
             <p className="text-sm text-gray-500 mt-1">
-              Showcase completed work for {company?.name}
+              {t("page.description", {
+                company: company?.name || "",
+              })}
             </p>
           </div>
+
           {isSuperAdmin && (
             <button
               onClick={clearCompany}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50"
             >
               <Repeat className="h-4 w-4" />
-              Switch
+              {t("page.switch")}
             </button>
           )}
         </div>
 
-        <form onSubmit={handleCreate} className="rounded-xl border border-gray-200 p-4 mb-6 space-y-3">
-          <p className="text-sm font-medium text-gray-700">Add Portfolio Item</p>
+        <form
+          onSubmit={handleCreate}
+          className="rounded-xl border border-gray-200 p-4 mb-6 space-y-3"
+        >
+          <p className="text-sm font-medium text-gray-700">
+            {t("form.title")}
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (e.g. Modern Bob Cut)"
+              placeholder={t("form.itemTitle")}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
               required
             />
+
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description (optional)"
+              placeholder={t("form.description")}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+
           <button
             type="submit"
             className="inline-flex items-center gap-2 px-4 py-2 bg-purple-700 text-white text-sm font-medium rounded-xl hover:bg-purple-800"
           >
             <Plus className="h-4 w-4" />
-            Add Item
+            {t("form.addItem")}
           </button>
         </form>
 
         {loading ? (
-          <div className="py-12 text-center text-gray-400">Loading portfolio...</div>
+          <div className="py-12 text-center text-gray-400">
+            {t("loading")}
+          </div>
         ) : items.length === 0 ? (
-          <div className="py-16 text-center text-gray-500">No portfolio items yet.</div>
+          <div className="py-16 text-center text-gray-500">
+            {t("empty")}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {items.map((item) => (
@@ -182,11 +211,17 @@ export default function PortfolioManagement() {
               >
                 <div className="p-4 flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {item.title}
+                    </h3>
+
                     {item.description && (
-                      <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {item.description}
+                      </p>
                     )}
                   </div>
+
                   <button
                     onClick={() => setDeleteTarget(item)}
                     className="text-red-400 hover:text-red-600 p-1"
@@ -204,9 +239,13 @@ export default function PortfolioManagement() {
                           alt={img.caption || item.title}
                           className="w-20 h-20 object-cover rounded-lg border border-gray-200"
                         />
+
                         <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center bg-black/50 text-white rounded-b-lg py-0.5">
-                          {img.is_before ? "Before" : "After"}
+                          {img.is_before
+                            ? t("images.before")
+                            : t("images.after")}
                         </span>
+
                         <button
                           onClick={() => handleDeleteImage(item.id, img.id)}
                           className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] opacity-0 group-hover:opacity-100"
@@ -230,11 +269,13 @@ export default function PortfolioManagement() {
                           e.target.value = "";
                         }}
                       />
+
                       <span className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-dashed border-gray-300 rounded-lg hover:bg-gray-50">
                         <ImageIcon className="h-3.5 w-3.5" />
-                        Before
+                        {t("images.before")}
                       </span>
                     </label>
+
                     <label className="flex-1 cursor-pointer">
                       <input
                         type="file"
@@ -247,9 +288,10 @@ export default function PortfolioManagement() {
                           e.target.value = "";
                         }}
                       />
+
                       <span className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs border border-dashed border-gray-300 rounded-lg hover:bg-gray-50">
                         <ImageIcon className="h-3.5 w-3.5" />
-                        After
+                        {t("images.after")}
                       </span>
                     </label>
                   </div>
