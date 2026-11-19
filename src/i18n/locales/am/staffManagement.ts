@@ -3,7 +3,7 @@ export default {
     title: "ማጣሪያዎች",
     clearAll: "ሁሉንም አጽዳ",
     close: "ማጣሪያዎችን ዝጋ",
-    availability: "ተገኝነት",
+    availability: "የስራ ሰዐት",
     all: "ሁሉም",
     workingToday: "ዛሬ የሚሰሩ",
     offToday: "ዛሬ የማይሰሩ",
@@ -78,7 +78,7 @@ export default {
     notServiceCompany: "{{company}} የአገልግሎት ኩባንያ አይደለም",
     selectedCompany: "የተመረጠው ኩባንያ",
     disabledFeatures:
-      "የአገልግሎት አቅርቦቶች፣ የሰራተኞች የስራ መርሃ ግብሮች፣ ተገኝነት እና ቦታ ማስያዣዎች ለዚህ ኩባንያ አይገኙም። የንግድ አይነቱ",
+      "የአገልግሎት አቅርቦቶች፣ የሰራተኞች የስራ መርሃ ግብሮች፣ የስራ ሰዐት እና ቦታ ማስያዣዎች ለዚህ ኩባንያ አይገኙም። የንግድ አይነቱ",
     serviceBusinessType: "አገልግሎት",
     toContinue: "የሆነ ኩባንያ በመምረጥ ይቀጥሉ።",
     description:
@@ -127,7 +127,7 @@ export default {
   empty: {
     noSpecialists: "እስካሁን ምንም ባለሙያዎች የሉም",
     noSpecialistsDescription:
-      "የመጀመሪያውን ባለሙያ በመጨመር ቡድንዎን ይገንቡ። አገልግሎቶችን፣ የስራ መርሃ ግብሮችን እና ተገኝነትን መመደብ ይችላሉ።",
+      "የመጀመሪያውን ባለሙያ በመጨመር ቡድንዎን ይገንቡ። አገልግሎቶችን፣ የስራ መርሃ ግብሮችን እና የስራ ሰዐትን መመደብ ይችላሉ።",
     noResults: "ምንም ባለሙያዎች አልተገኙም",
     adjustSearch: "ሌላ ስም ይሞክሩ ወይም ማጣሪያዎችን ያስተካክሉ።",
   },

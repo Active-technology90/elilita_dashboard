@@ -132,7 +132,15 @@ export default {
   updateCompany: "ኩባንያ አዘምን",
   pleaseFillRequired: "እባክዎ ከመቀጠልዎ በፊት ሁሉንም አስፈላጊ መስኮች ይሙሉ።",
   readOnlyNotice: "ይህን ኩባንያ በንባብ-ብቻ ሁነታ እያዩት ነው",
+  // Email validation
+  emailHint: "የኩባንያውን ኢሜይል አድራሻ ያስገቡ።",
+  emailInvalidFormat: "እባክዎ ትክክለኛ የኢሜይል ቅርጸት ያስገቡ።",
+  emailValidHint: "✓ ትክክለኛ የኢሜይል አድራሻ",
 
+  // Terms and conditions signatory
+  signatoryNameLabel: "የፈራሚው ሙሉ ስም",
+  signatoryRoleLabel: "የፈራሚው የሥራ ድርሻ",
+  signatoryRolePlaceholder: "ለምሳሌ፦ ሥራ አስኪያጅ፣ ባለቤት",
   // Company form — step 1
   businessInformation: "የንግድ መረጃ",
   businessInformationDesc: "ዋና የኩባንያ ዝርዝሮች እና ምደባ",

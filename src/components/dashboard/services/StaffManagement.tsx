@@ -1008,7 +1008,7 @@ export default function StaffManagement() {
       ) : null}
 
       {/* Main two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] gap-6">
+      <div className="  mt-4  grid grid-cols-1 lg:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] gap-6">
         {/* Form panel */}
         <div
           ref={formPanelRef}

@@ -46,6 +46,12 @@ import type { CompanyFormData } from "./CompanyForm";
 import LocationPickerModal from "./LocationPickerModal";
 import PageHeader from "../../ui/PageHeader";
 
+import {
+  mapBackendErrors,
+  summarizeErrors,
+  FIELD_TO_STEP,
+} from "../../../utils/formErrorMapper";
+
 type PaginatedResponse<T> = {
   results: T[];
   next: string | null;
@@ -350,7 +356,6 @@ export default function CompanyManagement() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  console.log(currentStep)
   const [formData, setFormData] = useState<CompanyFormData>({
     ...EMPTY_COMPANY_FORM,
   });
@@ -483,7 +488,7 @@ export default function CompanyManagement() {
     [companies],
   );
 
-  /* ── NEW: Amharic label maps (backend-provided names keyed by English) ── */
+  /* ── Amharic label maps ── */
   const businessTypeLabelsAm = useMemo(() => {
     const map: Record<string, string> = {};
     for (const c of companies) {
@@ -835,8 +840,7 @@ export default function CompanyManagement() {
         if (companyListItem.cover_image)
           setCoverPreview(companyListItem.cover_image);
       } else if (isSuperAdmin || isMarketing) {
-
-      /* ─── SUPER-ADMIN / MARKETING PATH ─── */
+        /* ─── SUPER-ADMIN / MARKETING PATH ─── */
         let allCompanies: CompanyListItem[] = [];
         const extraParam = isMarketing ? "&my_registrations=true" : "";
         let nextUrl: string | null =
@@ -904,7 +908,6 @@ export default function CompanyManagement() {
                   : (company as any).meal_periods || [],
                 created_at:
                   (detail as any).created_at ?? (company as any).created_at,
-                // ── Amharic names ──
                 category_name_am:
                   pickString(detail, "category_name_am") ||
                   (company as any).category_name_am ||
@@ -1023,7 +1026,11 @@ export default function CompanyManagement() {
     if (!formData.business_type)
       errors.business_type = t("businessTypeRequiredError");
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
 
   const validateLocation = () => {
@@ -1039,7 +1046,11 @@ export default function CompanyManagement() {
       errors.contact_email = t("emailInvalid");
     }
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
 
   const validateDocuments = () => {
@@ -1048,7 +1059,11 @@ export default function CompanyManagement() {
       errors.fan_number = t("fanInvalid");
     }
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
 
   /* ──────────────────────────────────────────────────────────────
@@ -1456,37 +1471,48 @@ export default function CompanyManagement() {
       setIsEditingActive(false);
       await fetchData();
       resetForm();
-   
-} catch (err: any) {
-  console.error("[Company Creation/Update Failed]", {
-    status: err?.response?.status,
-    responseData: err?.response?.data,
-    responseHeaders: err?.response?.headers,
-    requestUrl: err?.config?.url,
-    requestMethod: err?.config?.method,
-    message: err?.message,
-  });
+    } catch (err: any) {
+      console.error("[Company Creation/Update Failed]", {
+        status: err?.response?.status,
+        responseData: err?.response?.data,
+        responseHeaders: err?.response?.headers,
+        requestUrl: err?.config?.url,
+        requestMethod: err?.config?.method,
+        message: err?.message,
+      });
 
-  if (err?.response?.status === 401) {
-    showToast("error", t("sessionExpired"));
-  } else {
-    const responseData = err?.response?.data;
+      if (err?.response?.status === 401) {
+        showToast("error", t("sessionExpired"));
+        return;
+      }
 
-    const msg =
-      responseData?.message ||
-      responseData?.detail ||
-      (typeof responseData === "string"
-        ? responseData
-        : responseData
-          ? JSON.stringify(responseData)
-          : t("operationFailed"));
+      const responseData = err?.response?.data;
+      const fieldErrors = mapBackendErrors(responseData);
+      const fieldCount = Object.keys(fieldErrors).length;
 
-    showToast("error", msg);
-  }
-} finally {
-  setSubmitting(false);
-}
-  }
+      if (fieldCount > 0) {
+        setFormErrors((prev) => ({ ...prev, ...fieldErrors }));
+
+        const firstField = Object.keys(fieldErrors)[0];
+        const targetStep = FIELD_TO_STEP[firstField] ?? 0;
+        setCurrentStep(targetStep);
+
+        const summary = summarizeErrors(fieldErrors);
+        showToast("error", summary || t("errorFieldsHighlighted"));
+        return;
+      }
+
+      const msg =
+        responseData?.message ||
+        responseData?.detail ||
+        (typeof responseData === "string" ? responseData : null) ||
+        t("operationFailed");
+      showToast("error", msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   /* ──────────────────────────────────────────────────────────────
      Form Reset & Modal Close
      ────────────────────────────────────────────────────────────── */
@@ -1546,6 +1572,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateBasicInfo,
@@ -1582,6 +1609,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateLocation,
@@ -1618,6 +1646,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateDocuments,
@@ -1654,6 +1683,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
       },
@@ -1672,22 +1702,15 @@ export default function CompanyManagement() {
       handleLogoChange,
       handleCoverChange,
       isSuperAdmin,
+      isMarketing,
       verificationDraft,
       handleVerificationChange,
       agreedToTerms,
       handleCloseModal,
       t,
+      showToast,
     ],
   );
-  // TEMP DEBUG — remove after verifying
-useEffect(() => {
-  if (companies.length > 0) {
-    console.log("[CompanyManagement] companies[0] raw:", companies[0]);
-    console.log("[CompanyManagement] categoryLabelsAm:", categoryLabelsAm);
-    console.log("[CompanyManagement] subCategoryLabelsAm:", subCategoryLabelsAm);
-    console.log("[CompanyManagement] businessTypeLabelsAm:", businessTypeLabelsAm);
-  }
-}, [companies, categoryLabelsAm, subCategoryLabelsAm, businessTypeLabelsAm]);
 
   /* ──────────────────────────────────────────────────────────────
      openEdit
@@ -1710,6 +1733,7 @@ useEffect(() => {
       setEditingSlug(company.slug);
       setCurrentStep(0);
       setAgreedToTerms(false);
+      setFormErrors({});
 
       const newFormData: CompanyFormData = {
         name: detail.name ?? company.name ?? "",
@@ -1821,6 +1845,7 @@ useEffect(() => {
     setEditingSlug(null);
     setIsEditingActive(false);
     setAgreedToTerms(false);
+    setFormErrors({});
   }, []);
 
   const handleDeleteClick = useCallback((company: CompanyListItem) => {
@@ -2048,6 +2073,7 @@ useEffect(() => {
               onAgreedToTermsChange={setAgreedToTerms}
               onSubmit={handleSubmit}
               onCloseForm={closeInlineEdit}
+              showToast={showToast}
             />
           </div>
         )}

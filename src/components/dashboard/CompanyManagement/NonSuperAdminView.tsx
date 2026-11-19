@@ -6,6 +6,7 @@ import CompanyForm, { type CompanyFormData } from "./CompanyForm";
 import CompanyFormSkeleton from "./CompanyFormSkeleton";
 import type { CompanyListItem, HeadCompany } from "../../../types";
 import type { Category, SubCategory } from "../../../types";
+import toast from "react-hot-toast";
 
 // ========== LOADING SKELETON ==========
 const SkeletonCard = () => (
@@ -150,7 +151,8 @@ export default function NonSuperAdminView({
       if (validateStep(currentStep)) {
         setCurrentStep(Math.min(3, currentStep + 1));
       } else {
-        alert(t("pleaseFillRequired"));
+        // alert(t("pleaseFillRequired"));
+        toast.error("pleaseFillRequired")
       }
     } else {
       setCurrentStep(Math.min(2, currentStep + 1));

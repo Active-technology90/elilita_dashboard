@@ -63,7 +63,7 @@ export default {
     eyebrow: "{{companyName}}",
     description: {
       active:
-        "የኩባንያዎን ምርቶች፣ ዋጋ፣ ክምችት እና ተገኝነት ያስተዳድሩ።",
+        "የኩባንያዎን ምርቶች፣ ዋጋ፣ ክምችት እና የስራ ሰዐት ያስተዳድሩ።",
       inactive:
         "የዚህን ኩባንያ ምርቶች ያስሱ እና ይፈልጉ። ኩባንያው እንቅስቃሴ-አልባ ስለሆነ ማርትዕ ተሰናክሏል።",
     },
@@ -184,7 +184,7 @@ export default {
       category: "ምድብ",
       brand: "ብራንድ",
       barcode: "ባርኮድ",
-      mealAvailability: "የምግብ ጊዜ ተገኝነት",
+      mealAvailability: "የምግብ ጊዜ የስራ ሰዐት",
       empty: "ተጨማሪ የምርት መረጃ የለም።",
     },
     rating: {
@@ -247,7 +247,7 @@ export default {
       noProductId: "የምርት መለያ አልተመለሰም",
     },
     mealAvailability: {
-      title: "የምግብ ጊዜ ተገኝነት",
+      title: "የምግብ ጊዜ የስራ ሰዐት",
       description:
         "ይህ ንጥል የሚገኝበትን የመመገቢያ ጊዜዎች ይምረጡ። ምንም ካልተመረጠ፣ በሁሉም የምግብ ማጣሪያዎች ውስጥ ቀኑን ሙሉ ይቀርባል።",
       resetToAllDay: "ወደ ቀኑ ሙሉ መልስ",

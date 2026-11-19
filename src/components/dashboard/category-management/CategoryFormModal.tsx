@@ -2,6 +2,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { FormModal } from "../../ui/FormModal";
+import toast from "react-hot-toast";
 
 interface CategoryFormData {
   name: string;
@@ -202,7 +203,10 @@ export default function CategoryFormModal({
                   const file = e.target.files?.[0];
                   if (file) {
                     if (file.size > 5 * 1024 * 1024) {
-                      alert(t("fileTooLarge"));
+                      // alert(t("fileTooLarge")); this chage to toast
+                      toast.error(t("fileTooLarge"))
+                
+                      
                       return;
                     }
                     setFormData({

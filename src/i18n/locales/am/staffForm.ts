@@ -82,4 +82,77 @@ export default {
     createStaff: "ሰራተኛ ፍጠር",
     cancel: "ሰርዝ",
   },
+
+table: {
+  vsLastWeek: "ካለፈው ሳምንት ጋር ሲነጻጸር",
+  allServices: "ሁሉም አገልግሎቶች",
+  service: "አገልግሎት",
+  working: "በሥራ ላይ",
+  off: "እረፍት",
+  specialist: "ባለሙያ",
+  online: "መስመር ላይ",
+  noSpecialistsFound: "ምንም ባለሙያ አልተገኘም",
+  noSpecialistsDescription:
+    "ከአሁኑ ፍለጋዎ ወይም ማጣሪያዎች ጋር የሚዛመድ ባለሙያ አልተገኘም። የፍለጋ መስፈርቶችዎን ይቀይሩ።",
+  schedule: "ዕለታዊ የሥራ መርሃ ግብር እና ቦታ ማስያዣዎችን ይመልከቱ",
+  scheduleFor: "{{name}} የሥራ መርሃ ግብር",
+  edit: "{{name}}ን አርትዕ አድርግ",
+  delete: "{{name}}ን ሰርዝ",
+  staff: "ሰራተኛ",
+  role: "የሥራ ድርሻ",
+  services: "አገልግሎቶች",
+  rating: "ደረጃ",
+  hours: "የሥራ ሰዓት",
+  today: "ዛሬ",
+  actions: "ተግባራት",
+  selectAllStaff: "ሁሉንም ሰራተኞች ይምረጡ",
+},
+
+deleteModal: {
+  close: "ዝጋ",
+  title: "{{name}}ን ማስወገድ ይፈልጋሉ?",
+  description:
+    "ይህ እርምጃ መመለስ አይቻልም። ከዚህ ሰራተኛ ጋር የተያያዙ ምደባዎች እና የወደፊት የሥራ መርሃ ግብር መረጃዎች ሊጎዱ ይችላሉ።",
+  cancel: "ይቅር",
+  confirm: "ባለሙያውን አስወግድ",
+},
+
+schedule: {
+  online: "መስመር ላይ",
+  offline: "ከመስመር ውጭ",
+  shift: "የሥራ ፈረቃ",
+  close: "ዝጋ",
+  today: "ዛሬ",
+  tomorrow: "ነገ",
+  selectDate: "የሥራ መርሃ ግብር ቀን ይምረጡ",
+  loading: "የባለሙያው የሥራ መርሃ ግብር በመጫን ላይ...",
+  offDutyOn: "በዚህ ቀን ከሥራ ውጭ ነው፦",
+  thisDay: "በዚህ ቀን",
+  notScheduled:
+    "{{name}} በመደበኛው የሥራ ቀናት መሠረት በዚህ የሳምንት ቀን ለመሥራት አልተመደበም።",
+  bookedAppointments: "የተያዙ ቀጠሮዎች",
+  scheduledFor: "ለዚህ ቀን የተያዙ፦",
+  vacantTimeSlots: "ክፍት የሥራ ሰዓቶች",
+  availableSlotsInShift: "በሥራ ፈረቃው ውስጥ ያሉ ክፍት ሰዓቶች",
+  shiftRange: "የሥራ ሰዓት ክልል",
+  activeAndReady: "ንቁ እና ዝግጁ",
+  currentlyOffline: "በአሁኑ ጊዜ ከመስመር ውጭ",
+  appointmentsAndBookings: "ቀጠሮዎች እና የደንበኞች ቦታ ማስያዣዎች",
+  noBookings:
+    "በዚህ ቀን ለ{{name}} ምንም የደንበኛ ቦታ ማስያዣ አልተመዘገበም።",
+  availableFreeTimeSlots: "ያሉ / ነፃ የሥራ ሰዓቶች",
+  minutes: "{{count}} ደቂቃ",
+  errors: {
+    loadFailed: "የሥራ መርሃ ግብሩን መጫን አልተቻለም።",
+  },
+  statuses: {
+    pending: "በመጠባበቅ ላይ",
+    confirmed: "ተረጋግጧል",
+    in_progress: "በሂደት ላይ",
+    completed: "ተጠናቋል",
+    cancelled: "ተሰርዟል",
+    no_show: "ያልተገኘ",
+  },
+},
+
 };

@@ -14,19 +14,19 @@ export default {
     maxBookings: "ከፍተኛ {{count}} ቦታ",
     maxBookings_plural: "ከፍተኛ {{count}} ቦታዎች",
   },
-  noAvailability: "ተገኝነት የለም",
+  noAvailability: "የስራ ሰዐት የለም",
   addTimeSlot: "የጊዜ ክፍተት ጨምር",
-  addAvailability: "ተገኝነት ጨምር",
+  addAvailability: "የስራ ሰዐት ጨምር",
   addShort: "ጨምር",
   time: { am: "ጥዋት", pm: "ከሰዓት" },
   defaultBlackoutTitle: "ይፋዊ በዓል",
   selector: {
-    title: "ተገኝነት",
+    title: "የስራ ሰዐት",
     searchPlaceholder: "የአገልግሎት ኩባንያዎችን ፈልግ...",
   },
   slotModal: {
-    editTitle: "የተገኝነት ክፍተት አርትዕ",
-    addTitle: "የተገኝነት ክፍተት ጨምር",
+    editTitle: "የስራ ሰዐት ክፍተት አርትዕ",
+    addTitle: "የስራ ሰዐት ክፍተት ጨምር",
     day: "ቀን",
     selectDay: "ቀን ምረጥ",
     startTime: "የመጀመሪያ ሰዓት",
@@ -37,13 +37,13 @@ export default {
     save: "ክፍተት አስቀምጥ",
   },
   notService: {
-    title: "የተገኝነት አስተዳደር",
+    title: "የስራ ሰዐት አስተዳደር",
     description: "ይህ አካባቢ እንደ አገልግሎት ንግድ ለተዘጋጁ ኩባንያዎች ብቻ ይገኛል።",
     badge: "የአገልግሎት ኩባንያ ያስፈልጋል",
     switchCompany: "ኩባንያ ቀይር",
     heading: "{{company}} የአገልግሎት ኩባንያ አይደለም",
     fallbackCompany: "የተመረጠው ኩባንያ",
-    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ ተገኝነት እና ቀጠሮ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
+    body: "የአገልግሎት አቅርቦቶች፣ የሰራተኛ መርሃ ግብሮች፣ የስራ ሰዐት እና ቀጠሮ ለዚህ ኩባንያ ተሰናክለዋል። ለመቀጠል የንግድ ዓይነቱ አገልግሎት የሆነ ኩባንያ ይምረጡ።",
     chooseServiceCompany: "የአገልግሎት ኩባንያ ምረጥ",
   },
   toasts: {
@@ -64,7 +64,7 @@ export default {
   deleteBlackoutTitle: "የዝግ ቀን ይሰረዝ?",
   page: {
     description: "የቀጦሮ መርሃ ግብሮችን፣ የስራ ሰዓቶችን እና የዝግ ቀኖችን ያዋቅሩ።",
-    eyebrow: "የተገኝነት አስተዳደር",
+    eyebrow: "የስራ ሰዐት አስተዳደር",
     switchCompany: "ኩባንያ ቀይር",
   },
   summary: {
@@ -76,7 +76,7 @@ export default {
   },
   weeklySchedule: {
     title: "ሳምንታዊ መርሃ ግብር",
-    subtitle: "ሳምንታዊ ተገኝነትዎን ያስተዳድሩ",
+    subtitle: "ሳምንታዊ የስራ ሰዐትዎን ያስተዳድሩ",
   },
   blackouts: {
     title: "የዝግ ቀናት",

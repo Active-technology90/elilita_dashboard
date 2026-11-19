@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   X,
   Clock,
@@ -20,14 +22,14 @@ interface StaffScheduleModalProps {
   onClose: () => void;
 }
 
-const WEEKDAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
+const WEEKDAY_KEYS = [
+  "mon",
+  "tue",
+  "wed",
+  "thu",
+  "fri",
+  "sat",
+  "sun",
 ];
 
 export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
@@ -36,6 +38,8 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
   companySlug,
   onClose,
 }) => {
+  const { t } = useTranslation("staffForm");
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -56,12 +60,14 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
       });
       setScheduleData(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to load schedule.");
+      setError(
+        err?.response?.data?.detail || t("schedule.errors.loadFailed"),
+      );
       setScheduleData(null);
     } finally {
       setLoading(false);
     }
-  }, [companySlug, staff, selectedDate]);
+  }, [companySlug, staff, selectedDate, t]);
 
   useEffect(() => {
     if (isOpen && staff) {
@@ -138,12 +144,15 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                       : "bg-gray-200 text-gray-600"
                   }`}
                 >
-                  {staff.is_online ? "ONLINE" : "OFFLINE"}
+                  {staff.is_online
+                    ? t("schedule.online")
+                    : t("schedule.offline")}
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                {staff.role_title || "Specialist"} • Shift:{" "}
-                {staff.start_time?.slice(0, 5)} - {staff.end_time?.slice(0, 5)}
+                {staff.role_title || t("table.specialist")} •{" "}
+                {t("schedule.shift")}: {staff.start_time?.slice(0, 5)} -{" "}
+                {staff.end_time?.slice(0, 5)}
               </p>
             </div>
           </div>
@@ -151,6 +160,8 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors"
+            aria-label={t("schedule.close")}
+            title={t("schedule.close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -167,13 +178,13 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                   : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
               }`}
             >
-              Today
+              {t("schedule.today")}
             </button>
             <button
               onClick={() => setDateOffset(1)}
               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 transition-all"
             >
-              Tomorrow
+              {t("schedule.tomorrow")}
             </button>
           </div>
 
@@ -184,6 +195,7 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-secondary focus:outline-none"
+              aria-label={t("schedule.selectDate")}
             />
           </div>
         </div>
@@ -194,7 +206,7 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
             <div className="py-16 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-secondary mx-auto mb-2" />
               <p className="text-xs font-semibold text-gray-500">
-                Loading specialist schedule...
+                {t("schedule.loading")}
               </p>
             </div>
           ) : error ? (
@@ -210,12 +222,16 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
                     <h4 className="text-sm font-bold text-amber-900">
-                      Off Duty on{" "}
-                      {WEEKDAY_NAMES[scheduleData.weekday] || "this day"}
+                      {t("schedule.offDutyOn")}{" "}
+                      {t(
+                        `weekdays.${WEEKDAY_KEYS[scheduleData.weekday]}`,
+                        {
+                          defaultValue: t("schedule.thisDay"),
+                        },
+                      )}
                     </h4>
                     <p className="text-xs text-amber-700 mt-0.5">
-                      {staff.name} is not scheduled to work on this weekday
-                      according to their regular working days.
+                      {t("schedule.notScheduled", { name: staff.name })}
                     </p>
                   </div>
                 </div>
@@ -225,38 +241,40 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100">
                   <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider block mb-1">
-                    Booked Appointments
+                    {t("schedule.bookedAppointments")}
                   </span>
                   <p className="text-2xl font-bold text-secondary">
                     {appointments.length}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    scheduled for {selectedDate}
+                    {t("schedule.scheduledFor")} {selectedDate}
                   </p>
                 </div>
 
                 <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
                   <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">
-                    Vacant Time Slots
+                    {t("schedule.vacantTimeSlots")}
                   </span>
                   <p className="text-2xl font-bold text-emerald-700">
                     {vacantSlots.length}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    available slots in shift
+                    {t("schedule.availableSlotsInShift")}
                   </p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                    Shift Range
+                    {t("schedule.shiftRange")}
                   </span>
                   <p className="text-sm font-bold text-gray-900 mt-1">
                     {staff.start_time?.slice(0, 5)} →{" "}
                     {staff.end_time?.slice(0, 5)}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {staff.is_online ? "Active & Ready" : "Currently Offline"}
+                    {staff.is_online
+                      ? t("schedule.activeAndReady")
+                      : t("schedule.currentlyOffline")}
                   </p>
                 </div>
               </div>
@@ -265,15 +283,15 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
               <div>
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-secondary" />
-                  Appointments & Client Bookings ({appointments.length})
+                  {t("schedule.appointmentsAndBookings")} (
+                  {appointments.length})
                 </h3>
 
                 {appointments.length === 0 ? (
                   <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                     <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto mb-1.5" />
                     <p className="text-xs font-semibold text-gray-600">
-                      No customer bookings scheduled for {staff.name} on this
-                      date.
+                      {t("schedule.noBookings", { name: staff.name })}
                     </p>
                   </div>
                 ) : (
@@ -281,6 +299,7 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                     {appointments.map((apt) => {
                       const sc =
                         statusColors[apt.status] || statusColors.pending;
+
                       return (
                         <div
                           key={apt.booking_id}
@@ -294,7 +313,9 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sc.bg} ${sc.text} ${sc.border}`}
                               >
-                                {apt.status.toUpperCase()}
+                                {t(`schedule.statuses.${apt.status}`, {
+                                  defaultValue: apt.status.toUpperCase(),
+                                })}
                               </span>
                               <span className="text-xs font-semibold text-secondary">
                                 #{apt.booking_id}
@@ -325,7 +346,9 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                               {apt.currency}
                             </div>
                             <div className="text-[11px] text-gray-400 font-medium">
-                              {apt.duration_minutes} mins
+                              {t("schedule.minutes", {
+                                count: apt.duration_minutes,
+                              })}
                             </div>
                           </div>
                         </div>
@@ -340,7 +363,8 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
                     <Clock className="h-4 w-4 text-emerald-600" />
-                    Available / Free Time Slots ({vacantSlots.length})
+                    {t("schedule.availableFreeTimeSlots")} (
+                    {vacantSlots.length})
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {vacantSlots.map((slot) => (
