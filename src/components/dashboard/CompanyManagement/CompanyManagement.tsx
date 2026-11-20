@@ -527,10 +527,10 @@ export default function CompanyManagement() {
     createdAtFilter !== "all";
 
   const { sortedItems, handleSort, sortField, sortOrder } = useSorting(
-    isSuperAdmin || isMarketing ? filteredCompanies : companies,
-    "name",
-    "asc",
-  );
+  isSuperAdmin || isMarketing ? filteredCompanies : companies,
+  "created_at",
+  "desc",
+);
 
   const { paginatedItems, currentPage, totalPages, goToPage, resetPage } =
     usePagination(sortedItems, pageSize);
@@ -1066,36 +1066,98 @@ export default function CompanyManagement() {
     return true;
   };
 
+
+const validateCompanyForm = () => {
+  const errors: Record<string, string> = {};
+
+  if (!formData.name?.trim()) {
+    errors.name = t("nameRequired");
+  }
+
+  if (!formData.business_type) {
+    errors.business_type = t("businessTypeRequiredError");
+  }
+
+  if (!formData.category || Number(formData.category) === 0) {
+    errors.category = t("categoryRequiredError");
+  }
+
+  if (!formData.sub_category || Number(formData.sub_category) === 0) {
+    errors.sub_category = t("subcategoryRequiredError");
+  }
+
+  if (!formData.contact_phone?.trim()) {
+    errors.contact_phone = t("phoneRequired");
+  }
+
+  if (!formData.contact_email?.trim()) {
+    errors.contact_email = t("emailRequired");
+  } else if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email.trim())
+  ) {
+    errors.contact_email = t("emailInvalid");
+  }
+
+  if (isMarketing && !editingSlug) {
+    if (!agreedToTerms) {
+      errors.terms_agreed = t("termsRequiredOwner");
+    }
+
+    if (!formData.terms_signatory_name?.trim()) {
+      errors.terms_signatory_name = t("signatoryRequired");
+    }
+  }
+
+  setFormErrors(errors);
+
+  if (Object.keys(errors).length > 0) {
+    showToast("error", t("errorFieldsHighlighted"));
+    return false;
+  }
+
+  return true;
+};
+
   /* ──────────────────────────────────────────────────────────────
      Submit
      ────────────────────────────────────────────────────────────── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+  if (!validateBasicInfo()) {
+  setCurrentStep(0);
+  return;
+}
 
-    if (!validateBasicInfo()) {
-      setCurrentStep(0);
-      return;
-    }
-    if (!validateLocation()) {
-      setCurrentStep(1);
-      return;
-    }
-    if (!validateDocuments()) {
-      setCurrentStep(2);
-      return;
-    }
+if (!validateLocation()) {
+  setCurrentStep(1);
+  return;
+}
 
-    if (isMarketing && !editingSlug) {
-      if (!agreedToTerms) {
-        showToast("error", t("termsRequiredOwner"));
-        return;
-      }
-      if (!formData.terms_signatory_name?.trim()) {
-        showToast("error", t("signatoryRequired"));
-        return;
-      }
-    }
+if (!validateDocuments()) {
+  setCurrentStep(2);
+  return;
+}
+
+if (isMarketing && !editingSlug) {
+  const errors: Record<string, string> = {};
+
+  if (!agreedToTerms) {
+    errors.terms_agreed = t("termsRequiredOwner");
+  }
+
+  if (!formData.terms_signatory_name?.trim()) {
+    errors.terms_signatory_name = t("signatoryRequired");
+  }
+
+  if (Object.keys(errors).length > 0) {
+    setFormErrors(errors);
+    setCurrentStep(3);
+    showToast("error", t("errorFieldsHighlighted"));
+    return;
+  }
+}
+    
 
     // CHANGE DETECTION
     if (editingSlug && originalFormData) {

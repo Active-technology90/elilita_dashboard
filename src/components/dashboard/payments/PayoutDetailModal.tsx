@@ -31,7 +31,9 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
   onClose,
   onOpenReceipt,
 }) => {
-  const { t } = useTranslation("payoutDetailModal");
+const { t, i18n } = useTranslation("payoutDetailModal");
+const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
+
   const [bankSlipPreview, setBankSlipPreview] = useState<string | null>(null);
 
   if (!isOpen || !payout) return null;
@@ -47,15 +49,12 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
     vo?.payment_method === "arifpay" ||
     vo?.payment_method === "chapa";
 
-  const scheduledDate = payout.scheduled_at
-    ? new Date(payout.scheduled_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : t("common.notAvailable");
+ const scheduledDate = payout.scheduled_at
+  ? new Date(payout.scheduled_at).toLocaleString(locale, {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    })
+  : t("common.notAvailable");
 
   const paidDate = payout.paid_at
     ? new Date(payout.paid_at).toLocaleDateString("en-US", {
