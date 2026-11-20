@@ -51,6 +51,7 @@ export default {
   orders: "Orders",
   masterOrders: "Master Orders",
   allOrders: "All Orders",
+  quoteRequests: "Price Quotes",
   allOrdersInactive: "All Orders (Company inactive)",
 
   // Sidebar toggles

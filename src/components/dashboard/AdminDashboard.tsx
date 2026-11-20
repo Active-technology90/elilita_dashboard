@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  FileCheck,
   Building2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -93,6 +94,7 @@ import {
 } from "../../services/api";
 import { VendorOrderDetailModal } from "./vedorOrders/VendorOrderDetailModal";
 import PlatformFeeManager from "./platform-fees/page";
+import VendorQuoteRequests from "./quotes/VendorQuoteRequests";
 
 type Tab =
   | "overview"
@@ -108,6 +110,7 @@ type Tab =
   | "users"
   | "masterOrders"
   | "companyOrders"
+  | "quoteRequests"
   | "payments"
   | "disputes"
   | "bankAccounts"
@@ -140,6 +143,7 @@ const MANAGEMENT_TABS: Tab[] = [
   "products",
   "masterOrders",
   "companyOrders",
+  "quoteRequests",
   "payments",
   "disputes",
   "bankAccounts",
@@ -160,6 +164,7 @@ const SERVICE_BLOCKED_TABS: Tab[] = [
   "products",
   "masterOrders",
   "companyOrders",
+  "quoteRequests",
   "disputes",
 ];
 
@@ -188,7 +193,9 @@ function OrdersMenu({
   const ordersRef = useRef<HTMLDivElement>(null);
 
   const isActive =
-    activeTab === "masterOrders" || activeTab === "companyOrders";
+    activeTab === "masterOrders" ||
+    activeTab === "companyOrders" ||
+    activeTab === "quoteRequests";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -219,29 +226,6 @@ function OrdersMenu({
           text-[12px] font-medium opacity-40 [&_svg]:h-4 [&_svg]:w-4
           ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
           text-white/40
-        `}
-      >
-        <ShoppingBag className="shrink-0" />
-        {!collapsed && <span className="truncate">{t("allOrders")}</span>}
-      </button>
-    );
-  }
-
-  if (!showMasterOrders) {
-    return (
-      <button
-        type="button"
-        title={collapsed ? t("allOrders") : undefined}
-        onClick={() => onNavigate("companyOrders")}
-        className={`
-          group flex h-9 w-full items-center rounded-lg text-[12px] font-medium
-          transition-colors duration-150 [&_svg]:h-4 [&_svg]:w-4
-          ${collapsed ? "justify-center px-2" : "gap-2.5 px-3"}
-          ${
-            activeTab === "companyOrders"
-              ? "bg-white text-secondary shadow-sm"
-              : "text-white/75 hover:bg-white/10 hover:text-white"
-          }
         `}
       >
         <ShoppingBag className="shrink-0" />
@@ -317,6 +301,24 @@ function OrdersMenu({
               <ListOrdered className="shrink-0" />
               <span className="truncate">{t("allOrders")}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigate("quoteRequests")}
+              className={`
+                flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+                text-[11px] transition-colors duration-150
+                [&_svg]:h-3.5 [&_svg]:w-3.5
+                ${
+                  activeTab === "quoteRequests"
+                    ? "bg-white/15 font-semibold text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
+                }
+              `}
+            >
+              <FileCheck className="shrink-0" />
+              <span className="truncate">{t("quoteRequests") || "Price Quotes"}</span>
+            </button>
           </div>
         )}
       </div>
@@ -383,7 +385,27 @@ function OrdersMenu({
             `}
           >
             <Building2 />
-            {t("companyDetail")}
+            {t("allOrders")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate("quoteRequests");
+              setCollapsedOrdersOpen(false);
+            }}
+            className={`
+              flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left
+              text-[11px] transition-colors [&_svg]:h-3.5 [&_svg]:w-3.5
+              ${
+                activeTab === "quoteRequests"
+                  ? "bg-secondary/[0.08] font-semibold text-secondary"
+                  : "text-gray-600 hover:bg-secondary/[0.04] hover:text-secondary"
+              }
+            `}
+          >
+            <FileCheck />
+            {t("quoteRequests") || "Price Quotes"}
           </button>
         </div>
       )}
@@ -932,6 +954,8 @@ export default function AdminDashboard() {
           return <MasterOrders key={componentKey} />;
         case "companyOrders":
           return <CompanyOrders key={componentKey} />;
+        case "quoteRequests":
+          return <VendorQuoteRequests key={componentKey} />;
         case "payments":
           return <Payments key={componentKey} />;
         case "disputes":

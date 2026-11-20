@@ -36,6 +36,8 @@ import type {
   ServiceSessionLog,
   StaffScheduleResponse,
   IntakeFormField,
+  ProductQuoteRequest,
+  VendorSubmitQuotePayload,
 } from "../types";
 
 const rawApiUrl =
@@ -808,6 +810,39 @@ export const getCompanyVendorOrders = async (
       signal,
     },
   );
+};
+
+// ========== PRODUCT QUOTE REQUESTS (PRICE ON REQUEST) ==========
+export const getQuoteRequests = async (params?: {
+  company_id?: number;
+  company_slug?: string;
+  scope?: "vendor" | "customer";
+  status?: string;
+  page?: number;
+  page_size?: number;
+  search?: string;
+  signal?: AbortSignal;
+}) => {
+  const { signal, ...queryParameters } = params || {};
+  return api.get<PaginatedResponse<ProductQuoteRequest>>("/orders/quotes/", {
+    params: queryParameters,
+    signal,
+  });
+};
+
+export const getQuoteRequestDetail = async (quoteId: number) => {
+  return api.get<ProductQuoteRequest>(`/orders/quotes/${quoteId}/`);
+};
+
+export const submitVendorQuote = async (
+  quoteId: number,
+  data: VendorSubmitQuotePayload,
+) => {
+  return api.post<ProductQuoteRequest>(`/orders/quotes/${quoteId}/quote/`, data);
+};
+
+export const rejectQuoteRequest = async (quoteId: number) => {
+  return api.post<ProductQuoteRequest>(`/orders/quotes/${quoteId}/reject/`);
 };
 
 export const getAdminAnalyticsOverview = async (params?: {

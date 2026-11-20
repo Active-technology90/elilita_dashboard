@@ -367,7 +367,16 @@ export default function Orders() {
         key: "id",
         header: t("orders.table.columns.orderId"),
         className: "whitespace-nowrap font-semibold text-secondary",
-        render: (order) => `#${order.id}`,
+        render: (order) => (
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span>#{order.id}</span>
+            {order.order_type === "made_to_order" && (
+              <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[9px] font-semibold text-purple-700 shadow-sm">
+                MTO
+              </span>
+            )}
+          </div>
+        ),
       },
       {
         key: "recipient_name",

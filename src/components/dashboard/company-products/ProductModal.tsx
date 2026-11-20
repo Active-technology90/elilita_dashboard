@@ -31,12 +31,15 @@ interface ProductFormData {
   description?: string;
   description_am?: string;
   currency?: string;
-  price: number;
-  stock: number;
+  price?: number | null;
+  stock?: number;
   unit: string;
   meal_periods?: string[];
   is_featured?: boolean;
   is_active?: boolean;
+  is_price_on_request?: boolean;
+  is_made_to_order?: boolean;
+  lead_time_days?: number | null;
 }
 
 interface ProductModalProps {
@@ -49,12 +52,15 @@ interface ProductModalProps {
     description?: string;
     description_am?: string;
     currency?: string;
-    price: number;
+    price?: number | null;
     stock: number;
     unit: string;
     meal_periods?: string[];
     is_featured?: boolean;
     is_active?: boolean;
+    is_price_on_request?: boolean;
+    is_made_to_order?: boolean;
+    lead_time_days?: number | null;
     average_rating?: number;
     review_count?: number;
     total_reviews?: number;
@@ -88,20 +94,33 @@ export function ProductModal({
   // Zod schema rebuilt via useMemo so validation messages are translated
   const productSchema = useMemo(
     () =>
-      z.object({
-        sku: z.string().optional(),
-        title: z.string().min(1, t("productModal.fields.titleRequired")),
-        title_am: z.string().optional(),
-        description: z.string().optional(),
-        description_am: z.string().optional(),
-        currency: z.string().optional(),
-        price: z.number().positive(t("productModal.fields.priceRequired")),
-        stock: z.number().int().min(0, t("productModal.fields.stockRequired")),
-        unit: z.string().min(1, t("productModal.fields.unitRequired")),
-        meal_periods: z.array(z.string()).optional(),
-        is_featured: z.boolean().optional(),
-        is_active: z.boolean().optional(),
-      }),
+      z
+        .object({
+          sku: z.string().optional(),
+          title: z.string().min(1, t("productModal.fields.titleRequired")),
+          title_am: z.string().optional(),
+          description: z.string().optional(),
+          description_am: z.string().optional(),
+          currency: z.string().optional(),
+          price: z.number().min(0).optional().nullable(),
+          stock: z.number().int().min(0, t("productModal.fields.stockRequired")).optional(),
+          unit: z.string().min(1, t("productModal.fields.unitRequired")),
+          meal_periods: z.array(z.string()).optional(),
+          is_featured: z.boolean().optional(),
+          is_active: z.boolean().optional(),
+          is_price_on_request: z.boolean().optional(),
+          is_made_to_order: z.boolean().optional(),
+          lead_time_days: z.number().int().min(0).optional().nullable(),
+        })
+        .superRefine((data, ctx) => {
+          if (!data.is_price_on_request && (!data.price || data.price <= 0)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t("productModal.fields.priceRequired"),
+              path: ["price"],
+            });
+          }
+        }),
     [t],
   );
 
@@ -227,6 +246,7 @@ export function ProductModal({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -242,8 +262,14 @@ export function ProductModal({
       unit: "pcs",
       is_featured: false,
       is_active: true,
+      is_price_on_request: false,
+      is_made_to_order: false,
+      lead_time_days: 0,
     },
   });
+
+  const isPriceOnRequest = watch("is_price_on_request");
+  const isMadeToOrder = watch("is_made_to_order");
 
   useEffect(() => {
     if (editingProduct) {
@@ -282,7 +308,7 @@ export function ProductModal({
         description: editingProduct.description || "",
         description_am: editingProduct.description_am || "",
         currency: editingProduct.currency || "ETB",
-        price: editingProduct.price,
+        price: editingProduct.price ?? 0,
         stock: editingProduct.stock,
         unit: editingProduct.unit,
         meal_periods: initialMeals,
@@ -291,6 +317,9 @@ export function ProductModal({
           editingProduct.is_active !== undefined
             ? editingProduct.is_active
             : true,
+        is_price_on_request: editingProduct.is_price_on_request || false,
+        is_made_to_order: editingProduct.is_made_to_order || false,
+        lead_time_days: editingProduct.lead_time_days || 0,
       });
       setSelectedMealPeriods(initialMeals);
       setSavedProductId(editingProduct.id);
@@ -313,6 +342,9 @@ export function ProductModal({
           meal_periods: [],
           is_featured: false,
           is_active: canAddMoreActive,
+          is_price_on_request: false,
+          is_made_to_order: false,
+          lead_time_days: 0,
         });
         setStep("details");
       }
@@ -366,6 +398,15 @@ export function ProductModal({
         }
         if (detail.title_am) {
           setValue("title_am", detail.title_am);
+        }
+        if (detail.is_price_on_request !== undefined) {
+          setValue("is_price_on_request", detail.is_price_on_request);
+        }
+        if (detail.is_made_to_order !== undefined) {
+          setValue("is_made_to_order", detail.is_made_to_order);
+        }
+        if (detail.lead_time_days !== undefined) {
+          setValue("lead_time_days", detail.lead_time_days);
         }
       })
       .catch((err) => {
@@ -454,6 +495,14 @@ export function ProductModal({
         sku: autoSKU,
         is_featured: maxFeatured === 0 ? false : Boolean(data.is_featured),
         meal_periods: selectedMealPeriods,
+        is_price_on_request: Boolean(data.is_price_on_request),
+        is_made_to_order: Boolean(data.is_made_to_order),
+        lead_time_days: data.lead_time_days || 0,
+        stock: data.is_made_to_order ? 0 : (data.stock ?? 0),
+        price:
+          data.is_price_on_request && (!data.price || data.price <= 0)
+            ? null
+            : data.price,
       };
 
       if (savedProductId && !editingProduct) {
@@ -716,7 +765,13 @@ export function ProductModal({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t("productModal.fields.price")}{" "}
-                      <span className="text-red-500">*</span>
+                      {!isPriceOnRequest ? (
+                        <span className="text-red-500">*</span>
+                      ) : (
+                        <span className="text-xs text-amber-600 font-normal ml-1">
+                          (Optional for PoR)
+                        </span>
+                      )}
                     </label>
                     <input
                       type="number"
@@ -731,9 +786,11 @@ export function ProductModal({
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
-                      placeholder={t(
-                        "productModal.fields.pricePlaceholder",
-                      )}
+                      placeholder={
+                        isPriceOnRequest
+                          ? "Custom quoted per request"
+                          : t("productModal.fields.pricePlaceholder")
+                      }
                       disabled={isSubmitting || isPricingDisabled}
                     />
                     {errors.price && (
@@ -745,7 +802,13 @@ export function ProductModal({
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t("productModal.fields.stock")}{" "}
-                      <span className="text-red-500">*</span>
+                      {!isMadeToOrder ? (
+                        <span className="text-red-500">*</span>
+                      ) : (
+                        <span className="text-xs text-purple-600 font-normal ml-1">
+                          (Made-to-Order)
+                        </span>
+                      )}
                     </label>
                     <input
                       type="number"
@@ -755,14 +818,16 @@ export function ProductModal({
                           ? "border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                       } transition-all outline-none ${
-                        isPricingDisabled
+                        isPricingDisabled || isMadeToOrder
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
-                      placeholder={t(
-                        "productModal.fields.stockPlaceholder",
-                      )}
-                      disabled={isSubmitting || isPricingDisabled}
+                      placeholder={
+                        isMadeToOrder
+                          ? "0 (No shelf inventory)"
+                          : t("productModal.fields.stockPlaceholder")
+                      }
+                      disabled={isSubmitting || isPricingDisabled || isMadeToOrder}
                     />
                     {errors.stock && (
                       <p className="text-red-500 text-sm mt-1">
@@ -770,6 +835,70 @@ export function ProductModal({
                       </p>
                     )}
                   </div>
+                </div>
+
+                {/* Price on Request & Made-to-Order Options */}
+                <div className="rounded-xl border border-secondary/15 bg-secondary/[0.02] p-3 sm:p-4 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      id="por-checkbox"
+                      type="checkbox"
+                      {...register("is_price_on_request")}
+                      disabled={isSubmitting || isPricingDisabled}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary/20"
+                    />
+                    <label htmlFor="por-checkbox" className="text-xs sm:text-sm cursor-pointer select-none">
+                      <span className="font-semibold text-gray-800">
+                        Price on Request (ዋጋ በጥያቄ)
+                      </span>
+                      <p className="text-gray-500 text-[11px] sm:text-xs mt-0.5">
+                        Product does not have a fixed shelf price. Customers submit specification inquiries, and your store issues a proforma quote.
+                      </p>
+                    </label>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-gray-100 flex items-start gap-2.5">
+                    <input
+                      id="mto-checkbox"
+                      type="checkbox"
+                      {...register("is_made_to_order")}
+                      disabled={isSubmitting || isPricingDisabled}
+                      onChange={(e) => {
+                        setValue("is_made_to_order", e.target.checked);
+                        if (e.target.checked) {
+                          setValue("stock", 0);
+                        }
+                      }}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary/20"
+                    />
+                    <label htmlFor="mto-checkbox" className="text-xs sm:text-sm cursor-pointer select-none">
+                      <span className="font-semibold text-gray-800">
+                        Made to Order / Custom Manufacturing
+                      </span>
+                      <p className="text-gray-500 text-[11px] sm:text-xs mt-0.5">
+                        Item is manufactured upon order placement. Shelf inventory is bypassed and order cancellations will never add phantom stock.
+                      </p>
+                    </label>
+                  </div>
+
+                  {isMadeToOrder && (
+                    <div className="pt-2 border-t border-gray-100 ml-6">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Production Lead Time (Days)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        {...register("lead_time_days", { valueAsNumber: true })}
+                        className="w-36 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
+                        placeholder="e.g. 5"
+                        disabled={isSubmitting || isPricingDisabled}
+                      />
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Typical manufacturing time in days to craft and ready the item.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Unit */}

@@ -517,6 +517,11 @@ export default function CompanyOrders() {
         render: (order) => (
           <div className="flex items-center gap-2 whitespace-nowrap font-semibold text-secondary">
             <span>#{order.id}</span>
+            {order.order_type === "made_to_order" && (
+              <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[9px] font-semibold text-purple-700 shadow-sm">
+                Made to Order
+              </span>
+            )}
             {isTodayDate(order.created_at) && (
               <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[9px] font-semibold text-emerald-700 shadow-sm">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />

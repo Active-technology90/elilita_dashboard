@@ -51,6 +51,7 @@ export default {
   orders: "ትዕዛዞች",
   masterOrders: "ዋና ትዕዛዞች",
   allOrders: "ሁሉም ትዕዛዞች",
+  quoteRequests: "የዋጋ ጥያቄዎች",
   allOrdersInactive: "ሁሉም ትዕዛዞች (ኩባንያ የተቦዘነ)",
 
   // Sidebar toggles

@@ -3852,6 +3852,11 @@ export function VendorOrderDetailModal({
                       }}
                       t={t}
                     />
+                    {effectiveOrder.order_type === "made_to_order" && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 shadow-sm">
+                        Made to Order
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-1 sm:gap-4 text-[9px] sm:text-xs font-bold">
                     <span className="flex items-center gap-1 sm:gap-2 bg-secondary/10 px-1.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full border border-secondary/20 shadow-sm">
@@ -3912,6 +3917,19 @@ export function VendorOrderDetailModal({
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 custom-scrollbar scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-gray-100">
+              {effectiveOrder.order_type === "made_to_order" && (
+                <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">
+                  <Package className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-bold text-purple-900">
+                      Made-to-Order Custom Product Order
+                    </div>
+                    <p className="mt-0.5 text-purple-700 text-xs">
+                      This order was originated from an agreed Price on Request proforma quote. Shelf inventory was not reserved or deducted. Prepare the item according to requested specifications.
+                    </p>
+                  </div>
+                </div>
+              )}
               {effectiveOrder.status?.toLowerCase() ===
                 "replacement_in_progress" && (
                 <div className="mb-4 sm:mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl flex items-start gap-3 shadow-sm">

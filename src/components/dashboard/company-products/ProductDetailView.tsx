@@ -136,8 +136,15 @@ export function ProductDetailView({
   );
   const unitLabel = translateUnit(product.unit, t) || "—";
 
-  const stockStatus =
-    product.stock === 0
+  const stockStatus = product.is_made_to_order
+    ? {
+        tone: "info" as const,
+        icon: Boxes,
+        label: product.lead_time_days
+          ? `Made to Order (${product.lead_time_days} days)`
+          : "Made to Order",
+      }
+    : product.stock === 0
       ? {
           tone: "danger" as const,
           icon: XCircle,
@@ -259,18 +266,33 @@ export function ProductDetailView({
               <p className="text-[10px] font-semibold uppercase tracking-wider text-secondary/60">
                 {t("productDetail.price.label")}
               </p>
-              <p className="mt-1 text-2xl font-extrabold tracking-tight text-secondary">
-                {Number(product.price || 0).toLocaleString()}
-                <span className="ml-1.5 text-sm font-bold text-secondary/70">
-                  {currency}
-                </span>
-              </p>
-              {product.unit && (
-                <p className="mt-1 text-[11px] text-secondary/60">
-                  {product.unit === "pc"
-                    ? t("productDetail.price.perPiece")
-                    : t("productDetail.price.per", { unit: unitLabel })}
-                </p>
+              {product.is_price_on_request ? (
+                <div className="mt-2">
+                  <span className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-bold text-amber-800">
+                    Price on Request / ዋጋ በጥያቄ
+                  </span>
+                  {product.lead_time_days && (
+                    <p className="mt-1 text-[11px] text-gray-500 font-medium">
+                      Est. Lead Time: {product.lead_time_days} days
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="mt-1 text-2xl font-extrabold tracking-tight text-secondary">
+                    {Number(product.price || 0).toLocaleString()}
+                    <span className="ml-1.5 text-sm font-bold text-secondary/70">
+                      {currency}
+                    </span>
+                  </p>
+                  {product.unit && (
+                    <p className="mt-1 text-[11px] text-secondary/60">
+                      {product.unit === "pc"
+                        ? t("productDetail.price.perPiece")
+                        : t("productDetail.price.per", { unit: unitLabel })}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

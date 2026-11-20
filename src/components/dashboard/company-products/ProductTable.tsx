@@ -12,10 +12,13 @@ export interface Product {
   title_am?: string;              // ← added
   description?: string;
   description_am?: string;        // ← added
-  price: number;
+  price: number | null;
   currency?: string;
   stock: number;
   unit: string;
+  is_price_on_request?: boolean;
+  is_made_to_order?: boolean;
+  lead_time_days?: number | null;
   image?: string;
   image_url?: string;
   is_featured?: boolean;
@@ -38,7 +41,14 @@ interface ProductTableProps {
   onDelete?: (id: number, title: string) => void;
 }
 
-function StockBadge({ stock }: { stock: number }) {
+function StockBadge({ stock, isMadeToOrder }: { stock: number; isMadeToOrder?: boolean }) {
+  if (isMadeToOrder) {
+    return (
+      <span className="inline-flex rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+        Made to Order
+      </span>
+    );
+  }
   let color = "bg-green-100 text-green-800";
   if (stock === 0) color = "bg-red-100 text-red-800";
   else if (stock < 10) color = "bg-yellow-100 text-yellow-800";
@@ -191,11 +201,21 @@ export function ProductTable({
       header: t("productTable.columns.price"),
       className: "whitespace-nowrap text-right",
       render: (product) => {
+        if (product.is_price_on_request) {
+          return (
+            <div className="flex items-center justify-end">
+              <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                Price on Request
+              </span>
+            </div>
+          );
+        }
         const currency = product.currency || "ETB";
+        const numericPrice = typeof product.price === "number" ? product.price : parseFloat(String(product.price || 0));
         return (
           <div className="flex items-center justify-end gap-1.5">
             <span className="text-[11px] font-medium text-gray-900 sm:text-sm">
-              {product.price.toLocaleString()}
+              {numericPrice.toLocaleString()}
             </span>
             <span
               className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold sm:text-[10px] ${
@@ -229,7 +249,12 @@ export function ProductTable({
       key: "stock",
       header: t("productTable.columns.stock"),
       className: "whitespace-nowrap",
-      render: (product) => <StockBadge stock={product.stock} />,
+      render: (product) => (
+        <StockBadge
+          stock={product.stock}
+          isMadeToOrder={product.is_made_to_order}
+        />
+      ),
     },
     {
       key: "unit",

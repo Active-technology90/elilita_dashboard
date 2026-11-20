@@ -249,7 +249,7 @@ export interface CompanyProduct {
   title_am?: string;
   description?: string;
   description_am?: string;
-  price: string;
+  price: string | null;
   compare_at_price?: string | null;
   currency: string;
   stock: number;
@@ -258,6 +258,10 @@ export interface CompanyProduct {
   meal_periods?: string[];
   is_active: boolean;
   is_featured: boolean;
+  is_price_on_request?: boolean;
+  is_made_to_order?: boolean;
+  lead_time_days?: number | null;
+  spec_schema?: Record<string, any> | null;
   images: ProductImage[];
   primary_image?: ProductImage | null;
   sales_count?: number;
@@ -278,7 +282,7 @@ export interface CompanyProductListItem {
   title_am?: string;
   description?: string;
   description_am?: string;
-  price: string;
+  price: string | null;
   compare_at_price?: string | null;
   currency: string;
   stock: number;
@@ -286,6 +290,9 @@ export interface CompanyProductListItem {
   meal_periods?: string[];
   is_active: boolean;
   is_featured: boolean;
+  is_price_on_request?: boolean;
+  is_made_to_order?: boolean;
+  lead_time_days?: number | null;
   primary_image?: string | null;
   sales_count?: number;
   average_rating?: string | null;
@@ -429,6 +436,7 @@ export interface Delivery {
 export interface VendorOrder {
   id: number;
   company: CompanyListItem;
+  order_type?: "standard" | "made_to_order";
   payment_method: "chapa" | "bank_transfer" | string;
   receipt: {
     id: number;
@@ -474,6 +482,7 @@ export interface VendorOrder {
 export interface MasterOrder {
   id: number;
   user: number;
+  order_type?: "standard" | "made_to_order";
   customer_username?: string;
   customer_name?: string;
   customer_phone?: string;
@@ -503,6 +512,50 @@ export interface MasterOrder {
   vendor_count: number;
   payment_status: string;
   delivery_fee: string;
+}
+
+export type QuoteStatus =
+  | "pending"
+  | "quoted"
+  | "accepted"
+  | "rejected"
+  | "expired"
+  | "converted";
+
+export interface ProductQuoteRequest {
+  id: number;
+  company: number;
+  company_name?: string;
+  customer: number;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  company_product: number;
+  product_title?: string;
+  product_primary_image?: string | null;
+  requested_qty: number;
+  specs: Record<string, any>;
+  customer_notes?: string;
+  shipping_address?: number | null;
+  shipping_address_text?: string;
+  shipping_phone?: string;
+  recipient_name?: string;
+  delivery_fee?: string;
+  status: QuoteStatus;
+  quoted_price?: string | null;
+  quoted_lead_time_days?: number | null;
+  vendor_notes?: string;
+  valid_until?: string | null;
+  master_order?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VendorSubmitQuotePayload {
+  quoted_price: number | string;
+  quoted_lead_time_days?: number;
+  vendor_notes?: string;
+  validity_hours?: number;
 }
 
 export interface ShippingAddress {
