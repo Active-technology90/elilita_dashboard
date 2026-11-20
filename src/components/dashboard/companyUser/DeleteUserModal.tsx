@@ -1,4 +1,5 @@
 import { X, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface DeleteUserModalProps {
   isOpen: boolean;
@@ -15,11 +16,20 @@ export function DeleteUserModal({
   onClose,
   onConfirm,
 }: DeleteUserModalProps) {
+  const { t } = useTranslation("companyUsers");
+
   if (!isOpen || !user) return null;
 
   const isDispatcher = user.role === "staff";
-  const subjectLabel = isDispatcher ? "dispatcher" : "user";
-  const actionLabel = isDispatcher ? "Remove Dispatcher" : "Remove User";
+  const subjectLabel = isDispatcher
+    ? t("deleteModal.subjectDispatcher")
+    : t("deleteModal.subjectUser");
+  const actionLabel = isDispatcher
+    ? t("deleteModal.removeDispatcherTitle")
+    : t("deleteModal.removeUserTitle");
+  const actionButtonLabel = isDispatcher
+    ? t("deleteModal.removeDispatcherBtn")
+    : t("deleteModal.removeUserBtn");
 
   return (
     <div
@@ -32,15 +42,19 @@ export function DeleteUserModal({
       >
         <div className="flex items-center justify-between border-b border-gray-100 p-4 sm:p-5">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">{actionLabel}</h2>
+            <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
+              {actionLabel}
+            </h2>
             {isDispatcher && (
-              <p className="mt-0.5 text-xs text-gray-500">Dispatcher access will be removed from this company.</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {t("deleteModal.dispatcherSubtitle")}
+              </p>
             )}
           </div>
           <button
             onClick={onClose}
             className="flex-shrink-0 rounded-full p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-            aria-label="Close"
+            aria-label={t("deleteModal.closeAria")}
           >
             <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
@@ -53,11 +67,15 @@ export function DeleteUserModal({
             </div>
             <div className="flex-1">
               <p className="text-sm text-gray-700 sm:text-base">
-                Are you sure you want to remove{" "}
-                <span className="font-semibold">{user.first_name} {user.last_name}</span>{" "}
-                as a {subjectLabel} from this company?
+                {t("deleteModal.confirmPrefix")}{" "}
+                <span className="font-semibold">
+                  {user.first_name} {user.last_name}
+                </span>{" "}
+                {t("deleteModal.confirmSuffix", { subject: subjectLabel })}
               </p>
-              <p className="mt-1 text-[10px] text-gray-500 sm:text-xs">This company membership will be removed.</p>
+              <p className="mt-1 text-[10px] text-gray-500 sm:text-xs">
+                {t("deleteModal.membershipNote")}
+              </p>
             </div>
           </div>
         </div>
@@ -67,14 +85,16 @@ export function DeleteUserModal({
             onClick={onClose}
             className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm text-gray-700 transition hover:bg-white sm:text-base"
           >
-            Cancel
+            {t("deleteModal.cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={deleting}
             className="rounded-lg bg-red-600 px-4 py-1.5 text-sm text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
           >
-            {deleting ? "Removing..." : actionLabel}
+            {deleting
+              ? t("deleteModal.removing")
+              : actionButtonLabel}
           </button>
         </div>
       </div>

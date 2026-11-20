@@ -1,48 +1,7 @@
 import { useMemo } from "react";
 import { Edit, Trash2, Star, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { DataTable, type Column } from "../../ui/DataTable";
-
-/* ──────────────────────────────────────────────────────────────────
-   Role display helpers
-   ────────────────────────────────────────────────────────────────── */
-
-const getRoleLabel = (role?: string) => {
-  switch (role) {
-    case "staff":
-      return "Dispatcher";
-    case "delivery":
-      return "Delivery";
-    case "admin":
-      return "Admin";
-    case "owner":
-      return "Owner";
-    case "viewer":
-      return "Viewer";
-    default:
-      return role || "—";
-  }
-};
-
-const getRoleBadgeClass = (role?: string) => {
-  switch (role) {
-    case "staff":
-      return "bg-secondary/10 text-secondary border-secondary/15";
-    case "delivery":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    case "admin":
-      return "bg-violet-50 text-violet-700 border-violet-200";
-    case "owner":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "viewer":
-      return "bg-gray-100 text-gray-600 border-gray-200";
-    default:
-      return "bg-gray-100 text-gray-600 border-gray-200";
-  }
-};
-
-/* ──────────────────────────────────────────────────────────────────
-   Types
-   ────────────────────────────────────────────────────────────────── */
 
 interface CompanyUser {
   id: number | string;
@@ -63,17 +22,27 @@ interface CompanyUsersTableProps {
   onEdit: (user: CompanyUser) => void;
   onDelete: (user: CompanyUser) => void;
   currentUser: any;
-  /** The current viewer's role within this company (or "superAdmin"). */
   currentUserRole?: string | null;
-  /** Whether the current viewer may edit user roles. */
   canEdit: boolean;
-  /** Whether the current viewer may delete users. */
   canDelete: boolean;
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Component
-   ────────────────────────────────────────────────────────────────── */
+const getRoleBadgeClass = (role?: string) => {
+  switch (role) {
+    case "staff":
+      return "bg-secondary/10 text-secondary border-secondary/15";
+    case "delivery":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "admin":
+      return "bg-violet-50 text-violet-700 border-violet-200";
+    case "owner":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    case "viewer":
+      return "bg-gray-100 text-gray-600 border-gray-200";
+    default:
+      return "bg-gray-100 text-gray-600 border-gray-200";
+  }
+};
 
 export function CompanyUsersTable({
   users,
@@ -85,16 +54,11 @@ export function CompanyUsersTable({
   canEdit,
   canDelete,
 }: CompanyUsersTableProps) {
-  /**
-   * A user is "self" when their user_id matches the current logged-in user.
-   * Prevents self-deletion and self-role-changes via the UI.
-   */
+  const { t } = useTranslation("companyUsers");
+
   const isSelf = (user: CompanyUser) =>
     String(user.user_id ?? user.id) === String(currentUser?.id);
 
-  /**
-   * Admins cannot delete owners. Owners and super admins can.
-   */
   const canDeleteTarget = (user: CompanyUser): boolean => {
     if (isSelf(user)) return false;
     if (user.role === "owner") {
@@ -103,10 +67,6 @@ export function CompanyUsersTable({
     return true;
   };
 
-  /**
-   * Admins cannot edit owners' roles. Owners and super admins can.
-   * (Owners editing themselves is allowed for role change by owner/superAdmin.)
-   */
   const canEditTarget = (user: CompanyUser): boolean => {
     if (user.role === "owner") {
       return currentUserRole === "owner" || currentUserRole === "superAdmin";
@@ -118,7 +78,7 @@ export function CompanyUsersTable({
     const tableColumns: Column<CompanyUser>[] = [
       {
         key: "user",
-        header: "User",
+        header: t("table.columnUser"),
         className: "min-w-[160px]",
         render: (user) => (
           <div className="flex min-w-0 items-center gap-3">
@@ -142,7 +102,7 @@ export function CompanyUsersTable({
               <p className="max-w-[150px] truncate text-xs font-medium text-gray-900 sm:max-w-[220px] sm:text-sm">
                 {user.username ||
                   `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-                  "Unnamed user"}
+                  t("table.unnamedUser")}
               </p>
 
               {(user.first_name || user.last_name) && user.username && (
@@ -156,12 +116,12 @@ export function CompanyUsersTable({
       },
       {
         key: "email",
-        header: "Email",
+        header: t("table.columnEmail"),
         className: "min-w-[190px] whitespace-nowrap text-gray-600",
       },
       {
         key: "role",
-        header: "Role",
+        header: t("table.columnRole"),
         className: "whitespace-nowrap",
         render: (user) => (
           <span
@@ -172,24 +132,34 @@ export function CompanyUsersTable({
             {user.role === "owner" && (
               <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             )}
-            {getRoleLabel(user.role)}
+            {user.role
+              ? t(`roles.${user.role}`, { defaultValue: user.role })
+              : t("roles.unknown")}
           </span>
         ),
       },
       {
         key: "rating",
-        header: "Rating",
+        header: t("table.columnRating"),
         className: "min-w-[120px] whitespace-nowrap",
         render: (user) => {
           if (user.role !== "delivery") {
-            return <span className="text-xs text-gray-400">—</span>;
+            return (
+              <span className="text-xs text-gray-400">
+                {t("roles.unknown")}
+              </span>
+            );
           }
 
           const rating = Number(user.average_rating || 0);
           const reviews = user.total_reviews || 0;
 
           if (rating <= 0) {
-            return <span className="text-xs text-gray-400">No ratings</span>;
+            return (
+              <span className="text-xs text-gray-400">
+                {t("table.noRatings")}
+              </span>
+            );
           }
 
           return (
@@ -210,7 +180,10 @@ export function CompanyUsersTable({
               <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 sm:hidden" />
 
               <span className="ml-0.5 text-[10px] text-gray-600 sm:text-xs">
-                {rating.toFixed(1)} ({reviews})
+                {t("table.ratingValue", {
+                  rating: rating.toFixed(1),
+                  reviews,
+                })}
               </span>
             </div>
           );
@@ -218,18 +191,16 @@ export function CompanyUsersTable({
       },
     ];
 
-    // Only render the Actions column when the viewer can do *something*
     if (canEdit || canDelete) {
       tableColumns.push({
         key: "actions",
-        header: "Actions",
+        header: t("table.columnActions"),
         className: "whitespace-nowrap text-right",
         render: (user) => {
           const self = isSelf(user);
           const editAllowed = canEdit && canEditTarget(user);
           const deleteAllowed = canDelete && canDeleteTarget(user);
 
-          // Hide the whole cell if the viewer can't do anything to this row
           if (!editAllowed && !deleteAllowed) {
             return <div className="flex justify-end" />;
           }
@@ -241,8 +212,10 @@ export function CompanyUsersTable({
                   type="button"
                   onClick={() => onEdit(user)}
                   className="rounded-md p-1.5 text-secondary transition hover:bg-secondary/10 hover:text-indigo-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/30"
-                  title="Edit team role"
-                  aria-label={`Edit ${user.username || user.email}`}
+                  title={t("table.editTitle")}
+                  aria-label={t("table.editAria", {
+                    name: user.username || user.email,
+                  })}
                 >
                   <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
@@ -255,23 +228,24 @@ export function CompanyUsersTable({
                   className="rounded-md p-1.5 text-red-600 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/30"
                   title={
                     user.role === "staff"
-                      ? "Remove dispatcher"
-                      : "Remove user"
+                      ? t("table.removeDispatcherTitle")
+                      : t("table.removeUserTitle")
                   }
-                  aria-label={`Remove ${user.username || user.email}`}
+                  aria-label={t("table.removeAria", {
+                    name: user.username || user.email,
+                  })}
                 >
                   <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               )}
 
-              {/* Show a disabled delete button for self (for UX clarity) */}
               {!deleteAllowed && self && (
                 <button
                   type="button"
                   disabled
                   className="cursor-not-allowed rounded-md p-1.5 text-gray-300"
-                  title="You cannot delete yourself"
-                  aria-label="You cannot delete yourself"
+                  title={t("table.selfDeleteTitle")}
+                  aria-label={t("table.selfDeleteAria")}
                 >
                   <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
@@ -283,7 +257,7 @@ export function CompanyUsersTable({
     }
 
     return tableColumns;
-  }, [currentUser?.id, currentUserRole, canEdit, canDelete, onDelete, onEdit]);
+  }, [currentUser?.id, currentUserRole, canEdit, canDelete, onDelete, onEdit, t]);
 
   return (
     <DataTable
@@ -291,7 +265,7 @@ export function CompanyUsersTable({
       columns={columns}
       loading={loading}
       loadingRows={5}
-      emptyMessage="No users found"
+      emptyMessage={t("table.emptyMessage")}
       stickyColumns={3}
     />
   );

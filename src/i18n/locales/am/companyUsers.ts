@@ -1,0 +1,257 @@
+export default  {
+
+  addUserModal: {
+    title: "የቡድን አባል ጨምር",
+    subtitle: "በኢሜይል ወይም በስልክ ቁጥር ፈልግ",
+
+    searchLabel: "ተጠቃሚ ፈልግ",
+    searchPlaceholder: "ኢሜይል ወይም የስልክ ቁጥር...",
+    searching: "በመፈለግ ላይ...",
+    noUsersFound: "ምንም ተጠቃሚ አልተገኘም",
+    noUsersHint: "የተለየ ኢሜይል ወይም የስልክ ቁጥር ይሞክሩፈ",
+    selected: "ተመርጧል",
+
+    clearSearchAria: "ፍለጋውን አጽዳ",
+    removeSelectionAria: "የተመረጠውን ተጠቃሚ አስወግድ",
+    closeAria: "ዝጋ",
+
+    roleLabel: "ሚና መድብ",
+    roleOptions: {
+      admin: "አድሚን – የኩባንያውን አስተዳደር ሙሉ በሙሉ የማስተዳደር ፈቃድ",
+      staff: "አስተባባሪ – ትዕዛዞችን እና የማድረስ ሥራዎችን ማስተዳደር",
+      delivery: "አድራሽ – የተመደቡለትን ማድረሻዎች ማከናወን",
+      viewer: "ተመልካች – መረጃዎችን ብቻ የማየት ፈቃድ",
+    },
+
+    roleHint: "ሚናዎች የተጠቃሚውን መረጃ ሳይነኩ በኋላ ሊቀየሩ ይችላሉ።",
+
+    cancel: "ሰርዝ",
+    addUser: "ተጠቃሚ ጨምር",
+    addDispatcher: "ስምሪት ጨምር",
+    adding: "በመጨመር ላይ...",
+  },
+
+  roles: {
+    admin: "አድሚን",
+    staff: "አስተባባሪ",
+    delivery: "አድራሽ",
+    viewer: "ተመልካች",
+    owner: "ባለቤት",
+    superAdmin: "ሱፐር አድሚን",
+    unknown: "—",
+  },
+  vehicles: {
+    motorcycle: "ሞተር ብስክሌት",
+    car: "መኪና",
+    bicycle: "ብስክሌት",
+    van: "ቫን",
+    foot: "በእግር",
+    unknown: "—",
+  },
+  actions: {
+    cancel: "ሰርዝ",
+    close: "ዝጋ",
+    save: "ለውጦችን አስቀምጥ",
+    saving: "በማዘመን ላይ...",
+    create: "ፍጠር",
+    creating: "በመፍጠር ላይ...",
+    remove: "አስወግድ",
+    removing: "በማስወገድ ላይ...",
+    edit: "አርትዕ",
+    delete: "ሰርዝ",
+    search: "ፈልግ",
+  },
+
+  editModal: {
+    title: "መገለጫ እና ሚና አርትዕ",
+    subtitle: "የተጠቃሚ መረጃ እና ፈቃዶችን ያዘምኑ",
+    closeAria: "ዝጋ",
+    currentRolePrefix: "የአሁኑ ሚና፡",
+    firstNameLabel: "የመጀመሪያ ስም",
+    lastNameLabel: "የአባት ስም",
+    emailLabel: "ኢሜይል",
+    usernameLabel: "የተጠቃሚ ስም",
+    phoneLabel: "የስልክ ቁጥር",
+    phoneRestricted: "(የተከለከለ)",
+    phoneHint: "የስልክ ቁጥር ሊስተካከል አይችልም",
+    phoneAria: "የስልክ ቁጥር ለደህንነት ሲባል ሊቀየር አይችልም",
+    roleLabel: "ሚና",
+    rolePlaceholder: "ሚና ይምረጡ",
+    vehicleTypeLabel: "የተሽከርካሪ ዓይነት",
+    vehicleTypePlaceholder: "የተሽከርካሪ ዓይነት ይምረጡ",
+    vehicleTypeHint:
+      "ይህ አድራሽ የሚጠቀምበትን የተሽከርካሪ ዓይነት ይምረጡ።",
+    requiredMark: "*",
+
+    errors: {
+      firstNameRequired: "የመጀመሪያ ስም ያስፈልጋል",
+      lastNameRequired: "የአባት ስም ያስፈልጋል",
+      emailRequired: "ኢሜይል ያስፈልጋል",
+      emailInvalid: "ልክ ያልሆነ ኢሜይል አድራሻ",
+      usernameRequired: "የተጠቃሚ ስም ያስፈልጋል",
+      vehicleTypeRequired: "ለአድራሽ ሰራተኞች የተሽከርካሪ ዓይነት ያስፈልጋል",
+      missingUserId:
+        "ማስቀመጥ አልተቻለም፡ የተጠቃሚ መለያ አልተገኘም። ገጹን ያድሱ እና እንደገና ይሞክሩ።",
+    },
+  },
+
+  deleteModal: {
+    closeAria: "ዝጋ",
+    removeDispatcherTitle: "አስተባባሪ አስወግድ",
+    removeUserTitle: "ተጠቃሚ አስወግድ",
+    dispatcherSubtitle:
+      "የአስተባባሪ መዳረሻ ከዚህ ኩባንያ ይወገዳል።",
+    confirmPrefix: "እርግጠኛ ነዎት",
+    confirmSuffix: "ን ከዚህ ኩባንያ እንደ {{subject}} ማስወገድ ይፈልጋሉ?",
+    subjectDispatcher: "ስምሪት",
+    subjectUser: "ተጠቃሚ",
+    membershipNote: "ይህ የኩባንያ አባልነት ይወገዳል።",
+    cancel: "ሰርዝ",
+    removing: "በማስወገድ ላይ...",
+    removeDispatcherBtn: "ስምሪት አስወግድ",
+    removeUserBtn: "ተጠቃሚ አስወግድ",
+  },
+
+  createModal: {
+    createDispatcherTitle: "ስምሪት ፍጠር",
+    createUserTitle: "ተጠቃሚ ፍጠር",
+    createDispatcherSubtitle: "ስምሪት ይፍጠሩ እና ያስገቡ",
+    createUserSubtitle:
+      "የኩባንያ ተጠቃሚ ወዲያውኑ ይፍጠሩ እና ያስገቡ",
+    closeAria: "ዝጋ",
+    firstNameLabel: "የመጀመሪያ ስም",
+    firstNamePlaceholder: "አበበ",
+    lastNameLabel: "የአባት ስም",
+    lastNamePlaceholder: "ቢኪላ",
+    usernameLabel: "የተጠቃሚ ስም",
+    usernamePlaceholder: "abebe123",
+    emailLabel: "ኢሜይል",
+    emailPlaceholder: "abebe@example.com",
+    phoneLabel: "የስልክ ቁጥር",
+    phoneVendorHint: "(ኢትዮ ቴሌኮም እና ሳፋሪኮም)",
+    phonePlaceholder: "09XXXXXXXX፣ 07XXXXXXXX ወይም +251...",
+    phoneTooltip:
+      "የኢትዮ ቴሌኮም (09/+2519) እና ሳፋሪኮም (07/+2517) ቁጥሮችን ይቀበላል",
+    phoneExample:
+      "ኢትዮ ቴሌኮም፡ 0911000000 · ሳፋሪኮም፡ 0711000000",
+    roleLabel: "ሚና",
+    rolePlaceholder: "ሚና ይምረጡ",
+    vehicleTypeLabel: "የተሽከርካሪ ዓይነት",
+    vehicleTypePlaceholder: "የተሽከርካሪ ዓይነት ይምረጡ",
+    vehicleTypeHint:
+      "ይህ አድራሽ የሚጠቀምበትን የተሽከርካሪ ዓይነት ይምረጡ።",
+    passwordLabel: "የይለፍ ቃል",
+    passwordPlaceholder: "ጠንካራ የይለፍ ቃል...",
+    passwordStrengthLabel: "የይለፍ ቃል ጥንካሬ",
+    passwordStrengthWeak: "ደካማ",
+    passwordStrengthMedium: "መካከለኛ",
+    passwordStrengthStrong: "ጠንካራ",
+    confirmPasswordLabel: "የይለፍ ቃል አረጋግጥ",
+    confirmPasswordPlaceholder: "የይለፍ ቃል ያረጋግጡ...",
+    submitCreateDispatcher: "ስምሪት ፍጠር",
+    submitCreateUser: "ተጠቃሚ ፍጠር",
+    cancel: "ሰርዝ",
+
+    errors: {
+      firstNameRequired: "የመጀመሪያ ስም ያስፈልጋል",
+      firstNameMin: "ቢያንስ 2 ፊደሎች ያስፈልጋሉ",
+      lastNameRequired: "የአባት ስም ያስፈልጋል",
+      lastNameMin: "ቢያንስ 2 ፊደሎች ያስፈልጋሉ",
+      usernameRequired: "የተጠቃሚ ስም ያስፈልጋል",
+      usernameFormat:
+        "3-20 ፊደሎች። ፊደላት፣ ቁጥሮች እና የመስመር ቀለም ብቻ",
+      emailRequired: "ኢሜይል ያስፈልጋል",
+      emailInvalid: "ልክ ያልሆነ ኢሜይል አድራሻ",
+      phoneRequired: "የስልክ ቁጥር ያስፈልጋል",
+      phoneInvalid:
+        "09XXXXXXXX፣ 07XXXXXXXX፣ +2519XXXXXXXX ወይም +2517XXXXXXXX ይጠቀሙ",
+      passwordRequired: "የይለፍ ቃል ያስፈልጋል",
+      passwordMin: "ቢያንስ 8 ፊደሎች ያስፈልጋሉ",
+      passwordComplexity:
+        "አቢይ ፊደል፣ ቁጥር እና ልዩ ምልክት ያካትቱ",
+      confirmPasswordRequired: "እባክዎ የይለፍ ቃልዎን ያረጋግጡ",
+      confirmPasswordMismatch: "የይለፍ ቃሎች አይመሳሰሉም",
+      vehicleTypeRequired: "ለአድራሽ ሰራተኞች የተሽከርካሪ ዓይነት ያስፈልጋል",
+    },
+  },
+
+  table: {
+    columnUser: "ተጠቃሚ",
+    columnEmail: "ኢሜይል",
+    columnRole: "ሚና",
+    columnRating: "ደረጃ",
+    columnActions: "ተግባራት",
+    unnamedUser: "ስም የሌለው ተጠቃሚ",
+    noRatings: "ግምገማ የለም",
+    ratingValue: "{{rating}} ({{reviews}})",
+    editTitle: "የቡድን ሚና አርትዕ",
+    editAria: "{{name}} አርትዕ",
+    removeDispatcherTitle: "አስተባባሪ አስወግድ",
+    removeUserTitle: "ተጠቃሚ አስወግድ",
+    removeAria: "{{name}} አስወግድ",
+    selfDeleteTitle: "ራስዎን ማስወገድ አይችሉም",
+    selfDeleteAria: "ራስዎን ማስወገድ አይችሉም",
+    emptyMessage: "ምንም ተጠቃሚዎች አልተገኙም",
+  },
+
+  page: {
+    accessRestrictedTitle: "መዳረሻ ተከልክሏል",
+    accessRestrictedDescription:
+      "የዚህን ኩባንያ ተጠቃሚዎች ለማስተዳደር ፈቃድ የለዎትም።",
+    selectCompanyTitle: "የቡድን እና አስተባባሪ አስተዳደር",
+    selectCompanySubtitle:
+      "ተጠቃሚዎችን፣ አስተባባሪዎችን እና መዳረሻን ለማስተዳደር ኩባንያ ይምረጡ።",
+    selectCompanySearchPlaceholder: "ኩባንያዎችን በስም ፈልግ...",
+    noCompanySelected: "ተጠቃሚዎቹን ለማስተዳደር ኩባንያ ይምረጡ።",
+    pageTitleSuperAdmin: "የኩባንያ ተጠቃሚዎች",
+    pageTitleCompany: "ሁሉም ተጠቃሚዎች",
+    pageEyebrowSuperAdmin: "የተጠቃሚ አስተዳደር",
+    pageDescription:
+      "አስተባባሪዎችን፣ አድራሾችን እና የኩባንያ መዳረሻን ያስተዳድሩ።",
+    userCountOne: "{{count}} ተጠቃሚ",
+    userCountMany: "{{count}} ተጠቃሚዎች",
+    switchCompany: "ኩባንያ ቀይር",
+    switchCompanyShort: "ቀይር",
+
+    statTotal: "ጠቅላላ",
+    statAdmins: "አድሚኖች",
+    statDispatchers: "አስተባባሪዎች",
+    statDelivery: "አድራሾች",
+    statViewers: "ተመልካቾች",
+
+    limitReachedTitle: "የሰራተኛ ገደብ ደርሷል ({{current}}/{{max}})፡",
+    limitReachedDescription:
+      "የአሁኑ የደንበኝነት ደረጃዎ ከፍተኛውን የሰራተኛ አባላት ገደብ ደርሷል። ተጨማሪ የቡድን አባላትን ለመጨመር የደንበኝነት ዕቅድዎን ያሻሽሉ።",
+    limitReachedTooltip:
+      "የሰራተኛ ገደብ ደርሷል ({{current}}/{{max}})",
+    addMember: "አባል ጨምር",
+    createUser: "ተጠቃሚ ፍጠር",
+
+    searchPlaceholder: "የቡድን አባላትን ፈልግ",
+    pageSizeLabel: "{{count}} / ገጽ",
+    allRolesLabel: "ሁሉም ሚናዎች",
+    roleOptionAdmin: "አድሚን ({{count}})",
+    roleOptionStaff: "አስተባባሪ ({{count}})",
+    roleOptionViewer: "ተመልካች ({{count}})",
+    roleOptionDelivery: "አድራሽ ({{count}})",
+
+    noUsersTitle: "ምንም ተጠቃሚዎች አልተገኙም",
+    noUsersDescription: "ሌላ ፍለጋ ወይም የሚና ማጣሪያ ይሞክሩ።",
+    clearFilters: "ማጣሪያዎችን አጽዳ",
+
+    filtersTitle: "ማጣሪያዎች",
+    filtersDescription: "የተጠቃሚ ዝርዝሩን በሚና ያጥቡ።",
+    closeFiltersAria: "ማጣሪያዎችን ዝጋ",
+    showCount: "{{count}} አሳይ",
+
+    toastCreateSuccess: "ተጠቃሚ በተሳካ ሁኔታ ተፈጥሯል",
+    toastCreateFailed: "ተጠቃሚ መፍጠር አልተሳካም",
+    toastCreateFailedFallback:
+      "ተጠቃሚ መፍጠር አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
+    toastUpdateSuccess: "የተጠቃሚ ሚና በተሳካ ሁኔታ ተዘምኗል",
+    toastUpdateFailed: "ተጠቃሚን ማዘመን አልተሳካም።",
+    toastDeleteSuccess: "ተጠቃሚ በተሳካ ሁኔታ ተወግዷል",
+    toastDeleteFailed: "ተጠቃሚን ማስወገድ አልተሳካም።",
+    toastMissingUserId: "ማስቀመጥ አልተቻለም፡ የተጠቃሚ መለያ አልተገኘም።",
+  },
+}

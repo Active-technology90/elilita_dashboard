@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Repeat,
   Search,
@@ -38,48 +39,6 @@ function useDebounce<T>(value: T, delay: number): T {
 
   return debouncedValue;
 }
-
-const STATUS_TABS: { label: string; value: string }[] = [
-  { label: "All Contracts", value: "all" },
-  { label: "Active", value: "active" },
-  { label: "Paused", value: "paused" },
-  { label: "Completed", value: "completed" },
-  { label: "Cancelled", value: "cancelled" },
-];
-
-const PAGE_SIZE_OPTIONS: SelectOption[] = [
-  { value: "10", label: "10 / page" },
-  { value: "20", label: "20 / page" },
-  { value: "30", label: "30 / page" },
-  { value: "50", label: "50 / page" },
-  { value: "100", label: "100 / page" },
-];
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; icon: LucideIcon; className: string }
-> = {
-  active: {
-    label: "Active",
-    icon: CheckCircle2,
-    className: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
-  },
-  paused: {
-    label: "Paused",
-    icon: PauseCircle,
-    className: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  },
-  completed: {
-    label: "Completed",
-    icon: CheckCircle2,
-    className: "bg-purple-50 text-purple-700 ring-purple-600/20",
-  },
-  cancelled: {
-    label: "Cancelled",
-    icon: XCircle,
-    className: "bg-red-50 text-red-700 ring-red-600/20",
-  },
-};
 
 /* ---------- helpers ---------- */
 function getInitials(name?: string | null): string {
@@ -148,7 +107,10 @@ function isToday(dateStr?: string | null): boolean {
   return isSameDay(target, today);
 }
 
-function getApiErrorMessage(error: unknown): string {
+function getApiErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+): string {
   if (error && typeof error === "object") {
     const responseError = error as {
       response?: { data?: { detail?: string } };
@@ -163,16 +125,52 @@ function getApiErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  return "An unexpected error occurred while loading recurring contracts.";
+  return fallbackMessage;
 }
 
 /* ---------- presentational components ---------- */
+
 function SubscriptionStatusBadge({ status }: { status: string }) {
-  const config = STATUS_CONFIG[status] ?? {
-    label: status.charAt(0).toUpperCase() + status.slice(1),
+  const { t } = useTranslation("serviceSubscriptions");
+
+  const statusLabels: Record<string, string> = {
+    active: t("status.active"),
+    paused: t("status.paused"),
+    completed: t("status.completed"),
+    cancelled: t("status.cancelled"),
+  };
+
+  const statusConfig: Record<
+    string,
+    { icon: LucideIcon; className: string }
+  > = {
+    active: {
+      icon: CheckCircle2,
+      className: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    },
+    paused: {
+      icon: PauseCircle,
+      className: "bg-amber-50 text-amber-700 ring-amber-600/20",
+    },
+    completed: {
+      icon: CheckCircle2,
+      className: "bg-purple-50 text-purple-700 ring-purple-600/20",
+    },
+    cancelled: {
+      icon: XCircle,
+      className: "bg-red-50 text-red-700 ring-red-600/20",
+    },
+  };
+
+  const config = statusConfig[status] ?? {
     icon: Activity,
     className: "bg-gray-50 text-gray-700 ring-gray-500/20",
   };
+
+  const label =
+    statusLabels[status] ??
+    status.charAt(0).toUpperCase() + status.slice(1);
+
   const Icon = config.icon;
 
   return (
@@ -180,14 +178,28 @@ function SubscriptionStatusBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${config.className}`}
     >
       <Icon className="h-3.5 w-3.5" />
-      {config.label}
+      {label}
     </span>
   );
 }
 
-function SubscriptionPaymentStatusBadge({ subscription }: { subscription: ServiceSubscription }) {
-  const method = (subscription.payment_method || subscription.latest_invoice?.payment_method)?.toLowerCase();
-  const status = (subscription.payment_status || subscription.latest_invoice?.status)?.toLowerCase();
+function SubscriptionPaymentStatusBadge({
+  subscription,
+}: {
+  subscription: ServiceSubscription;
+}) {
+  const { t } = useTranslation("serviceSubscriptions");
+
+  const method = (
+    subscription.payment_method ||
+    subscription.latest_invoice?.payment_method
+  )?.toLowerCase();
+
+  const status = (
+    subscription.payment_status ||
+    subscription.latest_invoice?.status
+  )?.toLowerCase();
+
   const receipt = subscription.receipt || subscription.latest_invoice?.receipt;
 
   if (method === "bank_transfer") {
@@ -195,30 +207,37 @@ function SubscriptionPaymentStatusBadge({ subscription }: { subscription: Servic
       return (
         <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-          Paid
+          {t("paymentStatus.paid")}
         </span>
       );
     }
-    if (receipt?.status === "rejected" || status === "failed" || status === "payment_failed") {
+
+    if (
+      receipt?.status === "rejected" ||
+      status === "failed" ||
+      status === "payment_failed"
+    ) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-red-50 text-red-700 border-red-200">
           <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-          Receipt Rejected
+          {t("paymentStatus.receiptRejected")}
         </span>
       );
     }
+
     if (receipt?.status === "pending" || Boolean(receipt)) {
       return (
         <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-300 animate-pulse">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-          Verify Receipt
+          {t("paymentStatus.verifyReceipt")}
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-        Awaiting Receipt
+        {t("paymentStatus.awaitingReceipt")}
       </span>
     );
   }
@@ -227,35 +246,49 @@ function SubscriptionPaymentStatusBadge({ subscription }: { subscription: Servic
     return (
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-        Paid
+        {t("paymentStatus.paid")}
       </span>
     );
   }
+
   if (status === "failed" || status === "payment_failed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-red-50 text-red-700 border-red-200">
         <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-        Failed
+        {t("paymentStatus.failed")}
       </span>
     );
   }
+
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-      Pending
+      {t("paymentStatus.pending")}
     </span>
   );
 }
 
-function SubscriptionPaymentMethodBadge({ subscription }: { subscription: ServiceSubscription }) {
-  const method = (subscription.payment_method || subscription.latest_invoice?.payment_method || "—").toLowerCase();
+function SubscriptionPaymentMethodBadge({
+  subscription,
+}: {
+  subscription: ServiceSubscription;
+}) {
+  const { t } = useTranslation("serviceSubscriptions");
+
+  const method = (
+    subscription.payment_method ||
+    subscription.latest_invoice?.payment_method ||
+    "—"
+  ).toLowerCase();
+
   const labelMap: Record<string, string> = {
-    bank_transfer: "Bank Transfer",
-    telebirr: "Telebirr",
-    chapa: "Chapa",
-    arifpay: "ArifPay",
-    cod: "Cash",
+    bank_transfer: t("paymentMethods.bankTransfer"),
+    telebirr: t("paymentMethods.telebirr"),
+    chapa: t("paymentMethods.chapa"),
+    arifpay: t("paymentMethods.arifpay"),
+    cod: t("paymentMethods.cash"),
   };
+
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
       {labelMap[method] || method.replace(/_/g, " ")}
@@ -264,6 +297,8 @@ function SubscriptionPaymentMethodBadge({ subscription }: { subscription: Servic
 }
 
 function BillingDateCell({ date }: { date?: string | null }) {
+  const { t } = useTranslation("serviceSubscriptions");
+
   if (!date) {
     return <span className="text-gray-400">—</span>;
   }
@@ -272,7 +307,7 @@ function BillingDateCell({ date }: { date?: string | null }) {
     return (
       <span className="inline-flex items-center gap-1 font-semibold text-red-600">
         <AlertCircle className="h-4 w-4" />
-        Overdue
+        {t("billingDate.overdue")}
       </span>
     );
   }
@@ -281,7 +316,7 @@ function BillingDateCell({ date }: { date?: string | null }) {
     return (
       <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
         <CalendarClock className="h-4 w-4" />
-        Today
+        {t("billingDate.today")}
       </span>
     );
   }
@@ -320,6 +355,8 @@ function KpiCard({
 }
 
 export default function ServiceSubscriptions() {
+  const { t } = useTranslation("serviceSubscriptions");
+
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -356,6 +393,7 @@ export default function ServiceSubscriptions() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback(
@@ -392,6 +430,7 @@ export default function ServiceSubscriptions() {
 
       const params =
         selectedStatus !== "all" ? { status: selectedStatus } : undefined;
+
       const response = await getManageServiceSubscriptions(companySlug, params);
 
       if (requestId === requestIdRef.current) {
@@ -399,7 +438,12 @@ export default function ServiceSubscriptions() {
       }
     } catch (fetchError) {
       if (requestId === requestIdRef.current) {
-        setError(getApiErrorMessage(fetchError));
+        setError(
+          getApiErrorMessage(
+            fetchError,
+            t("errors.unexpectedLoadingError"),
+          ),
+        );
         setSubscriptions([]);
       }
     } finally {
@@ -407,7 +451,7 @@ export default function ServiceSubscriptions() {
         setLoading(false);
       }
     }
-  }, [companySlug, selectedStatus, isServiceCompany]);
+  }, [companySlug, selectedStatus, isServiceCompany, t]);
 
   useEffect(() => {
     void fetchSubscriptions();
@@ -469,49 +513,49 @@ export default function ServiceSubscriptions() {
 
     return [
       {
-        label: "Total Contracts",
+        label: t("kpis.totalContracts"),
         value: total,
         icon: Repeat,
         iconClass: "bg-secondary/10 text-secondary",
       },
       {
-        label: "Active",
+        label: t("status.active"),
         value: active,
         icon: CheckCircle2,
         iconClass: "bg-emerald-50 text-emerald-600",
       },
       {
-        label: "Paused",
+        label: t("status.paused"),
         value: paused,
         icon: PauseCircle,
         iconClass: "bg-amber-50 text-amber-600",
       },
       {
-        label: "Completed",
+        label: t("status.completed"),
         value: completed,
         icon: CheckCircle2,
         iconClass: "bg-purple-50 text-purple-600",
       },
       {
-        label: "Cancelled",
+        label: t("status.cancelled"),
         value: cancelled,
         icon: XCircle,
         iconClass: "bg-red-50 text-red-600",
       },
     ];
-  }, [subscriptions]);
+  }, [subscriptions, t]);
 
   const subscriptionColumns: Column<ServiceSubscription>[] = [
     {
       key: "id",
-      header: "Contract",
+      header: t("table.contract"),
       textMode: "nowrap",
       render: (subscription) => (
         <div>
           <p className="font-semibold text-gray-900">#{subscription.id}</p>
           {subscription.created_at && (
             <p className="mt-0.5 text-xs text-gray-400">
-              Created {formatDate(subscription.created_at)}
+              {t("table.created")} {formatDate(subscription.created_at)}
             </p>
           )}
         </div>
@@ -519,7 +563,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "customer",
-      header: "Customer",
+      header: t("table.customer"),
       render: (subscription) => (
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-sm font-semibold text-secondary">
@@ -541,15 +585,15 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "service",
-      header: "Service",
+      header: t("table.service"),
       render: (subscription) => (
         <div>
           <p className="font-medium text-gray-800">
-            {subscription.offering?.title || "Recurring Service"}
+            {subscription.offering?.title || t("table.recurringService")}
           </p>
           {subscription.assigned_staff?.name && (
             <p className="mt-0.5 text-xs text-gray-500">
-              Staff: {subscription.assigned_staff.name}
+              {t("table.staff")}: {subscription.assigned_staff.name}
             </p>
           )}
         </div>
@@ -557,7 +601,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "billing",
-      header: "Billing",
+      header: t("table.billing"),
       textMode: "nowrap",
       render: (subscription) => (
         <div>
@@ -565,14 +609,16 @@ export default function ServiceSubscriptions() {
             {formatAmount(subscription.cycle_amount)} {subscription.currency}
           </p>
           <p className="mt-0.5 text-xs capitalize text-gray-500">
-            per {subscription.billing_cycle}
+            {t("table.per")} {t(`billingCycles.${subscription.billing_cycle}`, {
+              defaultValue: subscription.billing_cycle,
+            })}
           </p>
         </div>
       ),
     },
     {
       key: "next_billing_date",
-      header: "Next Billing",
+      header: t("table.nextBilling"),
       textMode: "nowrap",
       render: (subscription) => (
         <BillingDateCell date={subscription.next_billing_date} />
@@ -580,7 +626,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "status",
-      header: "Status",
+      header: t("table.status"),
       textMode: "nowrap",
       render: (subscription) => (
         <SubscriptionStatusBadge status={subscription.status} />
@@ -588,7 +634,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "payment_method",
-      header: "Payment Method",
+      header: t("table.paymentMethod"),
       textMode: "nowrap",
       render: (subscription) => (
         <SubscriptionPaymentMethodBadge subscription={subscription} />
@@ -596,7 +642,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "payment_status",
-      header: "Payment Status",
+      header: t("table.paymentStatus"),
       textMode: "nowrap",
       render: (subscription) => (
         <SubscriptionPaymentStatusBadge subscription={subscription} />
@@ -604,7 +650,7 @@ export default function ServiceSubscriptions() {
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("table.actions"),
       className: "text-right",
       textMode: "nowrap",
       render: (subscription) => (
@@ -618,7 +664,7 @@ export default function ServiceSubscriptions() {
             className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-secondary transition hover:bg-secondary/5"
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            Manage
+            {t("actions.manage")}
           </button>
         </div>
       ),
@@ -661,8 +707,8 @@ export default function ServiceSubscriptions() {
       <CompanySelector
         companies={serviceCompanies}
         isLoading={isLoadingCompanies}
-        title="Service Management"
-        searchPlaceholder="Search service companies..."
+        title={t("companySelector.title")}
+        searchPlaceholder={t("companySelector.searchPlaceholder")}
         onSelect={handleCompanySelect}
         onBack={clearCompany}
       />
@@ -673,14 +719,14 @@ export default function ServiceSubscriptions() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Recurring Contracts"
-          description="Select a service company to manage recurring service contracts."
+          title={t("page.title")}
+          description={t("page.selectCompanyDescription")}
           icon={Repeat}
           className="mb-6"
         />
 
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-          Select a service company to continue.
+          {t("page.selectCompanyToContinue")}
         </div>
       </div>
     );
@@ -691,12 +737,12 @@ export default function ServiceSubscriptions() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={companyName || undefined}
-          description="Recurring service contracts are available only for service companies."
+          description={t("page.serviceCompaniesOnlyDescription")}
           icon={Repeat}
-          eyebrow="Recurring Contracts"
+          eyebrow={t("page.title")}
           badge={
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
-              Service company required
+              {t("page.serviceCompanyRequired")}
             </span>
           }
           actions={
@@ -707,7 +753,7 @@ export default function ServiceSubscriptions() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("actions.switchCompany")}
               </button>
             ) : undefined
           }
@@ -722,12 +768,15 @@ export default function ServiceSubscriptions() {
 
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900">
-                {companyName || "The selected company"} is not a service company
+                {companyName || t("page.selectedCompany")}{" "}
+                {t("page.notServiceCompany")}
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-600">
-                Recurring contracts, billing cycles, and service subscription management
-                are disabled for this company. Select a company whose business type is
-                <span className="font-medium text-gray-800"> service</span> to continue.
+                {t("page.disabledForCompany")}{" "}
+                <span className="font-medium text-gray-800">
+                  {t("page.serviceBusinessType")}
+                </span>{" "}
+                {t("page.toContinue")}
               </p>
 
               {isSuperAdmin && (
@@ -737,7 +786,7 @@ export default function ServiceSubscriptions() {
                   className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
                 >
                   <Repeat className="h-4 w-4" />
-                  Choose a service company
+                  {t("actions.chooseServiceCompany")}
                 </button>
               )}
             </div>
@@ -747,8 +796,6 @@ export default function ServiceSubscriptions() {
     );
   }
 
-
-
   return (
     <>
       <Toast toast={toast} />
@@ -756,9 +803,9 @@ export default function ServiceSubscriptions() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={companyName || undefined}
-          description="Manage ongoing subscriptions, billing cycles, and contract status."
+          description={t("page.manageDescription")}
           icon={Repeat}
-          eyebrow="Recurring Contracts"
+          eyebrow={t("page.title")}
           actions={
             <div className="flex items-center gap-2">
               {isSuperAdmin && (
@@ -768,7 +815,7 @@ export default function ServiceSubscriptions() {
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
                   <Repeat className="h-4 w-4" />
-                  Switch company
+                  {t("actions.switchCompany")}
                 </button>
               )}
 
@@ -778,8 +825,10 @@ export default function ServiceSubscriptions() {
                 disabled={loading}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Refresh
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
+                {t("actions.refresh")}
               </button>
             </div>
           }
@@ -792,7 +841,6 @@ export default function ServiceSubscriptions() {
                   className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
                 >
                   <Repeat className="h-4 w-4" />
-                  
                 </button>
               )}
 
@@ -829,8 +877,15 @@ export default function ServiceSubscriptions() {
           <div className="border-b border-gray-200 bg-white p-3 sm:p-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-1.5">
-                {STATUS_TABS.map((tab) => {
+                {[
+                  { label: t("tabs.all"), value: "all" },
+                  { label: t("status.active"), value: "active" },
+                  { label: t("status.paused"), value: "paused" },
+                  { label: t("status.completed"), value: "completed" },
+                  { label: t("status.cancelled"), value: "cancelled" },
+                ].map((tab) => {
                   const isActive = selectedStatus === tab.value;
+
                   return (
                     <button
                       key={tab.value}
@@ -856,8 +911,8 @@ export default function ServiceSubscriptions() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search contract, customer, service, staff..."
-                    aria-label="Search subscriptions"
+                    placeholder={t("search.placeholder")}
+                    aria-label={t("search.ariaLabel")}
                     className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 outline-none transition-all duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-secondary focus:ring-2 focus:ring-secondary/10"
                   />
 
@@ -865,7 +920,7 @@ export default function ServiceSubscriptions() {
                     <button
                       type="button"
                       onClick={() => setSearch("")}
-                      aria-label="Clear search"
+                      aria-label={t("search.clearAriaLabel")}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-secondary/20"
                     >
                       <X className="h-4 w-4" />
@@ -881,11 +936,7 @@ export default function ServiceSubscriptions() {
                   title="Refresh subscriptions"
                   className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition-all duration-200 hover:border-secondary/30 hover:bg-secondary/5 hover:text-secondary active:scale-95 focus:outline-none focus:ring-2 focus:ring-secondary/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-3 sm:gap-2"
                 >
-                  <RefreshCw
-                    className={`h-4 w-4 ${
-                      loading ? "animate-spin" : ""
-                    }`}
-                  />
+                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                   <span className="hidden text-xs font-semibold sm:inline">
                     Refresh
                   </span>
@@ -895,7 +946,13 @@ export default function ServiceSubscriptions() {
                   <CustomSelect
                     value={String(pageSize)}
                     onChange={(value) => setPageSize(Number(value))}
-                    options={PAGE_SIZE_OPTIONS}
+                    options={[
+                      { value: "10", label: t("pagination.pageSize", { count: 10 }) },
+                      { value: "20", label: t("pagination.pageSize", { count: 20 }) },
+                      { value: "30", label: t("pagination.pageSize", { count: 30 }) },
+                      { value: "50", label: t("pagination.pageSize", { count: 50 }) },
+                      { value: "100", label: t("pagination.pageSize", { count: 100 }) },
+                    ]}
                     placeholder="10"
                   />
                 </div>
@@ -904,15 +961,16 @@ export default function ServiceSubscriptions() {
 
             <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
               <span>
-                {totalItems} {totalItems === 1 ? "contract" : "contracts"}
+                {t("results.contractCount", { count: totalItems })}
               </span>
+
               {debouncedSearch.trim() && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
                   className="font-semibold text-secondary hover:underline"
                 >
-                  Clear Search
+                  {t("search.clear")}
                 </button>
               )}
             </div>
@@ -928,10 +986,14 @@ export default function ServiceSubscriptions() {
               onRetry={() => void fetchSubscriptions()}
               emptyMessage={
                 debouncedSearch.trim()
-                  ? "No matching contracts."
+                  ? t("empty.noMatchingContracts")
                   : selectedStatus === "all"
-                    ? "No recurring contracts yet."
-                    : `No ${selectedStatus} contracts.`
+                    ? t("empty.noContracts")
+                    : t("empty.noStatusContracts", {
+                        status: t(`status.${selectedStatus}`, {
+                          defaultValue: selectedStatus,
+                        }),
+                      })
               }
               currentPage={currentPage}
               totalPages={totalPages}

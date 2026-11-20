@@ -16,7 +16,7 @@ export default {
   onboardedLabel: "ተመዝግቧል",
 
   // Inactive alert banner
-  inactiveAlert_one: "{{count}} የተቦዘነ ወኪል ተገኝቷል።",
+  inactiveAlert_one: "{{count}} ንቁ ያልሆነወኪል ተገኝቷል።",
   inactiveAlert_other: "{{count}} የተቦዘኑ ወኪሎች ተገኝተዋል።",
   viewInactiveAgents: "የተቦዘኑ ወኪሎችን ይመልከቱ",
 

@@ -46,6 +46,12 @@ import type { CompanyFormData } from "./CompanyForm";
 import LocationPickerModal from "./LocationPickerModal";
 import PageHeader from "../../ui/PageHeader";
 
+import {
+  mapBackendErrors,
+  summarizeErrors,
+  FIELD_TO_STEP,
+} from "../../../utils/formErrorMapper";
+
 type PaginatedResponse<T> = {
   results: T[];
   next: string | null;
@@ -350,7 +356,6 @@ export default function CompanyManagement() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  console.log(currentStep)
   const [formData, setFormData] = useState<CompanyFormData>({
     ...EMPTY_COMPANY_FORM,
   });
@@ -483,7 +488,7 @@ export default function CompanyManagement() {
     [companies],
   );
 
-  /* ── NEW: Amharic label maps (backend-provided names keyed by English) ── */
+  /* ── Amharic label maps ── */
   const businessTypeLabelsAm = useMemo(() => {
     const map: Record<string, string> = {};
     for (const c of companies) {
@@ -522,10 +527,10 @@ export default function CompanyManagement() {
     createdAtFilter !== "all";
 
   const { sortedItems, handleSort, sortField, sortOrder } = useSorting(
-    isSuperAdmin || isMarketing ? filteredCompanies : companies,
-    "name",
-    "asc",
-  );
+  isSuperAdmin || isMarketing ? filteredCompanies : companies,
+  "created_at",
+  "desc",
+);
 
   const { paginatedItems, currentPage, totalPages, goToPage, resetPage } =
     usePagination(sortedItems, pageSize);
@@ -835,8 +840,7 @@ export default function CompanyManagement() {
         if (companyListItem.cover_image)
           setCoverPreview(companyListItem.cover_image);
       } else if (isSuperAdmin || isMarketing) {
-
-      /* ─── SUPER-ADMIN / MARKETING PATH ─── */
+        /* ─── SUPER-ADMIN / MARKETING PATH ─── */
         let allCompanies: CompanyListItem[] = [];
         const extraParam = isMarketing ? "&my_registrations=true" : "";
         let nextUrl: string | null =
@@ -904,7 +908,6 @@ export default function CompanyManagement() {
                   : (company as any).meal_periods || [],
                 created_at:
                   (detail as any).created_at ?? (company as any).created_at,
-                // ── Amharic names ──
                 category_name_am:
                   pickString(detail, "category_name_am") ||
                   (company as any).category_name_am ||
@@ -1023,7 +1026,11 @@ export default function CompanyManagement() {
     if (!formData.business_type)
       errors.business_type = t("businessTypeRequiredError");
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
 
   const validateLocation = () => {
@@ -1039,7 +1046,11 @@ export default function CompanyManagement() {
       errors.contact_email = t("emailInvalid");
     }
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
 
   const validateDocuments = () => {
@@ -1048,8 +1059,64 @@ export default function CompanyManagement() {
       errors.fan_number = t("fanInvalid");
     }
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (Object.keys(errors).length > 0) {
+      showToast("error", t("errorFieldsHighlighted"));
+      return false;
+    }
+    return true;
   };
+
+
+const validateCompanyForm = () => {
+  const errors: Record<string, string> = {};
+
+  if (!formData.name?.trim()) {
+    errors.name = t("nameRequired");
+  }
+
+  if (!formData.business_type) {
+    errors.business_type = t("businessTypeRequiredError");
+  }
+
+  if (!formData.category || Number(formData.category) === 0) {
+    errors.category = t("categoryRequiredError");
+  }
+
+  if (!formData.sub_category || Number(formData.sub_category) === 0) {
+    errors.sub_category = t("subcategoryRequiredError");
+  }
+
+  if (!formData.contact_phone?.trim()) {
+    errors.contact_phone = t("phoneRequired");
+  }
+
+  if (!formData.contact_email?.trim()) {
+    errors.contact_email = t("emailRequired");
+  } else if (
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email.trim())
+  ) {
+    errors.contact_email = t("emailInvalid");
+  }
+
+  if (isMarketing && !editingSlug) {
+    if (!agreedToTerms) {
+      errors.terms_agreed = t("termsRequiredOwner");
+    }
+
+    if (!formData.terms_signatory_name?.trim()) {
+      errors.terms_signatory_name = t("signatoryRequired");
+    }
+  }
+
+  setFormErrors(errors);
+
+  if (Object.keys(errors).length > 0) {
+    showToast("error", t("errorFieldsHighlighted"));
+    return false;
+  }
+
+  return true;
+};
 
   /* ──────────────────────────────────────────────────────────────
      Submit
@@ -1057,30 +1124,40 @@ export default function CompanyManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
+  if (!validateBasicInfo()) {
+  setCurrentStep(0);
+  return;
+}
 
-    if (!validateBasicInfo()) {
-      setCurrentStep(0);
-      return;
-    }
-    if (!validateLocation()) {
-      setCurrentStep(1);
-      return;
-    }
-    if (!validateDocuments()) {
-      setCurrentStep(2);
-      return;
-    }
+if (!validateLocation()) {
+  setCurrentStep(1);
+  return;
+}
 
-    if (isMarketing && !editingSlug) {
-      if (!agreedToTerms) {
-        showToast("error", t("termsRequiredOwner"));
-        return;
-      }
-      if (!formData.terms_signatory_name?.trim()) {
-        showToast("error", t("signatoryRequired"));
-        return;
-      }
-    }
+if (!validateDocuments()) {
+  setCurrentStep(2);
+  return;
+}
+
+if (isMarketing && !editingSlug) {
+  const errors: Record<string, string> = {};
+
+  if (!agreedToTerms) {
+    errors.terms_agreed = t("termsRequiredOwner");
+  }
+
+  if (!formData.terms_signatory_name?.trim()) {
+    errors.terms_signatory_name = t("signatoryRequired");
+  }
+
+  if (Object.keys(errors).length > 0) {
+    setFormErrors(errors);
+    setCurrentStep(3);
+    showToast("error", t("errorFieldsHighlighted"));
+    return;
+  }
+}
+    
 
     // CHANGE DETECTION
     if (editingSlug && originalFormData) {
@@ -1457,20 +1534,42 @@ export default function CompanyManagement() {
       await fetchData();
       resetForm();
     } catch (err: any) {
-      console.error("[handleSubmit] Failed:", err);
+      console.error("[Company Creation/Update Failed]", {
+        status: err?.response?.status,
+        responseData: err?.response?.data,
+        responseHeaders: err?.response?.headers,
+        requestUrl: err?.config?.url,
+        requestMethod: err?.config?.method,
+        message: err?.message,
+      });
 
       if (err?.response?.status === 401) {
         showToast("error", t("sessionExpired"));
-      } else {
-        const msg =
-          err?.response?.data?.message ||
-          err?.response?.data?.detail ||
-          (typeof err?.response?.data === "object"
-            ? JSON.stringify(err.response.data)
-            : null) ||
-          t("operationFailed");
-        showToast("error", msg);
+        return;
       }
+
+      const responseData = err?.response?.data;
+      const fieldErrors = mapBackendErrors(responseData);
+      const fieldCount = Object.keys(fieldErrors).length;
+
+      if (fieldCount > 0) {
+        setFormErrors((prev) => ({ ...prev, ...fieldErrors }));
+
+        const firstField = Object.keys(fieldErrors)[0];
+        const targetStep = FIELD_TO_STEP[firstField] ?? 0;
+        setCurrentStep(targetStep);
+
+        const summary = summarizeErrors(fieldErrors);
+        showToast("error", summary || t("errorFieldsHighlighted"));
+        return;
+      }
+
+      const msg =
+        responseData?.message ||
+        responseData?.detail ||
+        (typeof responseData === "string" ? responseData : null) ||
+        t("operationFailed");
+      showToast("error", msg);
     } finally {
       setSubmitting(false);
     }
@@ -1535,6 +1634,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateBasicInfo,
@@ -1571,6 +1671,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateLocation,
@@ -1607,6 +1708,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
         validate: validateDocuments,
@@ -1643,6 +1745,7 @@ export default function CompanyManagement() {
             onAgreedToTermsChange={setAgreedToTerms}
             onSubmit={handleSubmit}
             onClose={handleCloseModal}
+            showToast={showToast}
           />
         ),
       },
@@ -1661,22 +1764,15 @@ export default function CompanyManagement() {
       handleLogoChange,
       handleCoverChange,
       isSuperAdmin,
+      isMarketing,
       verificationDraft,
       handleVerificationChange,
       agreedToTerms,
       handleCloseModal,
       t,
+      showToast,
     ],
   );
-  // TEMP DEBUG — remove after verifying
-useEffect(() => {
-  if (companies.length > 0) {
-    console.log("[CompanyManagement] companies[0] raw:", companies[0]);
-    console.log("[CompanyManagement] categoryLabelsAm:", categoryLabelsAm);
-    console.log("[CompanyManagement] subCategoryLabelsAm:", subCategoryLabelsAm);
-    console.log("[CompanyManagement] businessTypeLabelsAm:", businessTypeLabelsAm);
-  }
-}, [companies, categoryLabelsAm, subCategoryLabelsAm, businessTypeLabelsAm]);
 
   /* ──────────────────────────────────────────────────────────────
      openEdit
@@ -1699,6 +1795,7 @@ useEffect(() => {
       setEditingSlug(company.slug);
       setCurrentStep(0);
       setAgreedToTerms(false);
+      setFormErrors({});
 
       const newFormData: CompanyFormData = {
         name: detail.name ?? company.name ?? "",
@@ -1810,6 +1907,7 @@ useEffect(() => {
     setEditingSlug(null);
     setIsEditingActive(false);
     setAgreedToTerms(false);
+    setFormErrors({});
   }, []);
 
   const handleDeleteClick = useCallback((company: CompanyListItem) => {
@@ -2037,6 +2135,7 @@ useEffect(() => {
               onAgreedToTermsChange={setAgreedToTerms}
               onSubmit={handleSubmit}
               onCloseForm={closeInlineEdit}
+              showToast={showToast}
             />
           </div>
         )}

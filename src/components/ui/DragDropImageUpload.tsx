@@ -9,6 +9,7 @@ import {
   FileImage,
   Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface DragDropImageUploadProps {
   value?: File | null;
@@ -130,7 +131,8 @@ export const DragDropImageUpload: React.FC<DragDropImageUploadProps> = ({
     const validationError = validateFile(file);
 
     if (validationError) {
-      alert(validationError);
+      // alert(validationError);
+      toast.error(validationError);
       return;
     }
 

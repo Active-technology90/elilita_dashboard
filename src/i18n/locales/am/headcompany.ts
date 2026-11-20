@@ -41,7 +41,7 @@ export default {
   newHeadCompany: "አዲስ ዋና ኩባንያ",
   nameEnglish: "ስም (እንግሊዝኛ)",
   nameEnglishPlaceholder: "ለምሳሌ MOHA Soft Drinks",
-  nameAmharic: "ስም (አማርኛ)",
+  nameAmharic: "ስም",
   nameAmharicPlaceholder: "ለምሳሌ ሞሐ",
   logoLabel: "አርማ (ካሬ)",
   coverLabel: "የሽፋን ምስል (ሰፊ)",

@@ -1,4 +1,6 @@
+
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertCircle, Calendar, Repeat, Settings, X } from "lucide-react";
 import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
@@ -26,20 +28,25 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
+  const { t } = useTranslation("serviceBookings");
   const normalized = status?.toLowerCase();
   const color =
     STATUS_COLORS[normalized] || "bg-gray-100 text-gray-600 border-gray-200";
+
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border ${color}`}
     >
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
-      {normalized.replace(/_/g, " ")}
+      {t(`status.${normalized}`, {
+        defaultValue: normalized.replace(/_/g, " "),
+      })}
     </span>
   );
 };
 
 const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
+  const { t } = useTranslation("serviceBookings");
   const method = booking.payment_method?.toLowerCase();
   const status = booking.payment_status?.toLowerCase();
   const receipt = (booking as any)?.receipt;
@@ -49,30 +56,33 @@ const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-          Paid
+          {t("paymentStatus.paid")}
         </span>
       );
     }
+
     if (receipt?.status === "rejected" || status === "payment_failed") {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-red-50 text-red-700 border-red-200">
           <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-          Receipt Rejected
+          {t("paymentStatus.receiptRejected")}
         </span>
       );
     }
+
     if (receipt?.status === "pending" || Boolean(receipt)) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-300 animate-pulse">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-          Verify Receipt
+          {t("paymentStatus.verifyReceipt")}
         </span>
       );
     }
+
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
         <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-        Awaiting Receipt
+        {t("paymentStatus.awaitingReceipt")}
       </span>
     );
   }
@@ -81,43 +91,49 @@ const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-        Paid
+        {t("paymentStatus.paid")}
       </span>
     );
   }
+
   if (status === "payment_failed" || status === "failed") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-red-50 text-red-700 border-red-200">
         <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-        Failed
+        {t("paymentStatus.failed")}
       </span>
     );
   }
+
   if (method === "cod" || status === "not_required") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-blue-50 text-blue-700 border-blue-200">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-        Pay at Venue
+        {t("paymentStatus.payAtVenue")}
       </span>
     );
   }
+
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-      Pending
+      {t("paymentStatus.pending")}
     </span>
   );
 };
 
 const PaymentMethodBadge = ({ method }: { method?: string }) => {
+  const { t } = useTranslation("serviceBookings");
   const norm = method?.toLowerCase() || "—";
+
   const labelMap: Record<string, string> = {
-    bank_transfer: "Bank Transfer",
-    telebirr: "Telebirr",
-    chapa: "Chapa",
-    arifpay: "ArifPay",
-    cod: "Cash (Venue)",
+    bank_transfer: t("paymentMethods.bankTransfer"),
+    telebirr: t("paymentMethods.telebirr"),
+    chapa: t("paymentMethods.chapa"),
+    arifpay: t("paymentMethods.arifpay"),
+    cod: t("paymentMethods.cashVenue"),
   };
+
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
       {labelMap[norm] || norm.replace(/_/g, " ")}
@@ -125,31 +141,9 @@ const PaymentMethodBadge = ({ method }: { method?: string }) => {
   );
 };
 
-const STATUS_OPTIONS: SelectOption[] = [
-  { value: "all", label: "All Statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "no_show", label: "No Show" },
-];
-const PAYMENT_STATUS_OPTIONS: SelectOption[] = [
-  { value: "", label: "All Payment Status" },
-  { value: "not_required", label: "Not Required" },
-  { value: "pending", label: "Pending" },
-  { value: "paid", label: "Paid" },
-  { value: "failed", label: "Failed" },
-];
-const PAGE_SIZE_OPTIONS: SelectOption[] = [
-  { value: "10", label: "10 / page" },
-  { value: "15", label: "15 / page" },
-  { value: "20", label: "20 / page" },
-  { value: "30", label: "30 / page" },
-  { value: "50", label: "50 / page" },
-];
-
 export default function ServiceBookings() {
+  const { t } = useTranslation("serviceBookings");
+
   /* -------------------- context & hooks -------------------- */
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
@@ -164,6 +158,7 @@ export default function ServiceBookings() {
     () => companies.filter((c) => c.business_type === "service"),
     [companies],
   );
+
   const selectedCompany = companies.find((c) => c.slug === companySlug);
   const isServiceCompany = selectedCompany?.business_type === "service";
 
@@ -187,6 +182,33 @@ export default function ServiceBookings() {
   } | null>(null);
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
 
+  /* -------------------- translated select options -------------------- */
+  const STATUS_OPTIONS: SelectOption[] = [
+    { value: "all", label: t("filters.allStatuses") },
+    { value: "pending", label: t("status.pending") },
+    { value: "confirmed", label: t("status.confirmed") },
+    { value: "in_progress", label: t("status.inProgress") },
+    { value: "completed", label: t("status.completed") },
+    { value: "cancelled", label: t("status.cancelled") },
+    { value: "no_show", label: t("status.noShow") },
+  ];
+
+  const PAYMENT_STATUS_OPTIONS: SelectOption[] = [
+    { value: "", label: t("filters.allPaymentStatuses") },
+    { value: "not_required", label: t("paymentStatus.notRequired") },
+    { value: "pending", label: t("paymentStatus.pending") },
+    { value: "paid", label: t("paymentStatus.paid") },
+    { value: "failed", label: t("paymentStatus.failed") },
+  ];
+
+  const PAGE_SIZE_OPTIONS: SelectOption[] = [
+    { value: "10", label: t("pagination.perPage", { count: 10 }) },
+    { value: "15", label: t("pagination.perPage", { count: 15 }) },
+    { value: "20", label: t("pagination.perPage", { count: 20 }) },
+    { value: "30", label: t("pagination.perPage", { count: 30 }) },
+    { value: "50", label: t("pagination.perPage", { count: 50 }) },
+  ];
+
   /* -------------------- data fetching -------------------- */
   const filters = {
     status: statusFilter === "all" ? undefined : statusFilter,
@@ -199,7 +221,9 @@ export default function ServiceBookings() {
   /* -------------------- derived data & pagination -------------------- */
   const searchedBookings = useMemo(() => {
     if (!search.trim()) return bookings;
+
     const term = search.toLowerCase();
+
     return bookings.filter(
       (b) =>
         String(b.id).includes(term) ||
@@ -212,17 +236,21 @@ export default function ServiceBookings() {
   // apply payment & any other local filters
   const filteredBookings = useMemo(() => {
     let result = searchedBookings;
+
     if (paymentStatusFilter) {
       result = result.filter((b) => b.payment_status === paymentStatusFilter);
     }
+
     if (paymentMethodFilter) {
       result = result.filter((b) => b.payment_method === paymentMethodFilter);
     }
+
     return result;
   }, [searchedBookings, paymentStatusFilter, paymentMethodFilter]);
 
   const totalItems = filteredBookings.length;
   const totalPages = Math.ceil(totalItems / pageSize);
+
   const paginatedBookings = filteredBookings.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
@@ -253,12 +281,13 @@ export default function ServiceBookings() {
       setCompanyNotes(fullBooking.company_notes || "");
       setFinalPrice(fullBooking.final_price || fullBooking.quoted_price || "");
     } catch {
-      showToast("error", "Could not load booking details");
+      showToast("error", t("messages.loadBookingFailed"));
     }
   };
 
   const handleRefreshBooking = async () => {
     if (!selectedBooking) return;
+
     try {
       const updated = await getBookingDetail(selectedBooking.id);
       setSelectedBooking(updated);
@@ -266,7 +295,7 @@ export default function ServiceBookings() {
       setFinalPrice(updated.final_price || updated.quoted_price || "");
       await refetch();
     } catch {
-      showToast("error", "Could not refresh booking");
+      showToast("error", t("messages.refreshBookingFailed"));
     }
   };
 
@@ -280,10 +309,22 @@ export default function ServiceBookings() {
         company_notes: companyNotes || undefined,
         final_price: finalPrice || undefined,
       });
-      showToast("success", `Booking marked as ${status.replace("_", " ")}`);
+
+      showToast(
+        "success",
+        t("messages.bookingMarkedAs", {
+          status: t(`status.${status}`, {
+            defaultValue: status.replace(/_/g, " "),
+          }),
+        }),
+      );
+
       await handleRefreshBooking();
     } catch (err: any) {
-      showToast("error", extractErrorMessage(err, "Failed to update booking"));
+      showToast(
+        "error",
+        extractErrorMessage(err, t("messages.updateBookingFailed")),
+      );
     }
   };
 
@@ -323,7 +364,7 @@ export default function ServiceBookings() {
   const bookingColumns: Column<ServiceBooking>[] = [
     {
       key: "id",
-      header: "Booking ID",
+      header: t("table.bookingId"),
       textMode: "nowrap",
       render: (booking) => (
         <span className="font-semibold text-gray-900">#{booking.id}</span>
@@ -331,11 +372,11 @@ export default function ServiceBookings() {
     },
     {
       key: "customer",
-      header: "Customer",
+      header: t("table.customer"),
       render: (booking) => (
         <div>
           <p className="font-medium text-gray-900">
-            {booking.customer_name || `Customer #${booking.id}`}
+            {booking.customer_name || t("table.customerNumber", { id: booking.id })}
           </p>
           {booking.customer_phone && (
             <p className="mt-0.5 text-xs text-gray-500">
@@ -347,7 +388,7 @@ export default function ServiceBookings() {
     },
     {
       key: "specialist",
-      header: "Specialist",
+      header: t("table.specialist"),
       render: (booking) =>
         booking.assigned_staff ? (
           <div className="flex items-center gap-2">
@@ -359,17 +400,19 @@ export default function ServiceBookings() {
             </span>
           </div>
         ) : (
-          <span className="text-sm text-gray-400">Any specialist</span>
+          <span className="text-sm text-gray-400">
+            {t("table.anySpecialist")}
+          </span>
         ),
     },
     {
       key: "service",
-      header: "Service",
+      header: t("table.service"),
       render: (booking) => booking.offering?.title || "—",
     },
     {
       key: "price",
-      header: "Price",
+      header: t("table.price"),
       textMode: "nowrap",
       render: (booking) => (
         <span className="font-medium text-gray-800">
@@ -379,25 +422,27 @@ export default function ServiceBookings() {
     },
     {
       key: "status",
-      header: "Status",
+      header: t("table.status"),
       textMode: "nowrap",
       render: (booking) => <StatusBadge status={booking.status} />,
     },
     {
       key: "payment_method",
-      header: "Payment Method",
+      header: t("table.paymentMethod"),
       textMode: "nowrap",
-      render: (booking) => <PaymentMethodBadge method={booking.payment_method} />,
+      render: (booking) => (
+        <PaymentMethodBadge method={booking.payment_method} />
+      ),
     },
     {
       key: "payment_status",
-      header: "Payment Status",
+      header: t("table.paymentStatus"),
       textMode: "nowrap",
       render: (booking) => <PaymentStatusBadge booking={booking} />,
     },
     {
       key: "schedule",
-      header: "Date / Time",
+      header: t("table.dateTime"),
       textMode: "nowrap",
       render: (booking) => (
         <div>
@@ -410,7 +455,7 @@ export default function ServiceBookings() {
     },
     {
       key: "actions",
-      header: "Actions",
+      header: t("table.actions"),
       className: "text-right",
       textMode: "nowrap",
       render: (booking) => (
@@ -421,7 +466,7 @@ export default function ServiceBookings() {
             className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-secondary transition hover:bg-secondary/5"
           >
             <Settings className="h-4 w-4" />
-            Manage
+            {t("table.manage")}
           </button>
         </div>
       ),
@@ -434,8 +479,8 @@ export default function ServiceBookings() {
       <CompanySelector
         companies={serviceCompanies.length ? serviceCompanies : companies}
         isLoading={isLoadingCompanies}
-        title="Service Bookings"
-        searchPlaceholder="Search service companies..."
+        title={t("page.title")}
+        searchPlaceholder={t("companySelector.searchPlaceholder")}
         onSelect={(slug, name) => {
           const membership = user?.memberships?.find(
             (m: any) => m.company_slug === slug,
@@ -452,12 +497,12 @@ export default function ServiceBookings() {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
-          title="Service Bookings"
-          description="This area is available only to companies configured as service businesses."
+          title={t("page.title")}
+          description={t("page.serviceCompanyOnly")}
           icon={Calendar}
           badge={
             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700 sm:text-xs">
-              Service company required
+              {t("page.serviceCompanyRequired")}
             </span>
           }
           actions={
@@ -468,7 +513,7 @@ export default function ServiceBookings() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("page.switchCompany")}
               </button>
             ) : undefined
           }
@@ -483,12 +528,16 @@ export default function ServiceBookings() {
 
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-gray-900">
-                {companyName || "The selected company"} is not a service company
+                {t("page.notServiceCompany", {
+                  company: companyName || t("page.selectedCompany"),
+                })}
               </h2>
               <p className="mt-1 text-sm leading-6 text-gray-600">
-                Service offerings, staff schedules, availability, and bookings are
-                disabled for this company. Select a company whose business type is
-                <span className="font-medium text-gray-800"> service</span> to continue.
+                {t("page.serviceCompanyDisabled")}{" "}
+                <span className="font-medium text-gray-800">
+                  {t("page.serviceBusinessType")}
+                </span>{" "}
+                {t("page.toContinue")}
               </p>
               {isSuperAdmin && (
                 <button
@@ -497,7 +546,7 @@ export default function ServiceBookings() {
                   className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:underline"
                 >
                   <Repeat className="h-4 w-4" />
-                  Choose a service company
+                  {t("page.chooseServiceCompany")}
                 </button>
               )}
             </div>
@@ -514,9 +563,9 @@ export default function ServiceBookings() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
         <PageHeader
           title={companyName || undefined}
-          description="Review, manage, and track incoming customer appointments."
+          description={t("page.description")}
           icon={Calendar}
-          eyebrow="Service Bookings"
+          eyebrow={t("page.title")}
           actions={
             isSuperAdmin ? (
               <button
@@ -525,7 +574,7 @@ export default function ServiceBookings() {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
               >
                 <Repeat className="h-4 w-4" />
-                Switch company
+                {t("page.switchCompany")}
               </button>
             ) : undefined
           }
@@ -550,7 +599,7 @@ export default function ServiceBookings() {
               <SearchInput
                 value={search}
                 onChange={setSearch}
-                placeholder="Search by ID, customer or service..."
+                placeholder={t("search.placeholder")}
                 loading={loading}
                 showMobileFilter={true}
                 onMobileFilterClick={() => setShowMobileFilterModal(true)}
@@ -602,8 +651,8 @@ export default function ServiceBookings() {
           loadingRows={5}
           emptyMessage={
             bookings.length === 0
-              ? "No bookings found."
-              : "No matching bookings."
+              ? t("table.noBookingsFound")
+              : t("table.noMatchingBookings")
           }
           currentPage={currentPage}
           totalPages={totalPages}
@@ -644,7 +693,7 @@ export default function ServiceBookings() {
             >
               <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex justify-between items-center">
                 <h3 className="text-lg font-extrabold text-secondary">
-                  Filters
+                  {t("filters.title")}
                 </h3>
                 <button
                   onClick={() => setShowMobileFilterModal(false)}
@@ -653,23 +702,25 @@ export default function ServiceBookings() {
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
+
               <div className="p-4 space-y-3">
                 {/* Status filter */}
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Status
+                    {t("filters.status")}
                   </label>
                   <CustomSelect
                     value={statusFilter}
                     onChange={(val) => setStatusFilter(val)}
                     options={STATUS_OPTIONS}
-                    placeholder="All Statuses"
+                    placeholder={t("filters.allStatuses")}
                   />
                 </div>
+
                 {/* Payment Status filter */}
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Payment Status
+                    {t("filters.paymentStatus")}
                   </label>
                   {/* <select
                     value={paymentStatusFilter}
@@ -686,13 +737,14 @@ export default function ServiceBookings() {
                     value={paymentStatusFilter}
                     onChange={(val) => setPaymentStatusFilter(val)}
                     options={PAYMENT_STATUS_OPTIONS}
-                    placeholder="All Payment Status"
+                    placeholder={t("filters.allPaymentStatuses")}
                   />
                 </div>
+
                 {/* Payment Method filter */}
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Payment Method
+                    {t("filters.paymentMethod")}
                   </label>
                   {/* <select
                     value={paymentMethodFilter}
@@ -709,16 +761,20 @@ export default function ServiceBookings() {
                     onChange={(val) => setPaymentMethodFilter(val)}
                     options={[
                       { label: "Chapa", value: "chapa" },
-                      { label: "Bank Transfer", value: "bank_transfer" },
+                      {
+                        label: t("paymentMethods.bankTransfer"),
+                        value: "bank_transfer",
+                      },
                       { label: "COD", value: "cod" },
                     ]}
-                    placeholder="All Payment Methods"
+                    placeholder={t("filters.allPaymentMethods")}
                   />
                 </div>
+
                 {/* Date filter */}
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-1.5">
-                    Date
+                    {t("filters.date")}
                   </label>
                   <input
                     type="date"
@@ -738,14 +794,15 @@ export default function ServiceBookings() {
                       }}
                       className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition"
                     >
-                      Clear all
+                      {t("filters.clearAll")}
                     </button>
                   )}
+
                   <button
                     onClick={() => setShowMobileFilterModal(false)}
                     className="flex-1 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:bg-secondary/90 transition shadow-sm"
                   >
-                    Apply Filters
+                    {t("filters.apply")}
                   </button>
                 </div>
               </div>

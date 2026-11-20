@@ -1,4 +1,6 @@
+
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   UserCheck,
   Star,
@@ -19,13 +21,13 @@ import type { ServiceStaff, ServiceOffering } from "../../../types";
 const PRIMARY_COLOR = "#6750A4";
 
 const WEEKDAYS = [
-  { value: 0, label: "Mon" },
-  { value: 1, label: "Tue" },
-  { value: 2, label: "Wed" },
-  { value: 3, label: "Thu" },
-  { value: 4, label: "Fri" },
-  { value: 5, label: "Sat" },
-  { value: 6, label: "Sun" },
+  { value: 0, key: "weekdays.mon" },
+  { value: 1, key: "weekdays.tue" },
+  { value: 2, key: "weekdays.wed" },
+  { value: 3, key: "weekdays.thu" },
+  { value: 4, key: "weekdays.fri" },
+  { value: 5, key: "weekdays.sat" },
+  { value: 6, key: "weekdays.sun" },
 ];
 
 /* ─── Reusable Input Component ─────────────────────────── */
@@ -56,6 +58,7 @@ const AvatarUpload = ({
   onFileSelect: (file: File | null) => void;
   onError?: (msg: string) => void;
 }) => {
+  const { t } = useTranslation("staffForm");
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -73,12 +76,12 @@ const AvatarUpload = ({
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
     if (!allowedTypes.includes(file.type)) {
-      onError?.("Please upload a JPG, PNG, or WEBP image.");
+      onError?.(t("avatar.invalidFileType"));
       return false;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      onError?.("Image must be under 5 MB.");
+      onError?.(t("avatar.fileTooLarge"));
       return false;
     }
 
@@ -188,7 +191,9 @@ const AvatarUpload = ({
             triggerFileInput();
           }
         }}
-        aria-label={hasImage ? "Change profile photo" : "Upload profile photo"}
+        aria-label={
+          hasImage ? t("avatar.changeProfilePhoto") : t("avatar.uploadProfilePhoto")
+        }
       >
         {/* Image Container */}
         <div className="relative h-full w-full overflow-hidden rounded-full">
@@ -196,7 +201,7 @@ const AvatarUpload = ({
             <>
               <img
                 src={imageSrc}
-                alt="Profile preview"
+                alt={t("avatar.profilePreview")}
                 className="h-full w-full object-cover"
               />
 
@@ -215,7 +220,7 @@ const AvatarUpload = ({
                 <Upload className="h-5 w-5 text-white" />
 
                 <span className="mt-1 text-[10px] font-medium text-white">
-                  Change photo
+                  {t("avatar.changePhoto")}
                 </span>
               </div>
             </>
@@ -231,7 +236,7 @@ const AvatarUpload = ({
               </div>
 
               <span className="mt-1.5 text-[10px] font-medium text-gray-500">
-                Upload photo
+                {t("avatar.uploadPhoto")}
               </span>
             </div>
           )}
@@ -267,8 +272,8 @@ const AvatarUpload = ({
               focus:ring-2
               focus:ring-red-500/30
             "
-            aria-label="Remove profile photo"
-            title="Remove photo"
+            aria-label={t("avatar.removeProfilePhoto")}
+            title={t("avatar.removePhoto")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -287,15 +292,17 @@ const AvatarUpload = ({
       {/* Helper Text */}
       <div className="mt-3 text-center">
         <p className="text-xs font-medium text-gray-700">
-          {hasImage ? "Profile photo" : "Add profile photo"}
+          {hasImage ? t("avatar.profilePhoto") : t("avatar.addProfilePhoto")}
         </p>
 
         <p className="mt-0.5 text-[10px] text-gray-400">
-          JPG, PNG or WEBP · Max 5 MB
+          {t("avatar.fileRequirements")}
         </p>
 
         {!hasImage && (
-          <p className="mt-1 text-[10px] text-gray-400">Click or drag & drop</p>
+          <p className="mt-1 text-[10px] text-gray-400">
+            {t("avatar.dragAndDrop")}
+          </p>
         )}
       </div>
     </div>
@@ -312,6 +319,8 @@ const WorkingDaysPicker = ({
   onChange: (days: number[]) => void;
   error?: string;
 }) => {
+  const { t } = useTranslation("staffForm");
+
   const toggle = (day: number) => {
     onChange(
       selected.includes(day)
@@ -334,7 +343,7 @@ const WorkingDaysPicker = ({
               type="button"
               role="checkbox"
               aria-checked={active}
-              aria-label={day.label}
+              aria-label={t(day.key)}
               onClick={() => toggle(day.value)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/50 ${
                 active
@@ -350,7 +359,7 @@ const WorkingDaysPicker = ({
                   : {}
               }
             >
-              {day.label}
+              {t(day.key)}
             </button>
           );
         })}
@@ -361,14 +370,14 @@ const WorkingDaysPicker = ({
           onClick={selectWeekdays}
           className="text-xs text-secondary hover:underline"
         >
-          Weekdays
+          {t("workingDays.weekdays")}
         </button>
         <button
           type="button"
           onClick={selectAll}
           className="text-xs text-secondary hover:underline"
         >
-          All days
+          {t("workingDays.allDays")}
         </button>
         {selected.length > 0 && (
           <button
@@ -376,7 +385,7 @@ const WorkingDaysPicker = ({
             onClick={() => onChange([])}
             className="text-red-500 hover:underline"
           >
-            Clear
+            {t("workingDays.clear")}
           </button>
         )}
       </div>
@@ -397,6 +406,7 @@ const ServiceMultiSelect = ({
   onChange: (ids: number[]) => void;
   error?: string;
 }) => {
+  const { t } = useTranslation("staffForm");
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -441,8 +451,13 @@ const ServiceMultiSelect = ({
       >
         <span className={selectedIds.length > 0 ? "" : "text-gray-400"}>
           {selectedIds.length > 0
-            ? `${selectedIds.length} service${selectedIds.length > 1 ? "s" : ""} selected`
-            : "Select services..."}
+            ? t(
+                selectedIds.length === 1
+                  ? "services.selectedOne"
+                  : "services.selectedMany",
+                { count: selectedIds.length },
+              )
+            : t("services.selectPlaceholder")}
         </span>
         <ChevronDown className="h-4 w-4 text-gray-400" />
       </button>
@@ -459,17 +474,17 @@ const ServiceMultiSelect = ({
             <div className="p-2 border-b">
               <input
                 type="text"
-                placeholder="Search services..."
+                placeholder={t("services.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs border-0 rounded-lg bg-gray-50 focus:outline-none focus:ring-1 focus:ring-secondary"
-                aria-label="Search services"
+                aria-label={t("services.searchAriaLabel")}
               />
             </div>
             <div className="max-h-48 overflow-y-auto py-1">
               {filtered.length === 0 ? (
                 <p className="text-xs text-gray-400 px-4 py-2">
-                  No services found.
+                  {t("services.notFound")}
                 </p>
               ) : (
                 filtered.map((service) => {
@@ -516,7 +531,7 @@ const ServiceMultiSelect = ({
                 type="button"
                 onClick={() => toggle(s.id)}
                 className="ml-0.5 hover:text-secondary focus:outline-none"
-                aria-label={`Remove ${s.title}`}
+                aria-label={t("services.removeService", { name: s.title })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -528,7 +543,7 @@ const ServiceMultiSelect = ({
               onClick={clearAll}
               className="text-xs text-red-500 hover:text-red-700 ml-1"
             >
-              Clear all
+              {t("services.clearAll")}
             </button>
           )}
         </div>
@@ -579,6 +594,7 @@ export function StaffForm({
   onCancel?: () => void;
   initialData?: ServiceStaff | null;
 }) {
+  const { t } = useTranslation("staffForm");
   const isEditing = !!initialData;
   const [name, setName] = useState(initialData?.name || "");
   const [nameAm, setNameAm] = useState(initialData?.name_am || "");
@@ -641,11 +657,11 @@ export function StaffForm({
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Full name is required.";
+    if (!name.trim()) errors.name = t("validation.fullNameRequired");
     if (workingDays.length === 0)
-      errors.workingDays = "Select at least one working day.";
+      errors.workingDays = t("validation.workingDayRequired");
     if (startTime >= endTime)
-      errors.time = "Start time must be before end time.";
+      errors.time = t("validation.startTimeBeforeEndTime");
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       const firstErrorField = Object.keys(errors)[0];
@@ -681,13 +697,13 @@ export function StaffForm({
         await updateStaff(companySlug, initialData.id, formData);
         setToast({
           type: "success",
-          message: "Specialist updated successfully.",
+          message: t("messages.updatedSuccessfully"),
         });
       } else {
         await createStaff(companySlug, formData);
         setToast({
           type: "success",
-          message: "Specialist added successfully.",
+          message: t("messages.createdSuccessfully"),
         });
         // Reset form after creation (except toast)
         setName("");
@@ -704,7 +720,7 @@ export function StaffForm({
     } catch (err: any) {
       setToast({
         type: "error",
-        message: extractErrorMessage(err, "Failed to save specialist"),
+        message: extractErrorMessage(err, t("messages.saveFailed")),
       });
     } finally {
       setSubmitting(false);
@@ -731,8 +747,8 @@ export function StaffForm({
         <div className="mb-4">
           <p className="text-sm text-gray-500 mt-0.5">
             {isEditing
-              ? "Update specialist profile, availability, and booking settings."
-              : "Create a specialist profile, availability, and service assignments."}
+              ? t("form.editDescription")
+              : t("form.createDescription")}
           </p>
         </div>
 
@@ -747,14 +763,14 @@ export function StaffForm({
 
         {/* Profile Information */}
         <section>
-          <SectionTitle icon={UserCheck} title="Profile Information" />
+          <SectionTitle icon={UserCheck} title={t("sections.profileInformation")} />
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="name"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Full Name (English) <span className="text-red-500">*</span>
+                {t("fields.fullNameEnglish")} <span className="text-red-500">*</span>
               </label>
               <InputWithIcon
                 icon={UserCheck}
@@ -762,7 +778,7 @@ export function StaffForm({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Robel Alemu"
+                placeholder={t("fields.fullNamePlaceholder")}
                 aria-invalid={!!fieldErrors.name}
                 aria-describedby={fieldErrors.name ? "name-error" : undefined}
               />
@@ -777,14 +793,14 @@ export function StaffForm({
                 htmlFor="name_am"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Name (Amharic)
+                {t("fields.nameAmharic")}
               </label>
               <input
                 id="name_am"
                 type="text"
                 value={nameAm}
                 onChange={(e) => setNameAm(e.target.value)}
-                placeholder="e.g. ሮቤል ዓለሙ"
+                placeholder={t("fields.nameAmharicPlaceholder")}
                 className="h-10 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all"
               />
             </div>
@@ -793,7 +809,7 @@ export function StaffForm({
                 htmlFor="role_title"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Role / Title
+                {t("fields.roleTitle")}
               </label>
               <InputWithIcon
                 icon={Star}
@@ -801,7 +817,7 @@ export function StaffForm({
                 type="text"
                 value={roleTitle}
                 onChange={(e) => setRoleTitle(e.target.value)}
-                placeholder="e.g. Senior Barber, Master Stylist"
+                placeholder={t("fields.roleTitlePlaceholder")}
               />
             </div>
           </div>
@@ -809,14 +825,14 @@ export function StaffForm({
 
         {/* Availability Schedule */}
         <section>
-          <SectionTitle icon={Clock} title="Availability Schedule" />
+          <SectionTitle icon={Clock} title={t("sections.availabilitySchedule")} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label
                 htmlFor="start_time"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Shift Start
+                {t("fields.shiftStart")}
               </label>
               <InputWithIcon
                 icon={Clock}
@@ -833,7 +849,7 @@ export function StaffForm({
                 htmlFor="end_time"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                Shift End
+                {t("fields.shiftEnd")}
               </label>
               <InputWithIcon
                 icon={Clock}
@@ -851,7 +867,7 @@ export function StaffForm({
           )}
           <div className="mt-4">
             <label className="block text-xs font-medium text-gray-700 mb-2">
-              Working Days <span className="text-red-500">*</span>
+              {t("fields.workingDays")} <span className="text-red-500">*</span>
             </label>
             <WorkingDaysPicker
               selected={workingDays}
@@ -863,7 +879,7 @@ export function StaffForm({
 
         {/* Assigned Services */}
         <section>
-          <SectionTitle icon={CheckSquare} title="Assigned Services" />
+          <SectionTitle icon={CheckSquare} title={t("sections.assignedServices")} />
           <ServiceMultiSelect
             services={offerings}
             selectedIds={assignedServiceIds}
@@ -871,42 +887,42 @@ export function StaffForm({
             error={fieldErrors.services}
           />
           <p className="text-xs text-gray-400 mt-1">
-            Leave empty to assign all services.
+            {t("services.emptySelectionHint")}
           </p>
         </section>
 
         {/* Booking Status */}
         <section>
-          <SectionTitle icon={ToggleRight} title="Booking Status" />
+          <SectionTitle icon={ToggleRight} title={t("sections.bookingStatus")} />
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-sm font-medium text-gray-700">
-                  Online & Booking
+                  {t("booking.onlineAndBooking")}
                 </span>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Customers can book this specialist
+                  {t("booking.customersCanBook")}
                 </p>
               </div>
               <ToggleSwitch
                 checked={isOnline}
                 onChange={setIsOnline}
-                label="Online & Booking"
+                label={t("booking.onlineAndBooking")}
               />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-sm font-medium text-gray-700">
-                  Active
+                  {t("booking.active")}
                 </span>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Visible to customers
+                  {t("booking.visibleToCustomers")}
                 </p>
               </div>
               <ToggleSwitch
                 checked={isActive}
                 onChange={setIsActive}
-                label="Active"
+                label={t("booking.active")}
               />
             </div>
           </div>
@@ -921,10 +937,10 @@ export function StaffForm({
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {submitting
-              ? "Saving..."
+              ? t("actions.saving")
               : isEditing
-                ? "Update Staff"
-                : "Create Staff"}
+                ? t("actions.updateStaff")
+                : t("actions.createStaff")}
           </button>
           {onCancel && (
             <button
@@ -932,7 +948,7 @@ export function StaffForm({
               onClick={onCancel}
               className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {t("actions.cancel")}
             </button>
           )}
         </div>

@@ -1,4 +1,3 @@
-// src/components/admin/overview/SummaryCard.tsx
 
 import {
   type ComponentType,
@@ -9,6 +8,7 @@ import {
   LineChart,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 
 export type SummaryCardSubStat = {
   label: string;
@@ -77,6 +77,8 @@ export const SummaryCard = ({
   changePercent,
   comparisonLabel,
 }: SummaryCardProps) => {
+  const { t } = useTranslation("overview");
+
   const handleKeyDown = (
     event: KeyboardEvent<HTMLElement>,
   ) => {
@@ -121,35 +123,24 @@ export const SummaryCard = ({
         {...interactionProps}
         className={`
           group
-
           h-full
           min-h-[190px]
-
           overflow-hidden
-
           rounded-xl
-
           border
           border-secondary/10
-
           bg-white
-
           p-4
           sm:p-5
-
           shadow-[0_1px_3px_rgba(0,0,0,0.04)]
-
           transition-all
           duration-200
-
           ${
             onClick
               ? `
                 cursor-pointer
-
                 hover:border-secondary/20
                 hover:shadow-sm
-
                 focus-visible:outline-none
                 focus-visible:ring-2
                 focus-visible:ring-secondary/15
@@ -165,55 +156,40 @@ export const SummaryCard = ({
             flex-col
           "
         >
-          {/* =================================================
-              MAIN METRIC
-          ================================================= */}
+          {/* MAIN METRIC */}
 
           <div
             className="
               grid
               flex-1
               grid-cols-1
-
               gap-4
-
               sm:grid-cols-[minmax(0,1fr)_170px]
               sm:items-center
-
               lg:grid-cols-[minmax(0,1fr)_190px]
             "
           >
             <div className="min-w-0">
-              {/* Title */}
-
               <p
                 className="
                   text-[10px]
                   font-medium
                   leading-none
-
                   text-gray-500
                 "
               >
                 {title}
               </p>
 
-              {/* Main value */}
-
               <p
                 className="
                   mt-2
-
                   truncate
-
                   text-[34px]
                   font-extrabold
                   leading-none
-
                   tracking-[-0.045em]
-
                   text-secondary
-
                   sm:text-[38px]
                   lg:text-[42px]
                 "
@@ -227,11 +203,9 @@ export const SummaryCard = ({
                 <div
                   className="
                     mt-2
-
                     flex
                     flex-wrap
                     items-center
-
                     gap-1.5
                   "
                 >
@@ -240,7 +214,6 @@ export const SummaryCard = ({
                       text-[10px]
                       font-bold
                       leading-none
-
                       text-secondary
                     "
                   >
@@ -255,29 +228,24 @@ export const SummaryCard = ({
                         text-[9px]
                         font-medium
                         leading-none
-
                         text-gray-400
                       "
                     >
-                      vs {comparisonLabel}
+                      {t("summaryCard.vs")} {comparisonLabel}
                     </span>
                   )}
                 </div>
               )}
             </div>
 
-            {/* =================================================
-                SPARKLINE
-            ================================================= */}
+            {/* SPARKLINE */}
 
             {sparklineData.length > 1 && (
               <div
                 className="
                   hidden
-
                   h-[72px]
                   min-w-0
-
                   sm:block
                 "
               >
@@ -297,13 +265,10 @@ export const SummaryCard = ({
                     <Line
                       type="monotone"
                       dataKey="value"
-
                       stroke="var(--color-secondary)"
                       strokeWidth={2}
-
                       dot={false}
                       activeDot={false}
-
                       isAnimationActive
                     />
                   </LineChart>
@@ -312,9 +277,7 @@ export const SummaryCard = ({
             )}
           </div>
 
-          {/* =================================================
-              SUB STATS
-          ================================================= */}
+          {/* SUB STATS */}
 
           {subStats.length > 0 && (
             <div
@@ -384,11 +347,6 @@ export const SummaryCard = ({
 
      Backend percentage has priority.
 
-     Example:
-       backend 8.4  -> +8.4%
-       backend -3.1 -> -3.1%
-       backend 0    -> 0.0%
-
      If backend provides nothing:
        undefined -> +2.3%
      ========================================================= */
@@ -401,39 +359,26 @@ export const SummaryCard = ({
       {...interactionProps}
       className={`
         group
-
         flex
         h-full
-
         min-h-[52px]
-
         items-center
-
         rounded-lg
-
         border
         border-secondary/10
-
         bg-white
-
         px-3
         py-2.5
-
         shadow-[0_1px_2px_rgba(0,0,0,0.025)]
-
         transition-all
         duration-200
-
         ${
           onClick
             ? `
               cursor-pointer
-
               hover:border-secondary/20
               hover:bg-secondary/[0.015]
-
               hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)]
-
               focus-visible:outline-none
               focus-visible:ring-2
               focus-visible:ring-secondary/15
@@ -448,31 +393,24 @@ export const SummaryCard = ({
           min-w-0
         "
       >
-        {/* =================================================
-            TITLE + CHANGE
-        ================================================= */}
+        {/* TITLE + CHANGE */}
 
         <div
           className="
             flex
             min-w-0
-
             items-center
             justify-between
-
             gap-2
           "
         >
           <p
             className="
               min-w-0
-
               truncate
-
               text-[10px]
               font-medium
               leading-none
-
               text-gray-500
             "
           >
@@ -482,13 +420,10 @@ export const SummaryCard = ({
           <span
             className="
               shrink-0
-
               text-[10px]
               font-semibold
               leading-none
-
               tracking-[-0.01em]
-
               text-secondary
             "
           >
@@ -498,22 +433,16 @@ export const SummaryCard = ({
           </span>
         </div>
 
-        {/* =================================================
-            VALUE
-        ================================================= */}
+        {/* VALUE */}
 
         <p
           className="
             mt-1.5
-
             truncate
-
             text-[19px]
             font-extrabold
             leading-none
-
             tracking-[-0.035em]
-
             text-secondary
           "
         >

@@ -1720,7 +1720,7 @@ export default function AdManagement() {
             </div>
           }
           actionMobile={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {isSuperAdmin && (
                 <Button
                   onClick={() => setSlotsModalOpen(true)}

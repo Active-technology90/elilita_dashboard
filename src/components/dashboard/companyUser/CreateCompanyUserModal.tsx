@@ -16,44 +16,18 @@ import {
   Users,
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { CustomSelect } from "../../ui/CustomSelect";
 
-/* -------------------------------------------------------------------------- */
-/*                          VEHICLE TYPE CHOICES                              */
-/* -------------------------------------------------------------------------- */
-
 const VEHICLE_CHOICES = [
-  { value: "motorcycle", label: "Motorcycle" },
-  { value: "car", label: "Car" },
-  { value: "bicycle", label: "Bicycle" },
-  { value: "van", label: "Van" },
-  { value: "foot", label: "Foot" },
+  { value: "motorcycle", labelKey: "companyUsers.vehicles.motorcycle" },
+  { value: "car", labelKey: "companyUsers.vehicles.car" },
+  { value: "bicycle", labelKey: "companyUsers.vehicles.bicycle" },
+  { value: "van", labelKey: "companyUsers.vehicles.van" },
+  { value: "foot", labelKey: "companyUsers.vehicles.foot" },
 ] as const;
 
 export type VehicleType = (typeof VEHICLE_CHOICES)[number]["value"];
-
-const roleOptions = [
-  {
-    label: "Admin",
-    value: "admin",
-    icon: <Shield className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Dispatcher",
-    value: "staff",
-    icon: <Users className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Viewer",
-    value: "viewer",
-    icon: <Eye className="h-4 w-4 text-secondary" />,
-  },
-  {
-    label: "Delivery Person",
-    value: "delivery",
-    icon: <Truck className="h-4 w-4 text-secondary" />,
-  },
-];
 
 interface CreateCompanyUserModalProps {
   isOpen: boolean;
@@ -67,9 +41,8 @@ interface CreateCompanyUserModalProps {
     username: string;
     password: string;
     role: "admin" | "staff" | "viewer" | "delivery";
-    vehicle_type?: VehicleType; // Only for delivery role
+    vehicle_type?: VehicleType;
   }) => void;
-  /** Optional: pass backend field errors from parent, e.g. { username: ["Already exists"] } */
   serverErrors?: Record<string, string | string[]>;
 }
 
@@ -91,6 +64,8 @@ export function CreateCompanyUserModal({
   onSubmit,
   serverErrors,
 }: CreateCompanyUserModalProps) {
+  const { t } = useTranslation("companyUsers");
+
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -109,13 +84,9 @@ export function CreateCompanyUserModal({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // ✅ Ethiopian mobile: Ethio Telecom (09/+2519) OR Safaricom (07/+2517)
   const phoneRegex = /^(\+251|0)(9|7)\d{8}$/;
-
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
-  // ✅ Reset vehicle_type when role changes away from "delivery"
   useEffect(() => {
     if (formData.role !== "delivery" && formData.vehicle_type) {
       setFormData((prev) => ({ ...prev, vehicle_type: "" }));
@@ -123,7 +94,6 @@ export function CreateCompanyUserModal({
     }
   }, [formData.role, formData.vehicle_type]);
 
-  // Normalize backend errors into a flat map of field -> message
   const normalizedServerErrors = useMemo(() => {
     const map: Record<string, string> = {};
     if (!serverErrors) return map;
@@ -148,59 +118,59 @@ export function CreateCompanyUserModal({
     const newErrors: FormErrors = {};
 
     if (!formData.first_name.trim()) {
-      newErrors.first_name = "First name is required";
+      newErrors.first_name = t("createModal.errors.firstNameRequired");
     } else if (formData.first_name.trim().length < 2) {
-      newErrors.first_name = "Minimum 2 characters required";
+      newErrors.first_name = t("createModal.errors.firstNameMin");
     }
 
     if (!formData.last_name.trim()) {
-      newErrors.last_name = "Last name is required";
+      newErrors.last_name = t("createModal.errors.lastNameRequired");
     } else if (formData.last_name.trim().length < 2) {
-      newErrors.last_name = "Minimum 2 characters required";
+      newErrors.last_name = t("createModal.errors.lastNameMin");
     }
 
     if (!formData.username.trim()) {
-      newErrors.username = "Username is required";
+      newErrors.username = t("createModal.errors.usernameRequired");
     } else if (!usernameRegex.test(formData.username)) {
-      newErrors.username =
-        "3-20 characters. Letters, numbers & underscore only";
+      newErrors.username = t("createModal.errors.usernameFormat");
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t("createModal.errors.emailRequired");
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Invalid email address";
+      newErrors.email = t("createModal.errors.emailInvalid");
     }
 
     if (!formData.phone_number.trim()) {
-      newErrors.phone_number = "Phone number is required";
+      newErrors.phone_number = t("createModal.errors.phoneRequired");
     } else if (!phoneRegex.test(formData.phone_number)) {
-      newErrors.phone_number =
-        "Use 09XXXXXXXX, 07XXXXXXXX, +2519XXXXXXXX or +2517XXXXXXXX";
+      newErrors.phone_number = t("createModal.errors.phoneInvalid");
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t("createModal.errors.passwordRequired");
     } else if (formData.password.length < 8) {
-      newErrors.password = "Minimum 8 characters required";
+      newErrors.password = t("createModal.errors.passwordMin");
     } else if (
       !/[A-Z]/.test(formData.password) ||
       !/[0-9]/.test(formData.password) ||
       !/[^A-Za-z0-9]/.test(formData.password)
     ) {
-      newErrors.password = "Include uppercase, number and special character";
+      newErrors.password = t("createModal.errors.passwordComplexity");
     }
 
     if (!formData.confirm_password) {
-      newErrors.confirm_password = "Please confirm your password";
+      newErrors.confirm_password = t(
+        "createModal.errors.confirmPasswordRequired",
+      );
     } else if (formData.confirm_password !== formData.password) {
-      newErrors.confirm_password = "Passwords do not match";
+      newErrors.confirm_password = t(
+        "createModal.errors.confirmPasswordMismatch",
+      );
     }
 
-    // ✅ Vehicle type required when role is "delivery"
     if (formData.role === "delivery" && !formData.vehicle_type) {
-      newErrors.vehicle_type =
-        "Vehicle type is required for delivery personnel";
+      newErrors.vehicle_type = t("createModal.errors.vehicleTypeRequired");
     }
 
     setErrors(newErrors);
@@ -229,9 +199,9 @@ export function CreateCompanyUserModal({
   }, [formData.password]);
 
   const passwordStrengthText = () => {
-    if (passwordStrength <= 1) return "Weak";
-    if (passwordStrength <= 3) return "Medium";
-    return "Strong";
+    if (passwordStrength <= 1) return t("createModal.passwordStrengthWeak");
+    if (passwordStrength <= 3) return t("createModal.passwordStrengthMedium");
+    return t("createModal.passwordStrengthStrong");
   };
 
   const handleSubmit = () => {
@@ -269,7 +239,6 @@ export function CreateCompanyUserModal({
       role: formData.role,
     };
 
-    // ✅ Only attach vehicle_type when role is delivery
     if (formData.role === "delivery" && formData.vehicle_type) {
       payload.vehicle_type = formData.vehicle_type as VehicleType;
     }
@@ -302,29 +271,29 @@ export function CreateCompanyUserModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[95%] sm:max-w-5xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] sm:max-h-[85vh] flex flex-col"
       >
-        {/* HEADER */}
         <div className="sticky top-0 z-30 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-secondary/5 to-indigo-50 backdrop-blur-sm bg-opacity-95">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-secondary">
-              {formData.role === "staff" ? "Create Dispatcher" : "Create User"}
+              {formData.role === "staff"
+                ? t("createModal.createDispatcherTitle")
+                : t("createModal.createUserTitle")}
             </h2>
             <p className="text-xs sm:text-sm text-secondary/60 mt-1">
               {formData.role === "staff"
-                ? "Create and onboard a dispatcher"
-                : "Create and onboard a company user instantly"}
+                ? t("createModal.createDispatcherSubtitle")
+                : t("createModal.createUserSubtitle")}
             </p>
           </div>
           <button
             onClick={onClose}
             className="p-1.5 sm:p-2 rounded-full hover:bg-white/80 transition flex-shrink-0"
+            aria-label={t("createModal.closeAria")}
           >
             <X className="h-4 w-4 sm:h-5 sm:w-5 text-secondary/60" />
           </button>
         </div>
 
-        {/* BODY */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 flex-1 overflow-y-auto">
-          {/* General backend error banner */}
           {generalServerError && (
             <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -333,16 +302,16 @@ export function CreateCompanyUserModal({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            {/* FIRST NAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                First Name <span className="text-red-500">*</span>
+                {t("createModal.firstNameLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Abebe"
+                  placeholder={t("createModal.firstNamePlaceholder")}
                   value={formData.first_name}
                   onChange={(e) => handleChange("first_name", e.target.value)}
                   onBlur={() => handleBlur("first_name")}
@@ -357,16 +326,16 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* LAST NAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Last Name <span className="text-red-500">*</span>
+                {t("createModal.lastNameLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Bikila"
+                  placeholder={t("createModal.lastNamePlaceholder")}
                   value={formData.last_name}
                   onChange={(e) => handleChange("last_name", e.target.value)}
                   onBlur={() => handleBlur("last_name")}
@@ -381,16 +350,16 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* USERNAME */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Username <span className="text-red-500">*</span>
+                {t("createModal.usernameLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="abebe123"
+                  placeholder={t("createModal.usernamePlaceholder")}
                   value={formData.username}
                   onChange={(e) =>
                     handleChange("username", e.target.value.replace(/\s/g, ""))
@@ -407,16 +376,16 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* EMAIL */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Email <span className="text-red-500">*</span>
+                {t("createModal.emailLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="email"
-                  placeholder="abebe@example.com"
+                  placeholder={t("createModal.emailPlaceholder")}
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   onBlur={() => handleBlur("email")}
@@ -431,19 +400,19 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* PHONE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Phone Number <span className="text-red-500">*</span>
+                {t("createModal.phoneLabel")}{" "}
+                <span className="text-red-500">*</span>
                 <span className="text-[10px] sm:text-xs text-gray-400 ml-1">
-                  (Ethio Telecom & Safaricom)
+                  {t("createModal.phoneVendorHint")}
                 </span>
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="09XXXXXXXX, 07XXXXXXXX or +251..."
+                  placeholder={t("createModal.phonePlaceholder")}
                   value={formData.phone_number}
                   onChange={(e) => handleChange("phone_number", e.target.value)}
                   onBlur={() => handleBlur("phone_number")}
@@ -451,7 +420,7 @@ export function CreateCompanyUserModal({
                 />
                 <div
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-help"
-                  title="Accepts Ethio Telecom (09/+2519) and Safaricom (07/+2517) numbers"
+                  title={t("createModal.phoneTooltip")}
                 >
                   <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
@@ -463,36 +432,38 @@ export function CreateCompanyUserModal({
                 </p>
               ) : (
                 <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                  Ethio Telecom: 0911000000 · Safaricom: 0711000000
+                  {t("createModal.phoneExample")}
                 </p>
               )}
             </div>
 
-            {/* ROLE */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Role
+                {t("createModal.roleLabel")}
               </label>
               <div className="relative">
                 <CustomSelect
                   value={formData.role}
                   onChange={(value) => handleChange("role", value)}
-                  options={roleOptions}
-                  placeholder="Select Role"
+                  options={[
+                    { label: t("roles.admin"), value: "admin", icon: <Shield className="h-4 w-4 text-secondary" /> },
+                    { label: t("roles.staff"), value: "staff", icon: <Users className="h-4 w-4 text-secondary" /> },
+                    { label: t("roles.viewer"), value: "viewer", icon: <Eye className="h-4 w-4 text-secondary" /> },
+                    { label: t("roles.delivery"), value: "delivery", icon: <Truck className="h-4 w-4 text-secondary" /> },
+                  ]}
+                  placeholder={t("createModal.rolePlaceholder")}
                   className="w-full"
                 />
               </div>
             </div>
 
-            {/* ============================================================ */}
-            {/* VEHICLE TYPE — only shown when role = "delivery"             */}
-            {/* ============================================================ */}
             {formData.role === "delivery" && (
               <div className="sm:col-span-2">
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
                   <span className="inline-flex items-center gap-1.5">
                     <Truck className="h-3.5 w-3.5" />
-                    Vehicle Type <span className="text-red-500">*</span>
+                    {t("createModal.vehicleTypeLabel")}{" "}
+                    <span className="text-red-500">*</span>
                   </span>
                 </label>
                 <CustomSelect
@@ -502,13 +473,13 @@ export function CreateCompanyUserModal({
                     setTouched((prev) => ({ ...prev, vehicle_type: true }));
                   }}
                   options={[
-                    { value: "", label: "Select Vehicle Type" },
+                    { value: "", label: t("createModal.vehicleTypePlaceholder") },
                     ...VEHICLE_CHOICES.map((v) => ({
                       value: v.value,
-                      label: v.label,
+                      label: t(v.labelKey),
                     })),
                   ]}
-                  placeholder="Select Vehicle Type"
+                  placeholder={t("createModal.vehicleTypePlaceholder")}
                   className={
                     getFieldError("vehicle_type") ? "border-red-500" : ""
                   }
@@ -520,22 +491,22 @@ export function CreateCompanyUserModal({
                   </p>
                 ) : (
                   <p className="mt-1 text-[10px] sm:text-xs text-gray-400">
-                    Select the type of vehicle this delivery person will use.
+                    {t("createModal.vehicleTypeHint")}
                   </p>
                 )}
               </div>
             )}
 
-            {/* PASSWORD */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Password <span className="text-red-500">*</span>
+                {t("createModal.passwordLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Strong password..."
+                  placeholder={t("createModal.passwordPlaceholder")}
                   value={formData.password}
                   onChange={(e) => handleChange("password", e.target.value)}
                   onBlur={() => handleBlur("password")}
@@ -557,7 +528,7 @@ export function CreateCompanyUserModal({
                 <div className="mt-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] sm:text-xs text-gray-500">
-                      Password strength
+                      {t("createModal.passwordStrengthLabel")}
                     </span>
                     <span
                       className={`text-[10px] sm:text-xs font-medium ${
@@ -597,16 +568,16 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            {/* CONFIRM PASSWORD */}
             <div>
               <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                Confirm Password <span className="text-red-500">*</span>
+                {t("createModal.confirmPasswordLabel")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <input
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm password..."
+                  placeholder={t("createModal.confirmPasswordPlaceholder")}
                   value={formData.confirm_password}
                   onChange={(e) =>
                     handleChange("confirm_password", e.target.value)
@@ -636,13 +607,12 @@ export function CreateCompanyUserModal({
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="sticky bottom-0 z-20 mt-auto px-4 sm:px-6 py-4 sm:py-5 border-t border-gray-100 bg-gray-50/95 backdrop-blur-sm flex flex-row justify-end gap-2 sm:gap-3 rounded-b-2xl sm:rounded-b-3xl">
           <button
             onClick={onClose}
             className="flex-1 px-4 sm:px-5 py-2 sm:py-3 rounded-xl border border-gray-200 hover:bg-white transition font-medium text-sm sm:text-base"
           >
-            Cancel
+            {t("createModal.cancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -652,14 +622,14 @@ export function CreateCompanyUserModal({
             {loading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />{" "}
-                Creating...
+                {t("actions.creating")}
               </>
             ) : (
               <>
                 <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {formData.role === "staff"
-                  ? "Create Dispatcher"
-                  : "Create User"}
+                  ? t("createModal.submitCreateDispatcher")
+                  : t("createModal.submitCreateUser")}
               </>
             )}
           </button>
@@ -669,5 +639,4 @@ export function CreateCompanyUserModal({
   );
 }
 
-// ✅ Default export so `import CreateCompanyUserModal from "./CreateUserModal"` also works
 export default CreateCompanyUserModal;

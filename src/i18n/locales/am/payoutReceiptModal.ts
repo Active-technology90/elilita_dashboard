@@ -18,7 +18,7 @@ export default {
     orderRef: "የትዕዛዝ ማጣቀሻ: #{{id}}",
   },
   brand: {
-    name: "ኤሊሊታ ሱፐር አፕ",
+    name: "እልልታ ሱፐር አፕ",
     receiptTitle: "የትዕዛዝ ክፍያ ደረሰኝ",
     receiptSubtitle: "የአቅራቢ ቀጥታ ማዕቀፍ እና ክፍያ",
   },
@@ -53,6 +53,6 @@ export default {
     netPayoutSubtitle: "በ{{method}} ወደ አቅራቢ ሂሳብ ተልኳል",
   },
   footer: {
-    certification: "ኦፊሴላዊ ዲጂታል የክፍያ ደረሰኝ በኤሊሊታ ሱፐር አፕ የተረጋገጠ እና የተላከ።",
+    certification: "ኦፊሴላዊ ዲጂታል የክፍያ ደረሰኝ በእልልታ ሱፐር አፕ የተረጋገጠ እና የተላከ።",
   },
 };

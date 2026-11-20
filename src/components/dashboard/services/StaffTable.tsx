@@ -1,4 +1,6 @@
+
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Star,
   Clock,
@@ -50,7 +52,7 @@ const AnimatedCounter = ({
     const step = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       const current = start + diff * eased;
       setDisplayValue(Math.round(current));
       if (progress < 1) {
@@ -84,7 +86,9 @@ export const StatCard = ({
   trend?: number;
   color?: string;
 }) => {
+  const { t } = useTranslation("staffForm");
   const displayValue = typeof value === "number" ? value : Number(value);
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -114,7 +118,7 @@ export const StatCard = ({
                   trend > 0 ? "text-emerald-600" : "text-red-600"
                 }`}
               >
-                {Math.abs(trend)}% vs last week
+                {Math.abs(trend)}% {t("table.vsLastWeek")}
               </span>
             </div>
           )}
@@ -148,6 +152,7 @@ export const DeleteModal = ({
   onConfirm: () => void;
   onClose: () => void;
 }) => {
+  const { t } = useTranslation("staffForm");
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +204,7 @@ export const DeleteModal = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-          aria-label="Close"
+          aria-label={t("deleteModal.close")}
         >
           <X className="h-5 w-5" />
         </button>
@@ -224,11 +229,10 @@ export const DeleteModal = ({
             id="delete-modal-title"
             className="text-lg font-bold text-gray-900"
           >
-            Remove {staff.name}?
+            {t("deleteModal.title", { name: staff.name })}
           </h3>
           <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto">
-            This action cannot be undone. Associated assignments and future
-            scheduling data may be affected.
+            {t("deleteModal.description")}
           </p>
         </div>
         <div className="flex gap-3 mt-6">
@@ -237,13 +241,13 @@ export const DeleteModal = ({
             onClick={onClose}
             className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            {t("deleteModal.cancel")}
           </button>
           <button
             onClick={onConfirm}
             className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50"
           >
-            Delete Specialist
+            {t("deleteModal.confirm")}
           </button>
         </div>
       </motion.div>
@@ -275,6 +279,7 @@ const StaffAvatar = ({
 }) => {
   const dims = size === "sm" ? "w-8 h-8" : "w-10 h-10";
   const fontSize = size === "sm" ? "text-xs" : "text-sm";
+
   return (
     <div className="relative flex-shrink-0">
       {staff.avatar ? (
@@ -308,6 +313,8 @@ const ServiceBadges = ({
   assignedIds: number[];
   serviceMap: Map<number, ServiceOffering>;
 }) => {
+  const { t } = useTranslation("staffForm");
+
   if (!assignedIds.length) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
@@ -315,17 +322,20 @@ const ServiceBadges = ({
           <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
         </span>
-        All Services
+        {t("table.allServices")}
       </span>
     );
   }
+
   const visible = assignedIds.slice(0, 2);
   const overflow = assignedIds.length - 2;
+
   return (
     <div className="flex flex-wrap items-center gap-1.5 max-w-[220px]">
       {visible.map((id) => {
         const service = serviceMap.get(id);
-        const title = service?.title ?? "Service";
+        const title = service?.title ?? t("table.service");
+
         return (
           <span
             key={id}
@@ -346,7 +356,7 @@ const ServiceBadges = ({
           className="inline-flex items-center justify-center min-w-[32px] h-6 px-2 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-help transition-colors"
           title={assignedIds
             .slice(2)
-            .map((id) => serviceMap.get(id)?.title ?? "Service")
+            .map((id) => serviceMap.get(id)?.title ?? t("table.service"))
             .join(", ")}
         >
           +{overflow}
@@ -357,20 +367,24 @@ const ServiceBadges = ({
 };
 
 // Today status badge
-const TodayStatus = ({ isToday }: { isToday: boolean }) => (
-  <span
-    className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-      isToday ? "text-emerald-700 bg-emerald-50" : "text-gray-500 bg-gray-50"
-    }`}
-  >
+const TodayStatus = ({ isToday }: { isToday: boolean }) => {
+  const { t } = useTranslation("staffForm");
+
+  return (
     <span
-      className={`w-2 h-2 rounded-full ${
-        isToday ? "bg-emerald-500" : "bg-gray-300"
+      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+        isToday ? "text-emerald-700 bg-emerald-50" : "text-gray-500 bg-gray-50"
       }`}
-    />
-    {isToday ? "Working" : "Off"}
-  </span>
-);
+    >
+      <span
+        className={`w-2 h-2 rounded-full ${
+          isToday ? "bg-emerald-500" : "bg-gray-300"
+        }`}
+      />
+      {isToday ? t("table.working") : t("table.off")}
+    </span>
+  );
+};
 
 /* -------------------------------------------------------------------------- */
 /*  StaffTable (exported)                                                     */
@@ -394,6 +408,8 @@ export const StaffTable = ({
   setSelectedIds: React.Dispatch<React.SetStateAction<number[]>>;
   viewMode: "table" | "card";
 }) => {
+  const { t } = useTranslation("staffForm");
+
   const today = useMemo(() => new Date().getDay(), []);
   const serviceMap = useMemo(
     () => new Map(offerings.map((s) => [s.id, s])),
@@ -420,11 +436,10 @@ export const StaffTable = ({
           <Search className="h-8 w-8 text-gray-300" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900">
-          No specialists found
+          {t("table.noSpecialistsFound")}
         </h3>
         <p className="text-sm text-gray-500 mt-1 max-w-sm">
-          No specialists match your current search or filters. Try adjusting
-          your criteria.
+          {t("table.noSpecialistsDescription")}
         </p>
       </div>
     );
@@ -435,6 +450,7 @@ export const StaffTable = ({
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {staff.map((member) => {
         const isToday = member.working_days?.includes(today) ?? false;
+
         return (
           <motion.div
             key={member.id}
@@ -451,7 +467,7 @@ export const StaffTable = ({
                 <div>
                   <h4 className="font-semibold text-gray-900">{member.name}</h4>
                   <p className="text-xs text-gray-500">
-                    {member.role_title || "Specialist"}
+                    {member.role_title || t("table.specialist")}
                   </p>
                 </div>
               </div>
@@ -460,8 +476,8 @@ export const StaffTable = ({
                   <button
                     onClick={() => onScheduleClick(member)}
                     className="p-2 text-gray-400 hover:text-secondary rounded-lg hover:bg-secondary/10 transition-colors"
-                    title="View daily schedule & bookings"
-                    aria-label={`Schedule for ${member.name}`}
+                    title={t("table.schedule")}
+                    aria-label={t("table.scheduleFor", { name: member.name })}
                   >
                     <CalendarDays className="h-4 w-4" />
                   </button>
@@ -469,14 +485,14 @@ export const StaffTable = ({
                 <button
                   onClick={() => onEdit(member)}
                   className="p-2 text-gray-400 hover:text-secondary rounded-lg hover:bg-secondary/10 transition-colors"
-                  aria-label={`Edit ${member.name}`}
+                  aria-label={t("table.edit", { name: member.name })}
                 >
                   <Edit className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => onDeleteClick(member)}
                   className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                  aria-label={`Delete ${member.name}`}
+                  aria-label={t("table.delete", { name: member.name })}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -513,7 +529,9 @@ export const StaffTable = ({
             <div className="mt-3 flex items-center justify-between">
               <TodayStatus isToday={isToday} />
               {member.is_online !== false && (
-                <span className="text-xs text-gray-400">Online</span>
+                <span className="text-xs text-gray-400">
+                  {t("table.online")}
+                </span>
               )}
             </div>
           </motion.div>
@@ -539,36 +557,37 @@ export const StaffTable = ({
                       if (el) el.indeterminate = someSelected;
                     }}
                     className="rounded border-gray-300 text-secondary focus:ring-secondary"
-                    aria-label="Select all staff"
+                    aria-label={t("table.selectAllStaff")}
                   />
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Staff
+                {t("table.staff")}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                Role
+                {t("table.role")}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                Services
+                {t("table.services")}
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                Rating
+                {t("table.rating")}
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                Hours
+                {t("table.hours")}
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Today
+                {t("table.today")}
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
+                {t("table.actions")}
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {staff.map((member) => {
               const isToday = member.working_days?.includes(today) ?? false;
+
               return (
                 <motion.tr
                   key={member.id}
@@ -612,7 +631,7 @@ export const StaffTable = ({
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
                     <span className="text-sm text-gray-700">
-                      {member.role_title || "Specialist"}
+                      {member.role_title || t("table.specialist")}
                     </span>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
@@ -645,8 +664,10 @@ export const StaffTable = ({
                         <button
                           onClick={() => onScheduleClick(member)}
                           className="p-2 text-gray-400 hover:text-secondary rounded-lg hover:bg-secondary/10 transition-colors"
-                          title="View daily schedule & bookings"
-                          aria-label={`Schedule for ${member.name}`}
+                          title={t("table.schedule")}
+                          aria-label={t("table.scheduleFor", {
+                            name: member.name,
+                          })}
                         >
                           <CalendarDays className="h-4 w-4" />
                         </button>
@@ -654,14 +675,14 @@ export const StaffTable = ({
                       <button
                         onClick={() => onEdit(member)}
                         className="p-2 text-gray-400 hover:text-secondary rounded-lg hover:bg-secondary/10 transition-colors"
-                        aria-label={`Edit ${member.name}`}
+                        aria-label={t("table.edit", { name: member.name })}
                       >
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => onDeleteClick(member)}
                         className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        aria-label={`Delete ${member.name}`}
+                        aria-label={t("table.delete", { name: member.name })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

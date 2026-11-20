@@ -8,7 +8,15 @@ export default {
   pageDescCompany: "Manage your company details and settings.",
   addCompany: "Add Company",
   add: "Add",
+// Email validation
+emailHint: "Enter the company's email address.",
+emailInvalidFormat: "Please enter a valid email format.",
+emailValidHint: "✓ Valid email address",
 
+// Terms and conditions signatory
+signatoryNameLabel: "Signatory's full name",
+signatoryRoleLabel: "Signatory's job title",
+signatoryRolePlaceholder: "e.g., Manager, Owner",
   // Table columns
   colNo: "No.",
   colLogo: "Logo",

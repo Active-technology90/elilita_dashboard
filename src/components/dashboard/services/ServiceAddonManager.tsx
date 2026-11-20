@@ -1,4 +1,6 @@
+
 import React, { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Sparkles,
   Plus,
@@ -50,6 +52,8 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
   offeringTitle,
   onShowToast,
 }) => {
+  const { t } = useTranslation("serviceAddon");
+
   const [addons, setAddons] = useState<ServiceAddon[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,11 +69,11 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
       const res = await getManageOfferingAddons(companySlug, offeringId);
       setAddons(normalizeListResponse(res.data));
     } catch {
-      onShowToast?.("error", "Failed to load service add-ons");
+      onShowToast?.("error", t("toasts.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [companySlug, offeringId, onShowToast]);
+  }, [companySlug, offeringId, onShowToast, t]);
 
   useEffect(() => {
     if (companySlug && offeringId) {
@@ -114,9 +118,12 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
       await updateOfferingAddon(companySlug, offeringId, addon.id, {
         is_active: newStatus,
       });
-      onShowToast?.("success", `Add-on ${newStatus ? "activated" : "deactivated"}`);
+      onShowToast?.(
+        "success",
+        newStatus ? t("toasts.activated") : t("toasts.deactivated")
+      );
     } catch {
-      onShowToast?.("error", "Failed to update add-on status");
+      onShowToast?.("error", t("toasts.statusFailed"));
       loadAddons();
     }
   };
@@ -124,12 +131,12 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      setFormError("Add-on name is required.");
+      setFormError(t("form.validation.nameRequired"));
       return;
     }
     const priceNum = Number(form.price);
     if (isNaN(priceNum) || priceNum < 0) {
-      setFormError("Price must be a valid non-negative number.");
+      setFormError(t("form.validation.invalidPrice"));
       return;
     }
 
@@ -146,15 +153,15 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
 
       if (editingId) {
         await updateOfferingAddon(companySlug, offeringId, editingId, payload);
-        onShowToast?.("success", "Add-on updated");
+        onShowToast?.("success", t("toasts.updated"));
       } else {
         await createOfferingAddon(companySlug, offeringId, payload);
-        onShowToast?.("success", "Add-on created");
+        onShowToast?.("success", t("toasts.created"));
       }
       handleCancelForm();
       await loadAddons();
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Failed to save add-on";
+      const msg = err?.response?.data?.detail || t("toasts.saveFailed");
       setFormError(msg);
       onShowToast?.("error", msg);
     } finally {
@@ -166,10 +173,10 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
     setDeletingId(addonId);
     try {
       await deleteOfferingAddon(companySlug, offeringId, addonId);
-      onShowToast?.("success", "Add-on deleted");
+      onShowToast?.("success", t("toasts.deleted"));
       await loadAddons();
     } catch {
-      onShowToast?.("error", "Failed to delete add-on");
+      onShowToast?.("error", t("toasts.deleteFailed"));
     } finally {
       setDeletingId(null);
     }
@@ -185,13 +192,13 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
               <Sparkles className="h-4 w-4" />
             </span>
             <h4 className="text-sm font-bold text-gray-900">
-              Optional Add-ons & Upgrades
+              {t("header.title")}
             </h4>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
             {offeringTitle
-              ? `Manage add-ons for "${offeringTitle}". Customers can select these during booking.`
-              : "Allow customers to customize and upgrade their booking with extras."}
+              ? t("header.descriptionWithOffering", { offeringTitle })
+              : t("header.description")}
           </p>
         </div>
 
@@ -202,7 +209,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-[#5B46A0] transition shadow-xs self-start sm:self-auto"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Add Extra</span>
+            <span>{t("header.addExtra")}</span>
           </button>
         )}
       </div>
@@ -215,7 +222,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
         >
           <div className="flex items-center justify-between">
             <h5 className="text-xs font-bold text-secondary uppercase tracking-wider">
-              {editingId ? "Edit Add-on" : "New Add-on / Extra"}
+              {editingId ? t("form.editTitle") : t("form.newTitle")}
             </h5>
             <button
               type="button"
@@ -236,13 +243,13 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Name <span className="text-red-500">*</span>
+                {t("form.name")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="e.g. Beard Grooming & Hot Towel"
+                placeholder={t("form.namePlaceholder")}
                 required
                 className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-secondary focus:bg-white bg-gray-50"
               />
@@ -250,20 +257,20 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Name (Amharic)
+                {t("form.nameAm")}
               </label>
               <input
                 type="text"
                 value={form.name_am}
                 onChange={(e) => setForm((p) => ({ ...p, name_am: e.target.value }))}
-                placeholder="ለምሳሌ፡ ፂም ማስተካከል"
+                placeholder={t("form.nameAmPlaceholder")}
                 className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-secondary focus:bg-white bg-gray-50"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Price (ETB) <span className="text-red-500">*</span>
+                {t("form.price")} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-semibold">
@@ -275,7 +282,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                   step="0.01"
                   value={form.price}
                   onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
-                  placeholder="100.00"
+                  placeholder={t("form.pricePlaceholder")}
                   required
                   className="w-full border-2 border-gray-200 rounded-xl pl-12 pr-3 py-2 text-sm font-medium focus:outline-none focus:border-secondary focus:bg-white bg-gray-50"
                 />
@@ -284,7 +291,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                Extra Duration (minutes)
+                {t("form.duration")}
               </label>
               <div className="relative">
                 <input
@@ -298,11 +305,11 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                       duration_minutes: Number(e.target.value) || 0,
                     }))
                   }
-                  placeholder="15"
+                  placeholder={t("form.durationPlaceholder")}
                   className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-secondary focus:bg-white bg-gray-50"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                  min
+                  {t("form.minutesShort")}
                 </span>
               </div>
             </div>
@@ -319,7 +326,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                 className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
               />
               <span className="text-xs font-medium text-gray-700">
-                Active & Available for Booking
+                {t("form.active")}
               </span>
             </label>
 
@@ -329,7 +336,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                 onClick={handleCancelForm}
                 className="px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-100 transition"
               >
-                Cancel
+                {t("form.cancel")}
               </button>
               <button
                 type="submit"
@@ -341,7 +348,9 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                 ) : (
                   <Check className="h-3.5 w-3.5" />
                 )}
-                <span>{editingId ? "Save Changes" : "Create Add-on"}</span>
+                <span>
+                  {editingId ? t("form.saveChanges") : t("form.create")}
+                </span>
               </button>
             </div>
           </div>
@@ -352,15 +361,17 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
       {loading ? (
         <div className="py-8 flex flex-col items-center justify-center text-gray-400">
           <Loader2 className="h-6 w-6 animate-spin mb-2 text-secondary" />
-          <p className="text-xs">Loading add-ons...</p>
+          <p className="text-xs">{t("list.loading")}</p>
         </div>
       ) : addons.length === 0 ? (
         !isAdding && (
           <div className="py-8 text-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50">
             <Sparkles className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-gray-700">No add-ons yet</p>
+            <p className="text-sm font-semibold text-gray-700">
+              {t("list.emptyTitle")}
+            </p>
             <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1 mb-3">
-              Add-ons are optional extras customers can attach to this service (e.g. special oils, extended time, VIP perks).
+              {t("list.emptyDescription")}
             </p>
             <button
               type="button"
@@ -368,7 +379,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-secondary text-white text-xs font-semibold hover:bg-[#5B46A0] transition shadow-xs"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Add First Add-on</span>
+              <span>{t("list.addFirst")}</span>
             </button>
           </div>
         )
@@ -390,7 +401,11 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                     type="button"
                     onClick={() => handleToggleActive(addon)}
                     className="mt-0.5 sm:mt-0 p-1 rounded-lg hover:bg-gray-100 transition shrink-0"
-                    title={addon.is_active ? "Click to deactivate" : "Click to activate"}
+                    title={
+                      addon.is_active
+                        ? t("status.deactivate")
+                        : t("status.activate")
+                    }
                   >
                     {addon.is_active ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -410,7 +425,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                       )}
                       {!addon.is_active && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-600">
-                          Inactive
+                          {t("status.inactive")}
                         </span>
                       )}
                     </div>
@@ -421,7 +436,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                       {addon.duration_minutes > 0 && (
                         <span className="inline-flex items-center gap-1 text-gray-500">
                           <Clock className="h-3 w-3 text-gray-400" />
-                          +{addon.duration_minutes} min
+                          +{addon.duration_minutes} {t("form.minutesShort")}
                         </span>
                       )}
                     </div>
@@ -433,7 +448,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                     type="button"
                     onClick={() => handleStartEdit(addon)}
                     className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
-                    title="Edit add-on"
+                    title={t("actions.edit")}
                   >
                     <Edit2 className="h-3.5 w-3.5" />
                   </button>
@@ -442,7 +457,7 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                     onClick={() => handleDelete(addon.id)}
                     disabled={isDeleting}
                     className="p-1.5 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
-                    title="Delete add-on"
+                    title={t("actions.delete")}
                   >
                     {isDeleting ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

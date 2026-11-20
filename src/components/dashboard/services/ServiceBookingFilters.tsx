@@ -1,3 +1,5 @@
+
+import { useTranslation } from "react-i18next";
 import { Search, X, RefreshCw } from "lucide-react";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 
@@ -36,31 +38,35 @@ export function ServiceBookingAdvancedFilters({
   statusOptions,
   pageSizeOptions,
 }: ServiceBookingAdvancedFiltersProps) {
+  const { t } = useTranslation("serviceBookingFilters");
+
   const PAYMENT_STATUS_OPTIONS: SelectOption[] = [
-    { value: "", label: "All Payment Status" },
-    { value: "not_required", label: "Not Required" },
-    { value: "pending", label: "Pending" },
-    { value: "paid", label: "Paid" },
-    { value: "failed", label: "Failed" },
+    { value: "", label: t("paymentStatus.all") },
+    { value: "not_required", label: t("paymentStatus.notRequired") },
+    { value: "pending", label: t("paymentStatus.pending") },
+    { value: "paid", label: t("paymentStatus.paid") },
+    { value: "failed", label: t("paymentStatus.failed") },
   ];
 
   const PAYMENT_METHOD_OPTIONS: SelectOption[] = [
-    { value: "", label: "All Payment Methods" },
-    { value: "cod", label: "COD" },
-    { value: "bank_transfer", label: "Bank Transfer" },
-    { value: "chapa", label: "Chapa" },
+    { value: "", label: t("paymentMethod.all") },
+    { value: "cod", label: t("paymentMethod.cod") },
+    { value: "bank_transfer", label: t("paymentMethod.bankTransfer") },
+    { value: "chapa", label: t("paymentMethod.chapa") },
     // add any other methods your API uses
   ];
 
   return (
     <div className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-4  border-gray-100">
+      <div className="flex items-center justify-between px-3 sm:px-4 border-gray-100">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-secondary">Filters</h2>
+          <h2 className="text-sm font-semibold text-secondary">
+            {t("header.title")}
+          </h2>
           {hasActiveFilters && (
             <span className="text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-medium">
-              Active
+              {t("header.active")}
             </span>
           )}
         </div>
@@ -72,7 +78,7 @@ export function ServiceBookingAdvancedFilters({
                          border border-red-200 text-red-600 hover:bg-red-50 transition"
             >
               <X size={12} className="sm:w-[14px] sm:h-[14px]" />
-              <span className="hidden xs:inline">Clear all</span>
+              <span className="hidden xs:inline">{t("header.clearAll")}</span>
             </button>
           )}
         </div>
@@ -86,7 +92,7 @@ export function ServiceBookingAdvancedFilters({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by ID, customer, service, or phone..."
+              placeholder={t("search.placeholder")}
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 rounded-xl border border-gray-200 bg-gray-50
@@ -99,7 +105,7 @@ export function ServiceBookingAdvancedFilters({
               onClick={onRefresh}
               className="flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-gray-50
                          hover:bg-white hover:border-secondary transition-all duration-200 group flex-shrink-0"
-              title="Refresh bookings"
+              title={t("search.refresh")}
             >
               <RefreshCw className="h-4 w-4 text-gray-500 group-hover:text-secondary group-hover:rotate-180 transition-all duration-300" />
             </button>
@@ -112,28 +118,28 @@ export function ServiceBookingAdvancedFilters({
             value={statusFilter}
             onChange={onStatusChange}
             options={statusOptions}
-            placeholder="All Statuses"
+            placeholder={t("status.all")}
             className="w-full"
           />
           <CustomSelect
             value={paymentStatusFilter}
             onChange={onPaymentStatusChange}
             options={PAYMENT_STATUS_OPTIONS}
-            placeholder="All Payment Status"
+            placeholder={t("paymentStatus.all")}
             className="w-full"
           />
           <CustomSelect
             value={paymentMethodFilter}
             onChange={onPaymentMethodChange}
             options={PAYMENT_METHOD_OPTIONS}
-            placeholder="All Payment Methods"
+            placeholder={t("paymentMethod.all")}
             className="w-full"
           />
           <CustomSelect
             value={String(pageSize)}
             onChange={(val) => onPageSizeChange(Number(val))}
             options={pageSizeOptions}
-            placeholder="10 / page"
+            placeholder={t("pagination.pageSize", { count: 10 })}
             className="w-full"
           />
         </div>

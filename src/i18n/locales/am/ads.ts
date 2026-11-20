@@ -6,7 +6,7 @@ export default {
   pageDescCompany: "ለኩባንያዎ ማስታወቂያዎችን እና ቦታዎችን ያስተዳድሩ።",
   viewOnly: "ለእይታ ብቻ",
   slotLimitsPricing: "የቦታ ገደቦች እና ዋጋ",
-  pricingSlots: "ዋጋ እና ቦታዎች",
+  pricingSlots: "ዋጋ",
   newAd: "አዲስ ማስታወቂያ",
   new: "አዲስ",
 

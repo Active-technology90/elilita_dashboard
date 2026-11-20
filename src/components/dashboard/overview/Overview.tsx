@@ -1,5 +1,6 @@
-// src/components/admin/overview/Overview.tsx
+
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Package,
   Users,
@@ -9,23 +10,8 @@ import {
   CalendarDays,
   Briefcase,
 } from "lucide-react";
-// import {
-//   BarChart,
-//   Bar,
-//   XAxis,
-//   YAxis,
-//   CartesianGrid,
-//   Tooltip,
-//   ResponsiveContainer,
-//   PieChart,
-//   Pie,
-//   Cell,
-//   LineChart,
-//   Line,
-// } from "recharts";
 import { getAdminAnalyticsOverview } from "../../../services/api";
 import type { AnalyticsOverviewResponse } from "../../../types";
-// import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../../hooks/useAuth";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { CompanySelect } from "./dropdowncompanyselector";
@@ -60,14 +46,14 @@ const EMPTY_ANALYTICS: AnalyticsOverviewResponse = {
   recent_orders: [],
 };
 
-
 type Period = "week" | "month" | "year";
 
 const formatRangeDate = (
   date: Date,
   includeYear = false,
+  locale = "en-US",
 ) =>
-  new Intl.DateTimeFormat("en-US", {
+  new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     ...(includeYear ? { year: "numeric" } : {}),
@@ -76,6 +62,7 @@ const formatRangeDate = (
 const formatShortRange = (
   start: Date,
   end: Date,
+  locale = "en-US",
 ) => {
   const sameYear =
     start.getFullYear() === end.getFullYear();
@@ -85,25 +72,24 @@ const formatShortRange = (
     start.getMonth() === end.getMonth();
 
   if (sameMonth) {
-    const month = new Intl.DateTimeFormat(
-      "en-US",
-      { month: "short" },
-    ).format(start);
+    const month = new Intl.DateTimeFormat(locale, {
+      month: "short",
+    }).format(start);
 
     return `${month} ${start.getDate()}–${end.getDate()}`;
   }
 
   if (sameYear) {
-    return `${formatRangeDate(start)}–${formatRangeDate(end)}`;
+    return `${formatRangeDate(start, false, locale)}–${formatRangeDate(end, false, locale)}`;
   }
 
-  return `${formatRangeDate(
-    start,
-    true,
-  )}–${formatRangeDate(end, true)}`;
+  return `${formatRangeDate(start, true, locale)}–${formatRangeDate(end, true, locale)}`;
 };
 
-const getPeriodDateRange = (period: Period) => {
+const getPeriodDateRange = (
+  period: Period,
+  locale = "en-US",
+) => {
   const now = new Date();
 
   let start: Date;
@@ -132,19 +118,18 @@ const getPeriodDateRange = (period: Period) => {
   const sameYear =
     start.getFullYear() === end.getFullYear();
 
+  const separator = locale.startsWith("am")
+    ? " እስከ "
+    : " to ";
+
   return sameYear
-    ? `${formatRangeDate(start)} to ${formatRangeDate(
-        end,
-        true,
-      )}`
-    : `${formatRangeDate(
-        start,
-        true,
-      )} to ${formatRangeDate(end, true)}`;
+    ? `${formatRangeDate(start, false, locale)}${separator}${formatRangeDate(end, true, locale)}`
+    : `${formatRangeDate(start, true, locale)}${separator}${formatRangeDate(end, true, locale)}`;
 };
 
 const getPreviousPeriodLabel = (
   period: Period,
+  locale = "en-US",
 ) => {
   const now = new Date();
 
@@ -154,8 +139,7 @@ const getPreviousPeriodLabel = (
       previousEnd.getDate() - 7,
     );
 
-    const previousStart =
-      new Date(previousEnd);
+    const previousStart = new Date(previousEnd);
     previousStart.setDate(
       previousStart.getDate() - 6,
     );
@@ -163,6 +147,7 @@ const getPreviousPeriodLabel = (
     return formatShortRange(
       previousStart,
       previousEnd,
+      locale,
     );
   }
 
@@ -173,10 +158,9 @@ const getPreviousPeriodLabel = (
       1,
     );
 
-    return new Intl.DateTimeFormat(
-      "en-US",
-      { month: "long" },
-    ).format(previousMonth);
+    return new Intl.DateTimeFormat(locale, {
+      month: "long",
+    }).format(previousMonth);
   }
 
   return String(now.getFullYear() - 1);
@@ -228,7 +212,11 @@ export default function Overview({
   onNavigate?: (tab: DashboardTab) => void;
   isServiceCompany?: boolean;
 }) {
-  // const readOnly = useReadOnly();
+  const { t, i18n } = useTranslation("overview");
+
+  const locale = i18n.language?.startsWith("am")
+    ? "am-ET"
+    : "en-US";
 
   const { user } = useAuth();
 
@@ -249,33 +237,43 @@ export default function Overview({
 
   // Determine if currently viewed scope is a service company
   const currentCompanyMeta = useMemo(() => {
-    return companiesList.find((c: any) => c.slug === company?.slug);
+    return companiesList.find(
+      (c: any) => c.slug === company?.slug,
+    );
   }, [companiesList, company?.slug]);
 
   const isServiceCompany = useMemo(() => {
-    if (propIsServiceCompany !== undefined && propIsServiceCompany !== null) {
+    if (
+      propIsServiceCompany !== undefined &&
+      propIsServiceCompany !== null
+    ) {
       return propIsServiceCompany;
     }
+
     if (
       analytics?.business_type === "service" ||
       analytics?.selected_company?.business_type === "service"
     ) {
       return true;
     }
+
     if (currentCompanyMeta?.business_type === "service") {
       return true;
     }
+
     if (
       !isSuperAdmin &&
       user?.memberships?.some(
         (m: any) =>
           m.company_slug === company?.slug &&
-          companiesList.find((c: any) => c.slug === m.company_slug)
-            ?.business_type === "service",
+          companiesList.find(
+            (c: any) => c.slug === m.company_slug,
+          )?.business_type === "service",
       )
     ) {
       return true;
     }
+
     return false;
   }, [
     propIsServiceCompany,
@@ -499,7 +497,7 @@ export default function Overview({
       } catch (err: unknown) {
         if (!active) return;
 
-        let detail = "Failed to load analytics.";
+        let detail = t("errors.failedToLoadAnalytics");
 
         if (
           typeof err === "object" &&
@@ -545,6 +543,7 @@ export default function Overview({
     analytics.available_companies.length,
     localAllCompaniesSelected,
     isSuperAdmin,
+    t,
   ]);
 
   // Fetch companies list to get logos
@@ -760,7 +759,7 @@ export default function Overview({
     () => [
       {
         value: "",
-        label: "All Companies",
+        label: t("company.allCompanies"),
         logo: null,
       },
 
@@ -777,6 +776,7 @@ export default function Overview({
     [
       analytics.available_companies,
       getCompanyLogoFromList,
+      t,
     ],
   );
 
@@ -784,25 +784,26 @@ export default function Overview({
     useMemo(() => {
       if (isSuperAdmin) {
         return (
-          company?.name || "All Companies"
+          company?.name || t("company.allCompanies")
         );
       }
 
       if (localAllCompaniesSelected) {
-        return "All Companies";
+        return t("company.allCompanies");
       }
 
       return (
         company?.name ||
         analytics.available_companies[0]
           ?.name ||
-        "Select Company"
+        t("company.selectCompany")
       );
     }, [
       isSuperAdmin,
       company?.name,
       localAllCompaniesSelected,
       analytics.available_companies,
+      t,
     ]);
 
   const selectedCompanyLogo =
@@ -900,7 +901,7 @@ export default function Overview({
           if (isSuperAdmin) {
             switchCompany({
               slug: "",
-              name: "All Companies",
+              name: t("company.allCompanies"),
               role: "",
             });
           } else {
@@ -944,8 +945,10 @@ export default function Overview({
         switchCompany,
         analytics.available_companies,
         user?.memberships,
+        t,
       ],
     );
+
   const sparklineData = useMemo(
     () =>
       currentData.map((item) => ({
@@ -956,8 +959,8 @@ export default function Overview({
   );
 
   const periodDateRange = useMemo(
-    () => getPeriodDateRange(period),
-    [period],
+    () => getPeriodDateRange(period, locale),
+    [period, locale],
   );
 
   const financialBreakdown = useMemo(() => {
@@ -1007,20 +1010,14 @@ export default function Overview({
     };
   }, [analytics.summary]);
 
-
   const comparisonLabel = useMemo(
-    () => getPreviousPeriodLabel(period),
-    [period],
+    () => getPreviousPeriodLabel(period, locale),
+    [period, locale],
   );
 
   /*
    * revenue_series already contains the selected period in `revenue`
    * and the matching previous period in `prevRevenue`.
-   *
-   * Example labels:
-   * month -> "vs August"
-   * week  -> "vs Sep 2–Sep 8"
-   * year  -> "vs 2025"
    */
   const previousRevenueTotal = useMemo(
     () =>
@@ -1045,13 +1042,10 @@ export default function Overview({
     }
 
     if (previousRevenueTotal === 0) {
-      // 0 -> 0 is no change.
       if (periodPaymentsTotal === 0) {
         return 0;
       }
 
-      // A percentage is mathematically undefined when
-      // the previous period is zero, so don't show fake data.
       return undefined;
     }
 
@@ -1066,21 +1060,14 @@ export default function Overview({
   ]);
 
   /*
-   * The API response currently exposes previous-period revenue
-   * through revenue_series.prevRevenue. For the other counters,
-   * only show a percentage when the backend actually supplies
-   * either a direct change value or a previous-period value.
-   * There are no hard-coded +2.3 / +3.1 / +1.8 fallbacks.
+   * Only show a percentage when the backend supplies
+   * a direct change value or a previous-period value.
    */
   const secondaryMetricChanges = useMemo(() => {
     const summary = analytics.summary as
       typeof analytics.summary &
         Record<string, unknown>;
 
-    /*
-     * If the backend includes order counts in each period point,
-     * use them for a real current-vs-previous order percentage.
-     */
     const orderSeriesTotals = currentData.reduce(
       (totals, rawPoint) => {
         const point = rawPoint as typeof rawPoint &
@@ -1312,7 +1299,7 @@ export default function Overview({
                   <div className="mb-1 flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-secondary" />
                     <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-secondary/70">
-                      Current scope
+                      {t("company.currentScope")}
                     </span>
                   </div>
 
@@ -1326,15 +1313,16 @@ export default function Overview({
             <div className="flex w-full items-center gap-3 lg:w-auto">
               <div className="hidden items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-secondary sm:flex">
                 <Building2 className="h-4 w-4" />
-                Company
+                {t("company.company")}
               </div>
 
               <div className="min-w-0 flex-1 lg:min-w-[260px]">
                 <CompanySelect
                   scopeOptions={scopeOptions}
                   company={
-                    scopeOptions.find((c: any) => c.value === company?.slug) ||
-                    scopeOptions[0]
+                    scopeOptions.find(
+                      (c: any) => c.value === company?.slug,
+                    ) || scopeOptions[0]
                   }
                   handleCompanyChange={handleCompanyChange}
                 />
@@ -1351,295 +1339,294 @@ export default function Overview({
       )}
 
       {/* Summary */}
-     {/* =========================================================
-    SUMMARY — reference screenshot structure
-========================================================= */}
-
-<section
-  className="
-    rounded-2xl
-   
-    bg-white
-
-    p-3
-    sm:p-4
-  "
->
-  {/* Small heading exactly like reference */}
-  <div
-    className="
-      mb-3
-      flex
-      items-center
-      gap-1.5
-
-      text-[10px]
-      font-medium
-      text-gray-500
-    "
-  >
-    <span className="font-semibold text-secondary">
-      {isSuperAdmin
-        ? "Total Payment Flow"
-        : isServiceCompany
-        ? "Total Bookings"
-        : "Total Orders"}
-    </span>
-
-    <span>·</span>
-
-    <span>{periodDateRange}</span>
-  </div>
-
-  {loading ? (
-    <div
-      className="
-        h-[190px]
-        animate-pulse
-        rounded-xl
-        bg-secondary/[0.04]
-      "
-    />
-  ) : (
-    <div
-      className="
-        grid
-        grid-cols-1
-        gap-2
-
-        lg:grid-cols-[minmax(0,1fr)_240px]
-        xl:grid-cols-[minmax(0,1fr)_260px]
-      "
-    >
-      {/* =====================================================
-          LARGE LEFT CARD
-      ====================================================== */}
-
-      {isSuperAdmin ? (
-        <SummaryCard
-          title="Total Payment Flow"
-          value={formatCurrency(periodPaymentsTotal)}
-          icon={DollarSign}
-          featured
-          changePercent={paymentChangePercent}
-          comparisonLabel={comparisonLabel}
-          sparklineData={sparklineData}
-          subStats={[
-            {
-              label: "Platform Revenue",
-              value: formatCurrency(financialBreakdown.platformRevenue),
-              onClick: () => onNavigate?.("payments"),
-              title: "Net revenue earned by Qine platform (Commission + Subscriptions + Ads)",
-            },
-            {
-              label: "Subscriptions",
-              value: formatCurrency(financialBreakdown.subscriptions),
-              onClick: () => onNavigate?.("adminSubscriptions"),
-              title: "Revenue from company subscription plans",
-            },
-            {
-              label: "Ads",
-              value: formatCurrency(financialBreakdown.ads),
-              onClick: () => onNavigate?.("add advertisment"),
-              title: "Revenue from sponsored banner ad campaigns",
-            },
-          ]}
-          onClick={() =>
-            onNavigate?.("payments")
-          }
-        />
-      ) : isServiceCompany ? (
-        <SummaryCard
-          title="Total Bookings"
-          value={
-            summaryData?.orders?.toLocaleString() || "0"
-          }
-          icon={CalendarDays}
-          featured
-          changePercent={secondaryMetricChanges.orders}
-          comparisonLabel={comparisonLabel}
-          sparklineData={sparklineData}
-          subStats={[
-            {
-              label: "Completed",
-              value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} Completed`,
-              title: "Completed Bookings",
-            },
-            {
-              label: "Avg. Booking Value",
-              value: formatCurrency(summaryData?.avgOrderValue || 0),
-              title: "Average Booking Value",
-            },
-          ]}
-          onClick={() =>
-            onNavigate?.("serviceBookings")
-          }
-        />
-      ) : (
-        <SummaryCard
-          title="Total Orders"
-          value={
-            summaryData?.orders?.toLocaleString() || "0"
-          }
-          icon={ShoppingBag}
-          featured
-          changePercent={secondaryMetricChanges.orders}
-          comparisonLabel={comparisonLabel}
-          sparklineData={sparklineData}
-          subStats={[
-            {
-              label: "Completed",
-              value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} Paid`,
-              title: "Completed / Paid Orders",
-            },
-            {
-              label: "Avg. Order Value",
-              value: formatCurrency(summaryData?.avgOrderValue || 0),
-              title: "Average Order Value",
-            },
-          ]}
-          onClick={() =>
-            onNavigate?.("companyOrders")
-          }
-        />
-      )}
-
-      {/* =====================================================
-          THREE STACKED RIGHT CARDS
-      ====================================================== */}
-
-      <div
+      <section
         className="
-          grid
-          grid-cols-1
-          grid-rows-3
-          gap-2
+          rounded-2xl
+          bg-white
+          p-3
+          sm:p-4
         "
       >
-        {isSuperAdmin ? (
-          <>
-            <SummaryCard
-              title="Total Orders"
-              changePercent={secondaryMetricChanges.orders}
-              value={
-                summaryData?.orders?.toLocaleString() || "0"
-              }
-              icon={ShoppingBag}
-              onClick={() =>
-                onNavigate?.("companyOrders")
-              }
-            />
+        <div
+          className="
+            mb-3
+            flex
+            items-center
+            gap-1.5
+            text-[10px]
+            font-medium
+            text-gray-500
+          "
+        >
+          <span className="font-semibold text-secondary">
+            {isSuperAdmin
+              ? t("summary.totalPaymentFlow")
+              : isServiceCompany
+                ? t("summary.totalBookings")
+                : t("summary.totalOrders")}
+          </span>
 
-            <SummaryCard
-              title="Total Companies"
-              changePercent={secondaryMetricChanges.companies}
-              value={
-                summaryData?.company_total_count?.toLocaleString() ||
-                "0"
-              }
-              icon={Building2}
-              onClick={() =>
-                onNavigate?.("companies")
-              }
-            />
+          <span>·</span>
 
-            <SummaryCard
-              title="Total Products"
-              changePercent={secondaryMetricChanges.products}
-              value={
-                summaryData?.products?.toLocaleString() || "0"
-              }
-              icon={Package}
-              onClick={() =>
-                onNavigate?.("products")
-              }
-            />
-          </>
-        ) : isServiceCompany ? (
-          <>
-            <SummaryCard
-              title="Total Payments"
-              changePercent={paymentChangePercent}
-              value={formatCurrency(periodPaymentsTotal)}
-              icon={DollarSign}
-              onClick={() =>
-                onNavigate?.("payments")
-              }
-            />
+          <span>{periodDateRange}</span>
+        </div>
 
-            <SummaryCard
-              title="Total Services"
-              changePercent={secondaryMetricChanges.products}
-              value={
-                summaryData?.products?.toLocaleString() || "0"
-              }
-              icon={Briefcase}
-              onClick={() =>
-                onNavigate?.("serviceOfferings")
-              }
-            />
-
-            <SummaryCard
-              title="Staff Members"
-              changePercent={secondaryMetricChanges.users}
-              value={
-                summaryData?.users?.toLocaleString() || "0"
-              }
-              icon={Users}
-              onClick={() =>
-                onNavigate?.("serviceStaff")
-              }
-            />
-          </>
+        {loading ? (
+          <div
+            className="
+              h-[190px]
+              animate-pulse
+              rounded-xl
+              bg-secondary/[0.04]
+            "
+          />
         ) : (
-          <>
-            <SummaryCard
-              title="Total Payments"
-              changePercent={paymentChangePercent}
-              value={formatCurrency(periodPaymentsTotal)}
-              icon={DollarSign}
-              onClick={() =>
-                onNavigate?.("payments")
-              }
-            />
+          <div
+            className="
+              grid
+              grid-cols-1
+              gap-2
+              lg:grid-cols-[minmax(0,1fr)_240px]
+              xl:grid-cols-[minmax(0,1fr)_260px]
+            "
+          >
+            {/* LARGE LEFT CARD */}
+            {isSuperAdmin ? (
+              <SummaryCard
+                title={t("summary.totalPaymentFlow")}
+                value={formatCurrency(periodPaymentsTotal)}
+                icon={DollarSign}
+                featured
+                changePercent={paymentChangePercent}
+                comparisonLabel={comparisonLabel}
+                sparklineData={sparklineData}
+                subStats={[
+                  {
+                    label: t("summary.platformRevenue"),
+                    value: formatCurrency(
+                      financialBreakdown.platformRevenue,
+                    ),
+                    onClick: () => onNavigate?.("payments"),
+                    title: t("summary.platformRevenueTooltip"),
+                  },
+                  {
+                    label: t("summary.subscriptions"),
+                    value: formatCurrency(
+                      financialBreakdown.subscriptions,
+                    ),
+                    onClick: () =>
+                      onNavigate?.("adminSubscriptions"),
+                    title: t("summary.subscriptionsTooltip"),
+                  },
+                  {
+                    label: t("summary.ads"),
+                    value: formatCurrency(
+                      financialBreakdown.ads,
+                    ),
+                    onClick: () =>
+                      onNavigate?.("add advertisment"),
+                    title: t("summary.adsTooltip"),
+                  },
+                ]}
+                onClick={() =>
+                  onNavigate?.("payments")
+                }
+              />
+            ) : isServiceCompany ? (
+              <SummaryCard
+                title={t("summary.totalBookings")}
+                value={
+                  summaryData?.orders?.toLocaleString() || "0"
+                }
+                icon={CalendarDays}
+                featured
+                changePercent={secondaryMetricChanges.orders}
+                comparisonLabel={comparisonLabel}
+                sparklineData={sparklineData}
+                subStats={[
+                  {
+                    label: t("summary.completed"),
+                    value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} ${t("summary.completed")}`,
+                    title: t("summary.completedBookings"),
+                  },
+                  {
+                    label: t("summary.avgBookingValue"),
+                    value: formatCurrency(
+                      summaryData?.avgOrderValue || 0,
+                    ),
+                    title: t("summary.avgBookingValue"),
+                  },
+                ]}
+                onClick={() =>
+                  onNavigate?.("serviceBookings")
+                }
+              />
+            ) : (
+              <SummaryCard
+                title={t("summary.totalOrders")}
+                value={
+                  summaryData?.orders?.toLocaleString() || "0"
+                }
+                icon={ShoppingBag}
+                featured
+                changePercent={secondaryMetricChanges.orders}
+                comparisonLabel={comparisonLabel}
+                sparklineData={sparklineData}
+                subStats={[
+                  {
+                    label: t("summary.completed"),
+                    value: `${summaryData?.completed_orders ?? (summaryData?.orders || 0)} ${t("summary.paid")}`,
+                    title: t("summary.completedPaidOrders"),
+                  },
+                  {
+                    label: t("summary.avgOrderValue"),
+                    value: formatCurrency(
+                      summaryData?.avgOrderValue || 0,
+                    ),
+                    title: t("summary.avgOrderValue"),
+                  },
+                ]}
+                onClick={() =>
+                  onNavigate?.("companyOrders")
+                }
+              />
+            )}
 
-            <SummaryCard
-              title="Total Products"
-              changePercent={secondaryMetricChanges.products}
-              value={
-                summaryData?.products?.toLocaleString() || "0"
-              }
-              icon={Package}
-              onClick={() =>
-                onNavigate?.("products")
-              }
-            />
+            {/* THREE STACKED RIGHT CARDS */}
+            <div
+              className="
+                grid
+                grid-cols-1
+                grid-rows-3
+                gap-2
+              "
+            >
+              {isSuperAdmin ? (
+                <>
+                  <SummaryCard
+                    title={t("summary.totalOrders")}
+                    changePercent={secondaryMetricChanges.orders}
+                    value={
+                      summaryData?.orders?.toLocaleString() || "0"
+                    }
+                    icon={ShoppingBag}
+                    onClick={() =>
+                      onNavigate?.("companyOrders")
+                    }
+                  />
 
-            <SummaryCard
-              title="Company Users"
-              changePercent={secondaryMetricChanges.users}
-              value={
-                summaryData?.users?.toLocaleString() || "0"
-              }
-              icon={Users}
-              onClick={() =>
-                onNavigate?.("users")
-              }
-            />
-          </>
+                  <SummaryCard
+                    title={t("summary.totalCompanies")}
+                    changePercent={secondaryMetricChanges.companies}
+                    value={
+                      summaryData?.company_total_count?.toLocaleString() ||
+                      "0"
+                    }
+                    icon={Building2}
+                    onClick={() =>
+                      onNavigate?.("companies")
+                    }
+                  />
+
+                  <SummaryCard
+                    title={t("summary.totalProducts")}
+                    changePercent={secondaryMetricChanges.products}
+                    value={
+                      summaryData?.products?.toLocaleString() || "0"
+                    }
+                    icon={Package}
+                    onClick={() =>
+                      onNavigate?.("products")
+                    }
+                  />
+                </>
+              ) : isServiceCompany ? (
+                <>
+                  <SummaryCard
+                    title={t("summary.totalPayments")}
+                    changePercent={paymentChangePercent}
+                    value={formatCurrency(periodPaymentsTotal)}
+                    icon={DollarSign}
+                    onClick={() =>
+                      onNavigate?.("payments")
+                    }
+                  />
+
+                  <SummaryCard
+                    title={t("summary.totalServices")}
+                    changePercent={secondaryMetricChanges.products}
+                    value={
+                      summaryData?.products?.toLocaleString() || "0"
+                    }
+                    icon={Briefcase}
+                    onClick={() =>
+                      onNavigate?.("serviceOfferings")
+                    }
+                  />
+
+                  <SummaryCard
+                    title={t("summary.staffMembers")}
+                    changePercent={secondaryMetricChanges.users}
+                    value={
+                      summaryData?.users?.toLocaleString() || "0"
+                    }
+                    icon={Users}
+                    onClick={() =>
+                      onNavigate?.("serviceStaff")
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <SummaryCard
+                    title={t("summary.totalPayments")}
+                    changePercent={paymentChangePercent}
+                    value={formatCurrency(periodPaymentsTotal)}
+                    icon={DollarSign}
+                    onClick={() =>
+                      onNavigate?.("payments")
+                    }
+                  />
+
+                  <SummaryCard
+                    title={t("summary.totalProducts")}
+                    changePercent={secondaryMetricChanges.products}
+                    value={
+                      summaryData?.products?.toLocaleString() || "0"
+                    }
+                    icon={Package}
+                    onClick={() =>
+                      onNavigate?.("products")
+                    }
+                  />
+
+                  <SummaryCard
+                    title={t("summary.companyUsers")}
+                    changePercent={secondaryMetricChanges.users}
+                    value={
+                      summaryData?.users?.toLocaleString() || "0"
+                    }
+                    icon={Users}
+                    onClick={() =>
+                      onNavigate?.("users")
+                    }
+                  />
+                </>
+              )}
+            </div>
+          </div>
         )}
-      </div>
-    </div>
-  )}
-</section>
+      </section>
+
       {/* Analytics */}
       <section className="space-y-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
-            Analytics
+            {t("sections.analytics")}
           </p>
+
           <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-            Performance details
+            {t("sections.performanceDetails")}
           </h2>
         </div>
 
@@ -1666,10 +1653,13 @@ export default function Overview({
       <section className="space-y-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
-            Recent activity
+            {t("sections.recentActivity")}
           </p>
+
           <h2 className="mt-1 text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
-            {isServiceCompany ? "Latest bookings" : "Latest orders"}
+            {isServiceCompany
+              ? t("sections.latestBookings")
+              : t("sections.latestOrders")}
           </h2>
         </div>
 

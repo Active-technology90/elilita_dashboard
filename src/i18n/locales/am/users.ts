@@ -8,7 +8,7 @@ export default {
 
   // Stats
   statAdmins: "አስተዳዳሪዎች",
-  statDispatchers: "ዲስፓቸሮች",
+  statDispatchers: "ስምሪቶች",
   statViewers: "ተመልካቾች",
   statDelivery: "ማድረሻ",
   statNoCompany: "ኩባንያ የለም",
@@ -19,7 +19,7 @@ export default {
   filterUsers: "ተጠቃሚዎችን አጣራ",
   allRoles: "ሁሉም ሚናዎች",
   roleAdmin: "አስተዳዳሪ",
-  roleDispatcher: "ዲስፓቸር",
+  roleDispatcher: "ስምሪት",
   roleViewer: "ተመልካች",
   roleDelivery: "ማድረሻ",
   roleOwner: "ባለቤት",
@@ -107,7 +107,7 @@ export default {
     "ይህ የማድረሻ ሰው የሚጠቀምበትን የተሽከርካሪ ዓይነት ይምረጡ።",
   marketingAgent: "የማርኬቲንግ ወኪል",
   marketingAgentDesc:
-    "ይህን ተጠቃሚ የኤሊሊታ የማርኬቲንግ ሰው አድርገው ይሰይሙ",
+    "ይህን ተጠቃሚ የእልልታ የማርኬቲንግ ሰው አድርገው ይሰይሙ",
   dailyTarget: "የቀን የምዝገባ ግብ",
   weeklyTarget: "የሳምንት የምዝገባ ግብ",
   activeAccount: "ንቁ መለያ",
@@ -124,9 +124,9 @@ export default {
   selectVehicleType: "የተሽከርካሪ ዓይነት ይምረጡ",
 
   // Create user modal
-  createDispatcher: "ዲስፓቸር ፍጠር",
+  createDispatcher: "ስምሪት ፍጠር",
   createUserTitle: "ተጠቃሚ ፍጠር",
-  createDispatcherDesc: "ዲስፓቸር ይፍጠሩ እና ያስተዋውቁ",
+  createDispatcherDesc: "ስምሪት ይፍጠሩ እና ያስተዋውቁ",
   createUserDesc: "የኩባንያ ተጠቃሚ ወዲያውኑ ይፍጠሩ እና ያስተዋውቁ",
   firstNamePlaceholder: "አበበ",
   lastNamePlaceholder: "ቢኪላ",

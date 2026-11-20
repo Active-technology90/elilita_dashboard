@@ -3,8 +3,8 @@ export default {
   role: "ሚና",
   superAdmin: "ሱፐር አድሚን",
   marketingAgent: "የማርኬቲንግ ወኪል",
-  dispatcher: "ዲስፓቸር",
-  inactive: "የተቦዘነ",
+  dispatcher: "ስምሪት",
+  inactive: "ንቁ ያልሆነ",
   activeCompany: "ንቁ ኩባንያ",
   helpVideoGuides: "እገዛ እና የቪዲዮ መመሪያዎች",
   myProfile: "የእኔ መገለጫ",
@@ -27,7 +27,7 @@ export default {
   subcategories: "ንዑስ ምድቦች",
   headCompanies: "ዋና ኩባንያዎች",
   companies: "ኩባንያዎች",
-  companyDetail: "የኩባንያ ዝርዝር",
+  companyDetail: "የኩባንያ መረጃ",
   userManagement: "የተጠቃሚ አስተዳደር",
   marketingAgents: "የማርኬቲንግ ወኪሎች",
   adsManagement: "የማስታወቂያ አስተዳደር",
@@ -36,10 +36,10 @@ export default {
   allProducts: "ሁሉም ምርቶች",
   payments: "ክፍያዎች",
   myServices: "የእኔ አገልግሎቶች",
-  bookings: "ቦታ ማስያዝ",
+  bookings: "ቀጠሮ",
   recurringContracts: "ተደጋጋሚ ውሎች",
-  availability: "ተገኝነት",
-  staffsSpecialists: "ሰራተኞች እና ስፔሻሊስቶች",
+  availability: "የስራ ቀን እና ሰዐት",
+  staffsSpecialists: "ሰራተኞች እና ባለሞያዎች",
   allUsers: "ሁሉም ተጠቃሚዎች",
   notifications: "ማሳወቂያዎች",
   subscriptionPlans: "የደንበኝነት ምዝገባ እቅዶች",
@@ -59,20 +59,20 @@ export default {
   collapseSidebar: "የጎን አሞሌን ሰብስብ",
 
   // Inactive banner
-  accountInactiveTitle: "መለያዎ የተቦዘነ ነው",
+  accountInactiveTitle: "መለያዎ ንቁ ያልሆነነው",
   accountInactiveDesc:
-    "መለያዎ የተቦዘነ ነው። እባክዎ መለያዎን ለማንቃት ድጋፍን ያግኙ።",
+    "መለያዎ ንቁ ያልሆነነው። እባክዎ መለያዎን ለማንቃት ድጋፍን ያግኙ።",
   dismiss: "አሰናብት",
 
   // Hard block
   accessRestrictedTitle: "የኩባንያ መዳረሻ ተገድቧል",
   accessRestrictedDesc:
-    "ከመለያዎ ጋር የተገናኘው ኩባንያ በአሁኑ ጊዜ የተቦዘነ ነው። እባክዎ መዳረሻን እንደገና ለማንቃት አስተዳዳሪዎን ወይም ድጋፍን ያግኙ።",
+    "ከመለያዎ ጋር የተገናኘው ኩባንያ በአሁኑ ጊዜ ንቁ ያልሆነነው። እባክዎ መዳረሻን እንደገና ለማንቃት አስተዳዳሪዎን ወይም ድጋፍን ያግኙ።",
   signOutTryAnother: "ውጣ እና ሌላ መለያ ይሞክሩ",
 
   // Toasts
   inactiveCompanyBlocked:
-    "መለያዎ የተቦዘነ ነው። እባክዎ መለያዎን ለማንቃት ድጋፍን ያግኙ።",
+    "መለያዎ ንቁ ያልሆነነው። እባክዎ መለያዎን ለማንቃት ድጋፍን ያግኙ።",
   serviceCompanyBlocked: "ይህ ክፍል ለአገልግሎት ንግዶች አይገኝም።",
   switchedToActive: "ወደ ንቁ ኩባንያ ተቀይሯል፡ {{name}}",
   openingOrder: "ትዕዛዝ #{{id}} በመክፈት ላይ...",

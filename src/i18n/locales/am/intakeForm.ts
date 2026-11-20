@@ -47,7 +47,7 @@ export default {
     customerIntakeForm: "የደንበኛ መረጃ መሰብሰቢያ ፎርም",
     fieldCount_one: "{{count}} መስክ · {{required}} ግዴታ",
     fieldCount_other: "{{count}} መስኮች · {{required}} ግዴታ",
-    collectAdditionalInformation: "ቦታ ማስያዝን ለማስኬድ ተጨማሪ የደንበኛ መረጃ ይሰብስቡ።",
+    collectAdditionalInformation: "ቀጠሮን ለማስኬድ ተጨማሪ የደንበኛ መረጃ ይሰብስቡ።",
     preview: "ቅድመ እይታ",
     noFieldsTitle: "እስካሁን ምንም መስክ የለም",
     noFieldsDescription: "ጥያቄውን ከማስኬድዎ በፊት ከደንበኞች ተጨማሪ መረጃ ይሰብስቡ።",
