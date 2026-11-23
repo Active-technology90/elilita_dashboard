@@ -120,7 +120,7 @@ interface ProgressRingProps {
    ============================================================ */
 
 const translateDynamicValue = (
-  t: (key: string, options?: any) => string,
+  t: any,
   category: string,
   value: string | null | undefined,
 ): string => {

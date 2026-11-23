@@ -75,10 +75,7 @@ type PlanTier =
   | "premium"
   | "custom";
 
-type Translate = (
-  key: string,
-  options?: Record<string, unknown>,
-) => string;
+type Translate = any;
 
 type PlanMeta = {
   name: string;

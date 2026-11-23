@@ -2,6 +2,7 @@
 import { Routes, Route } from "react-router-dom";
 import SignIn from "./pages/SignIn";
 import SSOCallback from "./pages/SSOCallback";
+import SetupPassword from "./pages/SetupPassword";
 import AdminDashboard from "./components/dashboard/AdminDashboard";
 import BankManagement from "./components/dashboard/bank/BankManagement";
 import DashboardGuard from "./components/guards/DashboardGuard";
@@ -34,6 +35,8 @@ export default function App() {
       <Routes>
         <Route path="/sso" element={<SSOCallback />} />
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/setup-password" element={<SetupPassword />} />
+        <Route path="/setup-password/*" element={<SetupPassword />} />
 
         {/* Dashboard — restricted to super admins & users with active memberships */}
         <Route path="/dashboard" element={dashboardElement} />
@@ -58,6 +61,7 @@ export default function App() {
         />
 
         <Route path="/" element={<SignIn />} />
+        <Route path="*" element={<SignIn />} />
       </Routes>
     </>
   );

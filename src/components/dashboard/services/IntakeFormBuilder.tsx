@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect, memo, useRef } from "react";
+import { useState, useCallback, useEffect, memo, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   GripVertical,
@@ -23,6 +23,8 @@ import {
   Upload,
   Eye,
   X,
+  Layers,
+  FolderPlus,
 } from "lucide-react";
 import {
   DndContext,
@@ -128,6 +130,7 @@ function generateId() {
 function generateFieldName(
   label: string,
   existingNames: Set<string>,
+  currentName?: string,
 ): string {
   let base = label
     .trim()
@@ -141,6 +144,13 @@ function generateFieldName(
     base = "field";
   }
 
+  // If the current name already matches the base or starts with base_, keep it if unique
+  if (currentName && (currentName === base || currentName.startsWith(`${base}_`))) {
+    if (!existingNames.has(currentName)) {
+      return currentName;
+    }
+  }
+
   let candidate = base;
   let counter = 1;
 
@@ -149,10 +159,72 @@ function generateFieldName(
     counter++;
   }
 
-  existingNames.add(candidate);
-
   return candidate;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  IME-Safe Form Input (prevents Amharic/phonetic character duplication)     */
+/* -------------------------------------------------------------------------- */
+
+interface FormInputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+  value?: string;
+  onChange: (value: string) => void;
+}
+
+const FormInput = memo(function FormInput({
+  value = "",
+  onChange,
+  className = "",
+  ...props
+}: FormInputProps) {
+  const [localValue, setLocalValue] = useState(value);
+  const isComposingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isComposingRef.current) {
+      setLocalValue(value || "");
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextVal = e.target.value;
+    setLocalValue(nextVal);
+    if (!isComposingRef.current) {
+      onChange(nextVal);
+    }
+  };
+
+  const handleCompositionStart = () => {
+    isComposingRef.current = true;
+  };
+
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+    isComposingRef.current = false;
+    const finalVal = (e.target as HTMLInputElement).value;
+    setLocalValue(finalVal);
+    onChange(finalVal);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (localValue !== value) {
+      onChange(localValue);
+    }
+    props.onBlur?.(e);
+  };
+
+  return (
+    <input
+      {...props}
+      value={localValue}
+      onChange={handleChange}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
+      onBlur={handleBlur}
+      className={className}
+    />
+  );
+});
 
 /* -------------------------------------------------------------------------- */
 /*  Options Editor                                                            */
@@ -198,10 +270,10 @@ function OptionsEditor({
       <ul className="space-y-1">
         {safeOptions.map((opt, idx) => (
           <li key={idx} className="flex items-center gap-1">
-            <input
+            <FormInput
               type="text"
               value={opt}
-              onChange={(e) => updateOption(idx, e.target.value)}
+              onChange={(val) => updateOption(idx, val)}
               className="flex-1 h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm focus:border-secondary focus:ring-2 focus:ring-secondary/20 outline-none"
             />
 
@@ -218,10 +290,10 @@ function OptionsEditor({
       </ul>
 
       <div className="flex gap-2">
-        <input
+        <FormInput
           type="text"
           value={newOption}
-          onChange={(e) => setNewOption(e.target.value)}
+          onChange={(val) => setNewOption(val)}
           onKeyDown={(e) =>
             e.key === "Enter" && (e.preventDefault(), addOption())
           }
@@ -451,11 +523,13 @@ const FieldCard = memo(function FieldCard({
   updateField,
   removeField,
   duplicateField,
+  existingGroups = [],
 }: {
   field: FieldWithId;
   updateField: (patch: Partial<ExtendedIntakeFormField>) => void;
   removeField: () => void;
   duplicateField: () => void;
+  existingGroups?: { name: string; name_am?: string }[];
 }) {
   const { t } = useTranslation("intakeForm");
 
@@ -564,25 +638,42 @@ const FieldCard = memo(function FieldCard({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     {t("intakeForm.label")}{" "}
                     <span className="text-red-500">*</span>
                   </label>
 
-                  <input
+                  <FormInput
                     type="text"
                     value={field.label}
-                    onChange={(e) => {
-                      const label = e.target.value;
-                      updateField({ label });
-                    }}
+                    onChange={(val) => updateField({ label: val })}
                     placeholder={t("intakeForm.customerNameExample")}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {t("intakeForm.labelAm")}
+                  </label>
+
+                  <FormInput
+                    type="text"
+                    value={field.label_am || ""}
+                    onChange={(val) => updateField({ label_am: val })}
+                    placeholder={t("intakeForm.labelAmExample")}
+                    className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div
+                className={`grid grid-cols-1 ${
+                  existingGroups.length > 0 ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                } gap-3 items-end`}
+              >
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     {t("intakeForm.fieldType")}
@@ -594,7 +685,35 @@ const FieldCard = memo(function FieldCard({
                   />
                 </div>
 
-                <div className="flex items-end pb-1">
+                {existingGroups.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      {t("intakeForm.group")}
+                    </label>
+
+                    <select
+                      value={field.group || ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const match = existingGroups.find((g) => g.name === val);
+                        updateField({
+                          group: val || undefined,
+                          group_am: match?.name_am || undefined,
+                        });
+                      }}
+                      className="h-10 w-full text-sm rounded-lg border border-gray-200 bg-gray-50 px-3 text-gray-700 outline-none focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 cursor-pointer"
+                    >
+                      <option value="">{t("intakeForm.noGroup")}</option>
+                      {existingGroups.map((g) => (
+                        <option key={g.name} value={g.name}>
+                          {g.name} {g.name_am ? `(${g.name_am})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex items-center pb-2.5">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -602,10 +721,10 @@ const FieldCard = memo(function FieldCard({
                       onChange={(e) =>
                         updateField({ required: e.target.checked })
                       }
-                      className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
+                      className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary cursor-pointer"
                     />
 
-                    <span className="text-xs font-medium text-gray-600">
+                    <span className="text-xs font-medium text-gray-700">
                       {t("intakeForm.required")}
                     </span>
                   </label>
@@ -615,35 +734,119 @@ const FieldCard = memo(function FieldCard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    {t("intakeForm.fieldName")}
+                    {t("intakeForm.placeholder")}
                   </label>
 
-                  <input
+                  <FormInput
                     type="text"
-                    value={field.name}
-                    onChange={(e) => updateField({ name: e.target.value })}
-                    placeholder={t("intakeForm.customerEmailExample")}
+                    value={field.placeholder || ""}
+                    onChange={(val) => updateField({ placeholder: val })}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    {t("intakeForm.placeholder")}
+                    {t("intakeForm.placeholderAm")}
                   </label>
 
-                  <input
+                  <FormInput
                     type="text"
-                    value={field.placeholder || ""}
-                    onChange={(e) =>
-                      updateField({ placeholder: e.target.value })
-                    }
+                    value={field.placeholder_am || ""}
+                    onChange={(val) => updateField({ placeholder_am: val })}
                     className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
                   />
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("intakeForm.description")}
+                </label>
+
+                <FormInput
+                  type="text"
+                  value={field.description || ""}
+                  onChange={(val) => updateField({ description: val })}
+                  placeholder={t("intakeForm.descriptionPlaceholder")}
+                  className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm placeholder:text-gray-400 focus:border-secondary focus:bg-white focus:ring-2 focus:ring-secondary/20 outline-none"
+                />
+              </div>
+
               {/* Type-specific configurations */}
+
+              {field.type === "number" && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">
+                      {t("intakeForm.min")}
+                    </label>
+                    <input
+                      type="number"
+                      value={field.min ?? ""}
+                      onChange={(e) =>
+                        updateField({
+                          min: e.target.value !== "" ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      placeholder="e.g. 0"
+                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">
+                      {t("intakeForm.max")}
+                    </label>
+                    <input
+                      type="number"
+                      value={field.max ?? ""}
+                      onChange={(e) =>
+                        updateField({
+                          max: e.target.value !== "" ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      placeholder="e.g. 100"
+                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">
+                      {t("intakeForm.step")}
+                    </label>
+                    <input
+                      type="number"
+                      value={field.step ?? ""}
+                      onChange={(e) =>
+                        updateField({
+                          step: e.target.value !== "" ? Number(e.target.value) : undefined,
+                        })
+                      }
+                      placeholder="e.g. 1"
+                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {field.type === "textarea" && (
+                <div className="w-full sm:w-1/3">
+                  <label className="text-xs font-medium text-gray-600">
+                    {t("intakeForm.rows")}
+                  </label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={field.rows ?? 3}
+                    onChange={(e) =>
+                      updateField({
+                        rows: e.target.value !== "" ? Number(e.target.value) : 3,
+                      })
+                    }
+                    className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
+                  />
+                </div>
+              )}
 
               {field.type === "file" && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -652,15 +855,44 @@ const FieldCard = memo(function FieldCard({
                       {t("intakeForm.acceptedTypes")}
                     </label>
 
-                    <input
+                    <FormInput
                       type="text"
                       value={field.accept ?? ""}
-                      onChange={(e) =>
-                        updateField({ accept: e.target.value })
+                      onChange={(val) =>
+                        updateField({ accept: val })
                       }
                       placeholder={t("intakeForm.acceptedTypesExample")}
                       className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm"
                     />
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateField({ accept: ".pdf,.jpg,.jpeg,.png" })
+                        }
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-secondary transition"
+                      >
+                        PDF & Images
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateField({ accept: ".pdf,.doc,.docx" })
+                        }
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-secondary transition"
+                      >
+                        Documents
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateField({ accept: ".jpg,.jpeg,.png,.webp" })
+                        }
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 hover:bg-purple-100 text-gray-700 hover:text-secondary transition"
+                      >
+                        Images Only
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -734,6 +966,8 @@ export function IntakeFormBuilder({
 
   const [preview, setPreview] = useState(false);
 
+  const isInternalUpdateRef = useRef(false);
+
   // Transform incoming plain fields into the extended internal representation
   const createFieldWithId = (field: IntakeFormField): FieldWithId => ({
     ...field,
@@ -745,11 +979,19 @@ export function IntakeFormBuilder({
   );
 
   useEffect(() => {
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
     setFieldsWithId((current) =>
-      fields.map((field, index) => ({
-        ...field,
-        _id: current[index]?._id ?? generateId(),
-      })),
+      fields.map((field, index) => {
+        const existing =
+          current.find((c) => c.name === field.name) ?? current[index];
+        return {
+          ...field,
+          _id: existing?._id ?? generateId(),
+        };
+      }),
     );
   }, [fields]);
 
@@ -768,128 +1010,235 @@ export function IntakeFormBuilder({
 
       if (!over || active.id === over.id) return;
 
-      const oldIdx = fieldsWithId.findIndex(
-        (f) => f._id === active.id,
-      );
+      setFieldsWithId((current) => {
+        const oldIdx = current.findIndex((f) => f._id === active.id);
+        const newIdx = current.findIndex((f) => f._id === over.id);
 
-      const newIdx = fieldsWithId.findIndex(
-        (f) => f._id === over.id,
-      );
+        if (oldIdx === -1 || newIdx === -1) return current;
 
-      if (oldIdx === -1 || newIdx === -1) return;
+        const reordered = [...current];
+        const [moved] = reordered.splice(oldIdx, 1);
+        reordered.splice(newIdx, 0, moved);
 
-      const reordered = [...fieldsWithId];
-      const [moved] = reordered.splice(oldIdx, 1);
-
-      reordered.splice(newIdx, 0, moved);
-
-      // Emit only plain IntakeFormField (strip _id)
-      onChange(
-        reordered.map(
-          ({ _id, ...rest }) => rest as IntakeFormField,
-        ),
-      );
+        isInternalUpdateRef.current = true;
+        onChange(
+          reordered.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return reordered;
+      });
     },
-    [fieldsWithId, onChange],
+    [onChange],
   );
 
-  const addField = useCallback(() => {
-    const newField: FieldWithId = {
-      name: "",
-      type: "text",
-      label: "New Field",
-      required: false,
-      placeholder: "",
-      options: undefined,
-      _id: generateId(),
-    };
+  const addField = useCallback(
+    (groupName?: string, groupNameAm?: string) => {
+      setFieldsWithId((current) => {
+        const existingNames = new Set(current.map((f) => f.name));
+        const newField: FieldWithId = {
+          name: "",
+          type: "text",
+          label: "New Field",
+          label_am: "",
+          required: false,
+          placeholder: "",
+          placeholder_am: "",
+          description: "",
+          options: undefined,
+          group: groupName || undefined,
+          group_am: groupNameAm || undefined,
+          _id: generateId(),
+        };
 
-    const existingNames = new Set(
-      fieldsWithId.map((f) => f.name),
-    );
+        newField.name = generateFieldName(newField.label, existingNames);
+        const updated = [...current, newField];
 
-    newField.name = generateFieldName(
-      newField.label,
-      existingNames,
-    );
+        isInternalUpdateRef.current = true;
+        onChange(
+          updated.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return updated;
+      });
+    },
+    [onChange],
+  );
 
-    const updated = [...fieldsWithId, newField];
+  const removeGroup = useCallback(
+    (groupName: string) => {
+      setFieldsWithId((current) => {
+        const updated = current.map((f) => {
+          if ((f.group || "").trim() === groupName.trim()) {
+            const { group, group_am, ...rest } = f;
+            return rest as FieldWithId;
+          }
+          return f;
+        });
 
-    onChange(
-      updated.map(
-        ({ _id, ...rest }) => rest as IntakeFormField,
-      ),
-    );
-  }, [fieldsWithId, onChange]);
+        isInternalUpdateRef.current = true;
+        onChange(
+          updated.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return updated;
+      });
+    },
+    [onChange],
+  );
+
+  const updateGroupTitles = useCallback(
+    (oldTitle: string, newTitle: string, newTitleAm?: string) => {
+      setFieldsWithId((current) => {
+        const next = current.map((f) => {
+          if ((f.group || "").trim() === oldTitle.trim()) {
+            return {
+              ...f,
+              group: newTitle.trim() || undefined,
+              group_am: newTitleAm?.trim() || undefined,
+            };
+          }
+          return f;
+        });
+
+        isInternalUpdateRef.current = true;
+        onChange(
+          next.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return next;
+      });
+    },
+    [onChange],
+  );
+
+  const existingGroups = useMemo(() => {
+    const list: { name: string; name_am?: string }[] = [];
+    const seen = new Set<string>();
+    fieldsWithId.forEach((f) => {
+      const g = (f.group || "").trim();
+      if (g && !seen.has(g)) {
+        seen.add(g);
+        list.push({ name: g, name_am: f.group_am });
+      }
+    });
+    return list;
+  }, [fieldsWithId]);
+
+  const hasAnyGroups = useMemo(
+    () => fieldsWithId.some((f) => (f.group || "").trim().length > 0),
+    [fieldsWithId],
+  );
+
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
+  const [newGroupTitle, setNewGroupTitle] = useState("");
+  const [newGroupTitleAm, setNewGroupTitleAm] = useState("");
+
+  const handleCreateGroup = () => {
+    const trimmed = newGroupTitle.trim();
+    if (!trimmed) return;
+    addField(trimmed, newGroupTitleAm.trim() || undefined);
+    setNewGroupTitle("");
+    setNewGroupTitleAm("");
+    setShowNewGroupInput(false);
+  };
+
+  const groupedFields = useMemo(() => {
+    const map = new Map<
+      string,
+      { key: string; title: string; title_am?: string; fields: FieldWithId[] }
+    >();
+    const ungroupedKey = "__ungrouped__";
+
+    fieldsWithId.forEach((field) => {
+      const g = (field.group || "").trim();
+      const key = g || ungroupedKey;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          title: g || t("intakeForm.ungrouped"),
+          title_am: field.group_am,
+          fields: [],
+        });
+      }
+      map.get(key)!.fields.push(field);
+    });
+
+    return Array.from(map.values());
+  }, [fieldsWithId, t]);
 
   const updateField = useCallback(
     (
       id: string,
       patch: Partial<ExtendedIntakeFormField>,
     ) => {
-      const next = fieldsWithId.map((f) =>
-        f._id === id ? { ...f, ...patch } : f,
-      );
+      setFieldsWithId((current) => {
+        const next = current.map((f) => {
+          if (f._id !== id) return f;
 
-      onChange(
-        next.map(
-          ({ _id, ...rest }) => rest as IntakeFormField,
-        ),
-      );
+          const updated = { ...f, ...patch };
+
+          // Automatically derive unique field name in background when label changes
+          if (patch.label !== undefined && patch.label !== f.label) {
+            const existingNames = new Set(
+              current.filter((item) => item._id !== id).map((item) => item.name),
+            );
+            updated.name = generateFieldName(patch.label, existingNames, f.name);
+          }
+
+          return updated;
+        });
+
+        isInternalUpdateRef.current = true;
+        onChange(
+          next.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return next;
+      });
     },
-    [fieldsWithId, onChange],
+    [onChange],
   );
 
   const removeField = useCallback(
     (id: string) => {
-      const filtered = fieldsWithId.filter(
-        (f) => f._id !== id,
-      );
+      setFieldsWithId((current) => {
+        const filtered = current.filter((f) => f._id !== id);
 
-      onChange(
-        filtered.map(
-          ({ _id, ...rest }) => rest as IntakeFormField,
-        ),
-      );
+        isInternalUpdateRef.current = true;
+        onChange(
+          filtered.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return filtered;
+      });
     },
-    [fieldsWithId, onChange],
+    [onChange],
   );
 
   const duplicateField = useCallback(
     (id: string) => {
-      const idx = fieldsWithId.findIndex(
-        (f) => f._id === id,
-      );
+      setFieldsWithId((current) => {
+        const idx = current.findIndex((f) => f._id === id);
+        if (idx === -1) return current;
 
-      if (idx === -1) return;
+        const original = current[idx];
+        const existingNames = new Set(current.map((f) => f.name));
 
-      const original = fieldsWithId[idx];
+        const copy: FieldWithId = {
+          ...original,
+          _id: generateId(),
+          name: generateFieldName(
+            original.label + " copy",
+            existingNames,
+          ),
+          label: original.label + " (copy)",
+        };
 
-      const existingNames = new Set(
-        fieldsWithId.map((f) => f.name),
-      );
+        const next = [...current];
+        next.splice(idx + 1, 0, copy);
 
-      const copy: FieldWithId = {
-        ...original,
-        _id: generateId(),
-        name: generateFieldName(
-          original.label + " copy",
-          existingNames,
-        ),
-        label: original.label + " (copy)",
-      };
-
-      const next = [...fieldsWithId];
-
-      next.splice(idx + 1, 0, copy);
-
-      onChange(
-        next.map(
-          ({ _id, ...rest }) => rest as IntakeFormField,
-        ),
-      );
+        isInternalUpdateRef.current = true;
+        onChange(
+          next.map(({ _id, ...rest }) => rest as IntakeFormField),
+        );
+        return next;
+      });
     },
-    [fieldsWithId, onChange],
+    [onChange],
   );
 
   const fieldCount = fieldsWithId.length;
@@ -901,6 +1250,24 @@ export function IntakeFormBuilder({
   /* ── Preview mode ─────────────────────────────────────────────────────── */
 
   if (preview) {
+    const previewGroups = new Map<
+      string,
+      { key: string; title: string; title_am?: string; fields: FieldWithId[] }
+    >();
+    fieldsWithId.forEach((f) => {
+      const g = (f.group || "").trim();
+      const key = g || "__ungrouped__";
+      if (!previewGroups.has(key)) {
+        previewGroups.set(key, {
+          key,
+          title: g || t("intakeForm.ungrouped"),
+          title_am: f.group_am,
+          fields: [],
+        });
+      }
+      previewGroups.get(key)!.fields.push(f);
+    });
+
     return (
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -917,197 +1284,226 @@ export function IntakeFormBuilder({
           </button>
         </div>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto p-4 border border-gray-200 rounded-xl bg-white">
-          {fieldsWithId.map((field) => {
-            const {
-              type,
-              label,
-              required,
-              placeholder,
-              options,
-              description,
-            } = field;
-
-            const id = `preview-${field._id}`;
-
-            return (
-              <div key={field._id}>
-                <label
-                  htmlFor={id}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  {label}{" "}
-                  {required && (
-                    <span className="text-red-500">*</span>
-                  )}
-                </label>
-
-                {type === "text" && (
-                  <input
-                    id={id}
-                    type="text"
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "textarea" && (
-                  <textarea
-                    id={id}
-                    rows={3}
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "email" && (
-                  <input
-                    id={id}
-                    type="email"
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "phone" && (
-                  <input
-                    id={id}
-                    type="tel"
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "number" && (
-                  <input
-                    id={id}
-                    type="number"
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "date" && (
-                  <input
-                    id={id}
-                    type="date"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "time" && (
-                  <input
-                    id={id}
-                    type="time"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "datetime" && (
-                  <input
-                    id={id}
-                    type="datetime-local"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
-
-                {type === "select" && (
-                  <select
-                    id={id}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
-                  >
-                    <option value="">
-                      {placeholder || t("intakeForm.selectPlaceholder")}
-                    </option>
-
-                    {(options || []).map((opt, i) => (
-                      <option key={i}>{opt}</option>
-                    ))}
-                  </select>
-                )}
-
-                {type === "multiselect" && (
-                  <div className="mt-1 space-y-1">
-                    {(options || []).map((opt, i) => (
-                      <label
-                        key={i}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 text-secondary"
-                        />
-
-                        <span className="text-sm text-gray-700">
-                          {opt}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {type === "radio" && (
-                  <div className="mt-1 space-y-1">
-                    {(options || []).map((opt, i) => (
-                      <label
-                        key={i}
-                        className="flex items-center gap-2"
-                      >
-                        <input
-                          type="radio"
-                          name={`radio-${field._id}`}
-                          className="h-4 w-4 text-secondary"
-                        />
-
-                        <span className="text-sm text-gray-700">
-                          {opt}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {type === "checkbox" && (
-                  <div className="mt-1">
-                    <label className="flex items-center gap-2">
-                      <input
-                        id={id}
-                        type="checkbox"
-                        className="h-4 w-4 text-secondary"
-                      />
-
-                      <span className="text-sm text-gray-700">
-                        {label}
+        <div className="space-y-4 max-h-[500px] overflow-y-auto p-4 border border-gray-200 rounded-2xl bg-gray-50/60">
+          {Array.from(previewGroups.values()).map((group) => (
+            <div
+              key={group.title}
+              className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-4"
+            >
+              {hasAnyGroups && group.key !== "__ungrouped__" && (
+                <div className="flex items-center gap-2 pb-2.5 border-b border-gray-100">
+                  <div className="w-1.5 h-4 bg-secondary rounded-full" />
+                  <h4 className="text-sm font-bold text-gray-800">
+                    {group.title}{" "}
+                    {group.title_am && (
+                      <span className="text-xs text-gray-400 font-normal">
+                        ({group.title_am})
                       </span>
-                    </label>
-                  </div>
-                )}
+                    )}
+                  </h4>
+                </div>
+              )}
 
-                {type === "file" && (
-                  <input
-                    id={id}
-                    type="file"
-                    className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-white hover:file:bg-[#5B46A0]"
-                  />
-                )}
+              <div className="space-y-4">
+                {group.fields.map((field) => {
+                  const {
+                    type,
+                    label,
+                    label_am,
+                    required,
+                    placeholder,
+                    options,
+                    description,
+                  } = field;
 
-                {type === "url" && (
-                  <input
-                    id={id}
-                    type="url"
-                    placeholder={placeholder}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                )}
+                  const id = `preview-${field._id}`;
 
-                {description && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {description}
-                  </p>
-                )}
+                  return (
+                    <div key={field._id}>
+                      <label
+                        htmlFor={id}
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        {label}{" "}
+                        {label_am && (
+                          <span className="text-xs text-gray-400 font-normal">
+                            ({label_am})
+                          </span>
+                        )}{" "}
+                        {required && (
+                          <span className="text-red-500">*</span>
+                        )}
+                      </label>
+
+                      {type === "text" && (
+                        <input
+                          id={id}
+                          type="text"
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "textarea" && (
+                        <textarea
+                          id={id}
+                          rows={3}
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "email" && (
+                        <input
+                          id={id}
+                          type="email"
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "phone" && (
+                        <input
+                          id={id}
+                          type="tel"
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "number" && (
+                        <input
+                          id={id}
+                          type="number"
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "date" && (
+                        <input
+                          id={id}
+                          type="date"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "time" && (
+                        <input
+                          id={id}
+                          type="time"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "datetime" && (
+                        <input
+                          id={id}
+                          type="datetime-local"
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {type === "select" && (
+                        <select
+                          id={id}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                        >
+                          <option value="">
+                            {placeholder || t("intakeForm.selectPlaceholder")}
+                          </option>
+
+                          {(options || []).map((opt, i) => (
+                            <option key={i}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {type === "multiselect" && (
+                        <div className="mt-1 space-y-1">
+                          {(options || []).map((opt, i) => (
+                            <label
+                              key={i}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 text-secondary"
+                              />
+
+                              <span className="text-sm text-gray-700">
+                                {opt}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {type === "radio" && (
+                        <div className="mt-1 space-y-1">
+                          {(options || []).map((opt, i) => (
+                            <label
+                              key={i}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="radio"
+                                name={`radio-${field._id}`}
+                                className="h-4 w-4 text-secondary"
+                              />
+
+                              <span className="text-sm text-gray-700">
+                                {opt}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {type === "checkbox" && (
+                        <div className="mt-1">
+                          <label className="flex items-center gap-2">
+                            <input
+                              id={id}
+                              type="checkbox"
+                              className="h-4 w-4 text-secondary"
+                            />
+
+                            <span className="text-sm text-gray-700">
+                              {label}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+
+                      {type === "file" && (
+                        <input
+                          id={id}
+                          type="file"
+                          className="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-white hover:file:bg-[#5B46A0]"
+                        />
+                      )}
+
+                      {type === "url" && (
+                        <input
+                          id={id}
+                          type="url"
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        />
+                      )}
+
+                      {description && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -1117,6 +1513,12 @@ export function IntakeFormBuilder({
 
   return (
     <div className="space-y-4">
+      <datalist id="intake-groups-list">
+        {existingGroups.map((g: { name: string; name_am?: string }) => (
+          <option key={g.name} value={g.name} />
+        ))}
+      </datalist>
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">
@@ -1161,14 +1563,65 @@ export function IntakeFormBuilder({
             {t("intakeForm.noFieldsDescription")}
           </p>
 
-          <button
-            type="button"
-            onClick={addField}
-            className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-xl bg-secondary px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5B46A0] focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:ring-offset-1"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t("intakeForm.addFirstField")}
-          </button>
+          <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            <button
+              type="button"
+              onClick={() => setShowNewGroupInput(true)}
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-4 text-xs font-semibold text-secondary shadow-xs transition hover:bg-purple-100"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+              {t("intakeForm.addGroup")}
+            </button>
+            <button
+              type="button"
+              onClick={() => addField()}
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-secondary px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5B46A0] focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:ring-offset-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("intakeForm.addFirstField")}
+            </button>
+          </div>
+
+          {showNewGroupInput && (
+            <div className="mt-4 w-full max-w-lg p-4 rounded-xl border border-secondary/30 bg-purple-50/40 space-y-3">
+              <h4 className="text-xs font-bold text-secondary uppercase tracking-wider">
+                {t("intakeForm.newGroup")}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormInput
+                  type="text"
+                  value={newGroupTitle}
+                  onChange={(val) => setNewGroupTitle(val)}
+                  placeholder={t("intakeForm.groupTitle")}
+                  className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:border-secondary outline-none"
+                />
+                <FormInput
+                  type="text"
+                  value={newGroupTitleAm}
+                  onChange={(val) => setNewGroupTitleAm(val)}
+                  placeholder={t("intakeForm.groupTitleAm")}
+                  className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:border-secondary outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewGroupInput(false)}
+                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  {t("intakeForm.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateGroup}
+                  disabled={!newGroupTitle.trim()}
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:bg-[#5B46A0] disabled:opacity-50"
+                >
+                  {t("intakeForm.add")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -1181,32 +1634,211 @@ export function IntakeFormBuilder({
               items={fieldsWithId.map((f) => f._id)}
               strategy={verticalListSortingStrategy}
             >
-              <ul className="space-y-3">
-                <AnimatePresence initial={false}>
-                  {fieldsWithId.map((field) => (
-                    <FieldCard
-                      key={field._id}
-                      field={field}
-                      updateField={(patch) =>
-                        updateField(field._id, patch)
-                      }
-                      removeField={() =>
-                        removeField(field._id)
-                      }
-                      duplicateField={() =>
-                        duplicateField(field._id)
-                      }
-                    />
-                  ))}
-                </AnimatePresence>
-              </ul>
+              {!hasAnyGroups ? (
+                <ul className="space-y-3">
+                  <AnimatePresence initial={false}>
+                    {fieldsWithId.map((field: FieldWithId) => (
+                      <FieldCard
+                        key={field._id}
+                        field={field}
+                        existingGroups={existingGroups}
+                        updateField={(patch) =>
+                          updateField(field._id, patch)
+                        }
+                        removeField={() =>
+                          removeField(field._id)
+                        }
+                        duplicateField={() =>
+                          duplicateField(field._id)
+                        }
+                      />
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              ) : (
+                <div className="space-y-5">
+                  {groupedFields.map(
+                    (group: {
+                      key: string;
+                      title: string;
+                      title_am?: string;
+                      fields: FieldWithId[];
+                    }) => {
+                      const isUngrouped = group.key === "__ungrouped__";
+                      return (
+                        <div
+                          key={group.key}
+                          className={`rounded-2xl border-2 p-4 space-y-3.5 ${
+                            isUngrouped
+                              ? "border-gray-200 bg-gray-50/40"
+                              : "border-purple-200/80 bg-purple-50/15"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between pb-2.5 border-b border-gray-100 gap-3">
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                              <div
+                                className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
+                                  isUngrouped
+                                    ? "bg-gray-200 text-gray-600"
+                                    : "bg-secondary/10 text-secondary"
+                                }`}
+                              >
+                                <Layers className="h-4 w-4" />
+                              </div>
+
+                              {isUngrouped ? (
+                                <div>
+                                  <h4 className="text-sm font-bold text-gray-800">
+                                    {t("intakeForm.ungrouped")}
+                                  </h4>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-1 max-w-xl">
+                                  <FormInput
+                                    type="text"
+                                    value={group.title}
+                                    onChange={(newTitle) =>
+                                      updateGroupTitles(
+                                        group.title,
+                                        newTitle,
+                                        group.title_am
+                                      )
+                                    }
+                                    placeholder={t("intakeForm.groupTitle")}
+                                    className="h-8.5 px-3 text-xs font-bold text-gray-900 bg-white border border-gray-200 rounded-lg focus:border-secondary outline-none w-1/2 shadow-2xs"
+                                  />
+                                  <FormInput
+                                    type="text"
+                                    value={group.title_am || ""}
+                                    onChange={(newTitleAm) =>
+                                      updateGroupTitles(
+                                        group.title,
+                                        group.title,
+                                        newTitleAm
+                                      )
+                                    }
+                                    placeholder={t("intakeForm.groupTitleAm")}
+                                    className="h-8.5 px-3 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg focus:border-secondary outline-none w-1/2 shadow-2xs"
+                                  />
+                                </div>
+                              )}
+
+                              <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white border border-gray-200 text-gray-600">
+                                {group.fields.length}{" "}
+                                {group.fields.length === 1 ? "field" : "fields"}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  addField(
+                                    isUngrouped ? undefined : group.title,
+                                    group.title_am
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-gray-200 text-secondary hover:bg-purple-50 transition shadow-xs"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                {t("intakeForm.addField")}
+                              </button>
+
+                              {!isUngrouped && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeGroup(group.title)}
+                                  title={t("intakeForm.deleteGroup")}
+                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <ul className="space-y-3">
+                            <AnimatePresence initial={false}>
+                              {group.fields.map((field: FieldWithId) => (
+                                <FieldCard
+                                  key={field._id}
+                                  field={field}
+                                  existingGroups={existingGroups}
+                                  updateField={(patch) =>
+                                    updateField(field._id, patch)
+                                  }
+                                  removeField={() =>
+                                    removeField(field._id)
+                                  }
+                                  duplicateField={() =>
+                                    duplicateField(field._id)
+                                  }
+                                />
+                              ))}
+                            </AnimatePresence>
+                          </ul>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              )}
             </SortableContext>
           </DndContext>
 
-          <div className="mt-4 flex justify-end">
+          {showNewGroupInput && (
+            <div className="mt-4 p-4 rounded-xl border border-secondary/30 bg-purple-50/40 space-y-3">
+              <h4 className="text-xs font-bold text-secondary uppercase tracking-wider">
+                {t("intakeForm.newGroup")}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormInput
+                  type="text"
+                  value={newGroupTitle}
+                  onChange={(val) => setNewGroupTitle(val)}
+                  placeholder={t("intakeForm.groupTitle")}
+                  className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:border-secondary outline-none"
+                />
+                <FormInput
+                  type="text"
+                  value={newGroupTitleAm}
+                  onChange={(val) => setNewGroupTitleAm(val)}
+                  placeholder={t("intakeForm.groupTitleAm")}
+                  className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:border-secondary outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewGroupInput(false)}
+                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  {t("intakeForm.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateGroup}
+                  disabled={!newGroupTitle.trim()}
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:bg-[#5B46A0] disabled:opacity-50"
+                >
+                  {t("intakeForm.add")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-2 justify-end">
             <button
               type="button"
-              onClick={addField}
+              onClick={() => setShowNewGroupInput(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-secondary hover:bg-purple-100 transition shadow-xs"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+              {t("intakeForm.addGroup")}
+            </button>
+            <button
+              type="button"
+              onClick={() => addField()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-[#5B46A0] transition"
             >
               <Plus className="h-3.5 w-3.5" />

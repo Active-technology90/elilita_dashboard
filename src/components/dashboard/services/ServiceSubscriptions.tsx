@@ -23,7 +23,7 @@ import { CompanySelector } from "../company-products/CompanySelector";
 import { getManageServiceSubscriptions } from "../../../services/api";
 import { ServiceSubscriptionManageModal } from "./ServiceSubscriptionManageModal";
 import { Toast } from "../../ui/Toast";
-import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
+import { CustomSelect } from "../../ui/CustomSelect";
 import PageHeader from "../../ui/PageHeader";
 import { DataTable, type Column } from "../../ui/DataTable";
 import type { ServiceSubscription } from "../../../types";

@@ -40,7 +40,7 @@ const payoutReceipts = {
     "All settlements are audited and disbursed under Elilita Multi-Vendor Commerce Policies.",
 
   disbursedBy: "Disbursed By",
-  elilitaMarketplace: "Elilita Marketplace",
+  elilitaMarketplace: "Elilita Super App",
   settlementGateway: "Direct Settlement Gateway",
   beneficiaryVendor: "Beneficiary Vendor",
 

@@ -39,11 +39,7 @@ import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
 import toast from "react-hot-toast";
-import i18n from "../../../i18n";
 import { useTranslation } from "react-i18next";
-
-/* Module-scope translator so helpers and JSX resolve the same keys */
-const t = (key: string, opts?: Record<string, any>) => i18n.t(key, opts);
 
 /* ──────────────────────────────────────────────────────────────────
    Role helpers

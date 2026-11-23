@@ -497,7 +497,7 @@ export default function VendorQuoteRequests() {
           </p>
         </div>
 
-        <div className="bg-amber-50/70 p-3.5 sm:p-4 rounded-xl border border-amber-200 shadow-sm">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-amber-200 shadow-sm">
           <p className="text-[11px] font-semibold uppercase text-amber-700 tracking-wider">
             {isAmharic ? "ምላሽ የሚሹ (Pending)" : "Pending Action"}
           </p>
@@ -506,7 +506,7 @@ export default function VendorQuoteRequests() {
           </p>
         </div>
 
-        <div className="bg-blue-50/70 p-3.5 sm:p-4 rounded-xl border border-blue-200 shadow-sm">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-blue-200 shadow-sm">
           <p className="text-[11px] font-semibold uppercase text-blue-700 tracking-wider">
             {isAmharic ? "ደንበኛ በመጠባበቅ ላይ" : "Awaiting Customer"}
           </p>
@@ -515,7 +515,7 @@ export default function VendorQuoteRequests() {
           </p>
         </div>
 
-        <div className="bg-emerald-50/70 p-3.5 sm:p-4 rounded-xl border border-emerald-200 shadow-sm">
+        <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-emerald-200 shadow-sm">
           <p className="text-[11px] font-semibold uppercase text-emerald-700 tracking-wider">
             {isAmharic ? "ወደ ትዕዛዝ የተቀየሩ" : "Converted Orders"}
           </p>

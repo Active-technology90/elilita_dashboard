@@ -59,7 +59,7 @@ const DICT: Record<Lang, Record<string, string>> = {
     // parties
     "disbursedBy": "Disbursed By",
     "beneficiaryVendor": "Beneficiary Vendor",
-    "elilitaMarketplace": "Elilita Marketplace",
+    "elilitaMarketplace": "Elilita Super App",
     "settlementGateway": "Direct Settlement Gateway",
 
     // payment / settlement box
@@ -331,7 +331,6 @@ export const generatePayoutReceiptHtml = (
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   const elilitaLogoUrl = `${origin}/elilta1.jpg`;
-  const companyLogoUrl = getFullMediaUrl(payout.company_logo);
 
   const scheduledDate = formatDateTime(
     payout.scheduled_at,
@@ -473,8 +472,6 @@ export const generatePayoutReceiptHtml = (
     STATUS_KEY[payout.status] ?? STATUS_KEY.pending,
     STATUS_FALLBACK[payout.status] ?? STATUS_FALLBACK.pending
   );
-
-  const companyInitial = (payout.company_name || "?").charAt(0);
 
   // Labels resolved once so the template is readable
   const L_receiptTitle = L("receiptTitle", "Payout Receipt");

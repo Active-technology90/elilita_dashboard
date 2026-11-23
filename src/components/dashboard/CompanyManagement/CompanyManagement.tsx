@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, Send, CheckCircle2, RefreshCw } from "lucide-react";
 import api from "../../../services/api";
 import {
   createCompany,
@@ -17,6 +17,7 @@ import {
   getSubCategories,
   getCompanyDetail,
   getHeadCompanies,
+  resendCompanyOwnerInvite,
 } from "../../../services/api";
 import type {
   CompanyListItem,
@@ -355,7 +356,7 @@ export default function CompanyManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<CompanyFormData>({
     ...EMPTY_COMPANY_FORM,
   });
@@ -406,6 +407,30 @@ export default function CompanyManagement() {
   const [isEditingActive, setIsEditingActive] = useState(false);
   const [verificationDraft, setVerificationDraft] = useState(false);
   const [originalVerification, setOriginalVerification] = useState(false);
+  const [resendingSlug, setResendingSlug] = useState<string | null>(null);
+
+  const handleResendInvite = useCallback(
+    async (slug: string, email?: string) => {
+      if (resendingSlug) return;
+      setResendingSlug(slug);
+      try {
+        const res = await resendCompanyOwnerInvite(slug);
+        showToast(
+          "success",
+          res.data?.detail || `Invitation email sent successfully to ${email || "owner"}.`
+        );
+      } catch (err: any) {
+        const msg =
+          err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          "Failed to resend invitation email.";
+        showToast("error", msg);
+      } finally {
+        setResendingSlug(null);
+      }
+    },
+    [resendingSlug, showToast]
+  );
 
   const handleVerificationChange = useCallback(
     (verified: boolean) => {
@@ -684,6 +709,58 @@ export default function CompanyManagement() {
         ),
       },
       {
+        key: "owner_status",
+        header: "Owner Status",
+        sortable: false,
+        render: (comp) => {
+          const status = comp.owner_status;
+          const email = comp.owner_email || comp.contact_email;
+          if (status === "active") {
+            return (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                title={email ? `Owner: ${email}` : "Owner Active"}
+              >
+                <CheckCircle2 size={12} className="text-emerald-500" />
+                Active
+              </span>
+            );
+          }
+          if (status === "pending_invitation") {
+            return (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700"
+                  title={email ? `Invite pending for ${email}` : "Invite Pending"}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Invite Pending
+                </span>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleResendInvite(comp.slug, email);
+                    }}
+                    disabled={resendingSlug === comp.slug}
+                    className="p-1 rounded-md text-amber-700 hover:bg-amber-100 transition-colors"
+                    title="Resend 48h Invitation Email"
+                  >
+                    {resendingSlug === comp.slug ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <Send size={13} />
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          }
+          return <span className="text-xs text-gray-400">-</span>;
+        },
+      },
+      {
         key: "chapa_sub_account_id",
         header: t("colChapaSplit"),
         sortable: false,
@@ -709,7 +786,7 @@ export default function CompanyManagement() {
           ),
       },
     ],
-    [t, pickName, isAmharic],
+    [t, pickName, isAmharic, handleResendInvite, resendingSlug, isSuperAdmin],
   );
 
   const onSortChange = useCallback(
@@ -1065,58 +1142,6 @@ export default function CompanyManagement() {
     }
     return true;
   };
-
-
-const validateCompanyForm = () => {
-  const errors: Record<string, string> = {};
-
-  if (!formData.name?.trim()) {
-    errors.name = t("nameRequired");
-  }
-
-  if (!formData.business_type) {
-    errors.business_type = t("businessTypeRequiredError");
-  }
-
-  if (!formData.category || Number(formData.category) === 0) {
-    errors.category = t("categoryRequiredError");
-  }
-
-  if (!formData.sub_category || Number(formData.sub_category) === 0) {
-    errors.sub_category = t("subcategoryRequiredError");
-  }
-
-  if (!formData.contact_phone?.trim()) {
-    errors.contact_phone = t("phoneRequired");
-  }
-
-  if (!formData.contact_email?.trim()) {
-    errors.contact_email = t("emailRequired");
-  } else if (
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email.trim())
-  ) {
-    errors.contact_email = t("emailInvalid");
-  }
-
-  if (isMarketing && !editingSlug) {
-    if (!agreedToTerms) {
-      errors.terms_agreed = t("termsRequiredOwner");
-    }
-
-    if (!formData.terms_signatory_name?.trim()) {
-      errors.terms_signatory_name = t("signatoryRequired");
-    }
-  }
-
-  setFormErrors(errors);
-
-  if (Object.keys(errors).length > 0) {
-    showToast("error", t("errorFieldsHighlighted"));
-    return false;
-  }
-
-  return true;
-};
 
   /* ──────────────────────────────────────────────────────────────
      Submit

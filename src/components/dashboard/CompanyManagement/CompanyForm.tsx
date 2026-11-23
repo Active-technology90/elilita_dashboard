@@ -99,6 +99,7 @@ interface CompanyFormProps {
   onAgreedToTermsChange?: (agreed: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
+  showToast?: any;
 }
 
 /* -------------------------------------------------------------------------- */

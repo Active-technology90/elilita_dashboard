@@ -87,6 +87,7 @@ interface NonSuperAdminViewProps {
   headCompanies?: HeadCompany[];
   agreedToTerms?: boolean;
   onAgreedToTermsChange?: (agreed: boolean) => void;
+  showToast?: any;
 }
 
 export default function NonSuperAdminView({

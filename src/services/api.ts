@@ -401,6 +401,38 @@ export const updateCompanyMinimumOrderTotal = async (
 export const deleteCompany = async (slug: string) =>
   api.delete(`/companies/${slug}/`);
 
+export const resendCompanyOwnerInvite = async (slug: string) => {
+  return api.post<{ detail: string; owner_email?: string; is_already_active?: boolean }>(
+    `/companies/${slug}/resend-owner-invite/`
+  );
+};
+
+export const validateOwnerInvitation = async (uid: string, token: string) => {
+  return api.post<{
+    valid: boolean;
+    status: string;
+    message: string;
+    email?: string;
+    company_name?: string;
+    company_slug?: string;
+  }>("/auth/invitation/validate/", { uid, token });
+};
+
+export const confirmOwnerInvitation = async (payload: {
+  uid: string;
+  token: string;
+  password: string;
+  confirm_password?: string;
+}) => {
+  return api.post<{
+    detail: string;
+    access: string;
+    refresh: string;
+    user: any;
+  }>("/auth/invitation/confirm/", payload);
+};
+
+
 // ========== HEAD COMPANIES ==========
 export const getHeadCompanies = async () =>
   api.get<HeadCompany[] | PaginatedResponse<HeadCompany>>("/headcompanies/");

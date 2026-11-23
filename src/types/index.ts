@@ -144,6 +144,8 @@ export interface Company {
   license?: string | null;
   registered_by?: number;
   registered_by_username?: string;
+  owner_status?: "active" | "pending_invitation" | "none";
+  owner_email?: string;
 }
 
 export interface MealPeriodCategory {
@@ -211,6 +213,8 @@ export interface CompanyListItem {
   registered_by_username?: string;
   chapa_sub_account_id?: string | number;
   created_at?: string;
+  owner_status?: "active" | "pending_invitation" | "none";
+  owner_email?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -786,6 +790,19 @@ export interface IntakeFormField {
   required?: boolean;
   options?: string[];
   placeholder?: string;
+  placeholder_am?: string;
+  default_value?: any;
+  group?: string;
+  group_am?: string;
+  group_order?: number;
+  description?: string;
+  rows?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  accept?: string;
+  max_size?: number;
+  max_files?: number;
 }
 
 export interface ServiceOfferingImage {

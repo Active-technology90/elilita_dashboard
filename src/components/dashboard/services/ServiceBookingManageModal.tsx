@@ -29,6 +29,8 @@ import {
   Navigation,
   ExternalLink,
   MessageSquare,
+  Download,
+  Layers,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ServiceBooking, BookingAction } from "../../../types";
@@ -736,6 +738,281 @@ export function ServiceBookingManageModal({
   const receipt = initialBooking.receipt;
   const receiptHistory = initialBooking.receipt_history || [];
 
+  const schemaFieldsMap = useMemo(() => {
+    const map = new Map<string, any>();
+    const schema = (offering as any)?.intake_form_schema;
+    if (schema && Array.isArray(schema)) {
+      schema.forEach((f: any) => {
+        if (f && f.name) {
+          map.set(f.name, f);
+        }
+      });
+    }
+    return map;
+  }, [(offering as any)?.intake_form_schema]);
+
+  const groupedIntakeResponses = useMemo(() => {
+    const entries = Object.entries(intakeData);
+    if (entries.length === 0) return [];
+
+    const groupMap = new Map<
+      string,
+      {
+        key: string;
+        title: string;
+        title_am?: string;
+        order: number;
+        items: Array<{ key: string; value: any; field?: any }>;
+      }
+    >();
+
+    const defaultKey = "__default__";
+
+    entries.forEach(([key, value], idx) => {
+      const field = schemaFieldsMap.get(key);
+      const groupTitle = field?.group?.trim() || "";
+      const gKey = groupTitle || defaultKey;
+
+      if (!groupMap.has(gKey)) {
+        groupMap.set(gKey, {
+          key: gKey,
+          title: groupTitle,
+          title_am: field?.group_am,
+          order: typeof field?.group_order === "number" ? field.group_order : idx,
+          items: [],
+        });
+      }
+
+      groupMap.get(gKey)!.items.push({ key, value, field });
+    });
+
+    return Array.from(groupMap.values()).sort((a, b) => a.order - b.order);
+  }, [intakeData, schemaFieldsMap]);
+
+  const isImageFile = (file: any) => {
+    if (!file) return false;
+    const mime = typeof file === "object" ? file.type : "";
+    const name = typeof file === "object" ? file.name : String(file);
+    const url =
+      typeof file === "object" ? file.url || file.uri || "" : String(file);
+    if (mime && mime.includes("image")) return true;
+    return (
+      /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name) ||
+      /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(url)
+    );
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes || isNaN(bytes)) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const renderFileItem = (item: any, index: number) => {
+    const fileUrl =
+      typeof item === "object"
+        ? item.url || item.uri
+        : typeof item === "string"
+        ? item
+        : "";
+    const fileName =
+      typeof item === "object"
+        ? item.name || `Attachment ${index + 1}`
+        : typeof item === "string"
+        ? item.split("/").pop() || item
+        : `Attachment ${index + 1}`;
+    const fileSize = typeof item === "object" ? item.size : undefined;
+    const isImg = isImageFile(item);
+
+    if (isImg && fileUrl) {
+      return (
+        <div
+          key={`${fileName}_${index}`}
+          className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-200 bg-white shadow-2xs hover:border-purple-300 transition"
+        >
+          <div
+            onClick={() => setPreviewImage(fileUrl)}
+            className="relative group w-14 h-14 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 shrink-0 cursor-zoom-in"
+          >
+            <img
+              src={fileUrl}
+              alt={fileName}
+              className="w-full h-full object-cover group-hover:scale-105 transition"
+            />
+            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
+              <ZoomIn className="h-4 w-4" />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-xs font-semibold text-gray-800 truncate"
+              title={fileName}
+            >
+              {fileName}
+            </p>
+            {fileSize && (
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {formatFileSize(fileSize)}
+              </p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setPreviewImage(fileUrl)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-secondary hover:text-[#5B46A0]"
+              >
+                <Eye className="h-3 w-3" />
+                {t("common.view", { defaultValue: "Preview" })}
+              </button>
+              <span className="text-gray-300">·</span>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={fileName}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700"
+              >
+                <Download className="h-3 w-3" />
+                {t("common.download", { defaultValue: "Download" })}
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={`${fileName}_${index}`}
+        className="flex items-center justify-between p-2.5 rounded-xl border border-gray-200 bg-white shadow-2xs hover:border-purple-300 transition gap-3"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
+            <FileText className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p
+              className="text-xs font-semibold text-gray-800 truncate"
+              title={fileName}
+            >
+              {fileName}
+            </p>
+            {fileSize && (
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {formatFileSize(fileSize)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {fileUrl ? (
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={fileName}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold text-secondary hover:bg-purple-50 transition shadow-2xs shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>{t("common.open", { defaultValue: "Open" })}</span>
+          </a>
+        ) : (
+          <span className="text-xs text-gray-400 italic">No link</span>
+        )}
+      </div>
+    );
+  };
+
+  const renderIntakeValue = (value: any, field?: any) => {
+    const isFileType =
+      field?.type === "file" ||
+      (typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value) &&
+        (value.url || value.uri || value.name)) ||
+      (Array.isArray(value) &&
+        value.length > 0 &&
+        typeof value[0] === "object" &&
+        value[0] !== null &&
+        (value[0].url || value[0].uri || value[0].name));
+
+    if (isFileType) {
+      const filesArray = Array.isArray(value) ? value : [value];
+      return (
+        <div className="space-y-2 mt-1 w-full">
+          {filesArray.map((fileItem, idx) => renderFileItem(fileItem, idx))}
+        </div>
+      );
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0)
+        return <span className="text-gray-400 italic text-xs">None</span>;
+      return (
+        <div className="flex flex-wrap gap-1.5 mt-1">
+          {value.map((opt, i) => (
+            <span
+              key={i}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-secondary border border-purple-200/60"
+            >
+              {String(opt)}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === "boolean") {
+      return value ? (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CheckCircle className="h-3.5 w-3.5" />
+          {t("common.yes", { defaultValue: "Yes" })}
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+          <XCircle className="h-3.5 w-3.5" />
+          {t("common.no", { defaultValue: "No" })}
+        </span>
+      );
+    }
+
+    if (
+      typeof value === "string" &&
+      (value.startsWith("http://") || value.startsWith("https://"))
+    ) {
+      return (
+        <a
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-secondary hover:underline break-all"
+        >
+          <span>{value}</span>
+          <ExternalLink className="h-3 w-3 shrink-0" />
+        </a>
+      );
+    }
+
+    if (typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      return (
+        <a
+          href={`mailto:${value}`}
+          className="text-xs font-semibold text-secondary hover:underline"
+        >
+          {value}
+        </a>
+      );
+    }
+
+    return (
+      <span className="font-medium text-gray-800 text-sm whitespace-pre-wrap break-words">
+        {String(value ?? "—")}
+      </span>
+    );
+  };
+
   const isAtHome = initialBooking.location_type === "customer_location";
 
   const addressText = isAtHome
@@ -1279,24 +1556,75 @@ export function ServiceBookingManageModal({
               </motion.div>
             )}
 
-            {/* Intake */}
-            {Object.keys(intakeData).length > 0 && (
+            {/* Intake Responses */}
+            {groupedIntakeResponses.length > 0 && (
               <Card title={t("sections.intakeResponses")} icon={FileText}>
-                <div className="divide-y divide-gray-100">
-                  {Object.entries(intakeData).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex justify-between py-2 text-sm gap-4"
-                    >
-                      <span className="text-gray-500 capitalize">
-                        {key.replace(/_/g, " ")}
-                      </span>
+                <div className="space-y-4">
+                  {groupedIntakeResponses.map((group) => {
+                    const isDefault = !group.title;
+                    return (
+                      <div
+                        key={group.key}
+                        className={
+                          !isDefault
+                            ? "rounded-2xl border border-purple-100 bg-purple-50/20 p-4 space-y-3"
+                            : "space-y-3"
+                        }
+                      >
+                        {!isDefault && (
+                          <div className="flex items-center gap-2 pb-2 border-b border-purple-100">
+                            <Layers className="h-4 w-4 text-secondary" />
+                            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                              {group.title}
+                            </h4>
+                            {group.title_am && (
+                              <span className="text-xs text-gray-500 font-medium">
+                                ({group.title_am})
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                      <span className="font-medium text-gray-800 text-right break-words">
-                        {String(value)}
-                      </span>
-                    </div>
-                  ))}
+                        <div className="divide-y divide-gray-100">
+                          {group.items.map(({ key, value, field }) => {
+                            const label = field?.label || key.replace(/_/g, " ");
+                            const labelAm = field?.label_am;
+                            const isComplex =
+                              field?.type === "file" ||
+                              Array.isArray(value) ||
+                              (typeof value === "object" && value !== null) ||
+                              (typeof value === "string" && value.length > 40);
+
+                            return (
+                              <div
+                                key={key}
+                                className={`py-2.5 text-sm ${
+                                  isComplex
+                                    ? "flex flex-col gap-1.5"
+                                    : "flex justify-between items-center gap-4"
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-medium text-gray-600 capitalize">
+                                    {label}
+                                  </span>
+                                  {labelAm && (
+                                    <span className="text-[11px] text-gray-400">
+                                      ({labelAm})
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className={isComplex ? "w-full" : "text-right"}>
+                                  {renderIntakeValue(value, field)}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}

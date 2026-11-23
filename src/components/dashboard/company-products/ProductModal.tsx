@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -247,6 +247,7 @@ export function ProductModal({
     reset,
     setValue,
     watch,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -271,7 +272,20 @@ export function ProductModal({
   const isPriceOnRequest = watch("is_price_on_request");
   const isMadeToOrder = watch("is_made_to_order");
 
+  const initializedTargetRef = useRef<number | "new" | null>(null);
+
   useEffect(() => {
+    if (!isOpen) {
+      initializedTargetRef.current = null;
+      return;
+    }
+
+    const currentTarget = editingProduct ? editingProduct.id : "new";
+    if (initializedTargetRef.current === currentTarget) {
+      return;
+    }
+    initializedTargetRef.current = currentTarget;
+
     if (editingProduct) {
       let initialMeals: string[] = [];
       const rawMeals =
@@ -308,7 +322,7 @@ export function ProductModal({
         description: editingProduct.description || "",
         description_am: editingProduct.description_am || "",
         currency: editingProduct.currency || "ETB",
-        price: editingProduct.price ?? 0,
+        price: editingProduct.price ?? null,
         stock: editingProduct.stock,
         unit: editingProduct.unit,
         meal_periods: initialMeals,
@@ -336,7 +350,7 @@ export function ProductModal({
           description: "",
           description_am: "",
           currency: "ETB",
-          price: 0,
+          price: null,
           stock: 0,
           unit: "pcs",
           meal_periods: [],
@@ -499,10 +513,7 @@ export function ProductModal({
         is_made_to_order: Boolean(data.is_made_to_order),
         lead_time_days: data.lead_time_days || 0,
         stock: data.is_made_to_order ? 0 : (data.stock ?? 0),
-        price:
-          data.is_price_on_request && (!data.price || data.price <= 0)
-            ? null
-            : data.price,
+        price: Boolean(data.is_price_on_request) ? null : data.price,
       };
 
       if (savedProductId && !editingProduct) {
@@ -769,7 +780,7 @@ export function ProductModal({
                         <span className="text-red-500">*</span>
                       ) : (
                         <span className="text-xs text-amber-600 font-normal ml-1">
-                          (Optional for PoR)
+                          (Disabled for PoR)
                         </span>
                       )}
                     </label>
@@ -782,7 +793,7 @@ export function ProductModal({
                           ? "border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                       } transition-all outline-none ${
-                        isPricingDisabled
+                        isPricingDisabled || isPriceOnRequest
                           ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                           : ""
                       }`}
@@ -791,7 +802,7 @@ export function ProductModal({
                           ? "Custom quoted per request"
                           : t("productModal.fields.pricePlaceholder")
                       }
-                      disabled={isSubmitting || isPricingDisabled}
+                      disabled={isSubmitting || isPricingDisabled || isPriceOnRequest}
                     />
                     {errors.price && (
                       <p className="text-red-500 text-sm mt-1">
@@ -845,6 +856,13 @@ export function ProductModal({
                       type="checkbox"
                       {...register("is_price_on_request")}
                       disabled={isSubmitting || isPricingDisabled}
+                      onChange={(e) => {
+                        setValue("is_price_on_request", e.target.checked);
+                        if (e.target.checked) {
+                          setValue("price", null);
+                          clearErrors("price");
+                        }
+                      }}
                       className="mt-0.5 h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary/20"
                     />
                     <label htmlFor="por-checkbox" className="text-xs sm:text-sm cursor-pointer select-none">
