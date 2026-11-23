@@ -858,7 +858,7 @@ export default function CompanyUsers() {
                     })
                   : undefined
               }
-              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 active:scale-[0.98] ${
+              className={`inline-flex h-8 md:h-11 w-full items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 active:scale-[0.98] ${
                 isLimitReached
                   ? "cursor-not-allowed opacity-50 hover:bg-secondary"
                   : ""
@@ -882,7 +882,7 @@ export default function CompanyUsers() {
                     })
                   : undefined
               }
-              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-secondary/20 bg-white px-4 text-sm font-semibold text-secondary shadow-sm transition hover:bg-secondary/[0.04] active:scale-[0.98] ${
+              className={`inline-flex h-8 md:h-11  w-full items-center justify-center gap-2 rounded-xl border border-secondary/20 bg-white px-4 text-sm font-semibold text-secondary shadow-sm transition hover:bg-secondary/[0.04] active:scale-[0.98] ${
                 isLimitReached
                   ? "cursor-not-allowed opacity-50 hover:bg-white"
                   : ""

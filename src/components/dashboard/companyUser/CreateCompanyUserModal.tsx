@@ -44,6 +44,7 @@ interface CreateCompanyUserModalProps {
     vehicle_type?: VehicleType;
   }) => void;
   serverErrors?: Record<string, string | string[]>;
+   hideRoleSelector?: boolean;
 }
 
 type FormErrors = {
@@ -63,6 +64,7 @@ export function CreateCompanyUserModal({
   loading,
   onSubmit,
   serverErrors,
+    hideRoleSelector = false,
 }: CreateCompanyUserModalProps) {
   const { t } = useTranslation("companyUsers");
 
@@ -273,16 +275,16 @@ export function CreateCompanyUserModal({
       >
         <div className="sticky top-0 z-30 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-start justify-between bg-gradient-to-r from-secondary/5 to-indigo-50 backdrop-blur-sm bg-opacity-95">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-secondary">
-              {formData.role === "staff"
-                ? t("createModal.createDispatcherTitle")
-                : t("createModal.createUserTitle")}
-            </h2>
-            <p className="text-xs sm:text-sm text-secondary/60 mt-1">
-              {formData.role === "staff"
-                ? t("createModal.createDispatcherSubtitle")
-                : t("createModal.createUserSubtitle")}
-            </p>
+          <h2 className="text-xl sm:text-2xl font-bold text-secondary">
+  {!hideRoleSelector && formData.role === "staff"
+    ? t("createModal.createDispatcherTitle")
+    : t("createModal.createUserTitle")}
+</h2>
+<p className="text-xs sm:text-sm text-secondary/60 mt-1">
+  {!hideRoleSelector && formData.role === "staff"
+    ? t("createModal.createDispatcherSubtitle")
+    : t("createModal.createUserSubtitle")}
+</p>
           </div>
           <button
             onClick={onClose}
@@ -437,27 +439,30 @@ export function CreateCompanyUserModal({
               )}
             </div>
 
-            <div>
-              <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
-                {t("createModal.roleLabel")}
-              </label>
-              <div className="relative">
-                <CustomSelect
-                  value={formData.role}
-                  onChange={(value) => handleChange("role", value)}
-                  options={[
-                    { label: t("roles.admin"), value: "admin", icon: <Shield className="h-4 w-4 text-secondary" /> },
-                    { label: t("roles.staff"), value: "staff", icon: <Users className="h-4 w-4 text-secondary" /> },
-                    { label: t("roles.viewer"), value: "viewer", icon: <Eye className="h-4 w-4 text-secondary" /> },
-                    { label: t("roles.delivery"), value: "delivery", icon: <Truck className="h-4 w-4 text-secondary" /> },
-                  ]}
-                  placeholder={t("createModal.rolePlaceholder")}
-                  className="w-full"
-                />
-              </div>
-            </div>
+          {!hideRoleSelector && (
+  <div>
+    <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
+      {t("createModal.roleLabel")}
+    </label>
+    <div className="relative">
+      <CustomSelect
+        value={formData.role}
+        onChange={(value) => handleChange("role", value)}
+        options={[
+          { label: t("roles.admin"), value: "admin", icon: <Shield className="h-4 w-4 text-secondary" /> },
+          { label: t("roles.staff"), value: "staff", icon: <Users className="h-4 w-4 text-secondary" /> },
+          { label: t("roles.viewer"), value: "viewer", icon: <Eye className="h-4 w-4 text-secondary" /> },
+          { label: t("roles.delivery"), value: "delivery", icon: <Truck className="h-4 w-4 text-secondary" /> },
+        ]}
+        placeholder={t("createModal.rolePlaceholder")}
+        className="w-full"
+      />
+    </div>
+  </div>
+)}
 
-            {formData.role === "delivery" && (
+          {!hideRoleSelector && formData.role === "delivery" && (
+
               <div className="sm:col-span-2">
                 <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1.5 block">
                   <span className="inline-flex items-center gap-1.5">
@@ -619,19 +624,19 @@ export function CreateCompanyUserModal({
             disabled={loading}
             className="flex-1 px-4 sm:px-5 py-2 sm:py-3 rounded-xl bg-secondary hover:bg-secondary/80 text-white transition shadow-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
-            {loading ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />{" "}
-                {t("actions.creating")}
-              </>
-            ) : (
-              <>
-                <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                {formData.role === "staff"
-                  ? t("createModal.submitCreateDispatcher")
-                  : t("createModal.submitCreateUser")}
-              </>
-            )}
+     {loading ? (
+  <>
+    <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+    {t("actions.creating")}
+  </>
+) : (
+  <>
+    <UserPlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+    {!hideRoleSelector && formData.role === "staff"
+      ? t("createModal.submitCreateDispatcher")
+      : t("createModal.submitCreateUser")}
+  </>
+)}
           </button>
         </div>
       </div>

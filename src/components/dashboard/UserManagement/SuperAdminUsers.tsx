@@ -1410,6 +1410,7 @@ const SuperAdminUsers: React.FC = () => {
         loading={creatingUser}
         onSubmit={handleCreateUser}
         serverErrors={createUserServerErrors}
+         hideRoleSelector
       />
 
       <ManageMembershipsModal

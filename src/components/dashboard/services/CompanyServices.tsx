@@ -19,6 +19,7 @@ import {
   Eye,
   Sparkles,
   X,
+  Settings,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/authContext";
@@ -1292,7 +1293,7 @@ export default function CompanyServices() {
                             aria-label={t("actions.manageAddonsAria", { title: o.title })}
                             type="button"
                           >
-                            <Sparkles className="h-4 w-4" />
+                            <Settings  className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDuplicate(o)}

@@ -32,7 +32,6 @@ import {
   Building2,
   Check,
   Zap,
-  // Sparkles,
 } from "lucide-react";
 import { useReadOnly } from "./AdminDashboard";
 import { useAuth } from "../../context/authContext";
@@ -48,7 +47,6 @@ import {
   getAdminAdPageSettings,
   getAdPricing,
   updateAdminAdPageSetting,
-  // updateAdminPlacementSchedule,
   initializeAdPayment,
   verifyAdPayment,
 } from "../../services/api";
@@ -63,10 +61,8 @@ const MEDIA_BASE = "https://backend.elilitapp.com";
 
 function resolveAdImageUrl(path?: string | null): string {
   if (!path) return "";
-
   const trimmed = String(path).trim();
   if (!trimmed) return "";
-
   if (
     trimmed.startsWith("http://") ||
     trimmed.startsWith("https://") ||
@@ -75,18 +71,31 @@ function resolveAdImageUrl(path?: string | null): string {
   ) {
     return trimmed;
   }
-
   const cleaned = trimmed.replace(/^\/+/, "");
-
-  if (cleaned.startsWith("media/")) {
-    return `${MEDIA_BASE}/${cleaned}`;
-  }
-
+  if (cleaned.startsWith("media/")) return `${MEDIA_BASE}/${cleaned}`;
   return `${MEDIA_BASE}/media/${cleaned}`;
 }
 
 // ----------------------------------------------------------------------
-// Recommended ad image spec — now REQUIRED
+// Language-aware currency formatter
+//   en → "ETB 1,220.00"
+//   am → "1,220.00 ብር"
+// ----------------------------------------------------------------------
+function formatCurrency(
+  amount: number | string,
+  options: { decimals?: number } = {},
+): string {
+  const decimals = options.decimals ?? 2;
+  const num = Number(amount || 0);
+  const formatted = num.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+  return i18n.language === "am" ? `${formatted} ብር` : `ETB ${formatted}`;
+}
+
+// ----------------------------------------------------------------------
+// Recommended ad image spec — REQUIRED
 // ----------------------------------------------------------------------
 const AD_IMAGE_SPEC = {
   width: 1200,
@@ -97,11 +106,8 @@ const AD_IMAGE_SPEC = {
   formatLabel: "JPG, PNG, or WebP",
 } as const;
 
-// ----------------------------------------------------------------------
-// Image dimension checker — now strict
-// ----------------------------------------------------------------------
-const TARGET_ASPECT = AD_IMAGE_SPEC.width / AD_IMAGE_SPEC.height; // 3.0
-const ASPECT_TOLERANCE = 0.05; // ±5% → 2.85 : 3.15 — strict requirement
+const TARGET_ASPECT = AD_IMAGE_SPEC.width / AD_IMAGE_SPEC.height;
+const ASPECT_TOLERANCE = 0.05;
 
 interface ImageDimensionCheck {
   ok: boolean;
@@ -112,29 +118,22 @@ interface ImageDimensionCheck {
   severity: "error" | "warning" | "ok";
 }
 
-async function checkImageDimensions(
-  file: File,
-): Promise<ImageDimensionCheck> {
+async function checkImageDimensions(file: File): Promise<ImageDimensionCheck> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-
     img.onload = () => {
       URL.revokeObjectURL(url);
       const w = img.naturalWidth || img.width;
       const h = img.naturalHeight || img.height;
       const aspect = w / h;
       const diff = Math.abs(aspect - TARGET_ASPECT) / TARGET_ASPECT;
-
       if (diff <= ASPECT_TOLERANCE) {
         resolve({ ok: true, width: w, height: h, aspect, severity: "ok" });
         return;
       }
-
       const direction =
-        aspect > TARGET_ASPECT
-          ? i18n.t("ads:wider")
-          : i18n.t("ads:taller");
+        aspect > TARGET_ASPECT ? i18n.t("ads:wider") : i18n.t("ads:taller");
       resolve({
         ok: false,
         width: w,
@@ -151,7 +150,6 @@ async function checkImageDimensions(
         }),
       });
     };
-
     img.onerror = () => {
       URL.revokeObjectURL(url);
       resolve({
@@ -163,7 +161,6 @@ async function checkImageDimensions(
         reason: i18n.t("ads:imageReadError"),
       });
     };
-
     img.src = url;
   });
 }
@@ -212,7 +209,24 @@ interface ToastState {
 }
 
 // ----------------------------------------------------------------------
-// Toast System (stable callbacks)
+// Placement definitions — translated via keys
+// ----------------------------------------------------------------------
+const PLACEMENT_OPTIONS = [
+  { id: "home", labelKey: "placementHomeLabel", descKey: "placementHomeDesc" },
+  {
+    id: "companies_list",
+    labelKey: "placementCompaniesListLabel",
+    descKey: "placementCompaniesListDesc",
+  },
+  {
+    id: "company_detail",
+    labelKey: "placementCompanyDetailLabel",
+    descKey: "placementCompanyDetailDesc",
+  },
+] as const;
+
+// ----------------------------------------------------------------------
+// Toast System
 // ----------------------------------------------------------------------
 const useToast = () => {
   const [toast, setToast] = useState<ToastState>({
@@ -268,7 +282,6 @@ const Toast = ({
     error: <CircleAlert className="w-5 h-5 text-red-500" />,
     info: <Info className="w-5 h-5 text-blue-500" />,
   };
-
   const bgColors = {
     success: "bg-white border-emerald-200",
     error: "bg-white border-red-200",
@@ -300,7 +313,7 @@ const Toast = ({
 const ITEMS_PER_PAGE = 6;
 
 // ----------------------------------------------------------------------
-// Reusable UI Components
+// Reusable UI
 // ----------------------------------------------------------------------
 const Button: React.FC<{
   children: React.ReactNode;
@@ -406,9 +419,6 @@ const Badge: React.FC<{
   );
 };
 
-// ----------------------------------------------------------------------
-// Stat Card
-// ----------------------------------------------------------------------
 const StatCard: React.FC<{
   title: string;
   value: number;
@@ -433,9 +443,6 @@ const StatCard: React.FC<{
   </motion.div>
 );
 
-// ----------------------------------------------------------------------
-// Image Spec Info Panel
-// ----------------------------------------------------------------------
 const ImageSpecInfo: React.FC = () => {
   const { t } = useTranslation("ads");
   return (
@@ -453,7 +460,6 @@ const ImageSpecInfo: React.FC = () => {
           </p>
         </div>
       </div>
-
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
         <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
@@ -468,7 +474,6 @@ const ImageSpecInfo: React.FC = () => {
             </p>
           </div>
         </div>
-
         <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
             <FileImage className="h-4 w-4" />
@@ -482,7 +487,6 @@ const ImageSpecInfo: React.FC = () => {
             </p>
           </div>
         </div>
-
         <div className="group flex items-center gap-3 rounded-xl border border-gray-100 bg-white p-3 transition-all duration-200 hover:border-secondary/30 hover:shadow-sm">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary group-hover:text-white">
             <HardDrive className="h-4 w-4" />
@@ -501,9 +505,6 @@ const ImageSpecInfo: React.FC = () => {
   );
 };
 
-// ----------------------------------------------------------------------
-// Image Uploader — with strict dimension validation
-// ----------------------------------------------------------------------
 const ImageUploader: React.FC<{
   onFileChange: (file: File | null) => void;
   previewUrl?: string | null;
@@ -555,10 +556,8 @@ const ImageUploader: React.FC<{
       onFileChange(null);
       return;
     }
-
     const check = await checkImageDimensions(file);
     setDimCheck(check);
-
     if (check.severity === "error" || !check.ok) {
       setFileError(check.reason || t("invalidDimensions"));
       setPendingFile(null);
@@ -566,14 +565,11 @@ const ImageUploader: React.FC<{
       onFileChange(null);
       return;
     }
-
     setFileError(null);
     setImageFailed(false);
-
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result as string);
     reader.readAsDataURL(file);
-
     setPendingFile(file);
     onFileChange(file);
   };
@@ -584,14 +580,11 @@ const ImageUploader: React.FC<{
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
   };
-
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
   const onDragLeave = () => setIsDragging(false);
-
   const clearImage = () => {
     onFileChange(null);
     setPreview(null);
@@ -618,9 +611,7 @@ const ImageUploader: React.FC<{
           })}
         </p>
       </div>
-
       <ImageSpecInfo />
-
       <div
         onDrop={onDrop}
         onDragOver={onDragOver}
@@ -643,9 +634,7 @@ const ImageUploader: React.FC<{
         {!preview ? (
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-gray-50 ${
-              isDragging
-                ? "border-secondary bg-[#674FA3]/5"
-                : "border-gray-200"
+              isDragging ? "border-secondary bg-[#674FA3]/5" : "border-gray-200"
             }`}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -659,7 +648,6 @@ const ImageUploader: React.FC<{
                 size: AD_IMAGE_SPEC.maxSizeMB,
               })}
             </p>
-
             <div className="mx-auto mt-4 flex max-w-xs items-center justify-center">
               <div
                 className="w-full rounded-lg border border-dashed border-secondary/30 bg-secondary/[0.03]"
@@ -695,7 +683,6 @@ const ImageUploader: React.FC<{
                 />
               )}
             </div>
-
             <div className="absolute inset-x-0 bottom-0 rounded-b-xl bg-black/55 p-3 flex items-center justify-center gap-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <button
                 type="button"
@@ -775,7 +762,7 @@ const ImageUploader: React.FC<{
 };
 
 // ----------------------------------------------------------------------
-// Ad Card Component
+// Ad Card — currency + status pills localized
 // ----------------------------------------------------------------------
 const AdCard: React.FC<{
   ad: Ad;
@@ -798,15 +785,14 @@ const AdCard: React.FC<{
     ad.payment_status === "paid"
       ? "active"
       : ad.payment_status === "pending"
-      ? "pending"
-      : "info";
-
+        ? "pending"
+        : "info";
   const paymentLabel =
     ad.payment_status === "paid"
       ? t("paymentPaid")
       : ad.payment_status === "pending"
-      ? t("paymentUnpaid")
-      : t("paymentExempt");
+        ? t("paymentUnpaid")
+        : t("paymentExempt");
 
   return (
     <motion.div
@@ -839,11 +825,11 @@ const AdCard: React.FC<{
           {ad.payment_status && (
             <Badge variant={paymentVariant}>{paymentLabel}</Badge>
           )}
-
-          {ad.payment_status==="paid" &&<Badge variant={ad.is_active ?  "active" : "inactive"}>
-           {ad.is_active ? t("statusLive") : t("statusInactive")}
-          </Badge>}
-
+          {ad.payment_status === "paid" && (
+            <Badge variant={ad.is_active ? "active" : "inactive"}>
+              {ad.is_active ? t("statusLive") : t("statusInactive")}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -858,38 +844,53 @@ const AdCard: React.FC<{
             </p>
           )}
 
-          {/* Placements Status Pills */}
-          {ad.placements && ad.placements.filter((p) => p.is_active).length > 0 ? (
+          {/* Placements Status Pills — all text now translated */}
+          {ad.placements &&
+          ad.placements.filter((p) => p.is_active).length > 0 ? (
             <div className="flex flex-wrap gap-1.5 mb-2.5">
-              {ad.placements.filter((p) => p.is_active).map((p) => {
-                const remainingDays = p.end_date
-                  ? Math.max(0, Math.ceil((new Date(p.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                  : 0;
-                const isExpired = remainingDays === 0;
+              {ad.placements
+                .filter((p) => p.is_active)
+                .map((p) => {
+                  const remainingDays = p.end_date
+                    ? Math.max(
+                        0,
+                        Math.ceil(
+                          (new Date(p.end_date).getTime() - Date.now()) /
+                            (1000 * 60 * 60 * 24),
+                        ),
+                      )
+                    : 0;
+                  const isExpired = remainingDays === 0;
 
-                let badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                let statusLabel = `Live (${remainingDays}d)`;
+                  let badgeClass =
+                    "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  let statusLabel = t("liveWithDays", { days: remainingDays });
 
-                if (p.payment_status === "pending") {
-                  badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
-                  statusLabel = `Unpaid (ETB ${Number(p.price).toFixed(0)})`;
-                } else if (p.payment_status === "exempt") {
-                  badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
-                  statusLabel = "Exempt";
-                } else if (isExpired) {
-                  badgeClass = "bg-gray-100 text-gray-500 border-gray-200";
-                  statusLabel = "Expired";
-                }
+                  if (p.payment_status === "pending") {
+                    badgeClass = "bg-amber-50 text-amber-800 border-amber-200";
+                    statusLabel = t("unpaidWithPrice", {
+                      price: formatCurrency(p.price, { decimals: 0 }),
+                    });
+                  } else if (p.payment_status === "exempt") {
+                    badgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                    statusLabel = t("exemptLabel");
+                  } else if (isExpired) {
+                    badgeClass = "bg-gray-100 text-gray-500 border-gray-200";
+                    statusLabel = t("expiredLabel");
+                  }
 
-                return (
-                  <span
-                    key={p.id}
-                    className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}`}
-                  >
-                    <span className="capitalize">{p.page_name_display || p.page_name.replace("_", " ")}</span>: {statusLabel}
-                  </span>
-                );
-              })}
+                  return (
+                    <span
+                      key={p.id}
+                      className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}`}
+                    >
+                      <span className="capitalize">
+                        {p.page_name_display || p.page_name.replace("_", " ")}
+                      </span>
+                      : {statusLabel}
+                    </span>
+                  );
+                })}
             </div>
           ) : ad.target_pages && ad.target_pages.length > 0 ? (
             <div className="flex flex-wrap gap-1 mb-2">
@@ -917,25 +918,27 @@ const AdCard: React.FC<{
           )}
         </div>
 
-        {/* Bottom Section: Unpaid Banner (if any) + Action Buttons pinned to bottom */}
         <div className="mt-auto pt-2">
-          {/* Unpaid / Pending Top-up Banner with Pay Now Button */}
           {(() => {
             const unpaidFee = Number(
               ad.unpaid_placement_cost !== undefined
                 ? ad.unpaid_placement_cost
                 : ad.payment_status === "pending"
-                ? ad.total_cost || 0
-                : 0
+                  ? ad.total_cost || 0
+                  : 0,
             );
             if (unpaidFee <= 0) return null;
             return (
               <div className="mb-3 p-3 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-bold text-amber-950">
-                    {t("fee", { amount: Number(ad.total_cost || 0).toFixed(2) })}
+                    {t("fee", {
+                      amount: formatCurrency(ad.total_cost || 0),
+                    })}
                   </p>
-                  <p className="text-[10px] text-amber-700">{t("paymentRequired")}</p>
+                  <p className="text-[10px] text-amber-700">
+                    {t("paymentRequired")}
+                  </p>
                 </div>
                 {!isReadOnly && onPay && (
                   <Button
@@ -977,7 +980,7 @@ const AdCard: React.FC<{
 };
 
 // ----------------------------------------------------------------------
-// Delete Confirmation Modal
+// Delete Modal
 // ----------------------------------------------------------------------
 const DeleteModal: React.FC<{
   isOpen: boolean;
@@ -1034,7 +1037,7 @@ const DeleteModal: React.FC<{
 };
 
 // ----------------------------------------------------------------------
-// Create/Edit Modal
+// Form Modal
 // ----------------------------------------------------------------------
 const FormModal: React.FC<{
   isOpen: boolean;
@@ -1114,7 +1117,6 @@ const SearchFilterBar: React.FC<{
               className="h-10 w-full rounded-xl border border-secondary/15 bg-white pl-10 pr-4 text-sm text-secondary outline-none placeholder:text-secondary/35 focus:border-secondary/35 focus:ring-2 focus:ring-secondary/10"
             />
           </div>
-
           <div className="flex shrink-0 gap-2">
             {(["all", "active", "inactive"] as const).map((status) => (
               <motion.button
@@ -1142,9 +1144,6 @@ const SearchFilterBar: React.FC<{
   );
 };
 
-// ----------------------------------------------------------------------
-// Pagination
-// ----------------------------------------------------------------------
 const Pagination: React.FC<{
   currentPage: number;
   totalPages: number;
@@ -1177,9 +1176,6 @@ const Pagination: React.FC<{
   );
 };
 
-// ----------------------------------------------------------------------
-// Empty State
-// ----------------------------------------------------------------------
 const EmptyState: React.FC<{
   onCreateNew: () => void;
   isReadOnly: boolean;
@@ -1207,9 +1203,6 @@ const EmptyState: React.FC<{
   );
 };
 
-// ----------------------------------------------------------------------
-// Loading Skeleton
-// ----------------------------------------------------------------------
 const LoadingSkeleton: React.FC = () => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {[...Array(6)].map((_, i) => (
@@ -1269,15 +1262,13 @@ export default function AdManagement() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
 
-  // Ad Slot Limits state (SuperAdmin)
+  // Ad Slot Limits state
   const [slotsModalOpen, setSlotsModalOpen] = useState(false);
   const [pageSettings, setPageSettings] = useState<any[]>([]);
   const [savingSlotId, setSavingSlotId] = useState<number | null>(null);
   const [isPayingAdId, setIsPayingAdId] = useState<number | null>(null);
 
-  // ------------------------------------------------------------
-  // Role / permission determination
-  // ------------------------------------------------------------
+  // Role determination
   const isSuperAdmin = !user?.memberships?.length;
   const companySlug = company?.slug ?? null;
   const companyRole = (() => {
@@ -1302,11 +1293,12 @@ export default function AdManagement() {
       if (isSuperAdmin) {
         res = await getAdminAdPageSettings();
       } else {
-        res = await getAdPricing(companySlug ? { company_slug: companySlug } : undefined);
+        res = await getAdPricing(
+          companySlug ? { company_slug: companySlug } : undefined,
+        );
       }
       const settingsList = res.data?.results || res.data || [];
       setPageSettings(settingsList);
-
       const drafts: Record<number, { slots: number; price: number }> = {};
       settingsList.forEach((s: any) => {
         drafts[s.id] = { slots: s.max_slots, price: Number(s.price || 0) };
@@ -1383,7 +1375,6 @@ export default function AdManagement() {
 
   const saveSettingRow = async (setting: any) => {
     if (!isRowModified(setting)) return;
-
     const draft = slotDrafts[setting.id] || {
       slots: setting.max_slots,
       price: Number(setting.price || 0),
@@ -1399,9 +1390,6 @@ export default function AdManagement() {
     await handleUpdateSlotSetting(setting.id, draft.slots, draft.price);
   };
 
-  // ------------------------------------------------------------
-  // Data fetching
-  // ------------------------------------------------------------
   const fetchAds = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -1414,18 +1402,6 @@ export default function AdManagement() {
       const adsList = Array.isArray(response.data)
         ? response.data
         : response.data?.results || [];
-
-      if (import.meta.env.DEV) {
-        adsList.forEach((ad: Ad) => {
-          console.log(
-            `[AdManagement] ad #${ad.id} "${ad.title}" raw:`,
-            ad.image,
-            "→ resolved:",
-            resolveAdImageUrl(ad.image),
-          );
-        });
-      }
-
       setAds(adsList);
     } catch (error) {
       showToast("error", t("loadFailed"));
@@ -1434,9 +1410,6 @@ export default function AdManagement() {
     }
   }, [isCompanyAdmin, companySlug, showToast, t]);
 
-  // ------------------------------------------------------------
-  // Effects
-  // ------------------------------------------------------------
   useEffect(() => {
     fetchAds();
   }, [fetchAds]);
@@ -1453,26 +1426,19 @@ export default function AdManagement() {
         await fetchAds();
       }
     } catch (err: any) {
-      showToast(
-        "error",
-        err.response?.data?.error || t("paymentInitFailed"),
-      );
+      showToast("error", err.response?.data?.error || t("paymentInitFailed"));
     } finally {
       setIsPayingAdId(null);
     }
   };
 
-  // Check for returning payment from Chapa (ad_tx_ref in query params)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const adTxRef = params.get("ad_tx_ref");
     if (adTxRef) {
       verifyAdPayment(adTxRef)
         .then((res) => {
-          showToast(
-            "success",
-            res.data?.message || t("paymentVerified"),
-          );
+          showToast("success", res.data?.message || t("paymentVerified"));
           params.delete("ad_tx_ref");
           const newUrl =
             window.location.pathname +
@@ -1489,9 +1455,6 @@ export default function AdManagement() {
     }
   }, [fetchAds, showToast, t]);
 
-  // ------------------------------------------------------------
-  // Handlers
-  // ------------------------------------------------------------
   const handleDeleteClick = useCallback(
     (ad: Ad) => {
       if (isReadOnly) return;
@@ -1589,7 +1552,6 @@ export default function AdManagement() {
         formData.append("start_date", startDate);
         if (endDate) formData.append("end_date", endDate);
       }
-
       try {
         if (editingId) {
           if (isCompanyAdmin && companySlug) {
@@ -1612,10 +1574,7 @@ export default function AdManagement() {
         const isTimeout =
           error?.code === "ECONNABORTED" ||
           /timeout/i.test(error?.message || "");
-        showToast(
-          "error",
-          isTimeout ? t("uploadTimeout") : t("saveFailed"),
-        );
+        showToast("error", isTimeout ? t("uploadTimeout") : t("saveFailed"));
       } finally {
         setIsSubmitting(false);
       }
@@ -1648,9 +1607,6 @@ export default function AdManagement() {
     }
   }, []);
 
-  // ------------------------------------------------------------
-  // Filtering & Pagination
-  // ------------------------------------------------------------
   const filteredAds = ads.filter((ad) => {
     const matchesSearch = ad.title
       .toLowerCase()
@@ -1668,13 +1624,9 @@ export default function AdManagement() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
-
   const totalCount = ads.length;
   const activeCount = ads.filter((ad) => ad.is_active).length;
 
-  // ------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-4 sm:p-6 lg:p-8">
       <div className="w-full">
@@ -1720,25 +1672,26 @@ export default function AdManagement() {
             </div>
           }
           actionMobile={
-            <div className="flex items-center gap-1">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               {isSuperAdmin && (
                 <Button
                   onClick={() => setSlotsModalOpen(true)}
                   size="md"
                   variant="outline"
-                  className="w-full shadow-sm sm:w-auto"
+                  className="w-full justify-center gap-2 shadow-sm sm:w-auto"
                 >
-                  <Sliders className="h-3 w-3 shrink-0" />
+                  <Sliders className="h-4 w-4 shrink-0" />
                   <span>{t("pricingSlots")}</span>
                 </Button>
               )}
+
               {!isReadOnly && (
                 <Button
                   onClick={openCreateModal}
                   size="md"
-                  className="w-full shadow-sm sm:w-auto"
+                  className="w-full justify-center gap-2 shadow-sm sm:w-auto"
                 >
-                  <Plus className="h-3 w-3 shrink-0" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span>{t("new")}</span>
                 </Button>
               )}
@@ -1746,7 +1699,6 @@ export default function AdManagement() {
           }
         />
 
-        {/* Stats Grid */}
         <div className="mb-6 hidden xs:grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title={t("totalAds")}
@@ -1768,7 +1720,6 @@ export default function AdManagement() {
           />
         </div>
 
-        {/* Search & Filter */}
         <SearchFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -1776,7 +1727,6 @@ export default function AdManagement() {
           onFilterChange={setFilterStatus}
         />
 
-        {/* Content Area */}
         {isLoading ? (
           <LoadingSkeleton />
         ) : paginatedAds.length === 0 ? (
@@ -1805,7 +1755,6 @@ export default function AdManagement() {
           </>
         )}
 
-        {/* Modals */}
         <DeleteModal
           isOpen={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
@@ -1817,7 +1766,9 @@ export default function AdManagement() {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSubmit={handleSubmit}
-          title={editingId ? t("editAdvertisement") : t("createNewAdvertisement")}
+          title={
+            editingId ? t("editAdvertisement") : t("createNewAdvertisement")
+          }
           isSubmitting={isSubmitting}
         >
           <Input
@@ -1854,7 +1805,8 @@ export default function AdManagement() {
             onChange={(e) => setTargetLink(e.target.value)}
             placeholder={t("targetLinkPlaceholder")}
           />
-          {/* Schedule Section */}
+
+          {/* Schedule Section — fully localized */}
           {!editingId ? (
             <div className="rounded-2xl border border-secondary/20 bg-secondary/[0.04] p-4 flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary/10 text-secondary border border-secondary/20">
@@ -1862,28 +1814,32 @@ export default function AdManagement() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-gray-900 tracking-tight">Instant 7-Day Campaign</h4>
+                  <h4 className="text-xs font-bold text-gray-900 tracking-tight">
+                    {t("instantCampaignTitle")}
+                  </h4>
                   <span className="text-[10px] font-bold text-secondary bg-secondary/15 px-2 py-0.5 rounded-full">
-                    7 Days
+                    {t("instantCampaignBadge")}
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
-                  Placements activate immediately once payment is verified and run continuously for 7 consecutive days.
+                  {t("instantCampaignDesc")}
                 </p>
               </div>
             </div>
           ) : isSuperAdmin ? (
             <div className="rounded-2xl border border-purple-200 bg-purple-50/40 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-950">SuperAdmin Schedule Control</span>
+                <span className="text-xs font-bold text-purple-950">
+                  {t("superAdminScheduleControl")}
+                </span>
                 <span className="text-[10px] text-purple-700 font-semibold bg-purple-100/80 px-2 py-0.5 rounded-md">
-                  Auto +7 Days
+                  {t("auto7Days")}
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
-                    Start Date
+                    {t("startDate")}
                   </label>
                   <input
                     type="date"
@@ -1894,7 +1850,7 @@ export default function AdManagement() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
-                    Calculated End Date
+                    {t("calculatedEndDate")}
                   </label>
                   <input
                     type="text"
@@ -1909,96 +1865,103 @@ export default function AdManagement() {
             <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 flex items-start gap-2.5">
               <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="font-bold text-blue-950">Campaign Schedule: 7-Day Term</p>
+                <p className="font-bold text-blue-950">
+                  {t("campaignSchedule7Day")}
+                </p>
                 <p className="mt-0.5 text-[11px] text-blue-800 leading-relaxed">
-                  Campaign placements run for 7 days upon activation. Any newly added placement screen will activate for a fresh 7-day term upon payment.
+                  {t("campaignSchedule7DayDesc")}
                 </p>
               </div>
             </div>
           )}
 
-          {/* Placements Section with Upfront Checkbox Pricing */}
+          {/* Placements Section — all strings + currency localized */}
           <div className="space-y-3">
-
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <label className="block text-sm font-bold text-gray-900">
-                  Target Placements
+                  {t("targetPlacements")}
                 </label>
                 <p className="text-xs text-gray-500">
-                  Select which application screens this advertisement should appear on.
+                  {t("targetPlacementsDesc")}
                 </p>
               </div>
               {(() => {
-                const currentEditingAd = editingId ? ads.find((a) => a.id === editingId) : null;
+                const currentEditingAd = editingId
+                  ? ads.find((a) => a.id === editingId)
+                  : null;
                 const paidPages = currentEditingAd?.placements
                   ? currentEditingAd.placements
-                      .filter((p) => p.payment_status === "paid" || p.payment_status === "exempt")
+                      .filter(
+                        (p) =>
+                          p.payment_status === "paid" ||
+                          p.payment_status === "exempt",
+                      )
                       .map((p) => p.page_name)
                   : [];
-                const newlySelected = targetPages.filter((p) => !paidPages.includes(p));
-                const newlySelectedFee = newlySelected.reduce((sum, p) => sum + getEffectivePagePrice(p), 0);
-                const totalInitialFee = targetPages.reduce((sum, p) => sum + getEffectivePagePrice(p), 0);
+                const newlySelected = targetPages.filter(
+                  (p) => !paidPages.includes(p),
+                );
+                const newlySelectedFee = newlySelected.reduce(
+                  (sum, p) => sum + getEffectivePagePrice(p),
+                  0,
+                );
+                const totalInitialFee = targetPages.reduce(
+                  (sum, p) => sum + getEffectivePagePrice(p),
+                  0,
+                );
 
                 return (
                   <span className="text-xs font-bold text-secondary px-3 py-1 rounded-xl bg-secondary/10 border border-secondary/20">
                     {isSuperAdmin
-                      ? "ETB 0.00 (Admin Exempt)"
+                      ? t("adminExempt", { amount: formatCurrency(0) })
                       : editingId
-                      ? `+ETB ${newlySelectedFee.toFixed(2)} Due Now`
-                      : `ETB ${totalInitialFee.toFixed(2)} Total`}
+                        ? t("dueNow", {
+                            amount: formatCurrency(newlySelectedFee),
+                          })
+                        : t("total", {
+                            amount: formatCurrency(totalInitialFee),
+                          })}
                   </span>
                 );
               })()}
             </div>
 
             <div className="space-y-2.5">
-              {[
-                {
-                  id: "home",
-                  label: "Home Page",
-                  desc: "Main application landing carousel screen",
-                },
-                {
-                  id: "companies_list",
-                  label: "Companies / Services List",
-                  desc: "Stores & services directory banner",
-                },
-                {
-                  id: "company_detail",
-                  label: "Company Detail Page",
-                  desc: "Individual store storefront & menu banner",
-                },
-              ].map((item) => {
+              {PLACEMENT_OPTIONS.map((item) => {
                 const isChecked = targetPages.includes(item.id);
-                const setting = pageSettings.find((p) => p.page_name === item.id);
+                const setting = pageSettings.find(
+                  (p) => p.page_name === item.id,
+                );
                 const basePrice = getPagePrice(item.id);
 
-                const currentEditingAd = editingId ? ads.find((a) => a.id === editingId) : null;
+                const currentEditingAd = editingId
+                  ? ads.find((a) => a.id === editingId)
+                  : null;
                 const isAlreadyPaidOnThisAd = Boolean(
                   currentEditingAd?.placements?.some(
                     (p) =>
                       p.page_name === item.id &&
-                      (p.payment_status === "paid" || p.payment_status === "exempt") &&
-                      p.is_active
-                  )
+                      (p.payment_status === "paid" ||
+                        p.payment_status === "exempt") &&
+                      p.is_active,
+                  ),
                 );
 
-                // Home sold out check (Option A: hard cap 7 slots)
                 const isHome = item.id === "home";
                 const isHomeSoldOut =
                   isHome &&
                   !isSuperAdmin &&
                   Boolean(
                     setting?.is_sold_out ||
-                      (setting?.active_count !== undefined &&
-                        setting.active_count >= (setting.max_slots || 7))
+                    (setting?.active_count !== undefined &&
+                      setting.active_count >= (setting.max_slots || 7)),
                   );
                 const isHomeDisabled = isHomeSoldOut && !isAlreadyPaidOnThisAd;
 
-                // Company Detail 3-ad bundle check
                 const isDetail = item.id === "company_detail";
-                const hasFreeDetailSlot = isDetail && !isSuperAdmin && Boolean(setting?.has_free_slot);
+                const hasFreeDetailSlot =
+                  isDetail && !isSuperAdmin && Boolean(setting?.has_free_slot);
                 const detailUsedSlots = Number(setting?.used_slots || 0);
                 const isDetailLimitReached =
                   isDetail &&
@@ -2009,44 +1972,55 @@ export default function AdManagement() {
 
                 const isDisabled = isHomeDisabled || isDetailLimitReached;
 
-                // Price display & subtext
-                let priceLabel = `ETB ${basePrice.toFixed(2)}`;
-                let subtext = "/ 7 days";
-                let badgeNode = null;
+                let priceLabel = formatCurrency(basePrice);
+                let subtext = t("per7Days");
+                let badgeNode: React.ReactNode = null;
 
                 if (isHome) {
                   if (isHomeSoldOut) {
                     badgeNode = (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-100/90 border border-red-200 px-2 py-0.5 rounded-lg">
-                        🔴 Sold Out ({setting?.active_count || 7}/7)
+                        🔴{" "}
+                        {t("soldOutWithCount", {
+                          count: setting?.active_count || 7,
+                          max: 7,
+                        })}
                       </span>
                     );
-                    subtext = "Slots reopen as ads expire";
+                    subtext = t("slotsReopenAsExpire");
                   } else if (setting?.available_slots !== undefined) {
                     badgeNode = (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
-                        🟢 {setting.available_slots} / {setting.max_slots || 7} Slots Available
+                        🟢{" "}
+                        {t("slotsAvailable", {
+                          available: setting.available_slots,
+                          max: setting.max_slots || 7,
+                        })}
                       </span>
                     );
                   }
                 } else if (isDetail) {
                   if (hasFreeDetailSlot) {
-                    priceLabel = "ETB 0.00";
+                    priceLabel = formatCurrency(0);
                     badgeNode = (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100/90 border border-purple-200 px-2 py-0.5 rounded-lg">
-                        🎉 Free (Pass Slot {detailUsedSlots + 1} of 3)
+                        🎉{" "}
+                        {t("freePassSlot", {
+                          current: detailUsedSlots + 1,
+                          total: 3,
+                        })}
                       </span>
                     );
-                    subtext = "Included in active Storefront Pass";
+                    subtext = t("includedInStorefrontPass");
                   } else if (isDetailLimitReached) {
                     badgeNode = (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-lg">
-                        ⚠️ Limit Reached (3/3 active)
+                        ⚠️ {t("limitReachedBadge", { used: 3, max: 3 })}
                       </span>
                     );
-                    subtext = "Max 3 storefront ads reached";
+                    subtext = t("max3StorefrontAds");
                   } else {
-                    subtext = "/ 7 days · includes up to 3 ads";
+                    subtext = t("per7DaysIncludes3");
                   }
                 }
 
@@ -2057,8 +2031,8 @@ export default function AdManagement() {
                       isDisabled
                         ? "opacity-60 bg-gray-50 border-gray-200 cursor-not-allowed"
                         : isChecked
-                        ? "border-secondary/40 bg-secondary/[0.03] shadow-xs cursor-pointer"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50 cursor-pointer"
+                          ? "border-secondary/40 bg-secondary/[0.03] shadow-xs cursor-pointer"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50 cursor-pointer"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -2071,7 +2045,9 @@ export default function AdManagement() {
                           if (e.target.checked) {
                             setTargetPages([...targetPages, item.id]);
                           } else {
-                            setTargetPages(targetPages.filter((p) => p !== item.id));
+                            setTargetPages(
+                              targetPages.filter((p) => p !== item.id),
+                            );
                           }
                         }}
                         className="w-4 h-4 text-secondary rounded border-gray-300 focus:ring-secondary disabled:cursor-not-allowed"
@@ -2079,18 +2055,22 @@ export default function AdManagement() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-gray-900">
-                            {item.label}
+                            {t(item.labelKey)}
                           </span>
                           {badgeNode}
                         </div>
-                        <p className="text-[11px] text-gray-500">{item.desc}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {t(item.descKey)}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className="inline-block text-xs font-bold text-gray-900 bg-white border border-gray-200 px-2.5 py-1 rounded-xl shadow-xs">
                         {priceLabel}
                       </span>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{subtext}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {subtext}
+                      </p>
                     </div>
                   </label>
                 );
@@ -2108,7 +2088,7 @@ export default function AdManagement() {
           />
         </FormModal>
 
-        {/* Superadmin Ad Page Slot Limits Modal */}
+        {/* Slots Modal — currency prefix localized */}
         <AnimatePresence>
           {slotsModalOpen && (
             <>
@@ -2174,7 +2154,9 @@ export default function AdManagement() {
                         if (setting.page_name === "companies_list")
                           return <Store className="h-5 w-5 text-secondary" />;
                         if (setting.page_name === "company_detail")
-                          return <Building2 className="h-5 w-5 text-secondary" />;
+                          return (
+                            <Building2 className="h-5 w-5 text-secondary" />
+                          );
                         return (
                           <LayoutDashboard className="h-5 w-5 text-gray-600" />
                         );
@@ -2250,7 +2232,7 @@ export default function AdManagement() {
                               </label>
                               <div className="relative flex items-center">
                                 <span className="absolute left-2.5 text-[10px] font-bold text-gray-400 select-none">
-                                  ETB
+                                  {i18n.language === "am" ? "ብር" : "ETB"}
                                 </span>
                                 <input
                                   type="number"

@@ -1,47 +1,34 @@
 
-import { X, Loader2, ChevronDown, User as UserIcon } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  X,
+  Loader2,
+  ChevronDown,
+  User as UserIcon,
+  Search,
+  Users,
+  ShieldCheck,
+  Truck,
+  Eye,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 import type { User } from "../../../types";
+import { CustomSelect } from "../../ui/CustomSelect";
 
 // --------------------------------------------------------------
-// Avatar component (unchanged)
+// Types
 // --------------------------------------------------------------
-const UserAvatar = ({
-  user,
-  size = "md",
-}: {
-  user: User;
-  size?: "sm" | "md" | "lg";
-}) => {
-  const sizeClasses = {
-    sm: "w-8 h-8 text-xs",
-    md: "w-9 h-9 text-sm",
-    lg: "w-12 h-12 text-xl",
-  };
 
-  const initial = user.first_name?.[0] || user.email[0]?.toUpperCase() || "?";
+type UserRole = "admin" | "staff" | "viewer" | "delivery";
 
-  return (
-    <div
-      className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden shadow-inner flex-shrink-0`}
-    >
-      {user.profile_image ? (
-        <img
-          src={user.profile_image}
-          alt=""
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <span className="text-gray-600 font-medium">{initial}</span>
-      )}
-    </div>
-  );
-};
-
-// --------------------------------------------------------------
-// Main modal component – backend "staff" is presented as Dispatcher
-// --------------------------------------------------------------
 interface AddUserModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,11 +38,77 @@ interface AddUserModalProps {
   onSearchChange: (val: string) => void;
   selectedUser: User | null;
   onSelectUser: (user: User | null) => void;
-  selectedRole: "admin" | "staff" | "viewer" | "delivery";
-  onRoleChange: (role: "admin" | "staff" | "viewer" | "delivery") => void;
+  selectedRole: UserRole;
+  onRoleChange: (role: UserRole) => void;
   adding: boolean;
   onAdd: () => void;
 }
+
+// --------------------------------------------------------------
+// Avatar component
+// --------------------------------------------------------------
+
+const UserAvatar = ({
+  user,
+  size = "md",
+}: {
+  user: User;
+  size?: "sm" | "md" | "lg";
+}) => {
+  const sizeClasses = {
+    sm: "w-9 h-9 text-xs",
+    md: "w-11 h-11 text-sm",
+    lg: "w-14 h-14 text-lg",
+  };
+
+  const initial =
+    user.first_name?.[0]?.toUpperCase() ||
+    user.username?.[0]?.toUpperCase() ||
+    user.email?.[0]?.toUpperCase() ||
+    "?";
+
+  return (
+    <div
+      className={`
+        ${sizeClasses[size]}
+        rounded-full
+        bg-gradient-to-br from-indigo-100 to-violet-200
+        flex items-center justify-center
+        overflow-hidden flex-shrink-0
+        ring-2 ring-white shadow-sm
+      `}
+    >
+      {user.profile_image ? (
+        <img
+          src={user.profile_image}
+          alt={`${user.first_name || user.username || "User"} avatar`}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        <span className="font-semibold text-indigo-700">
+          {initial}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// --------------------------------------------------------------
+// Role options
+// --------------------------------------------------------------
+
+const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
+  admin: <ShieldCheck className="w-4 h-4" />,
+  staff: <Users className="w-4 h-4" />,
+  delivery: <Truck className="w-4 h-4" />,
+  viewer: <Eye className="w-4 h-4" />,
+};
+
+// --------------------------------------------------------------
+// Main modal component
+// Backend "staff" is displayed as Dispatcher
+// --------------------------------------------------------------
 
 export function AddUserModal({
   isOpen,
@@ -71,19 +124,83 @@ export function AddUserModal({
   adding,
   onAdd,
 }: AddUserModalProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation("companyUsers");
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownIndex, setDropdownIndex] = useState(-1);
+
   const containerRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // ------------------------------------------------------------
+  // Role options
+  // ------------------------------------------------------------
+
+  const roleOptions = [
+    {
+      value: "admin",
+      label: t("addUserModal.roleOptions.admin"),
+      icon: ROLE_ICONS.admin,
+    },
+    {
+      value: "staff",
+      label: t("addUserModal.roleOptions.staff"),
+      icon: ROLE_ICONS.staff,
+    },
+    {
+      value: "delivery",
+      label: t("addUserModal.roleOptions.delivery"),
+      icon: ROLE_ICONS.delivery,
+    },
+    {
+      value: "viewer",
+      label: t("addUserModal.roleOptions.viewer"),
+      icon: ROLE_ICONS.viewer,
+    },
+  ];
+
+  // ------------------------------------------------------------
+  // Reset dropdown index when search results change
+  // ------------------------------------------------------------
 
   useEffect(() => {
     setDropdownIndex(-1);
   }, [searchResults]);
 
+  // ------------------------------------------------------------
+  // Reset modal state when closed
+  // ------------------------------------------------------------
+
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    if (!isOpen) {
+      setShowDropdown(false);
+      setDropdownIndex(-1);
+    }
+  }, [isOpen]);
+
+  // ------------------------------------------------------------
+  // Prevent background scrolling while modal is open
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  // ------------------------------------------------------------
+  // Close search dropdown when clicking outside
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
@@ -93,281 +210,594 @@ export function AddUserModal({
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  // ------------------------------------------------------------
+  // Select user
+  // ------------------------------------------------------------
+
+  const handleSelectUser = useCallback(
+    (user: User) => {
+      onSelectUser(user);
+
+      onSearchChange(
+        `${user.first_name || ""} ${user.last_name || ""} (${user.email})`.trim(),
+      );
+
+      setShowDropdown(false);
+      setDropdownIndex(-1);
+    },
+    [onSelectUser, onSearchChange],
+  );
+
+  // ------------------------------------------------------------
+  // Search keyboard navigation
+  // ------------------------------------------------------------
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowDropdown(false);
+        setDropdownIndex(-1);
+        return;
+      }
+
       if (!showDropdown || searchResults.length === 0) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setDropdownIndex((prev) => (prev + 1) % searchResults.length);
+
+        setDropdownIndex((prev) =>
+          prev >= searchResults.length - 1 ? 0 : prev + 1,
+        );
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setDropdownIndex(
-          (prev) => (prev - 1 + searchResults.length) % searchResults.length,
+
+        setDropdownIndex((prev) =>
+          prev <= 0 ? searchResults.length - 1 : prev - 1,
         );
       } else if (e.key === "Enter" && dropdownIndex >= 0) {
         e.preventDefault();
+
         const user = searchResults[dropdownIndex];
+
         if (user) handleSelectUser(user);
-      } else if (e.key === "Escape") {
-        setShowDropdown(false);
       }
     },
-    [showDropdown, searchResults, dropdownIndex],
+    [showDropdown, searchResults, dropdownIndex, handleSelectUser],
   );
 
-  const handleSelectUser = (user: User) => {
-    onSelectUser(user);
-    onSearchChange(
-      `${user.first_name || ""} ${user.last_name || ""} (${user.email})`.trim(),
-    );
+  // ------------------------------------------------------------
+  // Search input changes
+  // ------------------------------------------------------------
+
+  const handleSearchChange = (value: string) => {
+    onSearchChange(value);
+    onSelectUser(null);
+    setShowDropdown(true);
+    setDropdownIndex(-1);
+  };
+
+  // ------------------------------------------------------------
+  // Clear search
+  // ------------------------------------------------------------
+
+  const handleClearSearch = () => {
+    onSearchChange("");
+    onSelectUser(null);
     setShowDropdown(false);
+    setDropdownIndex(-1);
+    searchInputRef.current?.focus();
+  };
+
+  // ------------------------------------------------------------
+  // Modal backdrop
+  // ------------------------------------------------------------
+
+  const handleBackdropClick = (
+    event: MouseEvent<HTMLDivElement>,
+  ) => {
+    if (event.target === event.currentTarget && !adding) {
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
 
+  const selectedRoleLabel =
+    roleOptions.find((role) => role.value === selectedRole)?.label ||
+    selectedRole;
+
   return (
     <div
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4"
-      onClick={onClose}
+      className="
+        fixed inset-0 z-[100]
+        flex items-center justify-center
+        bg-black/50 backdrop-blur-sm
+        p-3 sm:p-5
+        animate-in fade-in duration-200
+      "
+      onMouseDown={handleBackdropClick}
+      role="presentation"
     >
       <div
-        className="bg-white w-full max-w-[95%] sm:max-w-3xl rounded-2xl shadow-xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-user-modal-title"
+        className="
+          relative flex flex-col
+          w-full max-w-xl
+          max-h-[92dvh]
+          bg-white
+          rounded-2xl sm:rounded-3xl
+          shadow-2xl
+          overflow-hidden
+          animate-in zoom-in-95 slide-in-from-bottom-2 duration-200
+        "
       >
-        {/* Header */}
-        <div className="flex justify-between items-center p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-secondary/5 to-white">
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-secondary">
-              {t("addUserModal.title")}
-            </h2>
-            <p className="text-xs sm:text-sm text-secondary/60 mt-0.5">
-              {t("addUserModal.subtitle")}
-            </p>
+        {/* ================================================== */}
+        {/* HEADER */}
+        {/* ================================================== */}
+
+        <div
+          className="
+            relative flex items-center justify-between
+            px-4 py-4 sm:px-6 sm:py-5
+            border-b border-gray-100
+            bg-gradient-to-r from-secondary/10 via-white to-indigo-50/60
+            flex-shrink-0
+          "
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="
+                w-11 h-11 sm:w-12 sm:h-12
+                rounded-xl
+                bg-secondary/10
+                flex items-center justify-center
+                flex-shrink-0
+              "
+            >
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-secondary" />
+            </div>
+
+            <div className="min-w-0">
+              <h2
+                id="add-user-modal-title"
+                className="text-base sm:text-xl font-bold text-secondary"
+              >
+                {t("addUserModal.title")}
+              </h2>
+
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                {t("addUserModal.subtitle")}
+              </p>
+            </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors rounded-full p-1 hover:bg-gray-100"
+            disabled={adding}
             aria-label={t("addUserModal.closeAria")}
+            className="
+              p-2 rounded-xl
+              text-gray-400
+              hover:text-gray-700
+              hover:bg-gray-100
+              transition-all
+              disabled:opacity-40
+              flex-shrink-0
+            "
           >
-            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-          {/* Search input with live suggestions */}
-          <div className="relative" ref={containerRef}>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-              {t("addUserModal.searchLabel")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
+        {/* ================================================== */}
+        {/* CONTENT */}
+        {/* ================================================== */}
 
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={t("addUserModal.searchPlaceholder")}
-                value={searchTerm}
-                onChange={(e) => {
-                  onSearchChange(e.target.value);
-                  setShowDropdown(true);
-                  onSelectUser(null);
-                  setDropdownIndex(-1);
-                }}
-                onFocus={() => setShowDropdown(true)}
-                onKeyDown={handleKeyDown}
-                className="w-full border border-gray-200 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 pr-16 sm:pr-20 text-sm sm:text-base focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all outline-none"
-                aria-autocomplete="list"
-                aria-expanded={showDropdown}
-              />
+        <div
+          className="
+            flex-1 min-h-0
+            overflow-y-auto overscroll-contain
+            px-4 py-5 sm:px-6 sm:py-6
+            space-y-6
+          "
+        >
+          {/* ---------------------------------------------- */}
+          {/* USER SEARCH */}
+          {/* ---------------------------------------------- */}
 
-              {/* Clear button */}
-              {searchTerm && (
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="add-user-search"
+                className="text-sm font-semibold text-gray-700"
+              >
+                {t("addUserModal.searchLabel")}
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+
+              {selectedUser && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {t("addUserModal.selected")}
+                </span>
+              )}
+            </div>
+
+            <div className="relative" ref={containerRef}>
+              {/* Search input */}
+
+              <div className="relative">
+                <Search
+                  className="
+                    absolute left-3.5 top-1/2
+                    -translate-y-1/2
+                    w-4 h-4
+                    text-gray-400
+                    pointer-events-none
+                  "
+                />
+
+                <input
+                  ref={searchInputRef}
+                  id="add-user-search"
+                  type="text"
+                  autoComplete="off"
+                  placeholder={t("addUserModal.searchPlaceholder")}
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  onKeyDown={handleKeyDown}
+                  aria-autocomplete="list"
+                  aria-expanded={showDropdown}
+                  aria-controls="add-user-search-results"
+                  aria-label={t("addUserModal.searchLabel")}
+                  className="
+                    w-full h-11 sm:h-12
+                    pl-10 pr-20
+                    text-sm sm:text-base
+                    text-gray-800
+                    placeholder:text-gray-400
+                    bg-gray-50
+                    border border-gray-200
+                    rounded-xl
+                    outline-none
+                    transition-all duration-200
+                    hover:border-gray-300
+                    focus:bg-white
+                    focus:border-secondary
+                    focus:ring-4 focus:ring-secondary/10
+                  "
+                />
+
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    aria-label={t("addUserModal.clearSearchAria")}
+                    className="
+                      absolute right-9 top-1/2
+                      -translate-y-1/2
+                      p-1.5
+                      rounded-full
+                      text-gray-400
+                      hover:text-gray-700
+                      hover:bg-gray-200
+                      transition-colors
+                    "
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+
+                <ChevronDown
+                  className={`
+                    absolute right-3 top-1/2
+                    -translate-y-1/2
+                    w-4 h-4
+                    text-gray-400
+                    pointer-events-none
+                    transition-transform duration-200
+                    ${showDropdown ? "rotate-180" : ""}
+                  `}
+                />
+              </div>
+
+              {/* ------------------------------------------ */}
+              {/* SEARCH RESULTS */}
+              {/* ------------------------------------------ */}
+
+              {showDropdown && (
+                <div
+                  id="add-user-search-results"
+                  role="listbox"
+                  aria-label={t("addUserModal.searchLabel")}
+                  className="
+                    absolute left-0 right-0 top-full
+                    z-30 mt-2
+                    bg-white
+                    border border-gray-200
+                    rounded-xl
+                    shadow-xl
+                    overflow-hidden
+                    max-h-64 sm:max-h-72
+                    overflow-y-auto
+                  "
+                >
+                  {searching ? (
+                    <div className="flex flex-col items-center justify-center py-7 px-4">
+                      <Loader2 className="w-6 h-6 text-secondary animate-spin" />
+
+                      <p className="text-sm text-gray-500 mt-2">
+                        {t("addUserModal.searching")}
+                      </p>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="py-1">
+                      {searchResults.map((user, idx) => {
+                        const isSelected = selectedUser?.id === user.id;
+
+                        return (
+                          <button
+                            key={user.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => handleSelectUser(user)}
+                            className={`
+                              w-full
+                              flex items-center gap-3
+                              px-3 sm:px-4 py-3
+                              text-left
+                              border-b border-gray-50 last:border-0
+                              transition-colors duration-150
+                              ${
+                                idx === dropdownIndex
+                                  ? "bg-secondary/10"
+                                  : "hover:bg-gray-50"
+                              }
+                              ${
+                                isSelected
+                                  ? "bg-indigo-50/70"
+                                  : ""
+                              }
+                            `}
+                          >
+                            <UserAvatar user={user} size="sm" />
+
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-800 truncate">
+                                {user.username ||
+                                  `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+                                  user.email}
+                              </p>
+
+                              <p className="text-xs text-gray-500 truncate mt-0.5">
+                                {user.email}
+                              </p>
+
+                              {user.phone_number && (
+                                <p className="text-xs text-gray-400 truncate mt-0.5">
+                                  {user.phone_number}
+                                </p>
+                              )}
+                            </div>
+
+                            {isSelected && (
+                              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : searchTerm.trim() ? (
+                    <div className="flex flex-col items-center text-center px-4 py-7">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                        <UserIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+
+                      <p className="text-sm font-medium text-gray-700">
+                        {t("addUserModal.noUsersFound")}
+                      </p>
+
+                      <p className="text-xs text-gray-400 mt-1">
+                        {t("addUserModal.noUsersHint")}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-center px-4 py-6">
+                      <Search className="w-6 h-6 text-gray-300 mb-2" />
+
+                      <p className="text-xs text-gray-400">
+                        {t("addUserModal.searchPlaceholder")}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ---------------------------------------------- */}
+          {/* SELECTED USER PREVIEW */}
+          {/* ---------------------------------------------- */}
+
+          {selectedUser && (
+            <section
+              className="
+                relative
+                rounded-2xl
+                border border-indigo-100
+                bg-gradient-to-br from-indigo-50/80 via-white to-violet-50/50
+                p-3 sm:p-4
+                animate-in fade-in slide-in-from-top-2 duration-200
+              "
+            >
+              <div className="flex items-start gap-3">
+                <UserAvatar user={selectedUser} size="lg" />
+
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-800 text-sm sm:text-base truncate">
+                      {`${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`.trim() ||
+                        selectedUser.username ||
+                        "—"}
+                    </p>
+
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                      {t("addUserModal.selected")}
+                    </span>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1 break-all">
+                    {selectedUser.email}
+                  </p>
+
+                  {selectedUser.phone_number && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {selectedUser.phone_number}
+                    </p>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
-                    onSearchChange("");
                     onSelectUser(null);
+                    onSearchChange("");
                     setShowDropdown(false);
+                    searchInputRef.current?.focus();
                   }}
-                  className="absolute right-8 sm:right-10 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label={t("addUserModal.clearSearchAria")}
+                  aria-label={t("addUserModal.removeSelectionAria")}
+                  className="
+                    p-1.5 rounded-lg
+                    text-gray-400
+                    hover:text-red-500
+                    hover:bg-red-50
+                    transition-colors
+                    flex-shrink-0
+                  "
                 >
-                  <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <X className="w-4 h-4" />
                 </button>
-              )}
-
-              <ChevronDown
-                className={`absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 transition-transform ${
-                  showDropdown ? "rotate-180" : ""
-                }`}
-              />
-            </div>
-
-            {/* Dropdown suggestions */}
-            {showDropdown && (
-              <div
-                ref={dropdownRef}
-                className="absolute z-20 mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-lg max-h-48 sm:max-h-64 overflow-y-auto"
-              >
-                {searching ? (
-                  <div className="p-3 sm:p-4 text-center text-secondary/60">
-                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mx-auto" />
-                    <p className="mt-1 text-sm">
-                      {t("addUserModal.searching")}
-                    </p>
-                  </div>
-                ) : searchResults.length === 0 && searchTerm.trim() !== "" ? (
-                  <div className="p-4 sm:p-6 text-center">
-                    <UserIcon className="h-8 w-8 sm:h-10 sm:w-10 mx-auto text-gray-300 mb-2" />
-                    <p className="text-xs sm:text-sm text-secondary/60">
-                      {t("addUserModal.noUsersFound")}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                      {t("addUserModal.noUsersHint")}
-                    </p>
-                  </div>
-                ) : (
-                  searchResults.map((user, idx) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleSelectUser(user)}
-                      className={`w-full text-left px-3 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-3 transition-colors border-b border-gray-50 last:border-0 ${
-                        idx === dropdownIndex
-                          ? "bg-indigo-50"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <UserAvatar user={user} size="sm" />
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-secondary truncate">
-                          {user.username}
-                        </p>
-                        <p className="text-xs text-secondary/60 truncate">
-                          {user.email}
-                        </p>
-
-                        {user.phone_number && (
-                          <p className="text-xs text-gray-400 truncate">
-                            {user.phone_number}
-                          </p>
-                        )}
-                      </div>
-
-                      {selectedUser?.id === user.id && (
-                        <span className="text-secondary text-xs font-medium">
-                          {t("addUserModal.selected")}
-                        </span>
-                      )}
-                    </button>
-                  ))
-                )}
               </div>
-            )}
-          </div>
-
-          {/* Selected user preview */}
-          {selectedUser && (
-            <div className="bg-gradient-to-r from-indigo-50/50 to-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 border border-indigo-100 shadow-sm">
-              <UserAvatar user={selectedUser} size="lg" />
-
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-secondary truncate">
-                  {selectedUser.first_name || "—"}{" "}
-                  {selectedUser.last_name || ""}
-                </p>
-
-                <p className="text-xs sm:text-sm text-secondary/60 truncate">
-                  {selectedUser.email}
-                </p>
-
-                {selectedUser.phone_number && (
-                  <p className="text-xs text-gray-400 truncate">
-                    {selectedUser.phone_number}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={() => {
-                  onSelectUser(null);
-                  onSearchChange("");
-                }}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 flex-shrink-0"
-                aria-label={t("addUserModal.removeSelectionAria")}
-              >
-                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-            </div>
+            </section>
           )}
 
-          {/* Role selection – "staff" is displayed as Dispatcher */}
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5">
-              {t("addUserModal.roleLabel")}{" "}
-              <span className="text-red-500">*</span>
-            </label>
+          {/* ---------------------------------------------- */}
+          {/* ROLE SELECTION */}
+          {/* ---------------------------------------------- */}
 
-            <div className="relative">
-              <select
-                value={selectedRole}
-                onChange={(e) => onRoleChange(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-full px-4 py-1.5 text-sm sm:text-base focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all outline-none bg-white appearance-none cursor-pointer pr-10"
-              >
-                <option value="admin">
-                  {t("addUserModal.roleOptions.admin")}
-                </option>
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-gray-700">
+                {t("addUserModal.roleLabel")}
+                <span className="text-red-500 ml-1">*</span>
+              </label>
 
-                <option value="staff">
-                  {t("addUserModal.roleOptions.staff")}
-                </option>
-
-                <option value="delivery">
-                  {t("addUserModal.roleOptions.delivery")}
-                </option>
-
-                <option value="viewer">
-                  {t("addUserModal.roleOptions.viewer")}
-                </option>
-              </select>
-
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+              <span className="text-[10px] sm:text-xs text-gray-400">
+                {selectedRoleLabel}
+              </span>
             </div>
 
-            <p className="text-[10px] sm:text-xs text-gray-400 mt-1.5">
+            <CustomSelect
+              value={selectedRole}
+              onChange={(value) => onRoleChange(value as UserRole)}
+              options={roleOptions}
+              placeholder={t("addUserModal.roleLabel")}
+              ariaLabel={t("addUserModal.roleLabel")}
+              maxHeight={220}
+              className="w-full"
+            />
+
+            <p className="text-xs text-gray-400 leading-relaxed mt-2">
               {t("addUserModal.roleHint")}
             </p>
-          </div>
+          </section>
         </div>
 
-        {/* Footer */}
-        <div className="flex flex-row gap-3 sm:gap-4 p-4 sm:p-6 border-t border-gray-100 bg-gray-50/30">
+        {/* ================================================== */}
+        {/* FOOTER */}
+        {/* ================================================== */}
+
+        <div
+          className="
+            flex flex-row gap-3
+            px-4 py-4 sm:px-6 sm:py-5
+            border-t border-gray-100
+            bg-gray-50/70
+            flex-shrink-0
+          "
+        >
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 px-4 sm:px-6 py-1.5 sm:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl text-secondary hover:bg-gray-50 transition-colors text-sm sm:text-base font-medium text-center justify-center"
+            disabled={adding}
+            className="
+              flex-1
+              min-h-10 sm:min-h-11
+              px-3 sm:px-5
+              rounded-xl
+              border border-gray-200
+              bg-white
+              text-gray-600
+              text-sm font-semibold
+              hover:bg-gray-100
+              hover:border-gray-300
+              transition-all
+              disabled:opacity-50
+              disabled:cursor-not-allowed
+            "
           >
             {t("addUserModal.cancel")}
           </button>
 
           <button
+            type="button"
             onClick={onAdd}
             disabled={!selectedUser || adding}
-            className="flex-1 px-4 sm:px-6 py-1.5 sm:py-2.5 bg-secondary text-white rounded-lg sm:rounded-xl hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm text-sm sm:text-base font-medium flex items-center justify-center gap-2"
+            className="
+              flex-1
+              min-h-10 sm:min-h-11
+              px-3 sm:px-5
+              rounded-xl
+              bg-secondary
+              text-white
+              text-sm font-semibold
+              shadow-sm
+              hover:opacity-90
+              hover:shadow-md
+              active:scale-[0.98]
+              transition-all
+              disabled:opacity-40
+              disabled:cursor-not-allowed
+              disabled:shadow-none
+              flex items-center justify-center gap-2
+            "
           >
-            {adding && (
-              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
-            )}
+            {adding ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
 
-            {adding
-              ? t("addUserModal.adding")
-              : selectedRole === "staff"
-                ? t("addUserModal.addDispatcher")
-                : t("addUserModal.addUser")}
+                <span>{t("addUserModal.adding")}</span>
+              </>
+            ) : (
+              <>
+                {selectedRole === "staff"
+                  ? t("addUserModal.addDispatcher")
+                  : t("addUserModal.addUser")}
+              </>
+            )}
           </button>
         </div>
       </div>

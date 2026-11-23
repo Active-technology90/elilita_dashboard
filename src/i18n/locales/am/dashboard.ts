@@ -85,4 +85,13 @@ export default {
   language: "ቋንቋ",
   english: "English",
   amharic: "አማርኛ",
+  "languageSwitcher": {
+    "title": "ቋንቋ ይምረጡ",
+    "description": "የሚመርጡትን ቋንቋ ይምረጡ",
+    "changing": "ቋንቋ በመቀየር ላይ...",
+    "languages": {
+      "en": "እንግሊዝኛ",
+      "am": "አማርኛ"
+    }
+  }
 };

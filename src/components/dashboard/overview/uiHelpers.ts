@@ -1,5 +1,8 @@
-// src/components/admin/overview/components/uiHelpers.ts
+import i18n from "../../../i18n";
 
+// src/components/admin/overview/components/uiHelpers.ts
+const resolveLanguage = (language?: string): string =>
+  language || i18n.resolvedLanguage || i18n.language || "en";
 // const CHART_COLORS = ["var(--color-secondary)", "#9B7DD4", "#B794F4", "#D6BCFA", "#E9D8FD"];
 export const CHART_COLORS = [
   "#6366F1", // indigo
@@ -11,20 +14,41 @@ export const CHART_COLORS = [
   "#EC4899", // pink
 ];
 
-export const formatCurrency = (amount: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "ETB",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+export const formatCurrency = (
+  amount: number,
+  language?: string,
+): string => {
+  const lang = resolveLanguage(language);
+  const isAmharic = lang.startsWith("am"); // ✅ "am-ET" also matches now
 
-export const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formattedAmount = new Intl.NumberFormat(
+    isAmharic ? "am-ET" : "en-US",
+    {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    },
+  ).format(amount);
+
+  return isAmharic ? `${formattedAmount} ብር` : `ETB ${formattedAmount}`;
+};
+
+export const formatDate = (
+  dateString: string,
+  language?: string,
+): string => {
+  const lang = resolveLanguage(language);
+  const isAmharic = lang.startsWith("am");
+
+  return new Date(dateString).toLocaleDateString(
+    isAmharic ? "am-ET" : "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+  );
+};
+
 
 export const statusClass = (status: string) => {
   const s = status.toLowerCase();

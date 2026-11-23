@@ -2,6 +2,7 @@ export default {
   // ─────────────────────────────────────────────────────────────
   // COMPANY ORDERS MODULE
   // ─────────────────────────────────────────────────────────────
+    etb:"ብር",
   companyOrders: {
     pageTitle: "ሁሉም ትዕዛዞች",
     pageDescription: {
@@ -49,6 +50,7 @@ export default {
         outForDelivery: "በመንገድ ላይ",
         delivered: "ተጠናቅቋል",
         failed: "አልተሳካም",
+       expired:"ግዜ ገደቡ ያለፈ"
       },
       paymentMethod: {
         all: "ሁሉም የክፍያ ዘዴ",
@@ -99,8 +101,9 @@ export default {
         weekly: "በሳምንት (ያለፉት 7 ቀናት)",
         monthly: "በወር (ይህ ወር)",
         yearly: "በዓመት (ይህ ዓመት)",
-        custom: "ብጁ የቀን ክልል",
+        custom: "በምርጫዎ የቀን ክልል",
         all: "ሁሉም ጊዜ",
+      
       },
       status: {
         all: "ሁሉም ሁኔታዎች",
@@ -176,6 +179,7 @@ export default {
       outForDelivery: "በመንገድ ላይ",
       delivered: "ተጠናቅቋል",
       failed: "አልተሳካም",
+      expired:"ግዜ ገደቡ አልፎአል"
     },
     paymentMethod: {
       all: "ሁሉም የክፍያ ዘዴ",
@@ -193,19 +197,28 @@ export default {
       "30": "30 / ገጽ",
       "60": "60 / ገጽ",
     },
-    statusBadge: {
-      processing: "ተዘጋጅቷል",
-      shipped: "በመንገድ ላይ",
-      fulfilled: "ተደርሷል",
-      contacted: "ተረጋግጧል",
-      pending: "በመጠባበቅ ላይ",
-      out_for_delivery: "በመንገድ ላይ",
-      delivered: "ተጠናቅቋል",
-      self_pickup: "ራስ-መውሰድ",
-      takeaway: "መውሰድ",
-      onspot: "በቦታው ላይ",
-      no_assigned: "አልተመደበም",
-    },
+ statusBadge: {
+  processing: "ተዘጋጅቷል",
+  shipped: "በመንገድ ላይ",
+  fulfilled: "ተደርሷል",
+  contacted: "ተረጋግጧል",
+  pending: "በመጠባበቅ ላይ",
+  confirmed: "ተረጋግጧል",              // ✅ add
+  cancelled: "ተሰርዟል",               // ✅ add
+  payment_rejected: "ክፍያ ተቀባይነት አላገኘም", // ✅ add
+  out_for_delivery: "በመንገድ ላይ",
+  delivered: "ተጠናቅቋል",
+  self_pickup: "ራስ-መውሰድ",
+  takeaway: "መውሰድ",
+  onspot: "በቦታው ላይ",
+  no_assigned: "አልተመደበም",
+      disputed: "አከራካሪ",
+    replacement_in_progress: "ድጋሚ ማድረስ ያስፈልጋል",
+    refunded: "ተመላሽ ተደርጓል",
+    expired: "ጊዜ ገደብ አልፏል",
+    declined: "አልተቀበለም",
+
+},
   },
 
   // ─────────────────────────────────────────────────────────────
@@ -515,6 +528,7 @@ export default {
     refunded: "ተመላሽ ተደርጓል",
     expired: "ግብዣው ጊዜው አልፏል (ጊዜ ገደብ)",
     declined: "አልተቀበለም",
+    
   },
 
   vendorOrderDetail: {

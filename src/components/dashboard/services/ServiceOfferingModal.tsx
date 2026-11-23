@@ -870,7 +870,7 @@ export function ServiceOfferingModal({
                             {t("fields.activeService")}
                           </span>
                         </label>
-                        <label className="flex items-center gap-3 cursor-pointer">
+                        {/* <label className="flex items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={form.is_featured}
@@ -882,7 +882,7 @@ export function ServiceOfferingModal({
                           <span className="text-sm font-medium text-gray-700">
                             {t("fields.featuredService")}
                           </span>
-                        </label>
+                        </label> */}
                       </div>
                     </div>
                   </Card>

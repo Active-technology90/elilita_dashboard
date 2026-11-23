@@ -1,4 +1,5 @@
 export default {
+    etb:"ብር",
   common: {
     actions: {
       close: "ዝጋ",

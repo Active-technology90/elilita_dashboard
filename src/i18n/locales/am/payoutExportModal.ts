@@ -15,7 +15,7 @@ export default {
     weekly: "በሳምንት (ያለፉት 7 ቀናት)",
     monthly: "በወር (ይህ ወር)",
     yearly: "በዓመት (ይህ ዓመት)",
-    custom: "ብጁ የቀን ክልል",
+    custom: "በምርጫዎ የቀን ክልል",
     all: "ሁሉም ጊዜ",
   },
   status: {

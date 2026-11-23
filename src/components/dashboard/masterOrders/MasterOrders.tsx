@@ -418,7 +418,7 @@ export default function Orders() {
         render: (order) => (
           <span className="font-semibold text-gray-900">
             {Number(order.total_amount).toLocaleString()}{" "}
-            <span className="text-xs font-normal text-gray-500">ETB</span>
+            <span className="text-xs font-normal text-gray-500">{t('etb')}</span>
           </span>
         ),
       },

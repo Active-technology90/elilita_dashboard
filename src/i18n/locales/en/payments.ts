@@ -1,5 +1,6 @@
 export default {
   page: {
+      etb:"ETB",
     title: "Payouts & Receipts",
     descriptionAll:
       "Review vendor payouts, settlement receipts, and marketplace commission across all companies.",

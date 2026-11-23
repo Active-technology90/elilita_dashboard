@@ -136,7 +136,7 @@ export function PageHeader({
               )}
 
               <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="min-w-0 text-lg font-extrabold leading-tight tracking-tight text-secondary xs:text-xl sm:text-2xl lg:text-[28px]">
+                <h1 className="min-w-0 text-[10px] font-extrabold leading-tight tracking-tight text-secondary xs:text-xl sm:text-2xl lg:text-[28px]">
                   {title}
                 </h1>
 

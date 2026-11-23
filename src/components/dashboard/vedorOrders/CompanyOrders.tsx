@@ -50,6 +50,10 @@ const StatusBadge = ({
     fulfilled: t("companyOrders.statusBadge.fulfilled"),
     contacted: t("companyOrders.statusBadge.contacted"),
     pending: t("companyOrders.statusBadge.pending"),
+    confirmed:        t("companyOrders.statusBadge.confirmed"),        // ✅ add
+  payment_rejected: t("companyOrders.statusBadge.payment_rejected"), // ✅ add (same bug)
+  cancelled:        t("companyOrders.statusBadge.cancelled"),        // ✅ add (same bug)
+  expired:t("companyOrders.statusBadge.expired"),
   };
 
   const deliveryStatusLabels: Record<string, string> = {
@@ -60,6 +64,8 @@ const StatusBadge = ({
     takeaway: t("companyOrders.statusBadge.takeaway"),
     onspot: t("companyOrders.statusBadge.onspot"),
     no_assigned: t("companyOrders.statusBadge.no_assigned"),
+      expired:t("companyOrders.statusBadge.expired"),
+    
   };
 
   const labels = type === "delivery" ? deliveryStatusLabels : orderStatusLabels;
@@ -104,17 +110,30 @@ const StatusBadge = ({
 
 const OrderDate = ({ dateString }: { dateString?: string }) => {
   const { t, i18n } = useTranslation("companyOrders");
-  if (!dateString) return <span className="text-gray-400 text-xs">—</span>;
+
+  if (!dateString) {
+    return <span className="text-gray-400 text-xs">—</span>;
+  }
 
   const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return <span className="text-gray-400 text-xs">—</span>;
+  }
+
   const now = new Date();
+
   const isToday = date.toDateString() === now.toDateString();
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = yesterday.toDateString() === date.toDateString();
 
-  const locale = i18n.language?.startsWith("am") ? "am-ET" : "en-US";
+  const isYesterday =
+    date.toDateString() === yesterday.toDateString();
+
+  const locale = i18n.language?.startsWith("am")
+    ? "am-ET"
+    : "en-US";
 
   const formatTime = date.toLocaleTimeString(locale, {
     hour: "2-digit",
@@ -132,16 +151,18 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
     <div className="flex flex-col gap-0.5">
       <span className="text-sm font-medium text-gray-900">
         {isToday
-          ? t("companyOrders.common.time.yesterday")
+          ? t("companyOrders.common.time.today")
           : isYesterday
             ? t("companyOrders.common.time.yesterday")
             : formatDate}
       </span>
-      <span className="text-xs text-gray-500 font-mono">{formatTime}</span>
+
+      <span className="text-xs text-gray-500 font-mono">
+        {formatTime}
+      </span>
     </div>
   );
 };
-
 const isTodayDate = (dateString?: string): boolean => {
   if (!dateString) return false;
   const date = new Date(dateString);
@@ -567,7 +588,7 @@ export default function CompanyOrders() {
         render: (order) => (
           <span className="font-semibold text-gray-900">
             {Number(order.amount).toLocaleString()}{" "}
-            <span className="text-xs font-normal text-gray-500">ETB</span>
+            <span className="text-xs font-normal text-gray-500">{t('etb')}</span>
           </span>
         ),
       },

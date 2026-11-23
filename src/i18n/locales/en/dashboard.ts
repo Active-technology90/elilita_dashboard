@@ -86,4 +86,14 @@ export default {
   language: "Language",
   english: "English",
   amharic: "አማርኛ",
+  // "language": "Language",
+  "languageSwitcher": {
+    "title": "Select language",
+    "description": "Choose your preferred language",
+    "changing": "Changing language...",
+    "languages": {
+      "en": "English",
+      "am": "Amharic"
+    }
+  }
 };

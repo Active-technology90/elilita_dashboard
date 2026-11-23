@@ -6,7 +6,7 @@ export default {
     weekly: "ሳምንታዊ",
     monthly: "ወርሃዊ",
     yearly: "ዓመታዊ",
-    custom: "ብጁ",
+    custom: "በምርጫዎ",
     to: "እስከ",
     pending: "በመጠባበቅ ላይ",
     notAvailable: "የለም",

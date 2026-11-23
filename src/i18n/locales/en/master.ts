@@ -1,4 +1,5 @@
 export default {
+    etb:"ETB",
   common: {
     actions: {
       close: "Close",

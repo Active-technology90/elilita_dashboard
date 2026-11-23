@@ -1,4 +1,5 @@
 export default {
+  etb:"ETB",
   companyOrders: {
     pageTitle: "All Orders",
     pageDescription: {
@@ -45,6 +46,7 @@ export default {
         outForDelivery: "In Transit",
         delivered: "Completed",
         failed: "Failed",
+        expired:"Expired"
       },
       paymentMethod: {
         all: "All Payment Method",
@@ -197,6 +199,15 @@ export default {
       takeaway: "Takeaway",
       onspot: "Onspot",
       no_assigned: "No Assigned",
+      confirmed: "Confirmed",              // ✅ add
+  cancelled: "Cancel",               // ✅ add
+  payment_rejected: "Payment Rejected", // ✅ add
+  expired:"Expired",
+      disputed: "Disputed",
+    replacement_in_progress: "Redelivery Required",
+    refunded: "Refunded",
+ 
+    declined: "Declined",
     },
   },
 
