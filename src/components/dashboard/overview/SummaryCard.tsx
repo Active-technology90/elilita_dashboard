@@ -185,7 +185,7 @@ export const SummaryCard = ({
                 className="
                   mt-2
                   truncate
-                  text-[20px]
+                  text-[24px]
                   font-extrabold
                   leading-none
                   tracking-[-0.045em]
@@ -196,6 +196,7 @@ export const SummaryCard = ({
               >
                 {value}
               </p>
+
 
               {/* Comparison */}
 
