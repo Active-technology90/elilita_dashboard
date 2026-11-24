@@ -105,4 +105,13 @@ export default {
   errors: {
     failedToLoadAnalytics: "የትንተና መረጃውን መጫን አልተቻለም።",
   },
+  "statuses": {
+    "confirmed": "የተረጋገጠ",
+    "disputed": "አለመግባባት ያለበት",
+    "shipped": "የተላከ",
+    "cancelled": "የተሰረዘ",
+    "fulfilled": "የተጠናቀቀ",
+    "pending": "በመጠባበቅ ላይ",
+    "processing": "በሂደት ላይ"
+  }
 };

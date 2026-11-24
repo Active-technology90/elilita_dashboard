@@ -7,6 +7,15 @@ export default {
     company: "Company",
   },
 
+   "statuses": {
+    "confirmed": "Confirmed",
+    "disputed": "Disputed",
+    "shipped": "Shipped",
+    "cancelled": "Cancelled",
+    "fulfilled": "Fulfilled",
+    "pending": "Pending",
+    "processing": "Processing"
+  },
   summary: {
     totalPaymentFlow: "Total Payment Flow",
     totalBookings: "Total Bookings",

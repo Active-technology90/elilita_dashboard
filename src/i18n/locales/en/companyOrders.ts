@@ -10,6 +10,8 @@ export default {
     viewOnly: "View Only",
     searchPlaceholder: "Search by order ID, customer name, or company...",
     exportReport: "Export Report",
+      "tableService": "Table Service",
+  "tableServiceOrders": "Table Service Orders",
     exports: "Export",
     liveTracking: "Live Tracking",
     tracking: "Tracking",

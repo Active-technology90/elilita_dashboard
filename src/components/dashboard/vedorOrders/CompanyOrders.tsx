@@ -6,6 +6,7 @@ import {
   Navigation,
   Package2,
   Download,
+  UtensilsCrossed, // ⬅️ NEW
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Pagination } from "../../ui/Pagination";
@@ -29,6 +30,9 @@ import { SearchInput } from "../../ui/SearchInput";
 import DeliveryTrackingMap from "./DeliveryTrackingMap";
 import PageHeader from "../../ui/PageHeader";
 import { OrderExportModal } from "./OrderExportModal";
+import { getFulfillmentKind, isRestaurant } from "./orderHelpers"; // ⬅️ NEW
+import TableServiceOrdersModal from "./TableServiceOrdersModal"; // ⬅️ NEW
+import { formatDate, formatTime } from "../../../utils/dateFormatter";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -50,10 +54,10 @@ const StatusBadge = ({
     fulfilled: t("companyOrders.statusBadge.fulfilled"),
     contacted: t("companyOrders.statusBadge.contacted"),
     pending: t("companyOrders.statusBadge.pending"),
-    confirmed:        t("companyOrders.statusBadge.confirmed"),        // ✅ add
-  payment_rejected: t("companyOrders.statusBadge.payment_rejected"), // ✅ add (same bug)
-  cancelled:        t("companyOrders.statusBadge.cancelled"),        // ✅ add (same bug)
-  expired:t("companyOrders.statusBadge.expired"),
+    confirmed: t("companyOrders.statusBadge.confirmed"),
+    payment_rejected: t("companyOrders.statusBadge.payment_rejected"),
+    cancelled: t("companyOrders.statusBadge.cancelled"),
+    expired: t("companyOrders.statusBadge.expired"),
   };
 
   const deliveryStatusLabels: Record<string, string> = {
@@ -64,8 +68,7 @@ const StatusBadge = ({
     takeaway: t("companyOrders.statusBadge.takeaway"),
     onspot: t("companyOrders.statusBadge.onspot"),
     no_assigned: t("companyOrders.statusBadge.no_assigned"),
-      expired:t("companyOrders.statusBadge.expired"),
-    
+    expired: t("companyOrders.statusBadge.expired"),
   };
 
   const labels = type === "delivery" ? deliveryStatusLabels : orderStatusLabels;
@@ -111,6 +114,9 @@ const StatusBadge = ({
 const OrderDate = ({ dateString }: { dateString?: string }) => {
   const { t, i18n } = useTranslation("companyOrders");
 
+  const language =
+    i18n.resolvedLanguage || i18n.language || "en";
+
   if (!dateString) {
     return <span className="text-gray-400 text-xs">—</span>;
   }
@@ -121,31 +127,29 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
     return <span className="text-gray-400 text-xs">—</span>;
   }
 
-  const now = new Date();
-
-  const isToday = date.toDateString() === now.toDateString();
-
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  const isYesterday =
-    date.toDateString() === yesterday.toDateString();
-
-  const locale = i18n.language?.startsWith("am")
-    ? "am-ET"
-    : "en-US";
-
-  const formatTime = date.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  const formatDate = date.toLocaleDateString(locale, {
-    month: "short",
-    day: "numeric",
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Addis_Ababa",
     year: "numeric",
-  });
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  const orderDateKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Addis_Ababa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+
+  const yesterdayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Addis_Ababa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+  const isToday = orderDateKey === todayKey;
+  const isYesterday = orderDateKey === yesterdayKey;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -154,20 +158,31 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
           ? t("companyOrders.common.time.today")
           : isYesterday
             ? t("companyOrders.common.time.yesterday")
-            : formatDate}
+            : formatDate(date, language)}
       </span>
 
       <span className="text-xs text-gray-500 font-mono">
-        {formatTime}
+        {formatTime(date, language)}
       </span>
     </div>
   );
 };
+
 const isTodayDate = (dateString?: string): boolean => {
   if (!dateString) return false;
+
   const date = new Date(dateString);
-  const now = new Date();
-  return date.toDateString() === now.toDateString();
+
+  if (Number.isNaN(date.getTime())) return false;
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Addis_Ababa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(date) === formatter.format(new Date());
 };
 
 const CompanyAvatar = ({
@@ -185,6 +200,11 @@ const CompanyAvatar = ({
     )}
   </div>
 );
+
+const isPreparedOrder = (o: any): boolean => {
+  const candidates = [o?.status, o?.vendor_status, o?.fulfillment_status];
+  return candidates.some((s) => String(s ?? "").toLowerCase() === "prepared");
+};
 
 const resolveDeliveryStatusKey = (order: VendorOrder): string => {
   const anyOrder = order as any;
@@ -217,6 +237,16 @@ export default function CompanyOrders() {
   const shouldFetchAll = isSuperAdmin || readOnly;
 
   const companySlug = company?.slug ?? null;
+// Current user's role for the selected company
+const currentMembership = user?.memberships?.find(
+  (m: any) => m.company_slug === (companySlug || user?.memberships?.[0]?.company_slug),
+);
+
+const userRole = isSuperAdmin
+  ? "super_admin"
+  : String(currentMembership?.role || user?.role || "").toLowerCase();
+
+const canViewTableServiceDetails = userRole !== "viewer";
 
   const effectiveSlug = useMemo(() => {
     if (shouldFetchAll) return null;
@@ -235,6 +265,7 @@ export default function CompanyOrders() {
     const role = (membership?.role || "").toLowerCase();
     return role === "owner" || role === "admin" || role === "super_admin";
   }, [isSuperAdmin, user, effectiveSlug]);
+  
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -252,6 +283,13 @@ export default function CompanyOrders() {
   const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [showTrackingMap, setShowTrackingMap] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // ⬇️ NEW: Table-service orders modal state
+  const [showTableService, setShowTableService] = useState(false);
+  const [tableServiceOrders, setTableServiceOrders] = useState<VendorOrder[]>(
+    [],
+  );
+  const [tableServiceLoading, setTableServiceLoading] = useState(false);
 
   const { toast, showToast } = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -352,7 +390,6 @@ export default function CompanyOrders() {
         setOrders(response.data.results);
         setTotalCount(response.data.count);
 
-        // 🔍 CONSOLE: Inspect backend response (esp. company.name / name_am)
         console.group("📦 [CompanyOrders] Backend response");
         console.log("Total count:", response.data.count);
         console.log("Raw payload:", response.data);
@@ -365,14 +402,13 @@ export default function CompanyOrders() {
           console.log("fulfillment_type:", (vo as any).fulfillment_type);
           console.log("company:", vo.company);
           console.log("company.name:", vo.company?.name);
-          console.log("company.name_am:", (vo.company as any)?.name_am); // ⬅️ CHECK THIS
+          console.log("company.name_am:", (vo.company as any)?.name_am);
           console.log("company.logo:", vo.company?.logo);
           console.log("delivery:", vo.delivery);
           console.log("items_count:", vo.items?.length ?? 0);
           console.groupEnd();
         });
         console.groupEnd();
-        // 🔍 END
 
         if (!options?.silent) setLoading(false);
         return response.data.results;
@@ -422,6 +458,188 @@ export default function CompanyOrders() {
   useEffect(() => {
     fetchOrders(currentPage);
   }, [fetchOrders, currentPage]);
+
+
+const fetchTableServiceOrders = useCallback(async () => {
+  setTableServiceLoading(true);
+
+  // Same rule must be used by fetching and displaying the orders.
+  const qualifies = (order: VendorOrder): boolean => {
+    const kind = getFulfillmentKind(order);
+    const restaurant = isRestaurant(order);
+
+    // Include restaurant orders and all on-spot orders.
+    if (!restaurant && kind !== "onspot") return false;
+
+    // Prepared on-spot orders are already completed for table service.
+    if (kind === "onspot" && isPreparedOrder(order)) return false;
+
+    return true;
+  };
+
+  // Seed with the orders already available on the current page.
+  const merged = new Map<string, VendorOrder>();
+
+  (orders || []).forEach((order) => {
+    if (qualifies(order)) {
+      merged.set(String(order.id), order);
+    }
+  });
+
+  try {
+    const token = localStorage.getItem("access");
+
+    if (!token || (!shouldFetchAll && !effectiveSlug)) {
+      setTableServiceOrders(Array.from(merged.values()));
+      return;
+    }
+
+    const PAGE_SIZE = 100;
+    const MAX_PAGES = 200;
+
+    let page = 1;
+    let totalFetched = 0;
+    let totalCount: number | null = null;
+
+    // Track page signatures to prevent infinite loops if the API
+    // repeatedly returns the same page.
+    const seenPageSignatures = new Set<string>();
+
+    while (page <= MAX_PAGES) {
+      const queryParams: any = {
+        page,
+        page_size: PAGE_SIZE,
+        ordering: "-created_at",
+      };
+
+      // Admin: respect the selected company filter.
+      if (shouldFetchAll && selectedCompanyId) {
+        queryParams.company = selectedCompanyId;
+      }
+
+      const response = shouldFetchAll
+        ? await getAdminVendorOrders(queryParams)
+        : await getCompanyVendorOrders(
+            effectiveSlug as string,
+            queryParams,
+          );
+
+      const data = response?.data;
+
+      const results: VendorOrder[] = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : [];
+
+      if (results.length === 0) {
+        break;
+      }
+
+      const signature = results
+        .map((order) => String(order.id))
+        .join(",");
+
+      if (seenPageSignatures.has(signature)) {
+        console.warn(
+          `[TableService] Repeated page ${page}. Stopping pagination.`,
+        );
+        break;
+      }
+
+      seenPageSignatures.add(signature);
+
+      const count = Number(data?.count);
+
+      if (Number.isFinite(count) && count >= 0) {
+        totalCount = count;
+      }
+
+      // Count every API result, not only qualifying table orders.
+      totalFetched += results.length;
+
+      results.forEach((order) => {
+        if (qualifies(order)) {
+          merged.set(String(order.id), order);
+        }
+      });
+
+      console.log(
+        `[TableService] Page ${page}: ${results.length} fetched, ` +
+          `${merged.size} qualifying orders collected.`,
+      );
+
+      // Stop when the API's total number of records has been fetched.
+      if (totalCount !== null && totalFetched >= totalCount) {
+        break;
+      }
+
+      // Without a reliable count, a short page means the last page.
+      if (totalCount === null && results.length < PAGE_SIZE) {
+        break;
+      }
+
+      page++;
+    }
+
+    if (page > MAX_PAGES) {
+      console.warn(
+        `[TableService] Maximum page limit (${MAX_PAGES}) reached.`,
+      );
+    }
+
+    const finalOrders = Array.from(merged.values())
+      .filter(qualifies)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at || 0).getTime() -
+          new Date(a.created_at || 0).getTime(),
+      );
+
+    setTableServiceOrders(finalOrders);
+
+    console.log(
+      `[TableService] Completed: ${totalFetched} API records fetched; ` +
+        `${finalOrders.length} table-service orders retained.`,
+    );
+  } catch (error: any) {
+    console.error("[TableService] Fetch failed:", error);
+
+    // Keep any successfully collected orders instead of clearing the modal.
+    setTableServiceOrders(
+      Array.from(merged.values()).filter(qualifies),
+    );
+
+    showToast(
+      "error",
+      error?.response?.data?.detail ||
+        error?.message ||
+        "Failed to load table service orders.",
+    );
+  } finally {
+    setTableServiceLoading(false);
+  }
+}, [
+  orders,
+  shouldFetchAll,
+  selectedCompanyId,
+  effectiveSlug,
+  showToast,
+]);
+
+
+  // ⬇️ NEW: only show the button when the company supports table service
+  const supportsTableService = useMemo(() => {
+    if (isAdminLike) return true;
+    if ((company as any)?.supports_table_service === true) return true;
+    if ((company as any)?.supports_table_orders === true) return true; // alt field name
+    return orders.some((o: any) => getFulfillmentKind(o) === "onspot");
+  }, [isAdminLike, company, orders]);
+  // ⬇️ NEW: opens the modal + kicks off the fetch
+  const handleOpenTableService = () => {
+    setShowTableService(true);
+    fetchTableServiceOrders();
+  };
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -476,7 +694,10 @@ export default function CompanyOrders() {
 
   const deliveryStatusOptions: SelectOption[] = [
     { value: "", label: t("companyOrders.deliveryStatusFilter.all") },
-    { value: "pending", label: t("companyOrders.deliveryStatusFilter.pending") },
+    {
+      value: "pending",
+      label: t("companyOrders.deliveryStatusFilter.pending"),
+    },
     {
       value: "accepted",
       label: t("companyOrders.deliveryStatusFilter.accepted"),
@@ -517,7 +738,7 @@ export default function CompanyOrders() {
   ];
 
   const handleModalUpdate = useCallback(async () => {
-    const freshOrders = await fetchOrders(currentPage, { silent: true });
+    const freshOrders = await fetchOrders(currentPage, { silent: true } ,);
 
     if (selectedOrder) {
       const updated = freshOrders.find(
@@ -527,7 +748,56 @@ export default function CompanyOrders() {
         setSelectedOrder(updated);
       }
     }
-  }, [fetchOrders, currentPage, selectedOrder]);
+
+
+    // ⬇️ NEW: if the table-service modal has been used, keep it in sync
+    if (tableServiceOrders.length > 0) {
+      fetchTableServiceOrders();
+    }
+  }, [
+    fetchOrders,
+    currentPage,
+    selectedOrder,
+    tableServiceOrders.length,
+    fetchTableServiceOrders,
+  ]);
+// ⬇️ Merged source for the Table-Service modal. Always contains whatever
+// onspot orders are visible in the parent list, plus any extra ones the
+// dedicated fetch managed to pull in.
+// Merged source for the Table-Service modal. Contains every order from a
+// restaurant company that is currently visible in the parent list, plus any
+// extra ones the dedicated paginated fetch managed to pull in.
+
+const tableServiceSource = useMemo<VendorOrder[]>(() => {
+  const byId = new Map<string, VendorOrder>();
+
+  const qualifies = (order: VendorOrder): boolean => {
+    const kind = getFulfillmentKind(order);
+    const restaurant = isRestaurant(order);
+
+    if (!restaurant && kind !== "onspot") return false;
+
+    if (kind === "onspot" && isPreparedOrder(order)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  [...(orders || []), ...(tableServiceOrders || [])].forEach(
+    (order) => {
+      if (qualifies(order)) {
+        byId.set(String(order.id), order);
+      }
+    },
+  );
+
+  return Array.from(byId.values()).sort(
+    (a, b) =>
+      new Date(b.created_at || 0).getTime() -
+      new Date(a.created_at || 0).getTime(),
+  );
+}, [orders, tableServiceOrders]);
 
   const orderColumns = useMemo<Column<VendorOrder>[]>(() => {
     const cols: Column<VendorOrder>[] = [
@@ -559,7 +829,6 @@ export default function CompanyOrders() {
         key: "company",
         header: t("companyOrders.table.columns.company"),
         render: (order) => {
-          // ⬇️ Amharic-aware company name display
           const displayName =
             i18n.language?.startsWith("am") &&
             (order.company as any)?.name_am?.trim()
@@ -567,10 +836,7 @@ export default function CompanyOrders() {
               : order.company?.name || t("companyOrders.unknownCompany");
           return (
             <div className="flex items-center gap-2">
-              <CompanyAvatar
-                logo={order.company?.logo}
-                name={displayName}
-              />
+              <CompanyAvatar logo={order.company?.logo} name={displayName} />
               <span className="max-w-[120px] truncate text-sm font-medium text-gray-700">
                 {displayName}
               </span>
@@ -588,7 +854,9 @@ export default function CompanyOrders() {
         render: (order) => (
           <span className="font-semibold text-gray-900">
             {Number(order.amount).toLocaleString()}{" "}
-            <span className="text-xs font-normal text-gray-500">{t('etb')}</span>
+            <span className="text-xs font-normal text-gray-500">
+              {t("etb")}
+            </span>
           </span>
         ),
       },
@@ -660,39 +928,69 @@ export default function CompanyOrders() {
             </span>
           ) : undefined
         }
-        actionMobile={
-          <div className="flex items-center justify-end gap-1.5">
-            {canExport && (
+      actionMobile={
+  <div className="flex flex-wrap items-center justify-end gap-2">
+    {/* Table Service */}
+    {supportsTableService && (
+      <button
+        type="button"
+        onClick={handleOpenTableService}
+        className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-purple-200 bg-purple-50 px-1.5 text-xs font-semibold text-purple-700 shadow-sm transition-all duration-200 hover:border-purple-300 hover:bg-purple-100 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/50"
+        aria-label={t("companyOrders.tableServiceOrders")}
+        title={t("companyOrders.tableServiceOrders")}
+      >
+        <UtensilsCrossed className="h-3 w-3 shrink-0" />
+        <span className="whitespace-nowrap">
+          {t("companyOrders.tableService")}
+        </span>
+      </button>
+    )}
+
+    {/* Export */}
+    {canExport && (
+      <button
+        type="button"
+        onClick={() => setShowExportModal(true)}
+        className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-100 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+        aria-label={t("companyOrders.exportReport")}
+        title={t("companyOrders.exportTooltip")}
+      >
+        <Download className="h-3 w-3 shrink-0" />
+        <span className="whitespace-nowrap">
+          {t("companyOrders.exportReport")}
+        </span>
+      </button>
+    )}
+
+    {/* Live Tracking */}
+    <button
+      type="button"
+      onClick={() => setShowTrackingMap(true)}
+      className="inline-flex h-8 items-center justify-center gap-1 rounded-xl bg-secondary px-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-secondary/90 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2"
+      aria-label={t("companyOrders.trackingTooltip")}
+      title={t("companyOrders.trackingTooltip")}
+    >
+      <Navigation className="h-3 w-3 shrink-0" />
+      <span className="whitespace-nowrap">
+        {t("companyOrders.liveTracking")}
+      </span>
+    </button>
+  </div>
+}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* ⬇️ NEW: Table Service button (desktop) */}
+            {supportsTableService && (
               <button
                 type="button"
-                onClick={() => setShowExportModal(true)}
-                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700 shadow-sm transition active:scale-[0.97] hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
-                aria-label={t("companyOrders.exportReport")}
-                title={t("companyOrders.exportTooltip")}
+                onClick={handleOpenTableService}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white border border-secondary/20 px-3.5 py-2 text-xs font-semibold text-secondary shadow-sm transition hover:bg-gray-100 sm:text-sm"
               >
-                <Download className="h-3.5 w-3.5 shrink-0" />
-                <span className="whitespace-nowrap">
-                  {t("companyOrders.exports")}
-                </span>
+                <UtensilsCrossed className="h-4 w-4" />
+                <span>{t("companyOrders.tableService")}</span>
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => setShowTrackingMap(true)}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-1.5 text-[10px] font-semibold text-white shadow-sm transition active:scale-[0.97] hover:bg-secondary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary/40 focus-visible:ring-offset-2"
-              aria-label={t("companyOrders.trackingTooltip")}
-              title={t("companyOrders.trackingTooltip")}
-            >
-              <Navigation className="h-3.5 w-3.5 shrink-0" />
-              <span className="whitespace-nowrap">
-                {t("companyOrders.tracking")}
-              </span>
-            </button>
-          </div>
-        }
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
             {canExport && (
               <button
                 type="button"
@@ -890,7 +1188,6 @@ export default function CompanyOrders() {
                     <option value="">{t("companyOrders.allCompanies")}</option>
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {/* Amharic-aware company name in the native <option> */}
                         {i18n.language?.startsWith("am") &&
                         (c as any).name_am?.trim()
                           ? (c as any).name_am
@@ -944,6 +1241,26 @@ export default function CompanyOrders() {
           onSuccess={(message) => showToast("success", message)}
         />
       )}
+
+      {/* ⬇️ NEW: Table Service Orders modal */}
+    {/* ⬇️ NEW: Table Service Orders modal */}
+{supportsTableService && (
+  <TableServiceOrdersModal
+    open={showTableService}
+    onClose={() => setShowTableService(false)}
+    userRole={userRole}
+    orders={tableServiceSource}
+    onRefresh={fetchTableServiceOrders}
+    refreshing={tableServiceLoading}
+    onOpenOrder={(id) => {
+      setShowTableService(false);
+      const found =
+        tableServiceOrders.find((o) => o.id === id) ||
+        orders.find((o) => o.id === id);
+      if (found) setSelectedOrder(found);
+    }}
+  />
+)}
     </div>
   );
 }

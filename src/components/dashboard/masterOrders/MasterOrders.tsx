@@ -12,10 +12,17 @@ import { OrderFilters } from "./OrderFilters";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import { SearchInput } from "../../ui/SearchInput";
 import PageHeader from "../../ui/PageHeader";
+import { formatDate, formatTime } from "../../../utils/dateFormatter";
 
 const DEFAULT_PAGE_SIZE = 10;
 
 // ---------- Premium UI Subcomponents ----------
+const ADDIS_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Africa/Addis_Ababa",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 const PaymentStatusBadge = ({ status }: { status: string }) => {
   const { t } = useTranslation("master");
@@ -60,25 +67,32 @@ const PaymentStatusBadge = ({ status }: { status: string }) => {
 };
 
 const OrderDate = ({ dateString }: { dateString?: string }) => {
-  const { t } = useTranslation("master");
-  if (!dateString) return <span className="text-gray-400 text-xs">—</span>;
-  const date = new Date(dateString);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const isYesterday =
-    new Date(now.setDate(now.getDate() - 1)).toDateString() ===
-    date.toDateString();
+  const { t, i18n } = useTranslation("master");
 
-  const formatTime = date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-  const formatDate = date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const language =
+    i18n.resolvedLanguage || i18n.language || "en";
+
+  if (!dateString) {
+    return <span className="text-gray-400 text-xs">—</span>;
+  }
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return <span className="text-gray-400 text-xs">—</span>;
+  }
+
+  const now = new Date();
+
+  const todayKey = ADDIS_DATE_FORMATTER.format(now);
+  const orderDateKey = ADDIS_DATE_FORMATTER.format(date);
+
+  const yesterdayKey = ADDIS_DATE_FORMATTER.format(
+    new Date(now.getTime() - 24 * 60 * 60 * 1000),
+  );
+
+  const isToday = orderDateKey === todayKey;
+  const isYesterday = orderDateKey === yesterdayKey;
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -87,9 +101,12 @@ const OrderDate = ({ dateString }: { dateString?: string }) => {
           ? t("common.time.today")
           : isYesterday
             ? t("common.time.yesterday")
-            : formatDate}
+            : formatDate(date, language)}
       </span>
-      <span className="text-xs text-gray-500 font-mono">{formatTime}</span>
+
+      <span className="text-xs text-gray-500 font-mono">
+        {formatTime(date, language)}
+      </span>
     </div>
   );
 };

@@ -3,6 +3,7 @@ export default {
   // COMPANY ORDERS MODULE
   // ─────────────────────────────────────────────────────────────
     etb:"ብር",
+    
   companyOrders: {
     pageTitle: "ሁሉም ትዕዛዞች",
     pageDescription: {
@@ -14,6 +15,8 @@ export default {
     searchPlaceholder: "በትዕዛዝ መለያ፣ በደንበኛ ስም ወይም በኩባንያ ፈልግ...",
     exportReport: "ሪፖርት አውጣ",
     exports: "አውጣ",
+      "tableService": "የጠረጴዛ አገልግሎት",
+  "tableServiceOrders": "የጠረጴዛ ትዕዛዞች",
     liveTracking: "ቀጥታ ክትትል",
     tracking: "ክትትል",
     exportTooltip: "ዕለታዊ / ሳምንታዊ / ወርሃዊ / ዓመታዊ የትዕዛዝ ሪፖርቶችን አውጣ",

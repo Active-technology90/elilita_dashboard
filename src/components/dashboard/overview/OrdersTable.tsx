@@ -8,6 +8,7 @@ import {
   statusClass,
   paymentStatusClass,
 } from "./uiHelpers";
+import { formatDateTime } from "../../../utils/dateFormatter";
 
 interface Order {
   id: string;
@@ -35,7 +36,10 @@ export default function OrdersTable({
   isSuperAdmin,
   isServiceCompany,
 }: OrdersTableProps) {
-  const { t } = useTranslation("ordersTable");
+const { t, i18n } = useTranslation("ordersTable");
+
+const language =
+  i18n.resolvedLanguage || i18n.language || "en";
 
   const hasRecentOrdersData = recentOrders.length > 0;
 
@@ -178,7 +182,7 @@ export default function OrdersTable({
                           text-gray-400
                         "
                       >
-                        {formatDate(order.date)}
+                     {formatDateTime(order.date, language)}
                       </p>
                     </div>
                   </div>
@@ -449,7 +453,7 @@ export default function OrdersTable({
                             text-gray-400
                           "
                         >
-                          {formatDate(order.date)}
+                {formatDateTime(order.date, language)}
                         </td>
                       </tr>
                     ))}

@@ -293,9 +293,11 @@ export default function ChartsSection({
                             }}
                           />
 
-                          <span className="truncate text-[10px] font-medium text-gray-600">
-                            {status.name}
-                          </span>
+                       <span className="truncate text-[10px] font-medium text-gray-600">
+  {t(`statuses.${status.name.toLowerCase()}`, {
+    defaultValue: status.name,
+  })}
+</span>
                         </div>
 
                         <span className="text-[10px] font-bold text-secondary">

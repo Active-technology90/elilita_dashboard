@@ -48,47 +48,117 @@ const EMPTY_ANALYTICS: AnalyticsOverviewResponse = {
 
 type Period = "week" | "month" | "year";
 
+
 const formatRangeDate = (
   date: Date,
   includeYear = false,
-  locale = "en-US",
+  language = "en",
 ) =>
-  new Intl.DateTimeFormat(locale, {
-    month: "short",
-    day: "numeric",
-    ...(includeYear ? { year: "numeric" } : {}),
-  }).format(date);
+  new Intl.DateTimeFormat(
+    language.startsWith("am")
+      ? "am-ET-u-ca-ethiopic"
+      : "en-ET-u-ca-gregory",
+    {
+      month: "short",
+      day: "numeric",
+      ...(includeYear ? { year: "numeric" } : {}),
+      timeZone: "Africa/Addis_Ababa",
+    },
+  ).format(date);
 
 const formatShortRange = (
   start: Date,
   end: Date,
-  locale = "en-US",
+  language = "en",
 ) => {
-  const sameYear =
-    start.getFullYear() === end.getFullYear();
+  const locale = language.startsWith("am")
+    ? "am-ET-u-ca-ethiopic"
+    : "en-ET-u-ca-gregory";
 
-  const sameMonth =
-    sameYear &&
-    start.getMonth() === end.getMonth();
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  };
+
+  const yearOptions: Intl.DateTimeFormatOptions = {
+    ...dateOptions,
+    year: "numeric",
+  };
+
+  const startYear = new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(start);
+
+  const endYear = new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(end);
+
+  const sameYear = startYear === endYear;
+
+  const startMonth = new Intl.DateTimeFormat(locale, {
+    month: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(start);
+
+  const endMonth = new Intl.DateTimeFormat(locale, {
+    month: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(end);
+
+  const sameMonth = sameYear && startMonth === endMonth;
+
+  const startDay = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(start);
+
+  const endDay = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(end);
+
+  const startMonthName = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(start);
+
+  const endMonthName = new Intl.DateTimeFormat(locale, {
+    month: "short",
+    timeZone: "Africa/Addis_Ababa",
+  }).format(end);
 
   if (sameMonth) {
     const month = new Intl.DateTimeFormat(locale, {
       month: "short",
+      timeZone: "Africa/Addis_Ababa",
     }).format(start);
 
-    return `${month} ${start.getDate()}–${end.getDate()}`;
+    return `${month} ${startDay}–${endDay}${
+      new Intl.DateTimeFormat(locale, {
+        year: "numeric",
+        timeZone: "Africa/Addis_Ababa",
+      }).format(end)
+    }`;
   }
 
   if (sameYear) {
-    return `${formatRangeDate(start, false, locale)}–${formatRangeDate(end, false, locale)}`;
+    return `${formatRangeDate(start, false, language)}–${formatRangeDate(end, false, language)}${
+      new Intl.DateTimeFormat(locale, {
+        year: "numeric",
+        timeZone: "Africa/Addis_Ababa",
+      }).format(end)
+    }`;
   }
 
-  return `${formatRangeDate(start, true, locale)}–${formatRangeDate(end, true, locale)}`;
+  return `${formatRangeDate(start, true, language)}–${formatRangeDate(end, true, language)}`;
 };
 
 const getPeriodDateRange = (
   period: Period,
-  locale = "en-US",
+  language = "en",
 ) => {
   const now = new Date();
 
@@ -96,18 +166,15 @@ const getPeriodDateRange = (
   const end = new Date(now);
 
   if (period === "week") {
-    // Current rolling 7-day period, ending today.
     start = new Date(now);
     start.setDate(start.getDate() - 6);
   } else if (period === "month") {
-    // Current month to date.
     start = new Date(
       now.getFullYear(),
       now.getMonth(),
       1,
     );
   } else {
-    // Current year to date.
     start = new Date(
       now.getFullYear(),
       0,
@@ -115,39 +182,30 @@ const getPeriodDateRange = (
     );
   }
 
-  const sameYear =
-    start.getFullYear() === end.getFullYear();
-
-  const separator = locale.startsWith("am")
+  const separator = language.startsWith("am")
     ? " እስከ "
     : " to ";
 
-  return sameYear
-    ? `${formatRangeDate(start, false, locale)}${separator}${formatRangeDate(end, true, locale)}`
-    : `${formatRangeDate(start, true, locale)}${separator}${formatRangeDate(end, true, locale)}`;
+  return `${formatRangeDate(start, true, language)}${separator}${formatRangeDate(end, true, language)}`;
 };
 
 const getPreviousPeriodLabel = (
   period: Period,
-  locale = "en-US",
+  language = "en",
 ) => {
   const now = new Date();
 
   if (period === "week") {
     const previousEnd = new Date(now);
-    previousEnd.setDate(
-      previousEnd.getDate() - 7,
-    );
+    previousEnd.setDate(previousEnd.getDate() - 7);
 
     const previousStart = new Date(previousEnd);
-    previousStart.setDate(
-      previousStart.getDate() - 6,
-    );
+    previousStart.setDate(previousStart.getDate() - 6);
 
     return formatShortRange(
       previousStart,
       previousEnd,
-      locale,
+      language,
     );
   }
 
@@ -158,12 +216,29 @@ const getPreviousPeriodLabel = (
       1,
     );
 
-    return new Intl.DateTimeFormat(locale, {
-      month: "long",
-    }).format(previousMonth);
+    return new Intl.DateTimeFormat(
+      language.startsWith("am")
+        ? "am-ET-u-ca-ethiopic"
+        : "en-ET-u-ca-gregory",
+      {
+        month: "long",
+        year: "numeric",
+        timeZone: "Africa/Addis_Ababa",
+      },
+    ).format(previousMonth);
   }
 
-  return String(now.getFullYear() - 1);
+  return new Intl.DateTimeFormat(
+    language.startsWith("am")
+      ? "am-ET-u-ca-ethiopic"
+      : "en-ET-u-ca-gregory",
+    {
+      year: "numeric",
+      timeZone: "Africa/Addis_Ababa",
+    },
+  ).format(
+    new Date(now.getFullYear() - 1, 0, 1),
+  );
 };
 
 const calculatePercentChange = (
@@ -214,10 +289,7 @@ export default function Overview({
 }) {
   const { t, i18n } = useTranslation("overview");
 
-  const locale = i18n.language?.startsWith("am")
-    ? "am-ET"
-    : "en-US";
-
+  const locale = i18n.resolvedLanguage || i18n.language || "en";
   const { user } = useAuth();
 
   const isSuperAdmin = !user?.memberships?.length;

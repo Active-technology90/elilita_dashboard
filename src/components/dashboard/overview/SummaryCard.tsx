@@ -185,7 +185,7 @@ export const SummaryCard = ({
                 className="
                   mt-2
                   truncate
-                  text-[34px]
+                  text-[20px]
                   font-extrabold
                   leading-none
                   tracking-[-0.045em]

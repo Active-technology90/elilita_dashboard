@@ -36,6 +36,7 @@ import { PayoutReceiptModal } from "./payments/PayoutReceiptModal";
 import { PayoutDetailModal } from "./payments/PayoutDetailModal";
 import { DriverPayoutsManagement } from "./payments/DriverPayoutsManagement";
 import { PayoutExportModal } from "../payment/PayoutExportModal";
+import { formatDate, formatTime } from "../../utils/dateFormatter";
 // import { PayoutExportModal } from "./payment/PayoutExportModal";
 
 interface Payout extends PayoutData {
@@ -53,9 +54,34 @@ interface Payout extends PayoutData {
   reference: string | null;
   vendor_order_details: VendorOrder;
 }
+// ----------------------------------------------------------------------
+// Language-aware currency formatter
+//   en → "ETB 1,220.00"
+//   am → "1,220.00 ብር"
+// ----------------------------------------------------------------------
+function formatCurrency(
+  amount: number | string,
+  language: string,
+  options: { decimals?: number } = {},
+): string {
+  const decimals = options.decimals ?? 2;
+  const num = Number(amount || 0);
+
+  const formatted = num.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  return language.startsWith("am")
+    ? `${formatted} ብር`
+    : `ETB ${formatted}`;
+}
 
 export default function Payments() {
-  const { t } = useTranslation("payments");
+const { t, i18n } = useTranslation("payments");
+
+const language =
+  i18n.resolvedLanguage || i18n.language || "en";
   const { user } = useAuth();
   const { company, switchCompany, clearCompany } = useCurrentCompany();
   const { companies, isLoading: isLoadingCompanies } = useCompaniesList();
@@ -177,26 +203,45 @@ export default function Payments() {
   ]);
 
   // Date filtering helper
-  const isDateInFilter = (dateString: string, filter: string) => {
-    if (!filter) return true;
-    const targetDate = new Date(dateString);
-    const now = new Date();
+ const ADDIS_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Africa/Addis_Ababa",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
-    if (filter === "today") {
-      return targetDate.toDateString() === now.toDateString();
-    }
-    if (filter === "week") {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(now.getDate() - 7);
-      return targetDate >= sevenDaysAgo;
-    }
-    if (filter === "month") {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      return targetDate >= thirtyDaysAgo;
-    }
-    return true;
-  };
+const isDateInFilter = (dateString: string, filter: string) => {
+  if (!filter) return true;
+
+  const targetDate = new Date(dateString);
+
+  if (Number.isNaN(targetDate.getTime())) return false;
+
+  const now = new Date();
+
+  if (filter === "today") {
+    return (
+      ADDIS_DATE_FORMATTER.format(targetDate) ===
+      ADDIS_DATE_FORMATTER.format(now)
+    );
+  }
+
+  if (filter === "week") {
+    const sevenDaysAgo = new Date(
+      now.getTime() - 7 * 24 * 60 * 60 * 1000,
+    );
+    return targetDate >= sevenDaysAgo && targetDate <= now;
+  }
+
+  if (filter === "month") {
+    const thirtyDaysAgo = new Date(
+      now.getTime() - 30 * 24 * 60 * 60 * 1000,
+    );
+    return targetDate >= thirtyDaysAgo && targetDate <= now;
+  }
+
+  return true;
+};
 
   // Client-side filtering
   const filteredPayouts = useMemo(() => {
@@ -428,12 +473,21 @@ export default function Payments() {
             .join(" ");
         },
       },
-      {
-        key: "scheduled_at",
-        header: t("table.columns.payoutDate"),
-        className: "whitespace-nowrap text-gray-500",
-        render: (payout) => new Date(payout.scheduled_at).toLocaleDateString(),
-      },
+{
+  key: "scheduled_at",
+  header: t("table.columns.payoutDate"),
+  className: "whitespace-nowrap text-gray-500",
+  render: (payout) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-sm font-medium text-gray-700">
+        {formatDate(payout.scheduled_at, language)}
+      </span>
+      <span className="text-xs text-gray-500 font-mono">
+        {formatTime(payout.scheduled_at, language)}
+      </span>
+    </div>
+  ),
+},
       {
         key: "actions",
         header: t("table.columns.actions"),
@@ -465,7 +519,7 @@ export default function Payments() {
     );
 
     return cols;
-  }, [isAllPayouts, t]);
+}, [isAllPayouts, t, language]);
 
   // Error state
   if (error) {
