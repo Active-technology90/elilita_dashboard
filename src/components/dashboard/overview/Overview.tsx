@@ -75,17 +75,6 @@ const formatShortRange = (
     ? "am-ET-u-ca-ethiopic"
     : "en-ET-u-ca-gregory";
 
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    month: "short",
-    day: "numeric",
-    timeZone: "Africa/Addis_Ababa",
-  };
-
-  const yearOptions: Intl.DateTimeFormatOptions = {
-    ...dateOptions,
-    year: "numeric",
-  };
-
   const startYear = new Intl.DateTimeFormat(locale, {
     year: "numeric",
     timeZone: "Africa/Addis_Ababa",
@@ -117,16 +106,6 @@ const formatShortRange = (
 
   const endDay = new Intl.DateTimeFormat(locale, {
     day: "numeric",
-    timeZone: "Africa/Addis_Ababa",
-  }).format(end);
-
-  const startMonthName = new Intl.DateTimeFormat(locale, {
-    month: "short",
-    timeZone: "Africa/Addis_Ababa",
-  }).format(start);
-
-  const endMonthName = new Intl.DateTimeFormat(locale, {
-    month: "short",
     timeZone: "Africa/Addis_Ababa",
   }).format(end);
 

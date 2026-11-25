@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { SkeletonChart, EmptyState } from "./LoadingStates";
 import {
   formatCurrency,
-  formatDate,
   statusClass,
   paymentStatusClass,
 } from "./uiHelpers";

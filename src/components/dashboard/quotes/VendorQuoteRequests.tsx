@@ -173,23 +173,7 @@ export default function VendorQuoteRequests() {
 
   const getStatusConfig = (status: QuoteStatus) =>
     STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-const currentLanguage = i18n.resolvedLanguage || i18n.language;
 
-const locale = currentLanguage?.toLowerCase().startsWith("am")
-  ? "am-ET"
-  : "en-US";
-
-const formatDateTime = (date: string | Date) => {
-  if (!date) return "—";
-
-  return new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(date));
-};
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);

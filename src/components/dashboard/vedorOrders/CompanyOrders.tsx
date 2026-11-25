@@ -246,8 +246,6 @@ const userRole = isSuperAdmin
   ? "super_admin"
   : String(currentMembership?.role || user?.role || "").toLowerCase();
 
-const canViewTableServiceDetails = userRole !== "viewer";
-
   const effectiveSlug = useMemo(() => {
     if (shouldFetchAll) return null;
     if (user?.memberships?.length) {

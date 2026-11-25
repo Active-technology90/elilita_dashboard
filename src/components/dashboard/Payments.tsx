@@ -54,28 +54,6 @@ interface Payout extends PayoutData {
   reference: string | null;
   vendor_order_details: VendorOrder;
 }
-// ----------------------------------------------------------------------
-// Language-aware currency formatter
-//   en → "ETB 1,220.00"
-//   am → "1,220.00 ብር"
-// ----------------------------------------------------------------------
-function formatCurrency(
-  amount: number | string,
-  language: string,
-  options: { decimals?: number } = {},
-): string {
-  const decimals = options.decimals ?? 2;
-  const num = Number(amount || 0);
-
-  const formatted = num.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-
-  return language.startsWith("am")
-    ? `${formatted} ብር`
-    : `ETB ${formatted}`;
-}
 
 export default function Payments() {
 const { t, i18n } = useTranslation("payments");

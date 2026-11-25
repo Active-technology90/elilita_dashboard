@@ -12,7 +12,7 @@ import {
   ChevronDown,
   Loader2,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 
 const PRIMARY_COLOR = "#6750A4";
 
@@ -21,7 +21,7 @@ const LANGUAGE_FLAGS: Record<string, string> = {
   am: "🇪🇹",
 };
 
-const dropdownVariants = {
+const dropdownVariants: Variants = {
   hidden: {
     opacity: 0,
     y: -8,
