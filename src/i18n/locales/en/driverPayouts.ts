@@ -1,4 +1,5 @@
 export default {
+  "etb":"ETB",
   statusBadge: {
     disbursed: "Awaiting Confirmation",
     confirmed: "Confirmed",

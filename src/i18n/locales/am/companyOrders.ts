@@ -220,6 +220,7 @@ export default {
     refunded: "ተመላሽ ተደርጓል",
     expired: "ጊዜ ገደብ አልፏል",
     declined: "አልተቀበለም",
+    acepted:"ተቀብሎአል",
 
 },
   },

@@ -22,6 +22,8 @@ import {
   deleteOfferingAddon,
 } from "../../../services/api";
 import { normalizeListResponse } from "../../../utils/normalizeListResponse";
+import { formatCurrency } from "../../../utils/currency";
+import i18n from "../../../i18n";
 
 interface ServiceAddonManagerProps {
   companySlug: string;
@@ -274,8 +276,8 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-semibold">
-                  ETB
-                </span>
+  {i18n.language?.startsWith("am") ? "ብር" : "ETB"}
+</span>
                 <input
                   type="number"
                   min="0"
@@ -431,7 +433,8 @@ export const ServiceAddonManager: React.FC<ServiceAddonManagerProps> = ({
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
                       <span className="font-semibold text-secondary">
-                        +{Number(addon.price || 0).toLocaleString()} ETB
+                         +{formatCurrency(addon.price || 0)}
+
                       </span>
                       {addon.duration_minutes > 0 && (
                         <span className="inline-flex items-center gap-1 text-gray-500">

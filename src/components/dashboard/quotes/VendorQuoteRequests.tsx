@@ -40,6 +40,7 @@ import { CompanySelector } from "../company-products/CompanySelector";
 import { useAuth } from "../../../context/authContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
 import { formatCurrency } from "../../../utils/currency";
+import { formatDate, formatDateTime } from "../../../utils/dateFormatter";
 
 const STATUS_CONFIG: Record<
   QuoteStatus,
@@ -391,14 +392,7 @@ export default function VendorQuoteRequests() {
         <div>
           <div className="font-bold text-secondary">#{quote.id}</div>
           <div className="text-[11px] text-gray-400">
-            {new Date(quote.created_at).toLocaleDateString(
-              isAmharic ? "am-ET" : "en-US",
-              {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              },
-            )}
+           {formatDate(quote.created_at, i18n.language)}
           </div>
         </div>
       ),
@@ -932,15 +926,15 @@ export default function VendorQuoteRequests() {
             <label className="mb-2 block text-xs font-bold text-gray-800">
               {tr("Quoted Unit Price", "የአንድ እቃ ዋጋ")}
               <span className="ml-1 text-red-500">*</span>
-              <span className="ml-1 font-medium text-gray-400">
-                (ETB)
-              </span>
+            <span className="ml-1 font-medium text-gray-400">
+  ({isAmharic ? "ብር" : "ETB"})
+</span>
             </label>
 
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
-                ETB
-              </span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
+  {isAmharic ? "ብር" : "ETB"}
+</span>
 
               <input
                 type="number"
@@ -1106,16 +1100,7 @@ export default function VendorQuoteRequests() {
               </h3>
               <p className="mt-1 text-xs text-gray-500">
                 {tr("Received on", "የተቀበለበት ቀን")} ·{" "}
-                {new Intl.DateTimeFormat(
-                  isAmharic ? "am-ET" : "en-US",
-                  {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  }
-                ).format(new Date(detailQuote.created_at))}
+              {formatDateTime(detailQuote.created_at, i18n.language)}
               </p>
             </div>
           </div>
@@ -1355,14 +1340,7 @@ export default function VendorQuoteRequests() {
                     {tr("Offer Valid Until", "የዋጋ ቅናሹ የሚያበቃበት ቀን")}
                   </span>
                   <span className="text-right text-xs font-semibold text-gray-800">
-                    {new Intl.DateTimeFormat(
-                      isAmharic ? "am-ET" : "en-US",
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      }
-                    ).format(new Date(detailQuote.valid_until))}
+                  {formatDate(detailQuote.valid_until, i18n.language)}
                   </span>
                 </div>
               )}

@@ -37,6 +37,7 @@ import { PayoutDetailModal } from "./payments/PayoutDetailModal";
 import { DriverPayoutsManagement } from "./payments/DriverPayoutsManagement";
 import { PayoutExportModal } from "../payment/PayoutExportModal";
 import { formatDate, formatTime } from "../../utils/dateFormatter";
+import { formatCurrency } from "../../utils/currency";
 // import { PayoutExportModal } from "./payment/PayoutExportModal";
 
 interface Payout extends PayoutData {
@@ -415,25 +416,24 @@ const isDateInFilter = (dateString: string, filter: string) => {
     }
 
     cols.push(
-      {
-        key: "gross_amount",
-        header: t("table.columns.gross"),
-        className: "whitespace-nowrap",
-        render: (payout) => Number(payout.gross_amount).toLocaleString(),
-      },
-      {
-        key: "platform_fee",
-        header: t("table.columns.platformFee"),
-        className: "whitespace-nowrap text-red-600 font-medium",
-        render: (payout) => `- ${Number(payout.platform_fee).toLocaleString()}`,
-      },
-      {
-        key: "net_amount",
-        header: t("table.columns.net"),
-        className: "whitespace-nowrap font-bold text-gray-900",
-        render: (payout) => Number(payout.net_amount).toLocaleString(),
-      },
-      {
+    {
+  key: "gross_amount",
+  header: t("table.columns.gross"),
+  className: "whitespace-nowrap",
+  render: (payout) => formatCurrency(payout.gross_amount || 0),
+},
+{
+  key: "platform_fee",
+  header: t("table.columns.platformFee"),
+  className: "whitespace-nowrap text-red-600 font-medium",
+  render: (payout) => `- ${formatCurrency(payout.platform_fee || 0)}`,
+},
+{
+  key: "net_amount",
+  header: t("table.columns.net"),
+  className: "whitespace-nowrap font-bold text-gray-900",
+  render: (payout) => formatCurrency(payout.net_amount || 0),
+},{
         key: "status",
         header: t("table.columns.status"),
         render: (payout) => getStatusBadge(payout.status, payout),
@@ -686,12 +686,9 @@ const isDateInFilter = (dateString: string, filter: string) => {
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
                     {t("kpi.settledPayouts")}
                   </span>
-                  <span className="text-lg sm:text-xl font-bold text-gray-900">
-                    ETB{" "}
-                    {stats.netDisbursed.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
+                <span className="text-lg sm:text-xl font-bold text-gray-900">
+  {formatCurrency(stats.netDisbursed, { decimals: 0 })}
+</span>
                   <span className="text-[11px] text-emerald-600 font-medium block mt-0.5">
                     {t("kpi.transfersSettled", {
                       count: stats.completedCount,
@@ -709,12 +706,9 @@ const isDateInFilter = (dateString: string, filter: string) => {
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
                     {t("kpi.platformFees")}
                   </span>
-                  <span className="text-lg sm:text-xl font-bold text-secondary">
-                    ETB{" "}
-                    {stats.platformCommission.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
+               <span className="text-lg sm:text-xl font-bold text-secondary">
+  {formatCurrency(stats.platformCommission, { decimals: 0 })}
+</span>
                   <span className="text-[11px] text-gray-500 block mt-0.5">
                     {t("kpi.marketplaceCommission")}
                   </span>
@@ -730,12 +724,9 @@ const isDateInFilter = (dateString: string, filter: string) => {
                   <span className="text-xs font-semibold text-gray-400 block mb-1">
                     {t("kpi.pendingSettlement")}
                   </span>
-                  <span className="text-lg sm:text-xl font-bold text-amber-600">
-                    ETB{" "}
-                    {stats.inEscrow.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
+                <span className="text-lg sm:text-xl font-bold text-amber-600">
+  {formatCurrency(stats.inEscrow, { decimals: 0 })}
+</span>
                   <span className="text-[11px] text-amber-600/90 block mt-0.5">
                     {t("kpi.awaitingSettlement")}
                   </span>

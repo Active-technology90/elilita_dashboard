@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import type { ServiceStaff, StaffScheduleResponse } from "../../../types";
 import { getManageStaffSchedule } from "../../../services/api";
-
+import {
+  formatDate,
+  formatTime as formatLocalizedTime,
+} from "../../../utils/dateFormatter";
 interface StaffScheduleModalProps {
   isOpen: boolean;
   staff: ServiceStaff | null;
@@ -31,14 +34,38 @@ const WEEKDAY_KEYS = [
   "sat",
   "sun",
 ];
+const formatScheduleTime = (
+  time: string | undefined,
+  date: string,
+  language: string,
+): string => {
+  if (!time) return "—";
 
+  const normalizedTime = time.slice(0, 5);
+
+  if (!/^\d{2}:\d{2}$/.test(normalizedTime)) {
+    return time;
+  }
+
+  // Schedule times are interpreted as Addis Ababa local time (UTC+3).
+  return formatLocalizedTime(
+    `${date}T${normalizedTime}:00+03:00`,
+    language,
+  );
+};
+
+const getLocalDateString = (): string => {
+  const date = new Date();
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
 export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
   isOpen,
   staff,
   companySlug,
   onClose,
 }) => {
-  const { t } = useTranslation("staffForm");
+  const { t, i18n } = useTranslation("staffForm");
 
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
@@ -150,9 +177,10 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                {staff.role_title || t("table.specialist")} •{" "}
-                {t("schedule.shift")}: {staff.start_time?.slice(0, 5)} -{" "}
-                {staff.end_time?.slice(0, 5)}
+           {staff.role_title || t("table.specialist")} •{" "}
+{t("schedule.shift")}:{" "}
+{formatScheduleTime(staff.start_time, selectedDate, i18n.language)} -{" "}
+{formatScheduleTime(staff.end_time, selectedDate, i18n.language)}
               </p>
             </div>
           </div>
@@ -173,7 +201,7 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
             <button
               onClick={() => setDateOffset(0)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                selectedDate === new Date().toISOString().split("T")[0]
+                selectedDate === getLocalDateString()
                   ? "bg-secondary text-white shadow-sm"
                   : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
               }`}
@@ -247,7 +275,8 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                     {appointments.length}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {t("schedule.scheduledFor")} {selectedDate}
+                   {t("schedule.scheduledFor")}{" "}
+{formatDate(selectedDate, i18n.language)}
                   </p>
                 </div>
 
@@ -268,8 +297,8 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                     {t("schedule.shiftRange")}
                   </span>
                   <p className="text-sm font-bold text-gray-900 mt-1">
-                    {staff.start_time?.slice(0, 5)} →{" "}
-                    {staff.end_time?.slice(0, 5)}
+                   {formatScheduleTime(staff.start_time, selectedDate, i18n.language)} →{" "}
+{formatScheduleTime(staff.end_time, selectedDate, i18n.language)}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {staff.is_online
@@ -308,7 +337,11 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="text-base font-extrabold text-gray-900">
-                                {apt.scheduled_time}
+                               {formatScheduleTime(
+  apt.scheduled_time,
+  selectedDate,
+  i18n.language,
+)}
                               </span>
                               <span
                                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sc.bg} ${sc.text} ${sc.border}`}
@@ -372,7 +405,7 @@ export const StaffScheduleModal: React.FC<StaffScheduleModalProps> = ({
                         key={slot}
                         className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold"
                       >
-                        {slot}
+                      {formatScheduleTime(slot, selectedDate, i18n.language)}
                       </span>
                     ))}
                   </div>

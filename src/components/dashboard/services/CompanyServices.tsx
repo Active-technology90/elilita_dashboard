@@ -34,6 +34,7 @@ import { Pagination } from "../../ui/Pagination";
 import { CustomSelect, type SelectOption } from "../../ui/CustomSelect";
 import PageHeader from "../../ui/PageHeader";
 import type { ServiceOffering } from "../../../types";
+import { formatCurrency } from "../../../utils/currency";
 
 /* ---------- custom debounce hook ---------- */
 function useDebounce<T>(value: T, delay: number): T {
@@ -168,9 +169,7 @@ function ServicePreviewModal({
               <h3 className="text-base font-bold text-gray-900">
                 {t("preview.title")}
               </h3>
-              <p className="text-xs text-gray-400">
-                {t("preview.subtitle")}
-              </p>
+              <p className="text-xs text-gray-400">{t("preview.subtitle")}</p>
             </div>
           </div>
           <button
@@ -219,7 +218,7 @@ function ServicePreviewModal({
               <p className="text-sm font-bold text-secondary mt-0.5">
                 {offering.pricing_type === "custom"
                   ? t("preview.quote")
-                  : `${Number(offering.price || 0).toLocaleString()} ${offering.currency}`}
+                  : formatCurrency(offering.price || 0)}
               </p>
             </div>
             <div>
@@ -484,7 +483,9 @@ export default function CompanyServices() {
   const [activeTabFilter, setActiveTabFilter] = useState<
     "all" | "one_off" | "recurring" | "active" | "inactive"
   >("all");
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(
+    null,
+  );
 
   // ---------- search with debounce ----------
   const [searchInput, setSearchInput] = useState("");
@@ -525,7 +526,9 @@ export default function CompanyServices() {
     // Tag filter
     if (selectedTagFilter) {
       list = list.filter((o) =>
-        o.tags?.some((tg) => tg.toLowerCase() === selectedTagFilter.toLowerCase()),
+        o.tags?.some(
+          (tg) => tg.toLowerCase() === selectedTagFilter.toLowerCase(),
+        ),
       );
     }
 
@@ -573,11 +576,12 @@ export default function CompanyServices() {
     "details" | "addons" | "gallery"
   >("details");
   const [editing, setEditing] = useState<ServiceOffering | null>(null);
-  const [previewOffering, setPreviewOffering] = useState<ServiceOffering | null>(
+  const [previewOffering, setPreviewOffering] =
+    useState<ServiceOffering | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ServiceOffering | null>(
     null,
   );
-  const [togglingId, setTogglingId] = useState<number | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ServiceOffering | null>(null);
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
@@ -606,10 +610,7 @@ export default function CompanyServices() {
       showToast("success", t("toasts.serviceCreated"));
       return result;
     } catch (err: any) {
-      showToast(
-        "error",
-        err?.response?.data?.detail || t("toasts.saveFailed"),
-      );
+      showToast("error", err?.response?.data?.detail || t("toasts.saveFailed"));
       throw err;
     } finally {
       refetch();
@@ -1001,7 +1002,9 @@ export default function CompanyServices() {
             <Tag className="h-3.5 w-3.5" />
             <span>
               {t("tagFilter.label")}:{" "}
-              <strong className="font-bold underline">{selectedTagFilter}</strong>
+              <strong className="font-bold underline">
+                {selectedTagFilter}
+              </strong>
             </span>
             <button
               type="button"
@@ -1238,7 +1241,9 @@ export default function CompanyServices() {
                                 title={t("tags.filterBy", { tag })}
                               >
                                 <Tag className="h-2.5 w-2.5 opacity-60" />
-                                <span className="truncate max-w-[85px]">{tag}</span>
+                                <span className="truncate max-w-[85px]">
+                                  {tag}
+                                </span>
                               </button>
                             ))}
                             {o.tags.length > 3 && (
@@ -1255,7 +1260,7 @@ export default function CompanyServices() {
                       <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">
                         {o.pricing_type === "custom"
                           ? t("preview.quote")
-                          : `${Number(o.price || 0).toLocaleString()} ${o.currency}`}
+                          : formatCurrency(o.price || 0)}
                       </td>
                       <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">
                         {o.duration_minutes
@@ -1281,7 +1286,9 @@ export default function CompanyServices() {
                             onClick={() => handlePreview(o)}
                             className="p-1.5 text-gray-500 hover:text-secondary rounded-lg hover:bg-purple-50 transition"
                             title={t("actions.preview")}
-                            aria-label={t("actions.previewAria", { title: o.title })}
+                            aria-label={t("actions.previewAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Eye className="h-4 w-4" />
@@ -1290,16 +1297,20 @@ export default function CompanyServices() {
                             onClick={() => handleOpenAddons(o)}
                             className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
                             title={t("actions.manageAddons")}
-                            aria-label={t("actions.manageAddonsAria", { title: o.title })}
+                            aria-label={t("actions.manageAddonsAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
-                            <Settings  className="h-4 w-4" />
+                            <Settings className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDuplicate(o)}
                             className="p-1.5 text-gray-500 hover:text-gray-800 rounded-lg hover:bg-gray-100 transition"
                             title={t("actions.duplicate")}
-                            aria-label={t("actions.duplicateAria", { title: o.title })}
+                            aria-label={t("actions.duplicateAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Copy className="h-4 w-4" />
@@ -1308,7 +1319,9 @@ export default function CompanyServices() {
                             onClick={() => handleEdit(o, "details")}
                             className="p-1.5 text-secondary hover:text-purple-700 rounded-lg hover:bg-purple-50 transition"
                             title={t("actions.edit")}
-                            aria-label={t("actions.editAria", { title: o.title })}
+                            aria-label={t("actions.editAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Edit className="h-4 w-4" />
@@ -1317,7 +1330,9 @@ export default function CompanyServices() {
                             onClick={() => setDeleteTarget(o)}
                             className="p-1.5 text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition"
                             title={t("actions.delete")}
-                            aria-label={t("actions.deleteAria", { title: o.title })}
+                            aria-label={t("actions.deleteAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1365,7 +1380,9 @@ export default function CompanyServices() {
                             onClick={() => handlePreview(o)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
                             title={t("actions.preview")}
-                            aria-label={t("actions.previewAria", { title: o.title })}
+                            aria-label={t("actions.previewAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Eye className="h-4 w-4" />
@@ -1374,7 +1391,9 @@ export default function CompanyServices() {
                             onClick={() => handleOpenAddons(o)}
                             className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
                             title={t("actions.manageAddons")}
-                            aria-label={t("actions.manageAddonsAria", { title: o.title })}
+                            aria-label={t("actions.manageAddonsAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Sparkles className="h-4 w-4" />
@@ -1383,7 +1402,9 @@ export default function CompanyServices() {
                             onClick={() => handleDuplicate(o)}
                             className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition"
                             title={t("actions.duplicate")}
-                            aria-label={t("actions.duplicateAria", { title: o.title })}
+                            aria-label={t("actions.duplicateAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Copy className="h-4 w-4" />
@@ -1392,7 +1413,9 @@ export default function CompanyServices() {
                             onClick={() => handleEdit(o, "details")}
                             className="p-1.5 rounded-lg text-secondary hover:bg-purple-50 transition"
                             title={t("actions.edit")}
-                            aria-label={t("actions.editAria", { title: o.title })}
+                            aria-label={t("actions.editAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Edit className="h-4 w-4" />
@@ -1401,7 +1424,9 @@ export default function CompanyServices() {
                             onClick={() => setDeleteTarget(o)}
                             className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition"
                             title={t("actions.delete")}
-                            aria-label={t("actions.deleteAria", { title: o.title })}
+                            aria-label={t("actions.deleteAria", {
+                              title: o.title,
+                            })}
                             type="button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1416,7 +1441,7 @@ export default function CompanyServices() {
                           <span className="truncate">
                             {o.pricing_type === "custom"
                               ? t("preview.quote")
-                              : `${Number(o.price || 0).toLocaleString()} ${o.currency}`}
+                              : formatCurrency(o.price || 0)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-gray-600 min-w-0">
@@ -1466,7 +1491,9 @@ export default function CompanyServices() {
                       {/* Bookings count */}
                       <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
                         <Activity className="h-3 w-3" />
-                        <span>{t("bookingsCount", { count: o.total_bookings ?? 0 })}</span>
+                        <span>
+                          {t("bookingsCount", { count: o.total_bookings ?? 0 })}
+                        </span>
                       </div>
                     </div>
                   </div>

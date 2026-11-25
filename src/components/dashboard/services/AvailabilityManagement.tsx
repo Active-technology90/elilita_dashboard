@@ -19,6 +19,7 @@ import { useAuth } from "../../../context/authContext";
 import { useCurrentCompany } from "../../../context/CurrentCompanyContext";
 import { useCompaniesList } from "../../../hooks/useCompaniesList";
 import { useAvailability } from "../../../hooks/useAvailability";
+import { formatDate, formatTime as formatLocalizedTime } from "../../../utils/dateFormatter";
 import {
   getManageBlackouts,
   createBlackoutDate,
@@ -107,7 +108,7 @@ const DayCard = ({
   onDeleteSlot: (slot: AvailabilitySlot) => void;
   formatTime: (time: string) => string;
 }) => {
-  const { t } = useTranslation("availability");
+  const { t, i18n } = useTranslation("availability");
 
   const dayInfo = (() => {
     const labels = [
@@ -231,7 +232,7 @@ const SlotFormModal = ({
   existingSlots: AvailabilitySlot[];
   defaultDay?: number;
 }) => {
-  const { t } = useTranslation("availability");
+  const { t, i18n } = useTranslation("availability");
 
   const normalizeTimeForInput = (time?: string | null): string => {
     if (!time) return "";
@@ -510,7 +511,7 @@ const SlotFormModal = ({
 //  Main Component
 // ---------------------------------------------------------------------------
 export default function AvailabilityManagement() {
-  const { t } = useTranslation("availability");
+  const { t, i18n } = useTranslation("availability");
 
   // ---------- Hooks ----------
   const { user } = useAuth();
@@ -637,14 +638,14 @@ export default function AvailabilityManagement() {
     return { workingDays, totalSlots, weeklyHours, maxDaily, blockedDates };
   }, [groupedSlots, slots, blackouts]);
 
-  const formatTime = (time: string) => {
-    if (!time) return "";
-    const [h, m] = time.split(":");
-    const hour = parseInt(h, 10);
-    const ampm = hour >= 12 ? t("time.pm") : t("time.am");
-    const h12 = hour % 12 || 12;
-    return `${h12}:${m} ${ampm}`;
-  };
+const formatTime = (time: string) => {
+  if (!time) return "";
+
+  return formatLocalizedTime(
+    `2000-01-01T${time}`,
+    i18n.language,
+  );
+};
 
   // ---------- Early returns ----------
   if (showSelector) {
@@ -1423,9 +1424,9 @@ export default function AvailabilityManagement() {
                           </div>
 
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
-                            <span className="font-medium text-gray-700">
-                              {b.date}
-                            </span>
+                          <span className="font-medium text-gray-700">
+  {formatDate(b.date, i18n.language)}
+</span>
 
                             <span className="text-gray-300">•</span>
 

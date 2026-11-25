@@ -27,6 +27,9 @@ import { CustomSelect } from "../../ui/CustomSelect";
 import PageHeader from "../../ui/PageHeader";
 import { DataTable, type Column } from "../../ui/DataTable";
 import type { ServiceSubscription } from "../../../types";
+import { formatDate } from "../../../utils/dateFormatter";
+import { formatCurrency } from "../../../utils/currency";
+import i18n from "../../../i18n";
 
 /* ---------- custom debounce hook ---------- */
 function useDebounce<T>(value: T, delay: number): T {
@@ -51,23 +54,23 @@ function getInitials(name?: string | null): string {
     .join("");
 }
 
-function formatAmount(value: string | number): string {
-  const numericValue = typeof value === "number" ? value : Number(value || 0);
-  return Number.isFinite(numericValue) ? numericValue.toLocaleString() : "0";
-}
+// function formatAmount(value: string | number): string {
+//   const numericValue = typeof value === "number" ? value : Number(value || 0);
+//   return Number.isFinite(numericValue) ? numericValue.toLocaleString() : "0";
+// }
 
-function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return "—";
+// function formatDate(dateStr?: string | null): string {
+//   if (!dateStr) return "—";
 
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return dateStr;
+//   const date = new Date(dateStr);
+//   if (Number.isNaN(date.getTime())) return dateStr;
 
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+//   return date.toLocaleDateString(undefined, {
+//     month: "short",
+//     day: "numeric",
+//     year: "numeric",
+//   });
+// }
 
 function isSameDay(date: Date, today: Date): boolean {
   return (
@@ -131,7 +134,7 @@ function getApiErrorMessage(
 /* ---------- presentational components ---------- */
 
 function SubscriptionStatusBadge({ status }: { status: string }) {
-  const { t } = useTranslation("serviceSubscriptions");
+  const { t,i18n } = useTranslation("serviceSubscriptions");
 
   const statusLabels: Record<string, string> = {
     active: t("status.active"),
@@ -297,7 +300,7 @@ function SubscriptionPaymentMethodBadge({
 }
 
 function BillingDateCell({ date }: { date?: string | null }) {
-  const { t } = useTranslation("serviceSubscriptions");
+  const { t, i18n } = useTranslation("serviceSubscriptions");
 
   if (!date) {
     return <span className="text-gray-400">—</span>;
@@ -324,7 +327,7 @@ function BillingDateCell({ date }: { date?: string | null }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-gray-700">
       <Calendar className="h-4 w-4 text-gray-400" />
-      {formatDate(date)}
+     {formatDate(date, i18n.language)}
     </span>
   );
 }
@@ -555,7 +558,7 @@ export default function ServiceSubscriptions() {
           <p className="font-semibold text-gray-900">#{subscription.id}</p>
           {subscription.created_at && (
             <p className="mt-0.5 text-xs text-gray-400">
-              {t("table.created")} {formatDate(subscription.created_at)}
+            {t("table.created")} {formatDate(subscription.created_at, i18n.language)}
             </p>
           )}
         </div>
@@ -599,23 +602,24 @@ export default function ServiceSubscriptions() {
         </div>
       ),
     },
-    {
-      key: "billing",
-      header: t("table.billing"),
-      textMode: "nowrap",
-      render: (subscription) => (
-        <div>
-          <p className="font-semibold text-gray-900">
-            {formatAmount(subscription.cycle_amount)} {subscription.currency}
-          </p>
-          <p className="mt-0.5 text-xs capitalize text-gray-500">
-            {t("table.per")} {t(`billingCycles.${subscription.billing_cycle}`, {
-              defaultValue: subscription.billing_cycle,
-            })}
-          </p>
-        </div>
-      ),
-    },
+  {
+  key: "billing",
+  header: t("table.billing"),
+  textMode: "nowrap",
+  render: (subscription) => (
+    <div>
+      <p className="font-semibold text-gray-900">
+        {formatCurrency(subscription.cycle_amount || 0)}
+      </p>
+      <p className="mt-0.5 text-xs capitalize text-gray-500">
+        {t("table.per")}{" "}
+        {t(`billingCycles.${subscription.billing_cycle}`, {
+          defaultValue: subscription.billing_cycle,
+        })}
+      </p>
+    </div>
+  ),
+},
     {
       key: "next_billing_date",
       header: t("table.nextBilling"),

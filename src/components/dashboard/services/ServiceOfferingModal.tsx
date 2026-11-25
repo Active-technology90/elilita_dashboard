@@ -24,6 +24,7 @@ import { ServiceAddonManager } from "./ServiceAddonManager";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { TagsInput } from "../../ui/TagsInput";
 import type { IntakeFormField, ServiceOffering } from "../../../types";
+import i18n from "../../../i18n";
 
 /* -------------------------------------------------------------------------- */
 /*  Utility                                                                   */
@@ -653,29 +654,36 @@ export function ServiceOfferingModal({
                           placeholder={t("placeholders.select")}
                         />
                       </div>
-                      {form.pricing_type !== "custom" && (
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                            {t("fields.price")} (ETB)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                              ETB
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={form.price}
-                              onChange={(e) =>
-                                updateForm("price", e.target.value)
-                              }
-                              className="w-full border-2 rounded-xl pl-14 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      )}
+                    {form.pricing_type !== "custom" && (
+  <div>
+    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+      {t("fields.price")} (
+      {i18n.language?.startsWith("am") ? "ብር" : "ETB"})
+    </label>
+
+    <div className="relative">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+        {i18n.language?.startsWith("am") ? "ብር" : "ETB"}
+      </span>
+
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={form.price}
+        onChange={(e) => updateForm("price", e.target.value)}
+        className="w-full border-2 rounded-xl pl-14 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
+        placeholder="0.00"
+      />
+    </div>
+
+    {form.price !== "" && Number(form.price) >= 0 && (
+      <p className="text-xs text-gray-500 mt-1.5">
+        {formatCurrency(form.price)}
+      </p>
+    )}
+  </div>
+)}
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                           {t("fields.duration")}
