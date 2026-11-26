@@ -16,6 +16,8 @@ import { ServiceBookingAdvancedFilters } from "./ServiceBookingFilters";
 import { ServiceBookingManageModal } from "./ServiceBookingManageModal";
 import { extractErrorMessage } from "../../../utils/extractErrorMessage";
 import type { ServiceBooking } from "../../../types";
+import { formatDate, formatTime } from "../../../utils/dateFormatter";
+import { formatCurrency } from "../../../utils/currency";
 
 /* -------------------- constants -------------------- */
 const STATUS_COLORS: Record<string, string> = {
@@ -28,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const { t } = useTranslation("serviceBookings");
+  const { t, i18n } = useTranslation("serviceBookings");
   const normalized = status?.toLowerCase();
   const color =
     STATUS_COLORS[normalized] || "bg-gray-100 text-gray-600 border-gray-200";
@@ -46,7 +48,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
-  const { t } = useTranslation("serviceBookings");
+  const { t, i18n } = useTranslation("serviceBookings");
   const method = booking.payment_method?.toLowerCase();
   const status = booking.payment_status?.toLowerCase();
   const receipt = (booking as any)?.receipt;
@@ -123,7 +125,7 @@ const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
 };
 
 const PaymentMethodBadge = ({ method }: { method?: string }) => {
-  const { t } = useTranslation("serviceBookings");
+  const { t, i18n } = useTranslation("serviceBookings");
   const norm = method?.toLowerCase() || "—";
 
   const labelMap: Record<string, string> = {
@@ -142,7 +144,7 @@ const PaymentMethodBadge = ({ method }: { method?: string }) => {
 };
 
 export default function ServiceBookings() {
-  const { t } = useTranslation("serviceBookings");
+  const { t, i18n } = useTranslation("serviceBookings");
 
   /* -------------------- context & hooks -------------------- */
   const { user } = useAuth();
@@ -481,19 +483,26 @@ export default function ServiceBookings() {
       textMode: "nowrap",
       render: (booking) => <PaymentStatusBadge booking={booking} />,
     },
-    {
-      key: "schedule",
-      header: t("table.dateTime"),
-      textMode: "nowrap",
-      render: (booking) => (
-        <div>
-          <p className="font-medium text-gray-900">{booking.scheduled_date}</p>
-          <p className="text-xs text-gray-500">
-            {String(booking.scheduled_time).slice(0, 5)}
-          </p>
-        </div>
-      ),
-    },
+
+{
+  key: "schedule",
+  header: t("table.dateTime"),
+  textMode: "nowrap",
+  render: (booking) => (
+    <div>
+      <p className="font-medium text-gray-900">
+        {formatDate(booking.scheduled_date, i18n.language)}
+      </p>
+      <p className="text-xs text-gray-500">
+        {formatTime(
+          `${booking.scheduled_date}T${String(booking.scheduled_time).slice(0, 8)}`,
+          i18n.language,
+        )}
+      </p>
+    </div>
+  ),
+},
+
     {
       key: "actions",
       header: t("table.actions"),

@@ -176,28 +176,8 @@ const PLAN_FEATURES: Record<
 > = {
   free: [
     {
-      label: "features.basicStorefront",
-      match: "basic storefront and vendor profile",
-      enabled: true,
-    },
-    {
       label: "features.limitedCatalogue",
-      match: "limited product catalogue and basic categories",
-      enabled: true,
-    },
-    {
-      label: "features.basicInventory",
-      match: "basic inventory and stock information",
-      enabled: true,
-    },
-    {
-      label: "features.orderManagement",
-      match: "receive, accept, reject and update orders",
-      enabled: true,
-    },
-    {
-      label: "features.customerNotifications",
-      match: "basic customer notifications",
+      match: "limited product catalogue",
       enabled: true,
     },
     {
@@ -206,92 +186,21 @@ const PLAN_FEATURES: Record<
       enabled: true,
     },
     {
-      label: "features.basicDashboard",
-      match: "basic sales dashboard and store status",
-      enabled: true,
-    },
-    {
-      label: "features.standardSupport",
-      match: "standard support, help center and knowledge base",
-      enabled: true,
-    },
-    {
-      label: "features.businessAnalytics",
-      match: "business analytics",
-      enabled: false,
-    },
-    {
-      label: "features.promotionalTools",
-      match: "promotional tools",
-      enabled: false,
-    },
-    {
       label: "features.featuredProducts",
       match: "featured products",
-      enabled: false,
-    },
-    {
-      label: "features.advertising",
-      match: "advertising opportunities",
-      enabled: false,
-    },
-    {
-      label: "features.advancedReports",
-      match: "advanced reports",
-      enabled: false,
-    },
-    {
-      label: "features.premiumVisibility",
-      match: "premium visibility",
       enabled: false,
     },
   ],
 
   basic: [
     {
-      label: "features.professionalStorefront",
-      match: "professional storefront",
-      enabled: true,
-    },
-    {
       label: "features.publicProducts",
       match: "up to 100 products",
       enabled: true,
     },
     {
-      label: "features.multipleCategories",
-      match: "multiple product categories and search visibility",
-      enabled: true,
-    },
-    {
-      label: "features.fullOrderManagement",
-      match: "full order management and order notifications",
-      enabled: true,
-    },
-    {
-      label: "features.basicInventory",
-      match: "basic inventory management",
-      enabled: true,
-    },
-    {
-      label: "features.basicSalesReports",
-      match: "basic sales reports and business insights",
-      enabled: true,
-    },
-    {
-      label: "features.basicPromotions",
-      match: "basic promotions, discounts and product highlighting",
-      enabled: true,
-    },
-    // { label: "Paid advertising opportunities", enabled: true },
-    {
       label: "features.staffTwo",
       match: "2 staff accounts",
-      enabled: true,
-    },
-    {
-      label: "features.prioritySupport",
-      match: "standard priority support and onboarding assistance",
       enabled: true,
     },
     {
@@ -299,161 +208,40 @@ const PLAN_FEATURES: Record<
       match: "featured products",
       enabled: false,
     },
-    {
-      label: "features.advancedReports",
-      match: "advanced reports",
-      enabled: false,
-    },
-    {
-      label: "features.advancedMarketing",
-      match: "advanced marketing",
-      enabled: false,
-    },
-    {
-      label: "features.premiumVisibility",
-      match: "premium visibility",
-      enabled: false,
-    },
-    {
-      label: "features.dedicatedSupport",
-      match: "dedicated support",
-      enabled: false,
-    },
   ],
 
   advanced: [
     {
-      label: "features.allBasicFeatures",
-      match: "all basic plan features",
-      enabled: true,
-    },
-    {
-      label: "features.advancedCustomization",
-      match: "advanced storefront customization",
-      enabled: true,
-    },
-    {
-      label: "features.bulkProducts",
-      match: "up to 500 products and bulk product management",
-      enabled: true,
-    },
-    {
-      label: "features.advancedInventory",
-      match: "advanced inventory management",
-      enabled: true,
-    },
-    {
-      label: "features.advancedOrderDashboard",
-      match: "advanced order dashboard, filtering and tracking",
-      enabled: true,
-    },
-    {
-      label: "features.salesAnalytics",
-      match: "sales, product, order and revenue analytics",
-      enabled: true,
-    },
-    {
-      label: "features.promotionalCampaigns",
-      match: "featured products and promotional campaigns",
-      enabled: true,
-    },
-    // { label: "Advertising participation", enabled: true },
-    {
-      label: "features.customerInsights",
-      match: "customer insights and promotional targeting",
+      label: "features.publicProducts",
+      match: "up to 500 products",
       enabled: true,
     },
     {
       label: "features.staffFive",
-      match: "5 staff accounts with role-based access",
+      match: "5 staff accounts",
       enabled: true,
     },
     {
-      label: "features.staffMonitoring",
-      match: "staff activity monitoring",
+      label: "features.featuredProducts",
+      match: "featured products included",
       enabled: true,
-    },
-    {
-      label: "features.exportableReports",
-      match: "advanced and exportable reports",
-      enabled: true,
-    },
-    {
-      label: "features.prioritySupport",
-      match: "priority support",
-      enabled: true,
-    },
-    {
-      label: "features.premiumVisibility",
-      match: "premium visibility",
-      enabled: false,
-    },
-    {
-      label: "features.dedicatedSupport",
-      match: "dedicated support",
-      enabled: false,
     },
   ],
 
   premium: [
-    {
-      label: "features.allAdvancedFeatures",
-      match: "all advanced plan features",
-      enabled: true,
-    },
-    {
-      label: "features.premiumCustomization",
-      match: "premium storefront customization and priority visibility",
-      enabled: true,
-    },
     {
       label: "features.unlimitedProducts",
       match: "unlimited product listing",
       enabled: true,
     },
     {
-      label: "features.advancedBulkManagement",
-      match: "advanced inventory and bulk product management",
-      enabled: true,
-    },
-    {
-      label: "features.productPerformance",
-      match: "advanced product analytics and performance comparison",
-      enabled: true,
-    },
-    {
-      label: "features.priorityFeatured",
-      match: "priority featured products and premium promotional placement",
-      enabled: true,
-    },
-    {
-      label: "features.advancedCampaigns",
-      match: "advanced campaigns and featured vendor opportunities",
-      enabled: true,
-    },
-    {
-      label: "features.customerSegmentation",
-      match: "advanced customer analytics and segmentation",
-      enabled: true,
-    },
-    {
-      label: "features.businessMonitoring",
-      match: "advanced operations and business performance monitoring",
-      enabled: true,
-    },
-    {
       label: "features.multipleStaff",
-      match: "multiple staff accounts with role-based permissions",
+      match: "multiple staff accounts",
       enabled: true,
     },
     {
-      label: "features.historicalReports",
-      match: "advanced and historical reporting",
-      enabled: true,
-    },
-    {
-      label: "features.accountSupport",
-      match: "priority support and dedicated account support where applicable",
+      label: "features.premiumVisibility",
+      match: "priority featured products",
       enabled: true,
     },
   ],
@@ -1477,7 +1265,7 @@ export default function BillingPage() {
                       }
                     >
                       {subscribingTo === plan.id ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                        <span className="h-4 w-4  text-white animate-spin rounded-full border-2 border-current/30 border-t-current" />
                       ) : (
                         <>
                           {button.icon}

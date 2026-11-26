@@ -24,6 +24,7 @@ import { ServiceAddonManager } from "./ServiceAddonManager";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { TagsInput } from "../../ui/TagsInput";
 import type { IntakeFormField, ServiceOffering } from "../../../types";
+import i18n from "../../../i18n";
 
 /* -------------------------------------------------------------------------- */
 /*  Utility                                                                   */
@@ -666,6 +667,7 @@ export function ServiceOfferingModal({
                   </Card>
 
                   {/* 1. Booking & Service Type (Determines available Pricing & Payment options) */}
+
                   <Card
                     icon={<Calendar size={18} />}
                     title={t("sections.bookingContract")}

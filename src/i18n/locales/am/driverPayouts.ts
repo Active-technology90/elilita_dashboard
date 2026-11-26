@@ -1,4 +1,5 @@
 export default {
+  'etb':"ብር",
   "statusBadge": {
     "disbursed": "ማረጋገጫ በመጠባበቅ ላይ",
     "confirmed": "ተረጋግጧል",

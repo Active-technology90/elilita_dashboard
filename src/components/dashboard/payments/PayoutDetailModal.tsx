@@ -17,6 +17,8 @@ import {
 import { useTranslation } from "react-i18next";
 import type { PayoutData } from "../../../utils/payoutReceipt";
 import { getFullMediaUrl } from "../../../utils/payoutReceipt";
+import { formatDateTime } from "../../../utils/dateFormatter";
+import { formatCurrency } from "../../../utils/currency";
 
 interface PayoutDetailModalProps {
   payout: PayoutData | null;
@@ -49,22 +51,13 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
     vo?.payment_method === "arifpay" ||
     vo?.payment_method === "chapa";
 
- const scheduledDate = payout.scheduled_at
-  ? new Date(payout.scheduled_at).toLocaleString(locale, {
-      year: "numeric", month: "short", day: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    })
+const scheduledDate = payout.scheduled_at
+  ? formatDateTime(payout.scheduled_at, i18n.language)
   : t("common.notAvailable");
 
-  const paidDate = payout.paid_at
-    ? new Date(payout.paid_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : t("status.pendingSettlement");
+const paidDate = payout.paid_at
+  ? formatDateTime(payout.paid_at, i18n.language)
+  : t("status.pendingSettlement");
 
   const customerReceipt = vo?.receipt;
   const companyLogoUrl = getFullMediaUrl(payout.company_logo);
@@ -137,9 +130,9 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
                 <span className="text-xs font-medium text-gray-500 block mb-1">
                   {t("financial.grossTotal")}
                 </span>
-                <span className="text-lg font-bold text-gray-900">
-                  ETB {Number(payout.gross_amount || 0).toLocaleString()}
-                </span>
+              <span className="text-lg font-bold text-gray-900">
+  {formatCurrency(payout.gross_amount || 0)}
+</span>
               </div>
 
               <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100">
@@ -147,7 +140,7 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
                   {t("financial.platformCommission")}
                 </span>
                 <span className="text-lg font-bold text-red-600">
-                  - ETB {Number(payout.platform_fee || 0).toLocaleString()}
+                   - {formatCurrency(payout.platform_fee || 0)}
                 </span>
               </div>
 
@@ -156,7 +149,7 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
                   {t("financial.netDisbursed")}
                 </span>
                 <span className="text-lg font-black text-secondary">
-                  ETB {Number(payout.net_amount || 0).toLocaleString()}
+                 {formatCurrency(payout.net_amount || 0)}
                 </span>
               </div>
             </div>
@@ -275,7 +268,7 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
                 <div className="flex justify-between">
                   <span className="text-gray-500">{t("customer.deliveryFee")}:</span>
                   <span className="text-gray-800">
-                    ETB {Number(vo?.delivery_fee || 0).toLocaleString()}
+               {formatCurrency(vo?.delivery_fee || 0)}
                   </span>
                 </div>
               </div>
@@ -338,10 +331,10 @@ const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
                               {it.qty || 1}
                             </td>
                             <td className="px-4 py-2.5 text-right text-gray-600">
-                              ETB {Number(it.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatCurrency(it.unit_price || 0)}
                             </td>
                             <td className="px-4 py-2.5 text-right font-bold text-gray-900">
-                              ETB {Number(it.line_total || it.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {formatCurrency(it.line_total || it.subtotal || 0)}
                             </td>
                           </tr>
                         );

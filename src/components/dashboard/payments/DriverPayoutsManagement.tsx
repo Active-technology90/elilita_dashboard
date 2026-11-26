@@ -616,7 +616,7 @@ export function DriverPayoutsManagement({
               {t("metrics.unpaidFees")}
             </p>
             <h3 className="text-2xl font-black text-gray-900 mt-1">
-              ETB {totalUnpaidGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+             {totalUnpaidGross.toLocaleString(undefined, { minimumFractionDigits: 2 })} {t('etb')}
             </h3>
             <p className="text-xs text-gray-400 mt-1">
               {t("metrics.unpaidFeesSubtitle", {
@@ -637,7 +637,7 @@ export function DriverPayoutsManagement({
               {t("metrics.codCash")}
             </p>
             <h3 className="text-2xl font-black text-secondary mt-1">
-              ETB {totalCodCollected.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+               {totalCodCollected.toLocaleString(undefined, { minimumFractionDigits: 2 })} {t('etb')}
             </h3>
             <p className="text-xs text-gray-400 mt-1">{t("metrics.codCashSubtitle")}</p>
           </div>
@@ -669,7 +669,7 @@ export function DriverPayoutsManagement({
               {t("metrics.totalSettled")}
             </p>
             <h3 className="text-2xl font-black text-green-600 mt-1">
-              ETB {confirmedSettledTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+               {confirmedSettledTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} {t('etb')}
             </h3>
             <p className="text-xs text-gray-400 mt-1">{t("metrics.totalSettledSubtitle")}</p>
           </div>
@@ -831,7 +831,7 @@ export function DriverPayoutsManagement({
                             {t("driverCard.grossFees")}
                           </p>
                           <p className="text-sm font-bold text-gray-700">
-                            +{group.total_gross_fees.toFixed(2)} ETB
+                            +{group.total_gross_fees.toFixed(2)}  {t('etb')}
                           </p>
                         </div>
 
@@ -841,7 +841,7 @@ export function DriverPayoutsManagement({
                               {t("driverCard.codCollected")}
                             </p>
                             <p className="text-sm font-bold text-amber-700">
-                              {group.total_cod_collected.toFixed(2)} ETB
+                              {group.total_cod_collected.toFixed(2)}  {t('etb')}
                             </p>
                           </div>
                         )}
@@ -933,11 +933,11 @@ export function DriverPayoutsManagement({
                                   </div>
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-bold text-gray-900">
-                                  +{parseFloat(ord.delivery_fee).toFixed(2)} ETB
+                                  +{parseFloat(ord.delivery_fee).toFixed(2)}  {t('etb')}
                                 </td>
                                 <td className="py-2.5 px-3 text-right font-medium text-amber-700">
                                   {parseFloat(ord.cod_collected) > 0
-                                    ? `${parseFloat(ord.cod_collected).toFixed(2)} ETB`
+                                    ? `${parseFloat(ord.cod_collected).toFixed(2)}  {t('etb')}`
                                     : "0.00 ETB"}
                                 </td>
                               </tr>
@@ -1010,7 +1010,7 @@ export function DriverPayoutsManagement({
                         {t("historyTable.ordersCount", { count: payout.items_count })}
                       </td>
                       <td className="py-3 px-4 text-right font-black text-gray-900 text-sm">
-                        {parseFloat(payout.net_payout_amount).toFixed(2)} ETB
+                        {parseFloat(payout.net_payout_amount).toFixed(2)}  {t('etb')}
                       </td>
                       <td className="py-3 px-4">{renderStatusBadge(payout.status)}</td>
                       <td className="py-3 px-4 text-gray-500">
@@ -1702,7 +1702,7 @@ export function DriverPayoutsManagement({
                       {t("detail.grossDeliveryFees")}
                     </p>
                     <p className="text-sm font-bold text-gray-900 mt-1">
-                      +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)} ETB
+                      +{parseFloat(selectedPayout.gross_delivery_fees).toFixed(2)}  {t('etb')}
                     </p>
                   </div>
                   <div>
@@ -1710,7 +1710,7 @@ export function DriverPayoutsManagement({
                       {t("detail.codCollected")}
                     </p>
                     <p className="text-sm font-bold text-amber-700 mt-1">
-                      {parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)} ETB
+                      {parseFloat(selectedPayout.cod_cash_deducted).toFixed(2)}  {t('etb')}
                     </p>
                   </div>
                   <div>
@@ -1718,7 +1718,7 @@ export function DriverPayoutsManagement({
                       {t("detail.netAmountPaid")}
                     </p>
                     <p className="text-base font-black text-green-600 mt-1">
-                      {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                      {parseFloat(selectedPayout.net_payout_amount).toFixed(2)}  {t('etb')}
                     </p>
                   </div>
                 </div>
@@ -1762,7 +1762,7 @@ export function DriverPayoutsManagement({
                             </span>
                           )}
                           <span className="text-[11px] font-bold text-green-700 ml-auto">
-                            {t("detail.net")}: {parseFloat(selectedPayout.net_payout_amount).toFixed(2)} ETB
+                            {t("detail.net")}: {parseFloat(selectedPayout.net_payout_amount).toFixed(2)}  {t('etb')}
                           </span>
                         </div>
                         {parsedNotes.originalNote && (
@@ -2031,11 +2031,11 @@ export function DriverPayoutsManagement({
                               {item.customer_name}
                             </td>
                             <td className="py-2 px-3 text-right font-bold text-gray-900">
-                              +{parseFloat(item.delivery_fee).toFixed(2)} ETB
+                              +{parseFloat(item.delivery_fee).toFixed(2)}  {t('etb')}
                             </td>
                             <td className="py-2 px-3 text-right text-amber-700 font-medium">
                               {parseFloat(item.cod_collected) > 0
-                                ? `${parseFloat(item.cod_collected).toFixed(2)} ETB`
+                                ? `${parseFloat(item.cod_collected).toFixed(2)}  {t('etb')}`
                                 : "0.00 ETB"}
                             </td>
                           </tr>

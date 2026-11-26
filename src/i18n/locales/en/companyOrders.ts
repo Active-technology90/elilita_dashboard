@@ -192,6 +192,7 @@ export default {
     statusBadge: {
       processing: "Prepared",
       shipped: "In Transit",
+      acepted:"Acepted",
       fulfilled: "Delivered",
       contacted: "Confirmed",
       pending: "pending",

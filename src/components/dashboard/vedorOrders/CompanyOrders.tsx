@@ -69,6 +69,7 @@ const StatusBadge = ({
     onspot: t("companyOrders.statusBadge.onspot"),
     no_assigned: t("companyOrders.statusBadge.no_assigned"),
     expired: t("companyOrders.statusBadge.expired"),
+    accepted: t("companyOrders.statusBadge.acepted"),
   };
 
   const labels = type === "delivery" ? deliveryStatusLabels : orderStatusLabels;

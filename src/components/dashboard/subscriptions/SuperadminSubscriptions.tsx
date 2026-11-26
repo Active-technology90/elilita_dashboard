@@ -27,6 +27,9 @@ import { Pagination } from "../../ui/Pagination";
 import { usePagination } from "../../../hooks/usePagination";
 import { useSorting } from "../../../hooks/useSorting";
 import PageHeader from "../../ui/PageHeader";
+// ─── Shared date helpers (timezone-safe, Amharic + English) ────
+// Adjust the import path if your project stores this file elsewhere.
+import { formatShortDate } from "../../../utils/dateFormatter";
 
 // ========== LOADING SKELETON ==========
 const SkeletonRow = () => (
@@ -297,7 +300,11 @@ const getDocumentIssues = (
 };
 
 export default function SuperadminSubscriptions() {
-  const { t } = useTranslation("serviceSubscriptions");
+  // ─── i18n: expose the active language so dates render in the
+  // correct calendar (Gregorian for en, Ethiopic for am). ──────
+  const { t, i18n } = useTranslation("serviceSubscriptions");
+
+  const language = i18n?.language ?? "en";
 
   const [plans, setPlans] = useState<any[]>([]);
   const [companySubscriptions, setCompanySubscriptions] = useState<any[]>([]);
@@ -706,9 +713,14 @@ export default function SuperadminSubscriptions() {
     const anchor = document.createElement("a");
 
     anchor.href = url;
-    anchor.download = `subscription_plans_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    // Use the shared formatter (forced to English + filesystem-safe)
+    // so the filename is timezone-consistent without exotic chars.
+    const stamp = formatShortDate(new Date(), "en").replace(
+      /[^a-zA-Z0-9-]+/g,
+      "_",
+    );
+
+    anchor.download = `subscription_plans_${stamp}.csv`;
 
     anchor.click();
 
@@ -1667,7 +1679,8 @@ export default function SuperadminSubscriptions() {
                         </td>
 
                         <td className="px-3 py-3.5 text-xs text-gray-500 sm:px-4 sm:py-4 sm:text-sm">
-                          {new Date(sub.start_date).toLocaleDateString()}
+                          {/* ✅ Shared timezone-aware formatter */}
+                          {formatShortDate(sub.start_date, language)}
                         </td>
 
                         <td className="px-3 py-3.5 sm:px-4 sm:py-4">
@@ -1681,14 +1694,17 @@ export default function SuperadminSubscriptions() {
                         </td>
 
                         <td className="px-3 py-3.5 text-xs font-medium text-gray-600 sm:px-4 sm:py-4 sm:text-sm">
+                          {/* ✅ Shared timezone-aware formatter */}
                           {sub.effective_end_date
-                            ? new Date(
+                            ? formatShortDate(
                                 sub.effective_end_date,
-                              ).toLocaleDateString()
+                                language,
+                              )
                             : sub.end_date
-                              ? new Date(
+                              ? formatShortDate(
                                   sub.end_date,
-                                ).toLocaleDateString()
+                                  language,
+                                )
                               : t("subscriptions.companySubscriptions.lifetime")}
                         </td>
 
@@ -2233,9 +2249,8 @@ export default function SuperadminSubscriptions() {
                     </span>
 
                     <span className="font-semibold text-gray-800">
-                      {new Date(
-                        selectedSub.start_date,
-                      ).toLocaleDateString()}
+                      {/* ✅ Shared timezone-aware formatter */}
+                      {formatShortDate(selectedSub.start_date, language)}
                     </span>
                   </div>
 
@@ -2400,7 +2415,8 @@ export default function SuperadminSubscriptions() {
                       <p className="mt-1 text-gray-700">
                         {t("subscriptions.dealModal.newExpiry")}:{" "}
                         <strong>
-                          {previewEndD.toLocaleDateString()}
+                          {/* ✅ Shared timezone-aware formatter */}
+                          {formatShortDate(previewEndD, language)}
                         </strong>{" "}
                         (
                         {t("subscriptions.dealModal.daysFromNow", {
