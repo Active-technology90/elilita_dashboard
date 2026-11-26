@@ -1087,7 +1087,7 @@ export default function VendorRegister(): React.JSX.Element {
                 </button>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                A confirmation email has been dispatched to <strong>{contactEmail}</strong>.
+                A confirmation email has been sent to <strong>{contactEmail}</strong>.
               </p>
             </div>
 
@@ -1099,7 +1099,7 @@ export default function VendorRegister(): React.JSX.Element {
               </h4>
               <ul className="text-xs text-slate-600 space-y-2 list-disc list-inside">
                 <li>
-                  Our compliance team will review your business license within <strong>24 to 48 business hours</strong>.
+                  Our team will review your business license within <strong>24 to 48 business hours</strong>.
                 </li>
                 <li>
                   Once approved, you will receive an invitation email with a secure link to set your account password.
