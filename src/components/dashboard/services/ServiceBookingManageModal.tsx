@@ -697,10 +697,10 @@ export function ServiceBookingManageModal({
   booking: initialBooking,
   onClose,
   onStatusUpdate,
-  companyNotes: _companyNotes,
-  setCompanyNotes: _setCompanyNotes,
-  finalPrice: _finalPrice,
-  setFinalPrice: _setFinalPrice,
+  companyNotes,
+  setCompanyNotes,
+  finalPrice,
+  setFinalPrice,
   allBookings = [],
   onRefresh,
 }: {
@@ -1713,30 +1713,48 @@ export function ServiceBookingManageModal({
                   </div>
 
                   <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                      {t("price.quotedPrice")}
-                    </p>
-
-                    <h3 className="text-2xl font-black">
-                      {formatCurrency(initialBooking.quoted_price)}{" "}
-                      {initialBooking.currency}
-                    </h3>
+                    {initialBooking.offering?.booking_mode === "direct" ? (
+                      <>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
+                          {t("price.finalPrice")}
+                        </p>
+                        <h3 className="text-2xl font-black">
+                          {formatCurrency(
+                            initialBooking.final_price || initialBooking.quoted_price,
+                          )}{" "}
+                          {initialBooking.currency}
+                        </h3>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
+                          {t("price.quotedPrice")}
+                        </p>
+                        <h3 className="text-2xl font-black">
+                          {Number(initialBooking.quoted_price || 0) > 0
+                            ? `${formatCurrency(initialBooking.quoted_price)} ${initialBooking.currency}`
+                            : "Pending Quote"}
+                        </h3>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-3 border-t border-white/10">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="opacity-60">
-                      {t("price.finalPrice")}
-                    </span>
+                {initialBooking.offering?.booking_mode !== "direct" && (
+                  <div className="space-y-2 pt-3 border-t border-white/10">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="opacity-60">
+                        {t("price.finalPrice")}
+                      </span>
 
-                    <span>
-                      {initialBooking.final_price
-                        ? `${formatCurrency(initialBooking.final_price)} ${initialBooking.currency}`
-                        : "—"}
-                    </span>
+                      <span>
+                        {initialBooking.final_price && Number(initialBooking.final_price) > 0
+                          ? `${formatCurrency(initialBooking.final_price)} ${initialBooking.currency}`
+                          : "Awaiting Quote"}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
 
@@ -1783,6 +1801,55 @@ export function ServiceBookingManageModal({
                 </div>
               </Card>
             )}
+
+            {/* Quote / Final Price & Provider Notes (for Inquiry or Status Updates) */}
+            {!["completed", "cancelled", "no_show"].includes(initialBooking.status) &&
+              (setFinalPrice || setCompanyNotes) && (
+                <Card
+                  title={
+                    initialBooking.offering?.booking_mode === "inquiry"
+                      ? "Set Final Quote & Notes"
+                      : "Provider Notes"
+                  }
+                  icon={Tag}
+                >
+                  <div className="space-y-3">
+                    {initialBooking.offering?.booking_mode === "inquiry" && setFinalPrice && (
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          {t("price.finalPrice")} ({initialBooking.currency || "ETB"})
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={finalPrice ?? ""}
+                          onChange={(e) => setFinalPrice(e.target.value)}
+                          placeholder="Enter final quoted price..."
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          The customer will be notified of this final price and can pay from their booking details.
+                        </p>
+                      </div>
+                    )}
+                    {setCompanyNotes && (
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Notes to Customer
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={companyNotes ?? ""}
+                          onChange={(e) => setCompanyNotes(e.target.value)}
+                          placeholder="Instructions, breakdown, or quote details..."
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary resize-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
             {/* Status Update */}
             <Card title={t("sections.updateStatus")} icon={AlertCircle}>

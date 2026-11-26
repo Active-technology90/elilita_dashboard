@@ -295,13 +295,34 @@ export function ServiceOfferingModal({
       errors.push(t("validation.titleMaxLength"));
     if (form.description.length > 500)
       errors.push(t("validation.descriptionMaxLength"));
-    if (form.pricing_type !== "custom") {
-      const priceVal = Number(form.price);
-      if (isNaN(priceVal) || priceVal < 0)
-        errors.push(t("validation.priceInvalid"));
+
+    if (form.booking_mode === "direct") {
+      if (form.pricing_type === "custom") {
+        errors.push(
+          "Quote-based pricing is only available for Inquiry / Lead mode. Please switch Booking Mode to Inquiry or choose a fixed/starting/hourly price.",
+        );
+      } else {
+        const priceVal = Number(form.price);
+        if (isNaN(priceVal) || priceVal <= 0) {
+          errors.push("Direct bookings require a price greater than 0.");
+        }
+      }
+      if (form.duration_minutes < 1) {
+        errors.push(t("validation.durationInvalid"));
+      }
+    } else {
+      if (form.payment_policy === "upfront") {
+        errors.push(
+          "Full Payment Upfront at booking is unavailable for Inquiry mode because the provider must review and set the final price first.",
+        );
+      }
+      if (form.pricing_type !== "custom" && form.price !== "") {
+        const priceVal = Number(form.price);
+        if (isNaN(priceVal) || priceVal < 0)
+          errors.push(t("validation.priceInvalid"));
+      }
     }
-    if (form.duration_minutes < 1)
-      errors.push(t("validation.durationInvalid"));
+
     if (form.payment_policy === "deposit") {
       const deposit = Number(form.deposit_percentage);
       if (isNaN(deposit) || deposit < 0 || deposit > 100) {
@@ -364,7 +385,12 @@ export function ServiceOfferingModal({
     { value: "fixed", label: t("options.pricing.fixed") },
     { value: "starting_at", label: t("options.pricing.startingAt") },
     { value: "hourly", label: t("options.pricing.hourly") },
-    { value: "custom", label: t("options.pricing.quoteBased") },
+    {
+      value: "custom",
+      label: t("options.pricing.quoteBased"),
+      disabled: form.booking_mode === "direct",
+      hint: "Only available when Booking Mode is Inquiry / Lead",
+    },
   ];
 
   const serviceTypeOptions = [
@@ -385,7 +411,12 @@ export function ServiceOfferingModal({
   ];
 
   const paymentOptions = [
-    { value: "upfront", label: t("options.payment.upfront") },
+    {
+      value: "upfront",
+      label: t("options.payment.upfront"),
+      disabled: form.booking_mode === "inquiry",
+      hint: "Unavailable for Inquiry mode (final price is confirmed after review)",
+    },
     { value: "post_service", label: t("options.payment.postService") },
     { value: "deposit", label: t("options.payment.deposit") },
   ];
@@ -634,70 +665,7 @@ export function ServiceOfferingModal({
                     </div>
                   </Card>
 
-                  {/* Pricing */}
-                  <Card icon={<DollarSign size={18} />} title={t("sections.pricing")}>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          {t("fields.pricingType")}
-                        </label>
-                        <CustomSelect
-                          value={form.pricing_type}
-                          onChange={(val) =>
-                            updateForm(
-                              "pricing_type",
-                              val as ServiceFormState["pricing_type"],
-                            )
-                          }
-                          options={pricingOptions}
-                          placeholder={t("placeholders.select")}
-                        />
-                      </div>
-                      {form.pricing_type !== "custom" && (
-                        <div>
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                            {t("fields.price")} (ETB)
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                              ETB
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={form.price}
-                              onChange={(e) =>
-                                updateForm("price", e.target.value)
-                              }
-                              className="w-full border-2 rounded-xl pl-14 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      )}
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
-                          {t("fields.duration")}
-                        </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={form.duration_minutes}
-                          onChange={(e) =>
-                            updateForm(
-                              "duration_minutes",
-                              Number(e.target.value) || 0,
-                            )
-                          }
-                          className="w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
-                          placeholder="30"
-                        />
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* Booking & Contract */}
+                  {/* 1. Booking & Service Type (Determines available Pricing & Payment options) */}
                   <Card
                     icon={<Calendar size={18} />}
                     title={t("sections.bookingContract")}
@@ -758,6 +726,94 @@ export function ServiceOfferingModal({
                             : t("hints.inquiryBooking")}
                         </p>
                       </div>
+                    </div>
+                  </Card>
+
+                  {/* 2. Pricing */}
+                  <Card icon={<DollarSign size={18} />} title={t("sections.pricing")}>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          {t("fields.pricingType")}
+                        </label>
+                        <CustomSelect
+                          value={form.pricing_type}
+                          onChange={(val) =>
+                            updateForm(
+                              "pricing_type",
+                              val as ServiceFormState["pricing_type"],
+                            )
+                          }
+                          options={pricingOptions}
+                          placeholder={t("placeholders.select")}
+                        />
+                        {form.booking_mode === "direct" &&
+                          form.pricing_type === "custom" && (
+                            <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                              Quote-based pricing cannot be used with Direct Booking. Switch Booking Mode to Inquiry / Lead or choose a fixed, starting, or hourly price.
+                            </p>
+                          )}
+                        {form.pricing_type === "custom" &&
+                          form.booking_mode === "inquiry" && (
+                            <p className="mt-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                              No upfront price needed. You will set the Final Price per booking after reviewing the customer&apos;s inquiry.
+                            </p>
+                          )}
+                      </div>
+                      {form.pricing_type !== "custom" && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                            {form.booking_mode === "inquiry"
+                              ? `${t("fields.price")} (ETB — Optional Estimate)`
+                              : `${t("fields.price")} (ETB)`}
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                              ETB
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={form.price}
+                              onChange={(e) =>
+                                updateForm("price", e.target.value)
+                              }
+                              className="w-full border-2 rounded-xl pl-14 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
+                          {form.booking_mode === "inquiry"
+                            ? `${t("fields.duration")} (Optional)`
+                            : t("fields.duration")}
+                        </label>
+                        <input
+                          type="number"
+                          min={form.booking_mode === "direct" ? 1 : 0}
+                          value={form.duration_minutes}
+                          onChange={(e) =>
+                            updateForm(
+                              "duration_minutes",
+                              Number(e.target.value) || 0,
+                            )
+                          }
+                          className="w-full border-2 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary min-h-[44px] border-gray-200 bg-gray-50/80 focus:border-secondary focus:bg-white"
+                          placeholder="30"
+                        />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* 3. Payment Policy */}
+                  <Card
+                    icon={<DollarSign size={18} />}
+                    title={t("fields.paymentPolicy")}
+                  >
+                    <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">
                           {t("fields.paymentPolicy")}
@@ -773,6 +829,12 @@ export function ServiceOfferingModal({
                           options={paymentOptions}
                           placeholder={t("placeholders.select")}
                         />
+                        {form.booking_mode === "inquiry" &&
+                          form.payment_policy === "upfront" && (
+                            <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                              Full Payment Upfront at booking is disabled for Inquiry mode because you confirm the final price first. Please choose Pay After Service or Deposit Required.
+                            </p>
+                          )}
                       </div>
                       {form.payment_policy === "deposit" && (
                         <div>

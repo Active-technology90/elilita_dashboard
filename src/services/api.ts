@@ -1101,7 +1101,10 @@ export const sendTestNotification = (
 ) => api.post("/notifications/test-send/", { app });
 
 // ========== SUBSCRIPTIONS ==========
-export const getSubscriptionPlans = () => api.get("/subscriptions/plans/");
+export const getSubscriptionPlans = (planType?: "product" | "service") =>
+  api.get("/subscriptions/plans/", {
+    params: planType ? { plan_type: planType } : undefined,
+  });
 export const getMySubscription = (companySlug?: string) =>
   api.get("/subscriptions/my-subscription/", {
     params: companySlug ? { company: companySlug } : {},

@@ -393,14 +393,17 @@ export default function SuperadminSubscriptions() {
   // ========== PLAN MODAL STATE ==========
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [subscriptionMode, setSubscriptionMode] = useState<"product" | "service">("product");
 
   const [formData, setFormData] = useState({
     name: "",
+    plan_type: "product" as "product" | "service",
     description: "",
     price: 0,
     duration_days: 30,
     max_featured_products: 0,
     max_products: 0,
+    max_services: 15,
     max_staff_members: 5,
     is_active: true,
   });
@@ -469,11 +472,13 @@ export default function SuperadminSubscriptions() {
 
   const selectedDocumentBaseline = useMemo(
     () =>
-      getDocumentBaseline({
-        name: formData.name,
-        price: formData.price,
-      }),
-    [formData.name, formData.price],
+      subscriptionMode === "product"
+        ? getDocumentBaseline({
+            name: formData.name,
+            price: formData.price,
+          })
+        : null,
+    [subscriptionMode, formData.name, formData.price],
   );
 
   // ========== FETCH DATA ==========
@@ -502,9 +507,27 @@ export default function SuperadminSubscriptions() {
     void fetchData();
   }, []);
 
-  // ========== FILTER SUBSCRIPTIONS ==========
+  // ========== FILTER PLANS & SUBSCRIPTIONS BY MODE ==========
+  const modeScopedPlans = useMemo(() => {
+    return plans.filter(
+      (plan) => (plan.plan_type || "product") === subscriptionMode,
+    );
+  }, [plans, subscriptionMode]);
+
+  useEffect(() => {
+    setPlanFilter("all");
+  }, [subscriptionMode]);
+
+  const modeScopedSubscriptions = useMemo(() => {
+    return companySubscriptions.filter((sub) =>
+      subscriptionMode === "service"
+        ? sub.company_business_type === "service"
+        : sub.company_business_type !== "service",
+    );
+  }, [companySubscriptions, subscriptionMode]);
+
   const filteredSubscriptions = useMemo(() => {
-    let data = [...companySubscriptions];
+    let data = [...modeScopedSubscriptions];
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -521,7 +544,7 @@ export default function SuperadminSubscriptions() {
     }
 
     return data;
-  }, [companySubscriptions, searchTerm, planFilter]);
+  }, [modeScopedSubscriptions, searchTerm, planFilter]);
 
   // ========== SORTING ==========
   const { sortedItems } = useSorting(
@@ -541,7 +564,7 @@ export default function SuperadminSubscriptions() {
 
   useEffect(() => {
     resetPage();
-  }, [searchTerm, pageSize, planFilter, resetPage]);
+  }, [searchTerm, pageSize, planFilter, subscriptionMode, resetPage]);
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
@@ -572,6 +595,7 @@ export default function SuperadminSubscriptions() {
 
     setFormData({
       name: plan.name,
+      plan_type: (plan.plan_type || "product") as "product" | "service",
       description: plan.description || "",
       price: parseFloat(plan.price) || 0,
       duration_days: plan.duration_days ?? 30,
@@ -580,6 +604,7 @@ export default function SuperadminSubscriptions() {
         stored !== null
           ? stored
           : (getDocumentBaseline(plan)?.expectedProductLimit ?? 0),
+      max_services: Number(plan.max_services ?? 15),
       max_staff_members: Number(plan.max_staff_members ?? 5),
       is_active: Boolean(plan.is_active),
     });
@@ -594,11 +619,13 @@ export default function SuperadminSubscriptions() {
 
     setFormData({
       name: "",
+      plan_type: subscriptionMode,
       description: "",
       price: 0,
       duration_days: 30,
       max_featured_products: 0,
       max_products: 0,
+      max_services: 15,
       max_staff_members: 5,
       is_active: true,
     });
@@ -619,6 +646,7 @@ export default function SuperadminSubscriptions() {
         price: Number(formData.price),
         duration_days: Number(formData.duration_days),
         max_products: Number(formData.max_products),
+        max_services: Number(formData.max_services),
         max_featured_products: Number(formData.max_featured_products),
         max_staff_members: Number(formData.max_staff_members),
       };
@@ -691,9 +719,17 @@ export default function SuperadminSubscriptions() {
     (plan) => plan.is_active,
   ).length;
 
-  const activeSubscriptions = companySubscriptions.filter(
+  const activeSubscriptions = modeScopedSubscriptions.filter(
     (subscription) =>
       subscription.is_active && !subscription.is_expired,
+  ).length;
+
+  const productCompanyCount = companySubscriptions.filter(
+    (sub) => sub.company_business_type !== "service",
+  ).length;
+
+  const serviceCompanyCount = companySubscriptions.filter(
+    (sub) => sub.company_business_type === "service",
   ).length;
 
   return (
@@ -728,14 +764,16 @@ export default function SuperadminSubscriptions() {
                 {t("subscriptions.export")}
               </button>
 
-              <button
+              {/* <button
                 type="button"
                 onClick={handleCreateClick}
                 className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-secondary/90 hover:shadow-md sm:flex-none sm:text-sm"
               >
                 <Plus className="h-4 w-4" />
-                {t("subscriptions.addPlan")}
-              </button>
+                {subscriptionMode === "service"
+                  ? "Add Service Plan"
+                  : "Add Product Plan"}
+              </button> */}
             </div>
           }
           actionMobile={
@@ -747,7 +785,9 @@ export default function SuperadminSubscriptions() {
               >
                 <Plus className="h-3 w-3 shrink-0" />
                 <span className="truncate">
-                  {t("subscriptions.add")}
+                  {subscriptionMode === "service"
+                    ? "Add Service Plan"
+                    : "Add Product Plan"}
                 </span>
               </button>
 
@@ -767,6 +807,64 @@ export default function SuperadminSubscriptions() {
           }
           className="mb-0"
         />
+
+        {/* ========== SUBSCRIPTION MODE SWITCHER (PRODUCT vs SERVICE) ========== */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/80 bg-white p-2 shadow-sm">
+          <div className="inline-flex w-full rounded-xl bg-gray-100/80 p-1 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setSubscriptionMode("product")}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition sm:flex-none sm:text-sm ${
+                subscriptionMode === "product"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <span>Product Subscriptions</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  subscriptionMode === "product"
+                    ? "bg-white/20 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {productCompanyCount}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSubscriptionMode("service")}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition sm:flex-none sm:text-sm ${
+                subscriptionMode === "service"
+                  ? "bg-secondary text-white shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <span>Service Subscriptions</span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  subscriptionMode === "service"
+                    ? "bg-white/20 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {serviceCompanyCount}
+              </span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCreateClick}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-secondary/20 bg-secondary/[0.06] px-3.5 py-2 text-xs font-semibold text-secondary transition hover:bg-secondary/10 sm:w-auto sm:text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            {subscriptionMode === "service"
+              ? "Add Service Plan"
+              : "Add Product Plan"}
+          </button>
+        </div>
 
         {/* ========== PAGE ERROR ========== */}
         {pageError && (
@@ -838,6 +936,7 @@ export default function SuperadminSubscriptions() {
         </section>
 
         {/* ========== PLAN STANDARDS ========== */}
+        {subscriptionMode === "product" ? (
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
             <div className="flex items-center gap-2.5 sm:gap-3">
@@ -973,6 +1072,23 @@ export default function SuperadminSubscriptions() {
             })}
           </div>
         </section>
+        ) : (
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Service Plans
+                </h2>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  Service companies start on the free Starter plan (15 active services, 5 staff). Add paid service tiers with custom ETB pricing using &ldquo;Add Service Plan&rdquo;.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ========== PLANS ========== */}
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
@@ -983,13 +1099,15 @@ export default function SuperadminSubscriptions() {
               </div>
 
               <h2 className="text-sm font-bold text-gray-900">
-                {t("subscriptions.plans.title")}
+                {subscriptionMode === "service"
+                  ? "Service Plans"
+                  : "Product Plans"}
               </h2>
             </div>
 
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 sm:px-3 sm:py-1 sm:text-xs">
               {t("subscriptions.plans.total", {
-                count: plans.length,
+                count: modeScopedPlans.length,
               })}
             </span>
           </div>
@@ -1007,7 +1125,7 @@ export default function SuperadminSubscriptions() {
                   <div className="h-3 w-40 rounded bg-secondary/[0.08]" />
                 </div>
               ))
-            ) : plans.length === 0 ? (
+            ) : modeScopedPlans.length === 0 ? (
               <div className="px-4 py-12 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
                   <CreditCard className="h-6 w-6 text-gray-400" />
@@ -1022,8 +1140,8 @@ export default function SuperadminSubscriptions() {
                 </p>
               </div>
             ) : (
-              plans.map((plan) => {
-                const subscribers = companySubscriptions.filter(
+              modeScopedPlans.map((plan) => {
+                const subscribers = modeScopedSubscriptions.filter(
                   (sub) => sub.plan?.id === plan.id,
                 ).length;
 
@@ -1070,27 +1188,43 @@ export default function SuperadminSubscriptions() {
                     </p>
 
                     <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
-                      <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
-                        <dt className="text-gray-400">
-                          {t("subscriptions.plans.products")}
-                        </dt>
+                      {subscriptionMode === "service" ? (
+                        <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
+                          <dt className="text-gray-400">
+                            Services
+                          </dt>
 
-                        <dd className="font-semibold text-gray-700">
-                          {formatProductLimit(plan, t)}
-                        </dd>
-                      </div>
+                          <dd className="font-semibold text-gray-700">
+                            {(plan.max_services ?? 15) === -1
+                              ? t("subscriptions.plans.unlimited")
+                              : plan.max_services ?? 15}
+                          </dd>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
+                            <dt className="text-gray-400">
+                              {t("subscriptions.plans.products")}
+                            </dt>
 
-                      <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
-                        <dt className="text-gray-400">
-                          {t("subscriptions.plans.featured")}
-                        </dt>
+                            <dd className="font-semibold text-gray-700">
+                              {formatProductLimit(plan, t)}
+                            </dd>
+                          </div>
 
-                        <dd className="font-semibold text-gray-700">
-                          {plan.max_featured_products === -1
-                            ? t("subscriptions.plans.unlimited")
-                            : plan.max_featured_products}
-                        </dd>
-                      </div>
+                          <div className="flex justify-between gap-2 border-b border-dashed border-gray-100 pb-1.5">
+                            <dt className="text-gray-400">
+                              {t("subscriptions.plans.featured")}
+                            </dt>
+
+                            <dd className="font-semibold text-gray-700">
+                              {plan.max_featured_products === -1
+                                ? t("subscriptions.plans.unlimited")
+                                : plan.max_featured_products}
+                            </dd>
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex justify-between gap-2">
                         <dt className="text-gray-400">
@@ -1138,8 +1272,14 @@ export default function SuperadminSubscriptions() {
                   <th className="px-5 py-3.5">{t("subscriptions.plans.plan")}</th>
                   <th className="px-4 py-3.5">{t("subscriptions.plans.price")}</th>
                   <th className="px-4 py-3.5">{t("subscriptions.plans.period")}</th>
-                  <th className="px-4 py-3.5">{t("subscriptions.plans.products")}</th>
-                  <th className="px-4 py-3.5">{t("subscriptions.plans.featured")}</th>
+                  {subscriptionMode === "service" ? (
+                    <th className="px-4 py-3.5">Services</th>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3.5">{t("subscriptions.plans.products")}</th>
+                      <th className="px-4 py-3.5">{t("subscriptions.plans.featured")}</th>
+                    </>
+                  )}
                   <th className="px-4 py-3.5">{t("subscriptions.plans.staff")}</th>
                   <th className="px-4 py-3.5">{t("subscriptions.plans.subscribers")}</th>
                   <th className="px-4 py-3.5">{t("subscriptions.plans.status")}</th>
@@ -1152,9 +1292,9 @@ export default function SuperadminSubscriptions() {
                   Array.from({ length: 4 }).map((_, index) => (
                     <SkeletonRow key={index} />
                   ))
-                ) : plans.length === 0 ? (
+                ) : modeScopedPlans.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-16 text-center">
+                    <td colSpan={10} className="px-5 py-16 text-center">
                       <div className="mx-auto flex max-w-xs flex-col items-center">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
                           <CreditCard className="h-6 w-6 text-gray-400" />
@@ -1171,8 +1311,8 @@ export default function SuperadminSubscriptions() {
                     </td>
                   </tr>
                 ) : (
-                  plans.map((plan) => {
-                    const subscribers = companySubscriptions.filter(
+                  modeScopedPlans.map((plan) => {
+                    const subscribers = modeScopedSubscriptions.filter(
                       (sub) => sub.plan?.id === plan.id,
                     ).length;
 
@@ -1204,15 +1344,25 @@ export default function SuperadminSubscriptions() {
                           {t("subscriptions.plans.days")}
                         </td>
 
-                        <td className="px-4 py-4 font-medium text-gray-700">
-                          {formatProductLimit(plan, t)}
-                        </td>
+                        {subscriptionMode === "service" ? (
+                          <td className="px-4 py-4 font-medium text-gray-700">
+                            {(plan.max_services ?? 15) === -1
+                              ? t("subscriptions.plans.unlimited")
+                              : plan.max_services ?? 15}
+                          </td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-4 font-medium text-gray-700">
+                              {formatProductLimit(plan, t)}
+                            </td>
 
-                        <td className="px-4 py-4 text-gray-600">
-                          {plan.max_featured_products === -1
-                            ? t("subscriptions.plans.unlimited")
-                            : plan.max_featured_products}
-                        </td>
+                            <td className="px-4 py-4 text-gray-600">
+                              {plan.max_featured_products === -1
+                                ? t("subscriptions.plans.unlimited")
+                                : plan.max_featured_products}
+                            </td>
+                          </>
+                        )}
 
                         <td className="px-4 py-4 font-medium text-gray-700">
                           {(plan.max_staff_members ?? 5) === -1
@@ -1277,13 +1427,15 @@ export default function SuperadminSubscriptions() {
               </div>
 
               <h2 className="text-sm font-bold text-gray-900">
-                {t("subscriptions.companySubscriptions.title")}
+                {subscriptionMode === "service"
+                  ? "Service Company Subscriptions"
+                  : "Product Company Subscriptions"}
               </h2>
             </div>
 
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 sm:px-3 sm:py-1 sm:text-xs">
               {t("subscriptions.companySubscriptions.total", {
-                count: companySubscriptions.length,
+                count: modeScopedSubscriptions.length,
               })}
             </span>
           </div>
@@ -1359,7 +1511,7 @@ export default function SuperadminSubscriptions() {
                             )}
                           </button>
 
-                          {plans.map((plan) => {
+                          {modeScopedPlans.map((plan) => {
                             const value = String(plan.id);
                             const active = planFilter === value;
 
@@ -1461,7 +1613,7 @@ export default function SuperadminSubscriptions() {
                   ))
                 ) : paginatedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-16 text-center">
+                    <td colSpan={10} className="px-5 py-16 text-center">
                       <div className="mx-auto flex max-w-xs flex-col items-center">
                         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100">
                           <Building2 className="h-6 w-6 text-gray-400" />
@@ -1835,64 +1987,98 @@ export default function SuperadminSubscriptions() {
                 )}
 
                 {/* PLAN LIMITS */}
-                <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-                      {t("subscriptions.planModal.productLimit")}
-                    </label>
+                <div
+                  className={`grid gap-3 sm:gap-4 ${
+                    subscriptionMode === "service"
+                      ? "sm:grid-cols-2"
+                      : "sm:grid-cols-3"
+                  }`}
+                >
+                  {subscriptionMode === "service" ? (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                        Service Limit
+                      </label>
 
-                    <input
-                      type="number"
-                      required
-                      value={formData.max_products}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          max_products:
-                            parseInt(e.target.value, 10) || 0,
-                        })
-                      }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
-                    />
+                      <input
+                        type="number"
+                        required
+                        value={formData.max_services}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            max_services:
+                              parseInt(e.target.value, 10) || 0,
+                          })
+                        }
+                        className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
+                      />
 
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
-                      {selectedDocumentBaseline?.expectedProductLimit === -1
-                        ? t("subscriptions.planModal.premiumUnlimited")
-                        : selectedDocumentBaseline?.expectedProductLimit != null
-                          ? t("subscriptions.standards.productLimitShouldBe", {
-                              plan: selectedDocumentBaseline.name,
-                              limit: selectedDocumentBaseline.expectedProductLimit,
+                      <p className="mt-1.5 text-[11px] text-gray-400">
+                        {t("subscriptions.planModal.unlimitedHint")}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                          {t("subscriptions.planModal.productLimit")}
+                        </label>
+
+                        <input
+                          type="number"
+                          required
+                          value={formData.max_products}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              max_products:
+                                parseInt(e.target.value, 10) || 0,
                             })
-                          : selectedDocumentBaseline?.tier === "free"
-                            ? t("subscriptions.planModal.freeLimited")
-                            : t("subscriptions.planModal.unlimitedHint")}
-                    </p>
-                  </div>
+                          }
+                          className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
+                        />
 
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-                      {t("subscriptions.planModal.featuredLimit")}
-                    </label>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+                          {selectedDocumentBaseline?.expectedProductLimit === -1
+                            ? t("subscriptions.planModal.premiumUnlimited")
+                            : selectedDocumentBaseline?.expectedProductLimit != null
+                              ? t("subscriptions.standards.productLimitShouldBe", {
+                                  plan: selectedDocumentBaseline.name,
+                                  limit: selectedDocumentBaseline.expectedProductLimit,
+                                })
+                              : selectedDocumentBaseline?.tier === "free"
+                                ? t("subscriptions.planModal.freeLimited")
+                                : t("subscriptions.planModal.unlimitedHint")}
+                        </p>
+                      </div>
 
-                    <input
-                      type="number"
-                      required
-                      value={formData.max_featured_products}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          max_featured_products:
-                            parseInt(e.target.value, 10) || 0,
-                        })
-                      }
-                      className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
-                    />
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                          {t("subscriptions.planModal.featuredLimit")}
+                        </label>
 
-                    <p className="mt-1.5 text-[11px] text-gray-400">
-                      {t("subscriptions.planModal.noFeatured")} ·{" "}
-                      {t("subscriptions.planModal.unlimitedFeatured")}
-                    </p>
-                  </div>
+                        <input
+                          type="number"
+                          required
+                          value={formData.max_featured_products}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              max_featured_products:
+                                parseInt(e.target.value, 10) || 0,
+                            })
+                          }
+                          className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
+                        />
+
+                        <p className="mt-1.5 text-[11px] text-gray-400">
+                          {t("subscriptions.planModal.noFeatured")} ·{" "}
+                          {t("subscriptions.planModal.unlimitedFeatured")}
+                        </p>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-gray-700">
@@ -2088,7 +2274,7 @@ export default function SuperadminSubscriptions() {
                     }
                     className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
                   >
-                    {plans.map((p) => (
+                    {modeScopedPlans.map((p) => (
                       <option key={p.id} value={String(p.id)}>
                         {p.name} (
                         {Number(p.price) === 0

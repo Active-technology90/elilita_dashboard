@@ -5,6 +5,8 @@ export interface SelectOption {
   label: string;
   value: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
+  hint?: string;
 }
 
 interface CustomSelectProps {
@@ -126,25 +128,36 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
               options.map((opt) => (
                 <button
                   key={opt.value}
+                  type="button"
+                  disabled={opt.disabled}
                   onClick={() => {
+                    if (opt.disabled) return;
                     onChange(opt.value);
                     setOpen(false);
                   }}
                   className={`
-                    w-full flex items-center gap-2
+                    w-full flex flex-col items-start gap-0.5
                     px-3 py-1.5 text-sm
                     transition-all duration-150
-                    hover:bg-secondary/10 hover:pl-4
                     text-left
                     ${
-                      value === opt.value
-                        ? "bg-secondary/10 text-secondary font-semibold"
-                        : "text-secondary"
+                      opt.disabled
+                        ? "opacity-50 cursor-not-allowed bg-gray-50 text-gray-400"
+                        : value === opt.value
+                          ? "bg-secondary/10 text-secondary font-semibold hover:bg-secondary/10 hover:pl-4"
+                          : "text-secondary hover:bg-secondary/10 hover:pl-4"
                     }
                   `}
                 >
-                  {opt.icon}
-                  <span className="truncate">{opt.label}</span>
+                  <div className="flex items-center gap-2 w-full">
+                    {opt.icon}
+                    <span className="truncate">{opt.label}</span>
+                  </div>
+                  {opt.disabled && opt.hint && (
+                    <span className="text-[11px] text-amber-600 font-normal leading-tight">
+                      {opt.hint}
+                    </span>
+                  )}
                 </button>
               ))
             )}

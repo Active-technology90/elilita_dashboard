@@ -279,7 +279,13 @@ export default function ServiceBookings() {
       const fullBooking = await getBookingDetail(bookingId);
       setSelectedBooking(fullBooking);
       setCompanyNotes(fullBooking.company_notes || "");
-      setFinalPrice(fullBooking.final_price || fullBooking.quoted_price || "");
+      const initialFp =
+        fullBooking.final_price && Number(fullBooking.final_price) > 0
+          ? fullBooking.final_price
+          : Number(fullBooking.quoted_price || 0) > 0
+            ? fullBooking.quoted_price
+            : "";
+      setFinalPrice(initialFp);
     } catch {
       showToast("error", t("messages.loadBookingFailed"));
     }
@@ -292,7 +298,13 @@ export default function ServiceBookings() {
       const updated = await getBookingDetail(selectedBooking.id);
       setSelectedBooking(updated);
       setCompanyNotes(updated.company_notes || "");
-      setFinalPrice(updated.final_price || updated.quoted_price || "");
+      const refreshedFp =
+        updated.final_price && Number(updated.final_price) > 0
+          ? updated.final_price
+          : Number(updated.quoted_price || 0) > 0
+            ? updated.quoted_price
+            : "";
+      setFinalPrice(refreshedFp);
       await refetch();
     } catch {
       showToast("error", t("messages.refreshBookingFailed"));
@@ -414,11 +426,40 @@ export default function ServiceBookings() {
       key: "price",
       header: t("table.price"),
       textMode: "nowrap",
-      render: (booking) => (
-        <span className="font-medium text-gray-800">
-          {Number(booking.quoted_price).toLocaleString()} {booking.currency}
-        </span>
-      ),
+      render: (booking) => {
+        const isInquiry = booking.offering?.booking_mode === "inquiry";
+        const finalNum = Number(booking.final_price || 0);
+        const quotedNum = Number(booking.quoted_price || 0);
+
+        if (isInquiry) {
+          if (finalNum > 0) {
+            return (
+              <span className="font-semibold text-gray-900">
+                {finalNum.toLocaleString()} {booking.currency}
+              </span>
+            );
+          }
+          if (quotedNum > 0) {
+            return (
+              <span className="font-medium text-gray-600">
+                Est. {quotedNum.toLocaleString()} {booking.currency}
+              </span>
+            );
+          }
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              Pending Quote
+            </span>
+          );
+        }
+
+        const effective = finalNum > 0 ? finalNum : quotedNum;
+        return (
+          <span className="font-medium text-gray-800">
+            {effective.toLocaleString()} {booking.currency}
+          </span>
+        );
+      },
     },
     {
       key: "status",

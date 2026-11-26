@@ -42,6 +42,7 @@ interface SubscriptionPlan {
   duration_days?: number;
   max_featured_products: number;
   max_products: number;
+  max_services?: number;
   max_staff_members?: number;
 }
 
@@ -55,9 +56,11 @@ interface ActiveSubscription {
   days_remaining: number | null;
   allowed_max_featured_products: number;
   allowed_max_products: number;
+  allowed_max_services?: number;
   allowed_max_staff_members?: number;
   current_featured_products?: number;
   current_products?: number;
+  current_services?: number;
   current_staff_members?: number;
 }
 
@@ -549,8 +552,10 @@ const getDynamicPlanFeatures = (
   plan: SubscriptionPlan,
   tier: PlanTier,
   t: Translate,
+  isServiceCompany = false,
 ): PlanFeatureItem[] => {
   const staffCount = plan.max_staff_members ?? 5;
+  const serviceLimit = plan.max_services ?? 15;
   const hasFeatured =
     plan.max_featured_products === -1 || plan.max_featured_products > 0;
 
@@ -560,6 +565,11 @@ const getDynamicPlanFeatures = (
       : t("features.publicProducts", {
           count: formatLimit(plan.max_products, t),
         });
+
+  const servicesLabel =
+    serviceLimit === -1
+      ? "Unlimited active services"
+      : `Up to ${formatLimit(serviceLimit, t)} active services`;
 
   const staffLabel =
     staffCount === -1
@@ -581,21 +591,31 @@ const getDynamicPlanFeatures = (
 
   if (tier === "custom") {
     return [
-      {
-        label: productsLabel,
-        match: "products",
-        enabled: plan.max_products !== 0,
-      },
+      isServiceCompany
+        ? {
+            label: servicesLabel,
+            match: "services",
+            enabled: serviceLimit !== 0,
+          }
+        : {
+            label: productsLabel,
+            match: "products",
+            enabled: plan.max_products !== 0,
+          },
       {
         label: staffLabel,
         match: "staff",
         enabled: staffCount !== 0,
       },
-      {
-        label: featuredLabel,
-        match: "featured",
-        enabled: hasFeatured,
-      },
+      ...(!isServiceCompany
+        ? [
+            {
+              label: featuredLabel,
+              match: "featured",
+              enabled: hasFeatured,
+            },
+          ]
+        : []),
       {
         label: t("features.storefrontManagement"),
         match: "storefront",
@@ -614,26 +634,35 @@ const getDynamicPlanFeatures = (
     ];
   }
 
-  return PLAN_FEATURES[tier].map((item) => {
-    const lower = item.match;
+  return PLAN_FEATURES[tier]
+    .filter((item) => !(isServiceCompany && item.match.includes("featured product")))
+    .map((item) => {
+      const lower = item.match;
 
-    // Match product quota entries
-    if (
-      (lower.includes("catalogue") ||
-        lower.includes("product listing") ||
-        (lower.includes("product") && lower.includes("up to"))) &&
-      !lower.includes("featured")
-    ) {
-      const extra = lower.includes("bulk")
-        ? ` ${t("features.bulkManagement")}`
-        : "";
+      // Match product/service quota entries
+      if (
+        (lower.includes("catalogue") ||
+          lower.includes("product listing") ||
+          (lower.includes("product") && lower.includes("up to"))) &&
+        !lower.includes("featured")
+      ) {
+        if (isServiceCompany) {
+          return {
+            ...item,
+            label: servicesLabel,
+            enabled: serviceLimit !== 0,
+          };
+        }
+        const extra = lower.includes("bulk")
+          ? ` ${t("features.bulkManagement")}`
+          : "";
 
-      return {
-        ...item,
-        label: `${productsLabel}${extra}`,
-        enabled: plan.max_products !== 0,
-      };
-    }
+        return {
+          ...item,
+          label: `${productsLabel}${extra}`,
+          enabled: plan.max_products !== 0,
+        };
+      }
 
     // Match staff quota entries
     if (lower.includes("staff")) {
@@ -773,13 +802,15 @@ export default function BillingPage() {
   const isAuthorized =
     company?.role === "owner" || company?.role === "admin";
 
+  const isServiceCompany = company?.business_type === "service";
+
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
 
       const [plansRes, subRes] = await Promise.all([
-        getSubscriptionPlans(),
+        getSubscriptionPlans(isServiceCompany ? "service" : "product"),
         getMySubscription(company?.slug),
       ]);
 
@@ -791,7 +822,7 @@ export default function BillingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [company?.slug, t]);
+  }, [company?.slug, isServiceCompany, t]);
 
   const verifyPaymentAndFetch = useCallback(
     async (txRef: string, attempt = 1) => {
@@ -999,9 +1030,11 @@ export default function BillingPage() {
       };
 
   const currentProducts = activeSub?.current_products || 0;
+  const currentServices = activeSub?.current_services || 0;
   const currentFeaturedProducts = activeSub?.current_featured_products || 0;
   const currentStaff = activeSub?.current_staff_members || 0;
   const allowedProducts = activeSub?.allowed_max_products ?? 0;
+  const allowedServices = activeSub?.allowed_max_services ?? 15;
   const allowedFeaturedProducts =
     activeSub?.allowed_max_featured_products ?? 0;
   const allowedStaff = activeSub?.allowed_max_staff_members ?? 5;
@@ -1196,20 +1229,32 @@ export default function BillingPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <UsageCard
-                icon={<Package className="h-4 w-4" />}
-                label={t("usage.publicProducts")}
-                current={currentProducts}
-                limit={allowedProducts}
-                t={t}
-              />
-              <UsageCard
-                icon={<Zap className="h-4 w-4" />}
-                label={t("usage.featuredProducts")}
-                current={currentFeaturedProducts}
-                limit={allowedFeaturedProducts}
-                t={t}
-              />
+              {isServiceCompany ? (
+                <UsageCard
+                  icon={<Package className="h-4 w-4" />}
+                  label="Active Services"
+                  current={currentServices}
+                  limit={allowedServices}
+                  t={t}
+                />
+              ) : (
+                <>
+                  <UsageCard
+                    icon={<Package className="h-4 w-4" />}
+                    label={t("usage.publicProducts")}
+                    current={currentProducts}
+                    limit={allowedProducts}
+                    t={t}
+                  />
+                  <UsageCard
+                    icon={<Zap className="h-4 w-4" />}
+                    label={t("usage.featuredProducts")}
+                    current={currentFeaturedProducts}
+                    limit={allowedFeaturedProducts}
+                    t={t}
+                  />
+                </>
+              )}
               <UsageCard
                 icon={<Users className="h-4 w-4" />}
                 label={t("usage.staffMembers")}
@@ -1282,7 +1327,12 @@ export default function BillingPage() {
               const isAdvanced = tier === "advanced";
               const isPremium = tier === "premium";
 
-              const includedItems = getDynamicPlanFeatures(plan, tier, t);
+              const includedItems = getDynamicPlanFeatures(
+                plan,
+                tier,
+                t,
+                isServiceCompany,
+              );
 
               return (
                 <article
