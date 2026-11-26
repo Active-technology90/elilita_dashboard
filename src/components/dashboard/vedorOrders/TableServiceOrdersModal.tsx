@@ -13,7 +13,6 @@ import {
   ChefHat,
   Clock,
   StickyNote,
-  ListOrdered,
   Maximize2,
   Minimize2,
 } from "lucide-react";
@@ -378,32 +377,6 @@ const StatTile = ({
         </span>
       </span>
     </button>
-  );
-};
-
-// ─── Food image with graceful fallback ────────────────────────
-
-const FoodImage = ({ src, alt }: { src: string | null; alt: string }) => {
-  const [failed, setFailed] = useState(false);
-
-  if (!src || failed) {
-    return (
-      <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E5E5EB] bg-gradient-to-br from-[#F7F7FA] to-[#E5E5EB]/40 sm:h-[88px] sm:w-[88px]">
-        <UtensilsCrossed className="h-7 w-7 text-[#6750A4]/30" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border border-[#E5E5EB] bg-[#F7F7FA] sm:h-[88px] sm:w-[88px]">
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        className="h-full w-full object-cover"
-        onError={() => setFailed(true)}
-      />
-    </div>
   );
 };
 

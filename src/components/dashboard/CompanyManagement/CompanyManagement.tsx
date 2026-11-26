@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Building2, Plus, Send, CheckCircle2, RefreshCw } from "lucide-react";
+import { Building2, Plus, Send, CheckCircle2, RefreshCw, FileCheck } from "lucide-react";
 import api from "../../../services/api";
 import {
   createCompany,
@@ -46,6 +46,7 @@ import CompanyForm from "./CompanyForm";
 import type { CompanyFormData } from "./CompanyForm";
 import LocationPickerModal from "./LocationPickerModal";
 import PageHeader from "../../ui/PageHeader";
+import VendorApplications from "./VendorApplications";
 
 import {
   mapBackendErrors,
@@ -292,6 +293,7 @@ export default function CompanyManagement() {
   // Permissions
   const isMarketing = !!user?.is_marketing;
   const isSuperAdmin = !user?.memberships?.length && !isMarketing;
+  const [companyViewTab, setCompanyViewTab] = useState<"companies" | "applications">("companies");
   const memberships = user?.memberships ?? [];
   const primaryMembership =
     !isSuperAdmin && !isMarketing ? getPrimaryMembership(memberships) : null;
@@ -2062,7 +2064,40 @@ if (isMarketing && !editingSlug) {
           }
         />
 
-        {(isSuperAdmin || isMarketing) && (
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2 mb-4 border-b border-slate-200/80 pb-3">
+            <button
+              type="button"
+              onClick={() => setCompanyViewTab("companies")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                companyViewTab === "companies"
+                  ? "bg-secondary text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              Registered Companies
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompanyViewTab("applications")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                companyViewTab === "applications"
+                  ? "bg-secondary text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              <FileCheck className="h-4 w-4" />
+              Vendor Applications (KYC)
+            </button>
+          </div>
+        )}
+
+        {isSuperAdmin && companyViewTab === "applications" ? (
+          <VendorApplications />
+        ) : (
+          <>
+            {(isSuperAdmin || isMarketing) && (
           <div className="sticky -top-6 z-[2] -mt-4 w-full bg-white">
             <div className="mb-2 mt-1 w-full rounded-xl bg-white md:p-2.5">
               <CompanyFilters
@@ -2163,6 +2198,8 @@ if (isMarketing && !editingSlug) {
               showToast={showToast}
             />
           </div>
+        )}
+        </>
         )}
 
         <MultiStepFormModal

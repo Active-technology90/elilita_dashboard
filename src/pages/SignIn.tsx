@@ -1,7 +1,7 @@
 
 // src/pages/SignIn.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { login as loginApi, getMe } from "../services/api";
@@ -279,6 +279,16 @@ export default function SignIn(): React.JSX.Element {
               )}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <span className="text-xs text-gray-500">Want to sell on Elilita? </span>
+            <Link
+              to="/vendor/register"
+              className="text-xs font-semibold text-[#6a5acd] hover:underline"
+            >
+              Register your business
+            </Link>
+          </div>
 
           <div className="mt-6 text-[10px] sm:text-xs text-gray-400 text-center">
             {t("footer")}

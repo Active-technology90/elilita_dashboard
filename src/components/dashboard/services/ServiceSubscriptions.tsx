@@ -134,7 +134,7 @@ function getApiErrorMessage(
 /* ---------- presentational components ---------- */
 
 function SubscriptionStatusBadge({ status }: { status: string }) {
-  const { t,i18n } = useTranslation("serviceSubscriptions");
+  const { t } = useTranslation("serviceSubscriptions");
 
   const statusLabels: Record<string, string> = {
     active: t("status.active"),

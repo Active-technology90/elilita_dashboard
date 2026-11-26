@@ -1559,4 +1559,105 @@ export const vendorRequestRefund = (
     data,
   );
 
+// ── Public Vendor Self-Registration & Superadmin Review ──
+
+export interface VendorApplication {
+  id: number;
+  reference_code: string;
+  status: "pending" | "revision_requested" | "approved" | "rejected";
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  name: string;
+  name_am?: string;
+  category: number | null;
+  category_name?: string | null;
+  sub_category: number | null;
+  sub_category_name?: string | null;
+  business_type: string;
+  description?: string;
+  description_am?: string;
+  address: string;
+  address_am?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  tin_number: string;
+  vat_registration_number?: string;
+  fan_number?: string;
+  tax_type: string;
+  license_file: string;
+  moa_file?: string | null;
+  terms_agreed: boolean;
+  terms_agreed_at?: string | null;
+  terms_signatory_name: string;
+  terms_signatory_role: string;
+  admin_notes?: string;
+  revision_feedback?: string;
+  reviewed_by?: number | null;
+  reviewed_by_email?: string | null;
+  reviewed_at?: string | null;
+  promoted_company?: number | null;
+  promoted_company_slug?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubmitVendorApplicationResponse {
+  reference_code: string;
+  message: string;
+  [key: string]: any;
+}
+
+export const submitVendorRegistration = (data: FormData) =>
+  api.post<SubmitVendorApplicationResponse>("/public/vendor-registration/", data);
+
+export const getAdminVendorApplications = (params?: {
+  status?: string;
+  category?: number;
+  search?: string;
+}) =>
+  api.get<VendorApplication[] | { count: number; results: VendorApplication[] }>(
+    "/admin/vendor-applications/",
+    { params },
+  );
+
+export const getAdminVendorApplicationDetail = (id: number) =>
+  api.get<VendorApplication>(`/admin/vendor-applications/${id}/`);
+
+export const approveVendorApplication = (
+  id: number,
+  data?: {
+    platform_fee_percent?: number | string;
+    platform_fee_grace_period_months?: number;
+    admin_notes?: string;
+  },
+) =>
+  api.post<{
+    status: string;
+    message: string;
+    company_id: number;
+    company_slug: string;
+    reference_code: string;
+  }>(`/admin/vendor-applications/${id}/approve/`, data || {});
+
+export const requestVendorApplicationRevision = (
+  id: number,
+  data: { revision_feedback: string },
+) =>
+  api.post<{
+    status: string;
+    message: string;
+    reference_code: string;
+  }>(`/admin/vendor-applications/${id}/request-revision/`, data);
+
+export const rejectVendorApplication = (
+  id: number,
+  data?: { rejection_reason?: string },
+) =>
+  api.post<{
+    status: string;
+    message: string;
+    reference_code: string;
+  }>(`/admin/vendor-applications/${id}/reject/`, data || {});
+
 export default api;

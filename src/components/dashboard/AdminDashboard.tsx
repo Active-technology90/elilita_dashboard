@@ -64,6 +64,7 @@ import HeadCompanyManagement from "./HeadCompanyManagement/HeadCompanyManagement
 import MasterOrders from "./masterOrders/MasterOrders";
 import AdminProfile from "./AdminProfile";
 import CompanyManagement from "./CompanyManagement/CompanyManagement";
+import VendorApplications from "./CompanyManagement/VendorApplications";
 import SuperAdminUsers from "./UserManagement/SuperAdminUsers";
 import AdManagement from "./AdManagement";
 import SettingsPage from "./settings/Settings";
@@ -117,6 +118,7 @@ type Tab =
   | "profile"
   | "add advertisment"
   | "superUsers"
+  | "vendorApplications"
   | "notifications"
   | "settings"
   | "billing"
@@ -695,6 +697,8 @@ export default function AdminDashboard() {
       });
     } else if (subPath === "companies") {
       navigate("companies");
+    } else if (subPath === "vendor-applications" || subPath === "vendorApplications") {
+      navigate("vendorApplications");
     } else if (subPath === "payments") {
       navigate("payments");
     } else if (subPath === "subscription") {
@@ -976,6 +980,8 @@ export default function AdminDashboard() {
           return <HeadCompanyManagement key={componentKey} />;
         case "companies":
           return <CompanyManagement key={componentKey} />;
+        case "vendorApplications":
+          return <VendorApplications key={componentKey} />;
         case "settings":
           return <SettingsPage key={componentKey} />;
         case "adminSubscriptions":
@@ -1182,6 +1188,16 @@ export default function AdminDashboard() {
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("companies")}
                   disabled={false}
+                />
+              )}
+
+              {isSuperAdmin && (
+                <SidebarItem
+                  icon={<FileCheck className="h-5 w-5" />}
+                  label="Vendor Applications"
+                  active={activeTab === "vendorApplications"}
+                  collapsed={sidebarCollapsed}
+                  onClick={() => navigate("vendorApplications")}
                 />
               )}
 

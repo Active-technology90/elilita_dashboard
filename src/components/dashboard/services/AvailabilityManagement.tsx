@@ -108,7 +108,7 @@ const DayCard = ({
   onDeleteSlot: (slot: AvailabilitySlot) => void;
   formatTime: (time: string) => string;
 }) => {
-  const { t, i18n } = useTranslation("availability");
+  const { t } = useTranslation("availability");
 
   const dayInfo = (() => {
     const labels = [
@@ -232,7 +232,7 @@ const SlotFormModal = ({
   existingSlots: AvailabilitySlot[];
   defaultDay?: number;
 }) => {
-  const { t, i18n } = useTranslation("availability");
+  const { t } = useTranslation("availability");
 
   const normalizeTimeForInput = (time?: string | null): string => {
     if (!time) return "";

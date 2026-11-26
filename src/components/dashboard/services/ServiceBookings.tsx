@@ -17,7 +17,6 @@ import { ServiceBookingManageModal } from "./ServiceBookingManageModal";
 import { extractErrorMessage } from "../../../utils/extractErrorMessage";
 import type { ServiceBooking } from "../../../types";
 import { formatDate, formatTime } from "../../../utils/dateFormatter";
-import { formatCurrency } from "../../../utils/currency";
 
 /* -------------------- constants -------------------- */
 const STATUS_COLORS: Record<string, string> = {
@@ -30,7 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const { t, i18n } = useTranslation("serviceBookings");
+  const { t } = useTranslation("serviceBookings");
   const normalized = status?.toLowerCase();
   const color =
     STATUS_COLORS[normalized] || "bg-gray-100 text-gray-600 border-gray-200";
@@ -48,7 +47,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
-  const { t, i18n } = useTranslation("serviceBookings");
+  const { t } = useTranslation("serviceBookings");
   const method = booking.payment_method?.toLowerCase();
   const status = booking.payment_status?.toLowerCase();
   const receipt = (booking as any)?.receipt;
@@ -125,7 +124,7 @@ const PaymentStatusBadge = ({ booking }: { booking: ServiceBooking }) => {
 };
 
 const PaymentMethodBadge = ({ method }: { method?: string }) => {
-  const { t, i18n } = useTranslation("serviceBookings");
+  const { t } = useTranslation("serviceBookings");
   const norm = method?.toLowerCase() || "—";
 
   const labelMap: Record<string, string> = {
@@ -429,7 +428,7 @@ export default function ServiceBookings() {
       header: t("table.price"),
       textMode: "nowrap",
       render: (booking) => {
-        const isInquiry = booking.offering?.booking_mode === "inquiry";
+        const isInquiry = (booking.offering as any)?.booking_mode === "inquiry";
         const finalNum = Number(booking.final_price || 0);
         const quotedNum = Number(booking.quoted_price || 0);
 

@@ -176,7 +176,7 @@ const UserFilters: React.FC<FiltersProps> = ({
   pageSize,
   setPageSize,
 }) => {
-  const { t, i18n } = useTranslation("users");
+  const { t } = useTranslation("users");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const pageSizeOptions = [
@@ -338,7 +338,7 @@ const ActionsDropdown: React.FC<ActionsDropdownProps> = ({
   onRemove,
   onManageMemberships,
 }) => {
-  const { t, i18n } = useTranslation("users");
+  const { t } = useTranslation("users");
   const [open, setOpen] = useState(false);
   const [isAbove, setIsAbove] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -813,7 +813,7 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ onReset }) => {
-  const { t, i18n } = useTranslation("users");
+  const { t } = useTranslation("users");
   return (
     <div className="rounded-xl border border-secondary/10 bg-white px-4 py-14 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
@@ -931,7 +931,7 @@ const LoadingSkeleton: React.FC = () => (
 // Main Component
 // ============================================================
 const SuperAdminUsers: React.FC = () => {
-  const { t, i18n } = useTranslation("users");
+  const { t } = useTranslation("users");
   const { toast, showToast } = useToast();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);

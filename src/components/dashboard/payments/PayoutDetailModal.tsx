@@ -34,7 +34,6 @@ export const PayoutDetailModal: React.FC<PayoutDetailModalProps> = ({
   onOpenReceipt,
 }) => {
 const { t, i18n } = useTranslation("payoutDetailModal");
-const locale = i18n.language === "am" ? "am-ET" : i18n.language || "en-US";
 
   const [bankSlipPreview, setBankSlipPreview] = useState<string | null>(null);
 

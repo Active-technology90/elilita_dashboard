@@ -24,7 +24,6 @@ import { ServiceAddonManager } from "./ServiceAddonManager";
 import { CustomSelect } from "../../ui/CustomSelect";
 import { TagsInput } from "../../ui/TagsInput";
 import type { IntakeFormField, ServiceOffering } from "../../../types";
-import i18n from "../../../i18n";
 
 /* -------------------------------------------------------------------------- */
 /*  Utility                                                                   */

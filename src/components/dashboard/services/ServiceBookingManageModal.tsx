@@ -1713,7 +1713,7 @@ export function ServiceBookingManageModal({
                   </div>
 
                   <div className="text-right">
-                    {initialBooking.offering?.booking_mode === "direct" ? (
+                    {(initialBooking.offering as any)?.booking_mode === "direct" ? (
                       <>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
                           {t("price.finalPrice")}
@@ -1740,7 +1740,7 @@ export function ServiceBookingManageModal({
                   </div>
                 </div>
 
-                {initialBooking.offering?.booking_mode !== "direct" && (
+                {(initialBooking.offering as any)?.booking_mode !== "direct" && (
                   <div className="space-y-2 pt-3 border-t border-white/10">
                     <div className="flex justify-between text-xs font-bold">
                       <span className="opacity-60">
@@ -1807,14 +1807,14 @@ export function ServiceBookingManageModal({
               (setFinalPrice || setCompanyNotes) && (
                 <Card
                   title={
-                    initialBooking.offering?.booking_mode === "inquiry"
+                    (initialBooking.offering as any)?.booking_mode === "inquiry"
                       ? "Set Final Quote & Notes"
                       : "Provider Notes"
                   }
                   icon={Tag}
                 >
                   <div className="space-y-3">
-                    {initialBooking.offering?.booking_mode === "inquiry" && setFinalPrice && (
+                    {(initialBooking.offering as any)?.booking_mode === "inquiry" && setFinalPrice && (
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                           {t("price.finalPrice")} ({initialBooking.currency || "ETB"})
