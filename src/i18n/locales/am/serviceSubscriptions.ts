@@ -16,6 +16,27 @@ export default {
     manageDescription:
       "ቀጣይ ምዝገባዎችን፣ የክፍያ ዑደቶችን እና የውል ሁኔታን ያስተዳድሩ።",
   },
+  labels: {
+  productSubscriptions: "የምርት ምዝገባዎች",
+  serviceSubscriptions: "የአገልግሎት ምዝገባዎች",
+  addProductPlan: "የምርት ፕላን ጨምር",
+  addServicePlan: "የአገልግሎት ፕላን ጨምር",
+  productPlans: "የምርት ፕላኖች",
+  servicePlans: "የአገልግሎት ፕላኖች",
+  productCompanySubscriptions: "የምርት ኩባንያ ምዝገባዎች",
+  serviceCompanySubscriptions: "የአገልግሎት ኩባንያ ምዝገባዎች",
+  services: "አገልግሎቶች",
+  serviceLimit: "የአገልግሎት ገደብ",
+  multiTermPricing: "የብዙ ጊዜ የክፍያ ዋጋ (አማራጭ)",
+  leaveBlankToDisable: "ለማሰናከል ባዶ ይተዉት",
+  sixMonthPrice: "የ6 ወር ዋጋ (180 ቀናት)",
+  annualPrice: "የ1 ዓመት ዋጋ (365 ቀናት)",
+  sixMonths: "6 ወራት",
+  annual: "ዓመታዊ",
+  sixMonthShort: "6 ወር",
+  annualShort: "1 ዓመት",
+  savePercentage: "{{percent}}% ቅናሽ · ETB {{price}}/ወር",
+},
 
   companySelector: {
     title: "የአገልግሎት አስተዳደር",
@@ -190,6 +211,12 @@ export default {
     days: "ቀናት",
     unlimited: "ያልተገደበ",
     unknown: "ያልታወቀ",
+  
+  starter: "ጀማሪ",
+  basic: "መሰረታዊ",
+  advanced: "የላቀ",
+  premium: "ፕሪሚየም",
+  enterprise: "ድርጅታዊ",
   },
 
   companySubscriptions: {

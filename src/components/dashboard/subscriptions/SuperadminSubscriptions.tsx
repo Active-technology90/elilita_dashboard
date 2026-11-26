@@ -1356,32 +1356,37 @@ export default function SuperadminSubscriptions() {
                             </span>
                           </div>
                         </td>
+<td className="px-3 py-3 sm:px-4 sm:py-4">
+  <div className="flex min-w-[110px] flex-col gap-2">
+    {/* Main Price */}
+    <span className="whitespace-nowrap text-sm font-semibold text-gray-900">
+      {Number(plan.price || 0) === 0
+        ? t("subscriptions.plans.free")
+        : `ETB ${formatEtb(Number(plan.price || 0))}`}
+    </span>
 
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-semibold text-gray-900">
-                              {Number(plan.price || 0) === 0
-                                ? t("subscriptions.plans.free")
-                                : `ETB ${formatEtb(Number(plan.price || 0))}`}
-                            </span>
-                            {(plan.six_month_price || plan.annual_price) && (
-                              <div className="flex flex-wrap gap-1 text-[10px]">
-                                {plan.six_month_price != null && (
-                                  <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-700">
-                                    6mo: ETB {formatEtb(Number(plan.six_month_price))}
-                                    {plan.six_month_savings_percent > 0 ? ` (-${plan.six_month_savings_percent}%)` : ""}
-                                  </span>
-                                )}
-                                {plan.annual_price != null && (
-                                  <span className="rounded bg-secondary/[0.08] px-1.5 py-0.5 font-semibold text-secondary">
-                                    1yr: ETB {formatEtb(Number(plan.annual_price))}
-                                    {plan.annual_savings_percent > 0 ? ` (-${plan.annual_savings_percent}%)` : ""}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </td>
+    {/* Optional Pricing */}
+    {(plan.six_month_price != null || plan.annual_price != null) && (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {plan.six_month_price != null && (
+          <span className="inline-flex whitespace-nowrap rounded bg-emerald-50 px-1.5 py-1 text-[10px] font-semibold text-emerald-700">
+            6mo: ETB {formatEtb(Number(plan.six_month_price))}
+            {plan.six_month_savings_percent > 0 &&
+              ` (-${plan.six_month_savings_percent}%)`}
+          </span>
+        )}
+
+        {plan.annual_price != null && (
+          <span className="inline-flex whitespace-nowrap rounded bg-secondary/[0.08] px-1.5 py-1 text-[10px] font-semibold text-secondary">
+            1yr: ETB {formatEtb(Number(plan.annual_price))}
+            {plan.annual_savings_percent > 0 &&
+              ` (-${plan.annual_savings_percent}%)`}
+          </span>
+        )}
+      </div>
+    )}
+  </div>
+</td>
 
                         <td className="px-4 py-4 font-semibold text-secondary">
                           {plan.duration_days ?? 30}{" "}

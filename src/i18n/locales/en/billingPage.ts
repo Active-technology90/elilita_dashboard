@@ -1,3 +1,4 @@
+// src/locales/en/billingPage.ts  (or wherever this file lives)
 export default {
   pageTitle: "Subscription",
   pageDescription: "Manage your plan, usage, renewal, and available plans.",
@@ -9,6 +10,7 @@ export default {
   freeAfterExpiry: "Free After Expiry",
   choosePlan: "Choose Plan",
   upgradeBadge: "↑ Upgrade",
+  freeTrialUsed: "Free Trial Used",
 
   positioning: {
     free: "Start Selling",
@@ -21,8 +23,10 @@ export default {
   purpose: {
     free: "Establish your business presence on Elilita.",
     basic: "Get the tools you need to manage and grow your online business.",
-    advanced: "Manage more products, orders, customers and marketing activities.",
-    premium: "Get maximum visibility, analytics, marketing and operational capabilities.",
+    advanced:
+      "Manage more products, orders, customers and marketing activities.",
+    premium:
+      "Get maximum visibility, analytics, marketing and operational capabilities.",
     custom: "Custom subscription configuration.",
   },
 
@@ -65,8 +69,28 @@ export default {
     ],
   },
 
+  tiers: {
+    free: "Free",
+    basic: "Basic",
+    advanced: "Advanced",
+    premium: "Premium",
+    custom: "Custom",
+  },
+
+  billingCycle: {
+    monthly: "Monthly",
+    sixMonth: "6 Months",
+    annual: "Yearly",
+    monthlyShort: "mo",
+    monthlyOnly: "Monthly only",
+    billed: "Billed {{amount}} ETB / {{period}}",
+    months6: "6 months",
+    months12: "12 months",
+    save: "Save {{percent}}%",
+    saveUpTo: "Save up to {{percent}}%",
+  },
+
   features: {
-    
     basicStorefront: "Basic storefront and vendor profile",
     limitedCatalogue: "Limited product catalogue and basic categories",
     basicInventory: "Basic inventory and stock information",
@@ -105,17 +129,22 @@ export default {
     exportableReports: "Advanced and exportable reports",
 
     allAdvancedFeatures: "All Advanced plan features",
-    premiumCustomization: "Premium storefront customization and priority visibility",
+    premiumCustomization:
+      "Premium storefront customization and priority visibility",
     unlimitedProducts: "Unlimited product listing",
     advancedBulkManagement: "Advanced inventory and bulk product management",
-    productPerformance: "Advanced product analytics and performance comparison",
-    priorityFeatured: "Priority featured products and premium promotional placement",
+    productPerformance:
+      "Advanced product analytics and performance comparison",
+    priorityFeatured:
+      "Priority featured products and premium promotional placement",
     advancedCampaigns: "Advanced campaigns and featured vendor opportunities",
     customerSegmentation: "Advanced customer analytics and segmentation",
-    businessMonitoring: "Advanced operations and business performance monitoring",
+    businessMonitoring:
+      "Advanced operations and business performance monitoring",
     multipleStaff: "Multiple staff accounts with role-based permissions",
     historicalReports: "Advanced and historical reporting",
-    accountSupport: "Priority support and dedicated account support where applicable",
+    accountSupport:
+      "Priority support and dedicated account support where applicable",
 
     storefrontManagement: "Storefront & profile management",
     orderInventoryManagement: "Order & inventory management",
@@ -131,12 +160,15 @@ export default {
     roleBasedAccess: " with role-based access",
     promotionalPlacement: " & promotional placement",
     bulkManagement: " & bulk management",
+    unlimitedActiveServices: "Unlimited active services",
+    activeServicesUpTo: "Up to {{count}} active services",
   },
 
   usage: {
     publicProducts: "Public products",
     featuredProducts: "Featured products",
     staffMembers: "Staff members",
+    activeServices: "Active Services",
     unlimited: "Unlimited",
     unlimitedOnPlan: "Unlimited on this plan.",
     remaining: "{{count}} remaining on your current limit.",
@@ -165,41 +197,59 @@ export default {
 
   alerts: {
     loadErrorTitle: "Subscription data unavailable",
-    loadErrorDescription: "We could not load your subscription information. Check your connection and try again.",
+    loadErrorDescription:
+      "We could not load your subscription information. Check your connection and try again.",
     retry: "Retry",
     dismiss: "Dismiss",
     verifyingPayment: "Verifying your subscription payment…",
-    paymentVerified: "Payment verified. Your subscription is now up to date.",
-    paymentVerificationFailed: "We could not verify the payment yet. Refresh the page or try again in a moment.",
+    paymentVerified:
+      "Payment verified. Your subscription is now up to date.",
+    paymentVerificationFailed:
+      "We could not verify the payment yet. Refresh the page or try again in a moment.",
     paymentInitialized: "Plan activated successfully.",
-    checkoutLinkMissing: "The payment service did not return a checkout link. Please try again.",
-    paymentInitializationFailed: "Failed to initialize payment. Please try again.",
+    checkoutLinkMissing:
+      "The payment service did not return a checkout link. Please try again.",
+    paymentInitializationFailed:
+      "Failed to initialize payment. Please try again.",
     unauthorized: "Only company owners and admins can manage subscriptions.",
-    unauthorizedTooltip: "Only company owners or admins can modify subscription plans.",
+    unauthorizedTooltip:
+      "Only company owners or admins can modify subscription plans.",
     noPlans: "No plans available",
-    noPlansDescription: "Subscription plans will appear here when they are configured.",
-    expiringWarning: "Your plan period expires in {{count}} day(s). Upgrade or renew your plan to ensure your storefront stays active and accessible to customers.",
+    noPlansDescription:
+      "Subscription plans will appear here when they are configured.",
+    expiringWarning:
+      "Your plan period expires in {{count}} day(s). Upgrade or renew your plan to ensure your storefront stays active and accessible to customers.",
     expiredTitle: "Your subscription has expired.",
-    expiredDescription: "Your store and products are currently inactive on the shopping app. Choose a subscription plan below to reactivate your store automatically upon payment.",
-    accessNotice: "Only company owners and admins can change the subscription. You can still review plan benefits and limits.",
+    expiredDescription:
+      "Your store and products are currently inactive on the shopping app. Choose a subscription plan below to reactivate your store automatically upon payment.",
+    accessNotice:
+      "Only company owners and admins can change the subscription. You can still review plan benefits and limits.",
   },
 
   plans: {
     available: "Available plans",
     reactivate: "Reactivate your business",
     choosePlan: "Pick the plan that fits your store",
-    description: "Clear monthly pricing, simple limits, and only the most important features shown.",
+    description:
+      "Clear monthly pricing, simple limits, and only the most important features shown.",
+    heroTitle: "Upgrade your plan for more features",
+    currentPlanSubtitle: "Current Plan: {{plan}}",
     included: "What's included",
     currentPlanBadge: "Current Plan",
     upgrade: "Upgrade",
     startsAfterPayment: "Starts after successful payment verification.",
     downgradePolicy: "Downgrade timing follows policy.",
     freeAfterPaid: "Free access becomes available after the paid plan ends.",
+    freeTrialUsedNote:
+      "Free trial is one-time per company. Choose a paid plan or contact support for extra days.",
+    dueToday:
+      "Due today: {{amount}} ETB (after {{credit}} ETB credit from current plan)",
   },
 
   notes: {
     title: "Plan notes",
-    description: "Upgrades can be requested at any time. Paid features become available after successful payment verification. Downgrades follow the billing policy.",
+    description:
+      "Upgrades can be requested at any time. Paid features become available after successful payment verification. Downgrades follow the billing policy.",
     managedBy: "Owner / Admin managed",
   },
-}
+};

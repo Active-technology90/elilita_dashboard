@@ -125,6 +125,18 @@ export default {
   price: {
     quotedPrice: "የተጠቀሰ ዋጋ",
     finalPrice: "የመጨረሻ ዋጋ",
+    setFinalQuoteAndNotes: "የመጨረሻ የዋጋ ጥቅስ እና ማስታወሻዎችን ያዘጋጁ",
+providerNotes: "የአገልግሎት ሰጪ ማስታወሻዎች",
+enterFinalPrice: "የመጨረሻውን የዋጋ ጥቅስ ያስገቡ...",
+customerWillBeNotifiedOfFinalPrice:
+  "ደንበኛው ስለዚህ የመጨረሻ ዋጋ ማሳወቂያ ይደርሰዋል፤ ከቦታ ማስያዣ ዝርዝሩም ክፍያ መፈጸም ይችላል።",
+notesToCustomer: "ለደንበኛው የሚተላለፉ ማስታወሻዎች",
+notesToCustomerPlaceholder: "መመሪያዎች፣ የዋጋ ዝርዝር ወይም የጥቅሱ ዝርዝሮች...",
+confirmFinalPriceAndBooking: "የመጨረሻ ዋጋውን  ያረጋግጡ",
+confirmSavesAndConfirms:
+  "ዋጋውን እና ማስታወሻዎቹን ያስቀምጣል፤ ከዚያም የቦታ ማስያዣውን ሁኔታ ወደ «ተረጋግጧል» ይቀይራል።",
+enterPriceToConfirm: "ከማረጋገጥዎ በፊት የመጨረሻውን ዋጋ ያስገቡ።",
+pleaseEnterValidPrice: "እባክዎ ትክክለኛ የመጨረሻ ዋጋ ያስገቡ።",
   },
   actions: {
     confirm: "አረጋግጥ",

@@ -13,16 +13,16 @@ import {
   ArrowDown,
   ArrowUp,
   BadgeCheck,
-  CheckCircle2,
+  Check,
   Clock,
   CreditCard,
   Package,
   RefreshCw,
   Shield,
-  Sparkles,
+
   Store,
   Users,
-  XCircle,
+  X,
   Zap,
 } from "lucide-react";
 import {
@@ -83,12 +83,7 @@ type PlanAction =
   | "free_used"
   | "subscribe";
 
-type PlanTier =
-  | "free"
-  | "basic"
-  | "advanced"
-  | "premium"
-  | "custom";
+type PlanTier = "free" | "basic" | "advanced" | "premium" | "custom";
 
 type Translate = any;
 
@@ -106,11 +101,12 @@ type Feedback = {
 } | null;
 
 /**
- * GOLD — reserved ONLY for the primary upgrade / subscribe CTA.
+ * ACCENT — reserved ONLY for the primary upgrade / subscribe CTA.
+ * Palette: Material 3 purple (#6750A4) with #574290 hover shade.
  */
-const GOLD = {
+const ACCENT = {
   button:
-    "border border-[#E7C86E] bg-[#F4C44E] text-[#4E3900] shadow-sm hover:bg-[#F0BC37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C86E] focus-visible:ring-offset-2",
+    "bg-[#6750A4] text-white shadow-sm hover:bg-[#574290] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6750A4] focus-visible:ring-offset-2",
 };
 
 const PLAN_META: Record<Exclude<PlanTier, "custom">, PlanMeta> = {
@@ -182,10 +178,7 @@ type PlanFeatureItem = {
   enabled: boolean;
 };
 
-const PLAN_FEATURES: Record<
-  Exclude<PlanTier, "custom">,
-  PlanFeatureItem[]
-> = {
+const PLAN_FEATURES: Record<Exclude<PlanTier, "custom">, PlanFeatureItem[]> = {
   free: [
     {
       label: "features.limitedCatalogue",
@@ -289,10 +282,7 @@ const resolvePlanTier = (
   return "custom";
 };
 
-const getPlanMeta = (
-  plan: SubscriptionPlan,
-  t: Translate,
-): PlanMeta => {
+const getPlanMeta = (plan: SubscriptionPlan, t: Translate): PlanMeta => {
   const tier = resolvePlanTier(plan);
 
   if (tier !== "custom") {
@@ -334,10 +324,7 @@ const formatDate = (value?: string | null) => {
   }).format(date);
 };
 
-const formatLimit = (
-  value: number | null | undefined,
-  t: Translate,
-) => {
+const formatLimit = (value: number | null | undefined, t: Translate) => {
   if (value === -1) return t("usage.unlimited");
   return String(value ?? 0);
 };
@@ -368,8 +355,10 @@ const getDynamicPlanFeatures = (
 
   const servicesLabel =
     serviceLimit === -1
-      ? "Unlimited active services"
-      : `Up to ${formatLimit(serviceLimit, t)} active services`;
+      ? t("features.unlimitedActiveServices")
+      : t("features.activeServicesUpTo", {
+          count: formatLimit(serviceLimit, t),
+        });
 
   const staffLabel =
     staffCount === -1
@@ -435,7 +424,9 @@ const getDynamicPlanFeatures = (
   }
 
   return PLAN_FEATURES[tier]
-    .filter((item) => !(isServiceCompany && item.match.includes("featured product")))
+    .filter(
+      (item) => !(isServiceCompany && item.match.includes("featured product")),
+    )
     .map((item) => {
       const lower = item.match;
 
@@ -464,79 +455,77 @@ const getDynamicPlanFeatures = (
         };
       }
 
-    // Match staff quota entries
-    if (lower.includes("staff")) {
-      const hasRole = lower.includes("role");
+      // Match staff quota entries
+      if (lower.includes("staff")) {
+        const hasRole = lower.includes("role");
+
+        return {
+          ...item,
+          label: hasRole
+            ? `${staffLabel} ${t("features.roleBasedAccess")}`
+            : staffLabel,
+          enabled: staffCount !== 0,
+        };
+      }
+
+      // Match featured products quota entries
+      if (lower.includes("featured product")) {
+        const extraPromo =
+          lower.includes("promotional") || lower.includes("placement");
+
+        return {
+          ...item,
+          label:
+            extraPromo && hasFeatured
+              ? `${featuredLabel} ${t("features.promotionalPlacement")}`
+              : featuredLabel,
+          enabled: hasFeatured,
+        };
+      }
 
       return {
         ...item,
-        label: hasRole
-          ? `${staffLabel} ${t("features.roleBasedAccess")}`
-          : staffLabel,
-        enabled: staffCount !== 0,
+        label: t(item.label),
       };
-    }
-
-    // Match featured products quota entries
-    if (lower.includes("featured product")) {
-      const extraPromo =
-        lower.includes("promotional") || lower.includes("placement");
-
-      return {
-        ...item,
-        label:
-          extraPromo && hasFeatured
-            ? `${featuredLabel} ${t("features.promotionalPlacement")}`
-            : featuredLabel,
-        enabled: hasFeatured,
-      };
-    }
-
-    return {
-      ...item,
-      label: t(item.label),
-    };
-  });
+    });
 };
 
 const SkeletonCard = () => (
-  <div className="animate-pulse rounded-xl border border-secondary/10 bg-white p-5 shadow-sm">
-    <div className="h-3 w-24 rounded bg-secondary/[0.06]" />
-    <div className="mt-3 h-7 w-32 rounded bg-secondary/[0.06]" />
-    <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-secondary/10 bg-secondary/[0.025] p-2">
-      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
-      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
-      <div className="h-12 rounded-xl bg-secondary/[0.05]" />
-    </div>
-    <div className="mt-5 space-y-2.5">
+  <div className="animate-pulse rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="h-11 w-11 rounded-xl bg-slate-100" />
+    <div className="mt-4 h-4 w-24 rounded bg-slate-100" />
+    <div className="mt-1.5 h-3 w-32 rounded bg-slate-100" />
+    <div className="mt-5 h-9 w-28 rounded bg-slate-100" />
+    <div className="mt-2 h-5 w-16 rounded bg-slate-100" />
+    <div className="mt-5 space-y-3">
       {Array.from({ length: 5 }).map((_, index) => (
         <div
           key={index}
-          className="h-3 rounded bg-secondary/[0.04]"
+          className="h-3 rounded bg-slate-100"
           style={{ width: `${94 - index * 7}%` }}
         />
       ))}
     </div>
-    <div className="mt-5 h-11 rounded-xl bg-secondary/[0.04]" />
+    <div className="mt-6 h-11 rounded-xl bg-slate-100" />
   </div>
 );
 
 const SkeletonCurrentPlan = () => (
-  <div className="animate-pulse overflow-hidden rounded-2xl border border-secondary/10 bg-white p-5 shadow-sm sm:p-6">
+  <div className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
       <div>
-        <div className="h-3 w-28 rounded bg-secondary/[0.06]" />
-        <div className="mt-3 h-10 w-52 rounded bg-secondary/[0.06]" />
-        <div className="mt-3 h-3 w-80 max-w-full rounded bg-secondary/[0.04]" />
+        <div className="h-3 w-28 rounded bg-slate-100" />
+        <div className="mt-3 h-9 w-52 rounded bg-slate-100" />
+        <div className="mt-3 h-3 w-80 max-w-full rounded bg-slate-100" />
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
-          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
-          <div className="h-16 rounded-2xl bg-secondary/[0.04]" />
+          <div className="h-16 rounded-2xl bg-slate-100" />
+          <div className="h-16 rounded-2xl bg-slate-100" />
+          <div className="h-16 rounded-2xl bg-slate-100" />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="h-24 rounded-2xl bg-secondary/[0.04]" />
-        <div className="h-24 rounded-2xl bg-secondary/[0.04]" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="h-24 rounded-2xl bg-slate-100" />
+        <div className="h-24 rounded-2xl bg-slate-100" />
       </div>
     </div>
   </div>
@@ -559,25 +548,27 @@ const UsageCard = ({
   const percentage = calculateUsage(current, limit);
 
   return (
-    <div className="rounded-2xl border border-secondary/10 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-secondary">
-          <span className="text-secondary">{icon}</span>
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-slate-800">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6750A4]/10 text-[#6750A4]">
+            {icon}
+          </span>
           {label}
         </div>
-        <span className="text-xs font-extrabold text-secondary">
+        <span className="text-xs font-bold text-slate-700">
           {current} / {formatLimit(limit, t)}
         </span>
       </div>
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-secondary/[0.08]">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
         <div
-          className="h-full rounded-full bg-secondary transition-[width] duration-500"
+          className="h-full rounded-full bg-[#6750A4] transition-[width] duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
 
-      <p className="mt-2 text-[11px] text-secondary/50">
+      <p className="mt-2 text-[11px] text-slate-400">
         {unlimited
           ? t("usage.unlimitedOnPlan")
           : t("usage.remaining", {
@@ -594,14 +585,15 @@ export default function BillingPage() {
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "six_month" | "annual">("monthly");
+const [billingCycle, setBillingCycle] = useState<
+  "monthly" | "six_month" | "annual"
+>("annual");
   const [isLoading, setIsLoading] = useState(true);
   const [subscribingTo, setSubscribingTo] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const isAuthorized =
-    company?.role === "owner" || company?.role === "admin";
+  const isAuthorized = company?.role === "owner" || company?.role === "admin";
 
   const isServiceCompany =
     activeSub?.company_business_type === "service" ||
@@ -675,8 +667,7 @@ export default function BillingPage() {
 
         setFeedback({
           tone: "error",
-          message:
-            errorMsg || t("alerts.paymentVerificationFailed"),
+          message: errorMsg || t("alerts.paymentVerificationFailed"),
         });
       }
 
@@ -716,7 +707,11 @@ export default function BillingPage() {
       setSubscribingTo(planId);
       setFeedback(null);
 
-      const res = await initializeSubscriptionPayment(company.slug, planId, billingCycle);
+      const res = await initializeSubscriptionPayment(
+        company.slug,
+        planId,
+        billingCycle,
+      );
 
       if (res.data?.message) {
         setFeedback({
@@ -753,7 +748,10 @@ export default function BillingPage() {
     const cardPrice = Number(plan.price || 0);
 
     if (!activeSub || activeSub.is_expired) {
-      if (cardPrice === 0 && (activeSub?.has_used_free_trial || activeSub?.is_expired)) {
+      if (
+        cardPrice === 0 &&
+        (activeSub?.has_used_free_trial || activeSub?.is_expired)
+      ) {
         return "free_used";
       }
       return "subscribe";
@@ -770,7 +768,10 @@ export default function BillingPage() {
     if (cardPrice === 0 && currentPrice > 0) return "free_locked";
     if (cardPrice === 0 && activeSub.has_used_free_trial) return "free_used";
     if (cardPrice > currentPrice) {
-      if (currentPrice > 0 && cycleRank[billingCycle] < cycleRank[currentCycle]) {
+      if (
+        currentPrice > 0 &&
+        cycleRank[billingCycle] < cycleRank[currentCycle]
+      ) {
         return "downgrade";
       }
       return "upgrade";
@@ -787,11 +788,17 @@ export default function BillingPage() {
     [plans],
   );
   const hasSixMonthPlans = useMemo(
-    () => plans.some((p) => p.six_month_price != null && Number(p.six_month_price) > 0),
+    () =>
+      plans.some(
+        (p) => p.six_month_price != null && Number(p.six_month_price) > 0,
+      ),
     [plans],
   );
   const hasAnnualPlans = useMemo(
-    () => plans.some((p) => p.annual_price != null && Number(p.annual_price) > 0),
+    () =>
+      plans.some(
+        (p) => p.annual_price != null && Number(p.annual_price) > 0,
+      ),
     [plans],
   );
 
@@ -818,16 +825,15 @@ export default function BillingPage() {
           icon: <Shield className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-secondary/15 bg-secondary/[0.06] text-secondary",
+            "cursor-not-allowed border border-slate-200 bg-white text-slate-700",
         };
 
       case "upgrade":
-        // ✅ GOLD — upgrade CTA stays gold
         return {
           label: t("upgradePlan"),
           icon: <ArrowUp className="h-4 w-4" />,
           disabled: false,
-          className: GOLD.button,
+          className: ACCENT.button,
         };
 
       case "downgrade":
@@ -836,7 +842,7 @@ export default function BillingPage() {
           icon: <ArrowDown className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
+            "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-400",
         };
 
       case "free_locked":
@@ -845,25 +851,24 @@ export default function BillingPage() {
           icon: <Clock className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
+            "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-400",
         };
 
       case "free_used":
         return {
-          label: "Free Trial Used",
+          label: t("freeTrialUsed"),
           icon: <Shield className="h-4 w-4" />,
           disabled: true,
           className:
-            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
+            "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-400",
         };
 
       case "subscribe":
-        // ✅ GOLD — subscribe CTA stays gold
         return {
           label: t("choosePlan"),
           icon: <CreditCard className="h-4 w-4" />,
           disabled: false,
-          className: GOLD.button,
+          className: ACCENT.button,
         };
     }
   };
@@ -917,9 +922,14 @@ export default function BillingPage() {
           ? "Active"
           : "Pending";
 
-  const statusClass = isExpired
-    ? "border-secondary/25 bg-secondary/[0.04] text-secondary/60"
-    : "border-secondary/15 bg-secondary/[0.06] text-secondary";
+  const statusClass =
+    status === "Expired" || status === "Pending"
+      ? "border-slate-200 bg-slate-100 text-slate-500"
+      : status === "Expiring"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : status === "Free"
+          ? "border-[#6750A4]/30 bg-[#6750A4]/10 text-[#6750A4]"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
   const statusLabel =
     status === "Expired"
@@ -933,34 +943,34 @@ export default function BillingPage() {
             : t("subscriptionStatus.pending");
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-5 px-1 pb-8 sm:px-2">
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 px-1 pb-10 sm:px-2">
       <PageHeader
         title={t("pageTitle")}
         description={t("pageDescription")}
         icon={CreditCard}
         loading={isLoading}
-        className="mb-5 sm:mb-6"
+        className="mb-4 sm:mb-5"
       />
 
       {feedback && (
         <div
           role="status"
-          className="flex items-start justify-between gap-3 rounded-xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-sm text-secondary shadow-sm"
+          className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm"
         >
           <div className="flex min-w-0 items-start gap-2.5">
             {feedback.tone === "success" ? (
-              <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
             ) : feedback.tone === "error" ? (
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
             ) : (
-              <Clock className="mt-0.5 h-4 w-4 shrink-0" />
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-[#6750A4]" />
             )}
             <p>{feedback.message}</p>
           </div>
           <button
             type="button"
             onClick={() => setFeedback(null)}
-            className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold opacity-70 hover:opacity-100"
+            className="shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold text-slate-500 hover:text-slate-800"
             aria-label={t("alerts.dismiss")}
           >
             {t("alerts.dismiss")}
@@ -969,21 +979,21 @@ export default function BillingPage() {
       )}
 
       {loadError && !isLoading && (
-        <div className="rounded-2xl border border-secondary/15 bg-secondary/[0.04] p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-secondary" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
               <div>
-                <p className="font-semibold text-secondary">
+                <p className="font-semibold text-slate-800">
                   {t("alerts.loadErrorTitle")}
                 </p>
-                <p className="mt-1 text-sm text-secondary/70">{loadError}</p>
+                <p className="mt-1 text-sm text-slate-500">{loadError}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => void fetchData()}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-secondary/15 bg-white px-4 text-sm font-semibold text-secondary shadow-sm hover:bg-secondary/[0.04]"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               <RefreshCw className="h-4 w-4" />
               {t("alerts.retry")}
@@ -992,14 +1002,15 @@ export default function BillingPage() {
         </div>
       )}
 
+      {/* ================= CURRENT SUBSCRIPTION ================= */}
       {isLoading ? (
         <SkeletonCurrentPlan />
       ) : (
-        <section className="rounded-2xl border border-secondary/10 bg-white p-5 shadow-sm sm:p-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary/60">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   {t("currentSubscription")}
                 </span>
                 <span
@@ -1010,24 +1021,24 @@ export default function BillingPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
-                <h2 className="text-3xl font-black tracking-[-0.04em] text-secondary sm:text-4xl">
+                <h2 className="text-3xl font-black tracking-[-0.04em] text-slate-900 sm:text-4xl">
                   {activeSub?.plan?.name || currentPlanMeta.name}
                 </h2>
-                <span className="pb-1 text-sm font-semibold text-secondary/70">
+                <span className="pb-1 text-sm font-semibold text-[#6750A4]">
                   {currentPlanMeta.positioning}
                 </span>
               </div>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary/70">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                 {currentPlanMeta.purpose}
               </p>
 
               <div className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                     {t("billingDetails.price")}
                   </p>
-                  <p className="mt-1 text-sm font-extrabold text-secondary">
+                  <p className="mt-1 text-sm font-extrabold text-slate-800">
                     {isFree
                       ? t("billingDetails.free")
                       : t("billingDetails.monthlyPrice", {
@@ -1036,22 +1047,22 @@ export default function BillingPage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                     {t("billingDetails.started")}
                   </p>
-                  <p className="mt-1 text-sm font-extrabold text-secondary">
+                  <p className="mt-1 text-sm font-extrabold text-slate-800">
                     {formatDate(activeSub?.start_date)}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] px-4 py-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-secondary/45">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                     {isFree
                       ? t("billingDetails.trialPeriodEnds")
                       : t("billingDetails.renewal")}
                   </p>
-                  <p className="mt-1 text-sm font-extrabold text-secondary">
+                  <p className="mt-1 text-sm font-extrabold text-slate-800">
                     {activeSub?.end_date
                       ? formatDate(activeSub.end_date)
                       : isFree
@@ -1061,8 +1072,8 @@ export default function BillingPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2 text-xs text-secondary/60">
-                <Store className="h-4 w-4 text-secondary" />
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                <Store className="h-4 w-4 text-[#6750A4]" />
                 {t("billingDetails.bestSuitedFor", {
                   audience: currentPlanMeta.audience.toLowerCase(),
                 })}
@@ -1073,7 +1084,7 @@ export default function BillingPage() {
                 daysRemaining !== undefined &&
                 daysRemaining <= 7 &&
                 daysRemaining > 0 && (
-                  <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-secondary/15 bg-secondary/[0.04] px-4 py-3 text-xs leading-5 text-secondary">
+                  <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                     {t("alerts.expiringWarning", {
                       count: daysRemaining,
@@ -1082,8 +1093,8 @@ export default function BillingPage() {
                 )}
 
               {isExpired && (
-                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-3 text-xs leading-5 text-red-800">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                <div className="mt-4 flex max-w-2xl items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-5 text-red-800">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                   <div>
                     <span className="font-semibold">
                       {t("alerts.expiredTitle")}
@@ -1098,7 +1109,7 @@ export default function BillingPage() {
               {isServiceCompany ? (
                 <UsageCard
                   icon={<Package className="h-4 w-4" />}
-                  label="Active Services"
+                  label={t("usage.activeServices")}
                   current={currentServices}
                   limit={allowedServices}
                   t={t}
@@ -1133,59 +1144,51 @@ export default function BillingPage() {
         </section>
       )}
 
-      <section>
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-secondary" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-secondary/70">
-                {t("plans.available")}
-              </p>
-            </div>
-            <h2 className="mt-1 text-xl font-bold tracking-[-0.025em] text-secondary">
-              {isExpired
-                ? t("plans.reactivate")
-                : t("plans.choosePlan")}
-            </h2>
-            <p className="mt-1 text-xs text-secondary/55">
-              {t("plans.description")}
-            </p>
-          </div>
+      {/* ================= PLANS ================= */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold tracking-[-0.03em] text-slate-900 sm:text-3xl">
+            {isExpired ? t("plans.reactivate") : t("plans.heroTitle")}
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            {t("plans.currentPlanSubtitle", {
+              plan: activeSub?.plan?.name || currentPlanMeta.name,
+            })}
+          </p>
+        </div>
 
-          {(hasSixMonthPlans || hasAnnualPlans) ? (
-            <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-xl border border-secondary/15 bg-secondary/[0.03] p-1">
+        {/* Billing cycle toggle */}
+        <div className="mt-6 flex justify-center">
+          {hasSixMonthPlans || hasAnnualPlans ? (
+            <div className="inline-flex flex-wrap items-center justify-center gap-1 rounded-full bg-slate-100 p-1">
               <button
                 type="button"
                 onClick={() => setBillingCycle("monthly")}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                   billingCycle === "monthly"
-                    ? "bg-secondary text-white shadow-sm"
-                    : "text-secondary/70 hover:text-secondary"
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                Monthly
+                {t("billingCycle.monthly")}
               </button>
 
               {hasSixMonthPlans && (
                 <button
                   type="button"
                   onClick={() => setBillingCycle("six_month")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
                     billingCycle === "six_month"
-                      ? "bg-secondary text-white shadow-sm"
-                      : "text-secondary/70 hover:text-secondary"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  <span>6 Months</span>
+                  <span>{t("billingCycle.sixMonth")}</span>
                   {maxSixMonthSavings > 0 && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        billingCycle === "six_month"
-                          ? "bg-white/20 text-white"
-                          : "bg-emerald-100 text-emerald-700"
-                      }`}
-                    >
-                      Save up to {maxSixMonthSavings}%
+                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                      {t("billingCycle.save", {
+                        percent: maxSixMonthSavings,
+                      })}
                     </span>
                   )}
                 </button>
@@ -1195,59 +1198,57 @@ export default function BillingPage() {
                 <button
                   type="button"
                   onClick={() => setBillingCycle("annual")}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
                     billingCycle === "annual"
-                      ? "bg-secondary text-white shadow-sm"
-                      : "text-secondary/70 hover:text-secondary"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  <span>Annual</span>
+                  <span>{t("billingCycle.annual")}</span>
                   {maxAnnualSavings > 0 && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        billingCycle === "annual"
-                          ? "bg-white/20 text-white"
-                          : "bg-emerald-100 text-emerald-700"
-                      }`}
-                    >
-                      Save up to {maxAnnualSavings}%
+                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                      {t("billingCycle.save", {
+                        percent: maxAnnualSavings,
+                      })}
                     </span>
                   )}
                 </button>
               )}
             </div>
           ) : (
-            <span className="w-fit rounded-full border border-secondary/15 bg-secondary/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
+            <span className="rounded-full bg-slate-100 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-600">
               {t("billingDetails.monthlyBilling")}
             </span>
           )}
         </div>
 
         {!isAuthorized && !isLoading && (
-          <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-secondary/10 bg-secondary/[0.03] px-4 py-3 text-xs text-secondary/70">
-            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-secondary/60" />
-            {t("alerts.accessNotice")}
+          <div className="mt-4 flex items-start justify-center gap-2 text-xs text-slate-500">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+            <span className="max-w-xl text-center">
+              {t("alerts.accessNotice")}
+            </span>
           </div>
         )}
 
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <SkeletonCard key={index} />
             ))}
           </div>
         ) : sortedPlans.length === 0 ? (
-          <div className="rounded-2xl border border-secondary/10 bg-white px-5 py-12 text-center shadow-sm">
-            <CreditCard className="mx-auto h-6 w-6 text-secondary/40" />
-            <p className="mt-3 text-sm font-semibold text-secondary">
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
+            <CreditCard className="mx-auto h-6 w-6 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">
               {t("alerts.noPlans")}
             </p>
-            <p className="mt-1 text-xs text-secondary/50">
+            <p className="mt-1 text-xs text-slate-400">
               {t("alerts.noPlansDescription")}
             </p>
           </div>
         ) : (
-          <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {sortedPlans.map((plan) => {
               const action = getPlanAction(plan);
               const button = getButtonConfig(action);
@@ -1264,14 +1265,21 @@ export default function BillingPage() {
                         ? Number(plan.annual_price)
                         : null
                       : baseMonthlyPrice;
-              const isCycleUnavailable = baseMonthlyPrice > 0 && selectedTotalPrice === null;
+              const isCycleUnavailable =
+                baseMonthlyPrice > 0 && selectedTotalPrice === null;
               const effectiveMonthlyPrice =
                 selectedTotalPrice === null
                   ? baseMonthlyPrice
                   : billingCycle === "six_month"
-                    ? Number(plan.six_month_monthly_equivalent ?? selectedTotalPrice / 6)
+                    ? Number(
+                        plan.six_month_monthly_equivalent ??
+                          selectedTotalPrice / 6,
+                      )
                     : billingCycle === "annual"
-                      ? Number(plan.annual_monthly_equivalent ?? selectedTotalPrice / 12)
+                      ? Number(
+                          plan.annual_monthly_equivalent ??
+                            selectedTotalPrice / 12,
+                        )
                       : baseMonthlyPrice;
               const savingsPercent =
                 billingCycle === "six_month"
@@ -1280,16 +1288,20 @@ export default function BillingPage() {
                     ? plan.annual_savings_percent || 0
                     : 0;
               const dueToday =
-                action === "upgrade" && selectedTotalPrice !== null && unusedCredit > 0
-                  ? Math.max(1, Math.round((selectedTotalPrice - unusedCredit) * 100) / 100)
+                action === "upgrade" &&
+                selectedTotalPrice !== null &&
+                unusedCredit > 0
+                  ? Math.max(
+                      1,
+                      Math.round((selectedTotalPrice - unusedCredit) * 100) /
+                        100,
+                    )
                   : null;
               const price = baseMonthlyPrice;
               const meta = getPlanMeta(plan, t);
               const tier = resolvePlanTier(plan);
               const isCurrent = action === "current";
               const isUpgrade = action === "upgrade";
-              const isAdvanced = tier === "advanced";
-              const isPremium = tier === "premium";
 
               const includedItems = getDynamicPlanFeatures(
                 plan,
@@ -1301,131 +1313,111 @@ export default function BillingPage() {
               return (
                 <article
                   key={plan.id}
-                  className={`relative mt-3 flex min-w-0 flex-col overflow-visible rounded-[26px] border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-                    isCurrent
-                      ? "border-secondary/40"
-                      : isUpgrade || isPremium || isAdvanced
-                        ? "border-secondary/20"
-                        : "border-secondary/10 hover:border-secondary/25"
+                  className={`relative flex min-w-0 flex-col rounded-2xl border-2 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+                    isCurrent || isUpgrade
+                      ? "border-[#6750A4] shadow-md"
+                      : "border-[#6750A4]/25 hover:border-[#6750A4]/50"
                   }`}
                 >
                   {isCurrent ? (
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-secondary px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6750A4] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
                       {t("currentPlan")}
                     </div>
                   ) : isUpgrade ? (
-                    // ✅ GOLD badge — matches the gold upgrade CTA
-                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F4C44E] px-4 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-[#4E3900] shadow-sm">
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6750A4] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
                       {t("upgradeBadge")}
                     </div>
                   ) : null}
 
-                  <div className="min-h-6">
-                    <p className="min-w-0 truncate text-[11px] font-semibold text-secondary">
-                      {plan.name}
-                    </p>
+                  {/* Icon */}
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#6750A4] text-white shadow-sm">
+                   <BadgeCheck className="h-5 w-5" />
                   </div>
 
-                  <div className="mt-8 space-y-1">
+                  {/* Name + positioning */}
+                  <h3 className="mt-4 text-lg font-bold tracking-[-0.01em] text-slate-900">
+                    {plan.name}
+                  </h3>
+                  <p className="mt-0.5 text-[11px] font-medium text-slate-500">
+                    {meta.positioning}
+                  </p>
+
+                  {/* Price */}
+                  <div className="mt-5">
                     {isCycleUnavailable ? (
-                      <p className="text-sm font-semibold text-secondary/55">
-                        Monthly only
+                      <p className="text-sm font-semibold text-slate-400">
+                        {t("billingCycle.monthlyOnly")}
                       </p>
                     ) : (
-                      <>
-                        <div className="flex flex-wrap items-end gap-1.5">
-                          <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-secondary">
-                            {price === 0
-                              ? t("billingDetails.free")
-                              : `${formatEtb(effectiveMonthlyPrice)} ETB`}
+                      <div className="flex flex-wrap items-end gap-1.5">
+                        <span className="text-4xl font-extrabold leading-none tracking-[-0.04em] text-slate-900">
+                          {price === 0
+                            ? t("billingDetails.free")
+                            : `${formatEtb(effectiveMonthlyPrice)} ETB`}
+                        </span>
+                        {price > 0 && (
+                          <span className="pb-1 text-[11px] font-semibold text-slate-400">
+                            / {t("billingCycle.monthlyShort")}
                           </span>
-                          {price > 0 && (
-                            <span className="pb-0.5 text-[11px] font-semibold text-secondary/45">
-                              {t("billingDetails.monthly")}
-                            </span>
-                          )}
-                          {savingsPercent > 0 && (
-                            <span className="mb-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
-                              Save {savingsPercent}%
-                            </span>
-                          )}
-                        </div>
-
-                        {price > 0 && billingCycle !== "monthly" && selectedTotalPrice !== null && (
-                          <p className="text-[11px] text-secondary/60">
-                            <span className="line-through text-secondary/40 mr-1.5">
-                              {formatEtb(baseMonthlyPrice)} ETB/mo
-                            </span>
-                            Billed {formatEtb(selectedTotalPrice)} ETB /{" "}
-                            {billingCycle === "annual" ? "12 months" : "6 months"}
-                          </p>
                         )}
-                      </>
+                      </div>
                     )}
+
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                        {t(`tiers.${tier}`)}
+                      </span>
+                      {savingsPercent > 0 && (
+                        <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                          {t("billingCycle.save", { percent: savingsPercent })}
+                        </span>
+                      )}
+                    </div>
+
+                    {price > 0 &&
+                      billingCycle !== "monthly" &&
+                      selectedTotalPrice !== null && (
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          <span className="mr-1.5 line-through text-slate-400">
+                            {formatEtb(baseMonthlyPrice)} ETB
+                          </span>
+                          {t("billingCycle.billed", {
+                            amount: formatEtb(selectedTotalPrice),
+                            period:
+                              billingCycle === "annual"
+                                ? t("billingCycle.months12")
+                                : t("billingCycle.months6"),
+                          })}
+                        </p>
+                      )}
                   </div>
 
-                  {/* Dynamic Core Quotas Summary */}
-                  {/* <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-secondary/10 bg-secondary/[0.025] p-2">
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
-                      <Package className="h-3.5 w-3.5 text-secondary" />
-                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
-                        {plan.max_products === -1
-                          ? "Unlimited"
-                          : formatLimit(plan.max_products, t)}
-                      </span>
-                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
-                        Products
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
-                      <Users className="h-3.5 w-3.5 text-secondary" />
-                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
-                        {(plan.max_staff_members ?? 5) === -1
-                          ? "Unlimited"
-                          : formatLimit(plan.max_staff_members ?? 5, t)}
-                      </span>
-                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
-                        Staff
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-secondary/10 bg-white p-2 text-center shadow-sm">
-                      <Zap className="h-3.5 w-3.5 text-secondary" />
-                      <span className="mt-1 text-xs font-black leading-tight text-secondary">
-                        {plan.max_featured_products === -1
-                          ? "Unlimited"
-                          : plan.max_featured_products <= 0
-                            ? "0"
-                            : formatLimit(plan.max_featured_products, t)}
-                      </span>
-                      <span className="mt-0.5 text-[9px] font-semibold text-secondary/50">
-                        Featured
-                      </span>
-                    </div>
-                  </div> */}
-
-                  <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.11em] text-secondary/50">
+                  {/* Features */}
+                  <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.11em] text-slate-400">
                     {t("plans.included")}
                   </p>
 
-                  <ul className="mt-4 space-y-3">
+                  <ul className="mt-3 space-y-2.5">
                     {includedItems.map((item) => (
-                      <li
-                        key={item.label}
-                        className="flex items-center gap-2.5"
-                      >
-                        {item.enabled ? (
-                          // ✅ Strict palette — check icon uses secondary
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-secondary" />
-                        ) : (
-                          <XCircle className="h-4 w-4 shrink-0 text-secondary/25" />
-                        )}
+                      <li key={item.label} className="flex items-start gap-2">
+                        <span
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded ${
+                            item.enabled
+                              ? "bg-[#6750A4] text-white"
+                              : "bg-slate-200 text-slate-400"
+                          }`}
+                        >
+                          {item.enabled ? (
+                            <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                          ) : (
+                            <X className="h-2.5 w-2.5" strokeWidth={3} />
+                          )}
+                        </span>
                         <span
                           className={`text-[11px] leading-5 ${
                             item.enabled
-                              ? "text-secondary/80"
-                              : "text-secondary/40 line-through"
+                              ? "text-slate-700"
+                              : "text-slate-400 line-through"
                           }`}
                         >
                           {item.label}
@@ -1434,16 +1426,8 @@ export default function BillingPage() {
                     ))}
                   </ul>
 
-                  <div className="mt-4 rounded-2xl border border-secondary/10 bg-secondary/[0.025] px-3 py-2.5">
-                    <p className="text-[10px] font-semibold text-secondary">
-                      {meta.positioning}
-                    </p>
-                    <p className="mt-1 text-[10px] leading-4 text-secondary/55">
-                      {plan.description || meta.purpose}
-                    </p>
-                  </div>
-
-                  <div className="mt-auto pt-5">
+                  {/* CTA */}
+                  <div className="mt-auto pt-6">
                     <button
                       type="button"
                       onClick={() => void handleSubscribe(plan.id)}
@@ -1457,7 +1441,7 @@ export default function BillingPage() {
                         !isAuthorized &&
                         action !== "current" &&
                         action !== "free_locked"
-                          ? "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/30"
+                          ? "cursor-not-allowed border border-slate-200 bg-slate-50 text-slate-300"
                           : button.className
                       }`}
                       title={
@@ -1467,7 +1451,7 @@ export default function BillingPage() {
                       }
                     >
                       {subscribingTo === plan.id ? (
-                        <span className="h-4 w-4  text-white animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
                       ) : (
                         <>
                           {button.icon}
@@ -1477,28 +1461,31 @@ export default function BillingPage() {
                     </button>
 
                     {action === "upgrade" && !isExpired && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/55">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-500">
                         {dueToday !== null
-                          ? `Due today: ${formatEtb(dueToday)} ETB (after ${formatEtb(unusedCredit)} ETB credit from current plan)`
+                          ? t("plans.dueToday", {
+                              amount: formatEtb(dueToday),
+                              credit: formatEtb(unusedCredit),
+                            })
                           : t("plans.startsAfterPayment")}
                       </p>
                     )}
 
                     {action === "downgrade" && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
                         {t("plans.downgradePolicy")}
                       </p>
                     )}
 
                     {action === "free_locked" && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
+                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
                         {t("plans.freeAfterPaid")}
                       </p>
                     )}
 
                     {action === "free_used" && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
-                        Free trial is one-time per company. Choose a paid plan or contact support for extra days.
+                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                        {t("plans.freeTrialUsedNote")}
                       </p>
                     )}
                   </div>
@@ -1509,24 +1496,25 @@ export default function BillingPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-secondary/10 bg-secondary/[0.02] p-4 shadow-sm sm:p-5">
+      {/* ================= NOTES ================= */}
+      <section className="rounded-3xl border border-slate-200 bg-slate-50/70 p-5 shadow-sm sm:p-6">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#6750A4]/10 text-[#6750A4]">
               <BadgeCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-secondary">
+              <h3 className="text-sm font-bold text-slate-800">
                 {t("notes.title")}
               </h3>
-              <p className="mt-1 max-w-4xl text-xs leading-5 text-secondary/65">
+              <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">
                 {t("notes.description")}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-secondary/15 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
-            <Shield className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-600">
+            <Shield className="h-3.5 w-3.5 text-[#6750A4]" />
             {t("notes.managedBy")}
           </div>
         </div>

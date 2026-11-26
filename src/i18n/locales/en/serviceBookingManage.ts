@@ -128,6 +128,18 @@ export default {
   price: {
     quotedPrice: "Quoted Price",
     finalPrice: "Final Price",
+    setFinalQuoteAndNotes: "Set Final Quote & Notes",
+  providerNotes: "Provider Notes",
+  enterFinalPrice: "Enter final quoted price...",
+  customerWillBeNotifiedOfFinalPrice:
+    "The customer will be notified of this final price and can pay from their booking details.",
+  notesToCustomer: "Notes to Customer",
+  notesToCustomerPlaceholder: "Instructions, breakdown, or quote details...",
+  confirmFinalPriceAndBooking: "Confirm Final Price",
+  confirmSavesAndConfirms:
+    "Saves the price & notes, then moves this booking to Confirmed.",
+  enterPriceToConfirm: "Enter a final price before confirming.",
+  pleaseEnterValidPrice: "Please enter a valid final price.",
   },
   actions: {
     confirm: "Confirm",
