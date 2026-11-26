@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -147,7 +146,8 @@ const StatusBadge = ({
         large ? "text-sm font-semibold" : "text-xs font-medium"
       }`}
     >
-      {config.icon} {config.label.startsWith("status.") ? t(config.label) : config.label}
+      {config.icon}{" "}
+      {config.label.startsWith("status.") ? t(config.label) : config.label}
     </span>
   );
 };
@@ -718,12 +718,14 @@ export function ServiceBookingManageModal({
   onRefresh?: () => Promise<void>;
 }) {
   const { t } = useTranslation("serviceBookingManage");
+  const { showToast } = useToast();
 
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<BookingAction | null>(
     null,
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [priceConfirming, setPriceConfirming] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -1141,6 +1143,51 @@ export function ServiceBookingManageModal({
   const handleCODComplete = useCallback(async () => {
     await onStatusUpdate(initialBooking, "completed");
   }, [onStatusUpdate, initialBooking]);
+
+  // ─── Price + Notes Confirm (NEW) ─────────────────────────
+  const isInquiryMode = initialBooking.offering?.booking_mode === "inquiry";
+  const requiresPrice = isInquiryMode && !!setFinalPrice;
+  const canConfirmPrice =
+    !requiresPrice || (!!finalPrice && Number(finalPrice) > 0);
+
+  const handlePriceConfirm = useCallback(async () => {
+    if (!canConfirmPrice) {
+      showToast(
+        "error",
+        t("price.pleaseEnterValidPrice", {
+          defaultValue: "Please enter a valid final price.",
+        }),
+      );
+      return;
+    }
+
+    if (actionLoading || priceConfirming) return;
+
+    setPriceConfirming(true);
+    try {
+      // Same flow as Update Status → Confirm.
+      // Parent is expected to persist finalPrice / companyNotes alongside the status change.
+      await onStatusUpdate(initialBooking, "confirmed");
+    } catch (err: any) {
+      showToast(
+        "error",
+        err?.response?.data?.detail ||
+          t("common.somethingWentWrong", {
+            defaultValue: "Something went wrong. Please try again.",
+          }),
+      );
+    } finally {
+      setPriceConfirming(false);
+    }
+  }, [
+    canConfirmPrice,
+    actionLoading,
+    priceConfirming,
+    onStatusUpdate,
+    initialBooking,
+    showToast,
+    t,
+  ]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1802,56 +1849,116 @@ export function ServiceBookingManageModal({
               </Card>
             )}
 
-            {/* Quote / Final Price & Provider Notes (for Inquiry or Status Updates) */}
-            {!["completed", "cancelled", "no_show"].includes(initialBooking.status) &&
+            {/* Quote / Final Price & Provider Notes — with inline Confirm */}
+            {!["completed", "cancelled", "no_show","confirmed"].includes(initialBooking.status) &&
               (setFinalPrice || setCompanyNotes) && (
                 <Card
                   title={
                     initialBooking.offering?.booking_mode === "inquiry"
-                      ? "Set Final Quote & Notes"
-                      : "Provider Notes"
+                      ? t("price.setFinalQuoteAndNotes", {
+                          defaultValue: "Set Final Quote & Notes",
+                        })
+                      : t("price.providerNotes", {
+                          defaultValue: "Provider Notes",
+                        })
                   }
                   icon={Tag}
                 >
                   <div className="space-y-3">
-                    {initialBooking.offering?.booking_mode === "inquiry" && setFinalPrice && (
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                          {t("price.finalPrice")} ({initialBooking.currency || "ETB"})
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={finalPrice ?? ""}
-                          onChange={(e) => setFinalPrice(e.target.value)}
-                          placeholder="Enter final quoted price..."
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary"
-                        />
-                        <p className="text-[11px] text-gray-400 mt-1">
-                          The customer will be notified of this final price and can pay from their booking details.
-                        </p>
-                      </div>
-                    )}
+                    {initialBooking.offering?.booking_mode === "inquiry" &&
+                      setFinalPrice && (
+                        <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                            {t("price.finalPrice")} (
+                            {initialBooking.currency || "ETB"})
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={finalPrice ?? ""}
+                            onChange={(e) => setFinalPrice(e.target.value)}
+                            placeholder={t("price.enterFinalPrice", {
+                              defaultValue: "Enter final quoted price...",
+                            })}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-secondary"
+                          />
+                          <p className="text-[11px] text-gray-400 mt-1">
+                            {t("price.customerWillBeNotifiedOfFinalPrice", {
+                              defaultValue:
+                                "The customer will be notified of this final price and can pay from their booking details.",
+                            })}
+                          </p>
+                        </div>
+                      )}
                     {setCompanyNotes && (
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                          Notes to Customer
+                          {t("price.notesToCustomer", {
+                            defaultValue: "Notes to Customer",
+                          })}
                         </label>
                         <textarea
                           rows={2}
                           value={companyNotes ?? ""}
                           onChange={(e) => setCompanyNotes(e.target.value)}
-                          placeholder="Instructions, breakdown, or quote details..."
+                          placeholder={t("price.notesToCustomerPlaceholder", {
+                            defaultValue:
+                              "Instructions, breakdown, or quote details...",
+                          })}
                           className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary resize-none"
                         />
                       </div>
+                    )}
+
+                    {/* ✅ Inline Confirm Final Price & Booking */}
+                {initialBooking.status === "pending" && isInquiryMode && (
+
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePriceConfirm}
+                          disabled={
+                            priceConfirming || actionLoading || !canConfirmPrice
+                          }
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-secondary text-white text-sm font-bold shadow-md hover:bg-[#5B46A0] hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={
+                            requiresPrice && !canConfirmPrice
+                              ? t("price.enterPriceToConfirm", {
+                                  defaultValue:
+                                    "Enter a final price before confirming.",
+                                })
+                              : undefined
+                          }
+                        >
+                          {priceConfirming ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t("common.processing")}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="h-4 w-4" />
+                              {t("price.confirmFinalPriceAndBooking", {
+                                defaultValue: "Confirm Final Price",
+                              })}
+                            </>
+                          )}
+                        </button>
+                        <p className="text-[11px] text-gray-400 text-center">
+                          {t("price.confirmSavesAndConfirms", {
+                            defaultValue:
+                              "Saves the price & notes, then moves this booking to Confirmed.",
+                          })}
+                        </p>
+                      </>
                     )}
                   </div>
                 </Card>
               )}
 
             {/* Status Update */}
+            {initialBooking.status !== "pending"  && (
             <Card title={t("sections.updateStatus")} icon={AlertCircle}>
               <div className="flex flex-wrap gap-2">
                 {allowedActions.map((action) => (
@@ -1906,6 +2013,7 @@ export function ServiceBookingManageModal({
                 <Loader2 className="h-5 w-5 animate-spin mx-auto mt-3 text-secondary" />
               )}
             </Card>
+            )}
           </div>
         </div>
       </motion.div>

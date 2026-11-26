@@ -556,12 +556,13 @@ export function DataTable<T extends { id?: number | string; slug?: string }>({
         </div>
       </div>
 
-      {!loading &&
-        !errorMessage &&
-        currentPage &&
-        totalPages &&
-        totalPages > 1 &&
-        onPageChange && (
+    {!loading &&
+  !errorMessage &&
+  currentPage !== undefined &&
+  currentPage > 0 &&
+  totalPages !== undefined &&
+  totalPages > 1 &&
+  onPageChange && (
           <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-200 bg-gray-50/80 px-3 py-2.5 sm:flex-row sm:gap-4 sm:px-4 md:px-6">
             <div className="order-2 text-center text-[11px] leading-5 text-gray-500 sm:order-1 sm:text-left sm:text-xs">
               Showing{' '}
