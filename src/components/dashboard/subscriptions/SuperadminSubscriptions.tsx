@@ -407,6 +407,8 @@ export default function SuperadminSubscriptions() {
     plan_type: "product" as "product" | "service",
     description: "",
     price: 0,
+    six_month_price: "" as string | number,
+    annual_price: "" as string | number,
     duration_days: 30,
     max_featured_products: 0,
     max_products: 0,
@@ -605,6 +607,8 @@ export default function SuperadminSubscriptions() {
       plan_type: (plan.plan_type || "product") as "product" | "service",
       description: plan.description || "",
       price: parseFloat(plan.price) || 0,
+      six_month_price: plan.six_month_price ?? "",
+      annual_price: plan.annual_price ?? "",
       duration_days: plan.duration_days ?? 30,
       max_featured_products: Number(plan.max_featured_products ?? 0),
       max_products:
@@ -629,6 +633,8 @@ export default function SuperadminSubscriptions() {
       plan_type: subscriptionMode,
       description: "",
       price: 0,
+      six_month_price: "",
+      annual_price: "",
       duration_days: 30,
       max_featured_products: 0,
       max_products: 0,
@@ -651,6 +657,14 @@ export default function SuperadminSubscriptions() {
       const payload = {
         ...formData,
         price: Number(formData.price),
+        six_month_price:
+          formData.six_month_price === "" || formData.six_month_price === null
+            ? null
+            : Number(formData.six_month_price),
+        annual_price:
+          formData.annual_price === "" || formData.annual_price === null
+            ? null
+            : Number(formData.annual_price),
         duration_days: Number(formData.duration_days),
         max_products: Number(formData.max_products),
         max_services: Number(formData.max_services),
@@ -1344,11 +1358,29 @@ export default function SuperadminSubscriptions() {
                         </td>
 
                         <td className="px-4 py-4">
-                          <span className="font-semibold text-gray-900">
-                            {Number(plan.price || 0) === 0
-                              ? t("subscriptions.plans.free")
-                              : `ETB ${formatEtb(Number(plan.price || 0))}`}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-semibold text-gray-900">
+                              {Number(plan.price || 0) === 0
+                                ? t("subscriptions.plans.free")
+                                : `ETB ${formatEtb(Number(plan.price || 0))}`}
+                            </span>
+                            {(plan.six_month_price || plan.annual_price) && (
+                              <div className="flex flex-wrap gap-1 text-[10px]">
+                                {plan.six_month_price != null && (
+                                  <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-700">
+                                    6mo: ETB {formatEtb(Number(plan.six_month_price))}
+                                    {plan.six_month_savings_percent > 0 ? ` (-${plan.six_month_savings_percent}%)` : ""}
+                                  </span>
+                                )}
+                                {plan.annual_price != null && (
+                                  <span className="rounded bg-secondary/[0.08] px-1.5 py-0.5 font-semibold text-secondary">
+                                    1yr: ETB {formatEtb(Number(plan.annual_price))}
+                                    {plan.annual_savings_percent > 0 ? ` (-${plan.annual_savings_percent}%)` : ""}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         <td className="px-4 py-4 font-semibold text-secondary">
@@ -1668,14 +1700,21 @@ export default function SuperadminSubscriptions() {
                         </td>
 
                         <td className="px-3 py-3.5 sm:px-4 sm:py-4">
-                          <span
-                            className={`inline-flex rounded-lg border px-2 py-1 text-[11px] font-semibold sm:px-2.5 sm:text-xs ${getPlanColor(
-                              sub.plan?.name,
-                            )}`}
-                          >
-                            {sub.plan?.name ||
-                              t("subscriptions.plans.unknown")}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`inline-flex rounded-lg border px-2 py-1 text-[11px] font-semibold sm:px-2.5 sm:text-xs ${getPlanColor(
+                                sub.plan?.name,
+                              )}`}
+                            >
+                              {sub.plan?.name ||
+                                t("subscriptions.plans.unknown")}
+                            </span>
+                            {sub.billing_cycle && sub.billing_cycle !== "monthly" && (
+                              <span className="inline-flex rounded-md bg-secondary/[0.08] px-1.5 py-0.5 text-[10px] font-semibold text-secondary">
+                                {sub.billing_cycle === "annual" ? "Annual" : "6 Months"}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         <td className="px-3 py-3.5 text-xs text-gray-500 sm:px-4 sm:py-4 sm:text-sm">
@@ -1943,6 +1982,124 @@ export default function SuperadminSubscriptions() {
                     />
                   </div>
                 </div>
+
+                {/* LONG-TERM BILLING PRICING (OPTIONAL) */}
+                {Number(formData.price) > 0 && (
+                  <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-gray-800">
+                        Multi-Term Pricing (Optional)
+                      </p>
+                      <span className="text-[11px] text-gray-500">
+                        Leave blank to disable
+                      </span>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="text-xs font-semibold text-gray-700">
+                            6-Month Price (180d)
+                          </label>
+                          <div className="flex gap-1">
+                            {[10, 15, 20].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() =>
+                                  setFormData({
+                                    ...formData,
+                                    six_month_price: Number(
+                                      (Number(formData.price) * 6 * (1 - pct / 100)).toFixed(2),
+                                    ),
+                                  })
+                                }
+                                className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-secondary ring-1 ring-gray-200 hover:bg-secondary/5"
+                              >
+                                -{pct}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.six_month_price}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              six_month_price: e.target.value,
+                            })
+                          }
+                          placeholder={`e.g. ${(Number(formData.price) * 6 * 0.85).toFixed(0)}`}
+                          className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                        />
+                        {formData.six_month_price !== "" && Number(formData.six_month_price) > 0 && (
+                          <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                            {(() => {
+                              const full = Number(formData.price) * 6;
+                              const val = Number(formData.six_month_price);
+                              const pct = full > val ? Math.round((1 - val / full) * 100) : 0;
+                              return `Save ${pct}% · ETB ${(val / 6).toFixed(0)}/mo`;
+                            })()}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="text-xs font-semibold text-gray-700">
+                            Annual Price (365d)
+                          </label>
+                          <div className="flex gap-1">
+                            {[15, 20, 25].map((pct) => (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() =>
+                                  setFormData({
+                                    ...formData,
+                                    annual_price: Number(
+                                      (Number(formData.price) * 12 * (1 - pct / 100)).toFixed(2),
+                                    ),
+                                  })
+                                }
+                                className="rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-secondary ring-1 ring-gray-200 hover:bg-secondary/5"
+                              >
+                                -{pct}%
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.annual_price}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              annual_price: e.target.value,
+                            })
+                          }
+                          placeholder={`e.g. ${(Number(formData.price) * 12 * 0.75).toFixed(0)}`}
+                          className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                        />
+                        {formData.annual_price !== "" && Number(formData.annual_price) > 0 && (
+                          <p className="mt-1 text-[11px] font-medium text-emerald-700">
+                            {(() => {
+                              const full = Number(formData.price) * 12;
+                              const val = Number(formData.annual_price);
+                              const pct = full > val ? Math.round((1 - val / full) * 100) : 0;
+                              return `Save ${pct}% · ETB ${(val / 12).toFixed(0)}/mo`;
+                            })()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-gray-700">

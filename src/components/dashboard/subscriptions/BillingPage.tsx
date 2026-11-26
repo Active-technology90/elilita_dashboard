@@ -37,8 +37,15 @@ import { PageHeader } from "../../ui/PageHeader";
 interface SubscriptionPlan {
   id: number;
   name: string;
+  plan_type?: "product" | "service";
   description: string;
   price: string;
+  six_month_price?: string | null;
+  annual_price?: string | null;
+  six_month_savings_percent?: number;
+  annual_savings_percent?: number;
+  six_month_monthly_equivalent?: string | null;
+  annual_monthly_equivalent?: string | null;
   duration_days?: number;
   max_featured_products: number;
   max_products: number;
@@ -48,7 +55,11 @@ interface SubscriptionPlan {
 
 interface ActiveSubscription {
   id: number;
+  company_business_type?: string;
   plan: SubscriptionPlan;
+  billing_cycle?: "monthly" | "six_month" | "annual";
+  last_payment_amount?: string;
+  has_used_free_trial?: boolean;
   start_date: string;
   end_date: string | null;
   is_active: boolean;
@@ -69,6 +80,7 @@ type PlanAction =
   | "upgrade"
   | "downgrade"
   | "free_locked"
+  | "free_used"
   | "subscribe";
 
 type PlanTier =
@@ -582,6 +594,7 @@ export default function BillingPage() {
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "six_month" | "annual">("monthly");
   const [isLoading, setIsLoading] = useState(true);
   const [subscribingTo, setSubscribingTo] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -590,27 +603,34 @@ export default function BillingPage() {
   const isAuthorized =
     company?.role === "owner" || company?.role === "admin";
 
-  const isServiceCompany = company?.business_type === "service";
+  const isServiceCompany =
+    activeSub?.company_business_type === "service" ||
+    activeSub?.plan?.plan_type === "service";
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
 
-      const [plansRes, subRes] = await Promise.all([
-        getSubscriptionPlans(isServiceCompany ? "service" : "product"),
-        getMySubscription(company?.slug),
-      ]);
+      const subRes = await getMySubscription(company?.slug);
+      const subData: ActiveSubscription | null = subRes.data || null;
+      setActiveSub(subData);
 
+      const resolvedPlanType: "product" | "service" =
+        subData?.company_business_type === "service" ||
+        subData?.plan?.plan_type === "service"
+          ? "service"
+          : "product";
+
+      const plansRes = await getSubscriptionPlans(resolvedPlanType);
       setPlans(plansRes.data?.results || plansRes.data || []);
-      setActiveSub(subRes.data || null);
     } catch (error) {
       console.error("Failed to load billing data", error);
       setLoadError(t("alerts.loadErrorDescription"));
     } finally {
       setIsLoading(false);
     }
-  }, [company?.slug, isServiceCompany, t]);
+  }, [company?.slug, t]);
 
   const verifyPaymentAndFetch = useCallback(
     async (txRef: string, attempt = 1) => {
@@ -696,7 +716,7 @@ export default function BillingPage() {
       setSubscribingTo(planId);
       setFeedback(null);
 
-      const res = await initializeSubscriptionPayment(company.slug, planId);
+      const res = await initializeSubscriptionPayment(company.slug, planId, billingCycle);
 
       if (res.data?.message) {
         setFeedback({
@@ -730,16 +750,65 @@ export default function BillingPage() {
   };
 
   const getPlanAction = (plan: SubscriptionPlan): PlanAction => {
-    if (!activeSub || activeSub.is_expired) return "subscribe";
-
-    const currentPrice = Number(activeSub.plan?.price || 0);
     const cardPrice = Number(plan.price || 0);
 
-    if (activeSub.plan?.id === plan.id) return "current";
+    if (!activeSub || activeSub.is_expired) {
+      if (cardPrice === 0 && (activeSub?.has_used_free_trial || activeSub?.is_expired)) {
+        return "free_used";
+      }
+      return "subscribe";
+    }
+
+    const currentPrice = Number(activeSub.plan?.price || 0);
+    const currentCycle = activeSub.billing_cycle || "monthly";
+    const cycleRank = { monthly: 1, six_month: 2, annual: 3 };
+
+    if (activeSub.plan?.id === plan.id) {
+      if (cycleRank[billingCycle] > cycleRank[currentCycle]) return "upgrade";
+      return "current";
+    }
     if (cardPrice === 0 && currentPrice > 0) return "free_locked";
-    if (cardPrice > currentPrice) return "upgrade";
+    if (cardPrice === 0 && activeSub.has_used_free_trial) return "free_used";
+    if (cardPrice > currentPrice) {
+      if (currentPrice > 0 && cycleRank[billingCycle] < cycleRank[currentCycle]) {
+        return "downgrade";
+      }
+      return "upgrade";
+    }
     return "downgrade";
   };
+
+  const maxSixMonthSavings = useMemo(
+    () => Math.max(0, ...plans.map((p) => p.six_month_savings_percent || 0)),
+    [plans],
+  );
+  const maxAnnualSavings = useMemo(
+    () => Math.max(0, ...plans.map((p) => p.annual_savings_percent || 0)),
+    [plans],
+  );
+  const hasSixMonthPlans = useMemo(
+    () => plans.some((p) => p.six_month_price != null && Number(p.six_month_price) > 0),
+    [plans],
+  );
+  const hasAnnualPlans = useMemo(
+    () => plans.some((p) => p.annual_price != null && Number(p.annual_price) > 0),
+    [plans],
+  );
+
+  const unusedCredit = useMemo(() => {
+    if (!activeSub || activeSub.is_expired) return 0;
+    const paid = Number(activeSub.last_payment_amount || 0);
+    if (paid <= 0) return 0;
+    const totalDays =
+      activeSub.billing_cycle === "annual"
+        ? 365
+        : activeSub.billing_cycle === "six_month"
+          ? 180
+          : activeSub.plan?.duration_days || 30;
+    const remaining = activeSub.days_remaining ?? 0;
+    if (remaining <= 0 || totalDays <= 0) return 0;
+    return Math.round((remaining / totalDays) * paid * 100) / 100;
+  }, [activeSub]);
 
   const getButtonConfig = (action: PlanAction) => {
     switch (action) {
@@ -765,15 +834,24 @@ export default function BillingPage() {
         return {
           label: t("chooseLowerPlan"),
           icon: <ArrowDown className="h-4 w-4" />,
-          disabled: false,
+          disabled: true,
           className:
-            "border border-secondary/15 bg-white text-secondary hover:border-secondary/30 hover:bg-secondary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:ring-offset-2",
+            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
         };
 
       case "free_locked":
         return {
           label: t("freeAfterExpiry"),
           icon: <Clock className="h-4 w-4" />,
+          disabled: true,
+          className:
+            "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
+        };
+
+      case "free_used":
+        return {
+          label: "Free Trial Used",
+          icon: <Shield className="h-4 w-4" />,
           disabled: true,
           className:
             "cursor-not-allowed border border-secondary/10 bg-secondary/[0.03] text-secondary/40",
@@ -1074,9 +1152,75 @@ export default function BillingPage() {
             </p>
           </div>
 
-          <span className="w-fit rounded-full border border-secondary/15 bg-secondary/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
-            {t("billingDetails.monthlyBilling")}
-          </span>
+          {(hasSixMonthPlans || hasAnnualPlans) ? (
+            <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-xl border border-secondary/15 bg-secondary/[0.03] p-1">
+              <button
+                type="button"
+                onClick={() => setBillingCycle("monthly")}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  billingCycle === "monthly"
+                    ? "bg-secondary text-white shadow-sm"
+                    : "text-secondary/70 hover:text-secondary"
+                }`}
+              >
+                Monthly
+              </button>
+
+              {hasSixMonthPlans && (
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("six_month")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                    billingCycle === "six_month"
+                      ? "bg-secondary text-white shadow-sm"
+                      : "text-secondary/70 hover:text-secondary"
+                  }`}
+                >
+                  <span>6 Months</span>
+                  {maxSixMonthSavings > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                        billingCycle === "six_month"
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      Save up to {maxSixMonthSavings}%
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {hasAnnualPlans && (
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("annual")}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                    billingCycle === "annual"
+                      ? "bg-secondary text-white shadow-sm"
+                      : "text-secondary/70 hover:text-secondary"
+                  }`}
+                >
+                  <span>Annual</span>
+                  {maxAnnualSavings > 0 && (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
+                        billingCycle === "annual"
+                          ? "bg-white/20 text-white"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      Save up to {maxAnnualSavings}%
+                    </span>
+                  )}
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="w-fit rounded-full border border-secondary/15 bg-secondary/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-secondary">
+              {t("billingDetails.monthlyBilling")}
+            </span>
+          )}
         </div>
 
         {!isAuthorized && !isLoading && (
@@ -1107,7 +1251,39 @@ export default function BillingPage() {
             {sortedPlans.map((plan) => {
               const action = getPlanAction(plan);
               const button = getButtonConfig(action);
-              const price = Number(plan.price || 0);
+              const baseMonthlyPrice = Number(plan.price || 0);
+              const selectedTotalPrice =
+                baseMonthlyPrice === 0
+                  ? 0
+                  : billingCycle === "six_month"
+                    ? plan.six_month_price != null
+                      ? Number(plan.six_month_price)
+                      : null
+                    : billingCycle === "annual"
+                      ? plan.annual_price != null
+                        ? Number(plan.annual_price)
+                        : null
+                      : baseMonthlyPrice;
+              const isCycleUnavailable = baseMonthlyPrice > 0 && selectedTotalPrice === null;
+              const effectiveMonthlyPrice =
+                selectedTotalPrice === null
+                  ? baseMonthlyPrice
+                  : billingCycle === "six_month"
+                    ? Number(plan.six_month_monthly_equivalent ?? selectedTotalPrice / 6)
+                    : billingCycle === "annual"
+                      ? Number(plan.annual_monthly_equivalent ?? selectedTotalPrice / 12)
+                      : baseMonthlyPrice;
+              const savingsPercent =
+                billingCycle === "six_month"
+                  ? plan.six_month_savings_percent || 0
+                  : billingCycle === "annual"
+                    ? plan.annual_savings_percent || 0
+                    : 0;
+              const dueToday =
+                action === "upgrade" && selectedTotalPrice !== null && unusedCredit > 0
+                  ? Math.max(1, Math.round((selectedTotalPrice - unusedCredit) * 100) / 100)
+                  : null;
+              const price = baseMonthlyPrice;
               const meta = getPlanMeta(plan, t);
               const tier = resolvePlanTier(plan);
               const isCurrent = action === "current";
@@ -1150,16 +1326,41 @@ export default function BillingPage() {
                     </p>
                   </div>
 
-                  <div className="mt-8 flex items-end gap-1.5">
-                    <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-secondary">
-                      {price === 0
-                        ? t("billingDetails.free")
-                        : `${formatEtb(price)} ETB`}
-                    </span>
-                    {price > 0 && (
-                      <span className="pb-0.5 text-[11px] font-semibold text-secondary/45">
-                        {t("billingDetails.monthly")}
-                      </span>
+                  <div className="mt-8 space-y-1">
+                    {isCycleUnavailable ? (
+                      <p className="text-sm font-semibold text-secondary/55">
+                        Monthly only
+                      </p>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap items-end gap-1.5">
+                          <span className="text-[30px] font-black leading-none tracking-[-0.045em] text-secondary">
+                            {price === 0
+                              ? t("billingDetails.free")
+                              : `${formatEtb(effectiveMonthlyPrice)} ETB`}
+                          </span>
+                          {price > 0 && (
+                            <span className="pb-0.5 text-[11px] font-semibold text-secondary/45">
+                              {t("billingDetails.monthly")}
+                            </span>
+                          )}
+                          {savingsPercent > 0 && (
+                            <span className="mb-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                              Save {savingsPercent}%
+                            </span>
+                          )}
+                        </div>
+
+                        {price > 0 && billingCycle !== "monthly" && selectedTotalPrice !== null && (
+                          <p className="text-[11px] text-secondary/60">
+                            <span className="line-through text-secondary/40 mr-1.5">
+                              {formatEtb(baseMonthlyPrice)} ETB/mo
+                            </span>
+                            Billed {formatEtb(selectedTotalPrice)} ETB /{" "}
+                            {billingCycle === "annual" ? "12 months" : "6 months"}
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -1249,6 +1450,7 @@ export default function BillingPage() {
                       disabled={
                         !isAuthorized ||
                         button.disabled ||
+                        isCycleUnavailable ||
                         subscribingTo === plan.id
                       }
                       className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-extrabold transition-all duration-200 disabled:translate-y-0 disabled:shadow-none ${
@@ -1275,8 +1477,10 @@ export default function BillingPage() {
                     </button>
 
                     {action === "upgrade" && !isExpired && (
-                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
-                        {t("plans.startsAfterPayment")}
+                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/55">
+                        {dueToday !== null
+                          ? `Due today: ${formatEtb(dueToday)} ETB (after ${formatEtb(unusedCredit)} ETB credit from current plan)`
+                          : t("plans.startsAfterPayment")}
                       </p>
                     )}
 
@@ -1289,6 +1493,12 @@ export default function BillingPage() {
                     {action === "free_locked" && (
                       <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
                         {t("plans.freeAfterPaid")}
+                      </p>
+                    )}
+
+                    {action === "free_used" && (
+                      <p className="mt-2 text-center text-[10px] leading-4 text-secondary/45">
+                        Free trial is one-time per company. Choose a paid plan or contact support for extra days.
                       </p>
                     )}
                   </div>

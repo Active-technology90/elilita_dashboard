@@ -1113,10 +1113,12 @@ export const getMySubscription = (companySlug?: string) =>
 export const initializeSubscriptionPayment = (
   companySlug: string,
   planId: number,
+  billingCycle: "monthly" | "six_month" | "annual" = "monthly",
 ) =>
   api.post("/subscriptions/initialize/", {
     company_slug: companySlug,
     plan_id: planId,
+    billing_cycle: billingCycle,
     return_url: window.location.href,
   });
 
