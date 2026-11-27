@@ -608,6 +608,7 @@ export interface ServiceBooking {
     duration_minutes?: number;
     primary_image?: string;
     service_category?: string;
+    booking_mode?: ServiceOffering["booking_mode"];
   };
   assigned_staff?: ServiceStaff | null;
   selected_addons?: ServiceAddon[];
