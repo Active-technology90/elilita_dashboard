@@ -46,6 +46,7 @@ export default {
   subscription: "Subscription",
   settings: "Settings",
   profile: "Profile",
+  VendorApplications:"Vendor Applications",
 
   // Orders menu
   orders: "Orders",

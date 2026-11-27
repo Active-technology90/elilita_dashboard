@@ -12,6 +12,9 @@ import {
   Sparkles,
   Gift,
   Filter,
+  Users,
+  Pencil,
+  ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -962,159 +965,315 @@ export default function SuperadminSubscriptions() {
         </section>
 
         {/* ========== PLAN STANDARDS ========== */}
-        {subscriptionMode === "product" ? (
-        <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
-                <Sparkles className="h-4 w-4" />
-              </div>
 
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">
-                  {t("subscriptions.standards.title")}
-                </h2>
 
-                <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
-                  {t("subscriptions.standards.version")}
-                </p>
-              </div>
-            </div>
+{subscriptionMode === "product" ? (
+  <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+    {/* Product Plans */}
+    <div className="grid grid-cols-1 gap-3 p-2 sm:grid-cols-2 sm:p-5 xl:grid-cols-5">
+      {modeScopedPlans.map((plan) => {
+        const productLimit = plan.max_products ?? 0;
+        const staffLimit = plan.max_staff_members ?? 0;
+        const featuredLimit = plan.max_featured_products ?? 0;
+        const isActive = plan.is_active;
 
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200 sm:w-24">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all duration-500"
-                  style={{
-                    width: `${(documentMatchCount / 4) * 100}%`,
-                  }}
+        return (
+          <article
+            key={plan.id}
+            className="flex min-w-0 flex-col rounded-xl border border-gray-200/80 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/30 hover:shadow-md"
+          >
+            {/* Plan Header */}
+            <div className="flex items-start justify-between gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary/[0.07] text-secondary">
+  <ClipboardList className="h-5 w-5" />
+</div>
+
+              <span
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isActive ? "bg-emerald-500" : "bg-gray-400"
+                  }`}
                 />
-              </div>
-
-              <span className="text-[11px] font-semibold text-gray-700 sm:text-xs">
-                {documentMatchCount}/4{" "}
-                {t("subscriptions.standards.aligned")}
+                {isActive
+                  ? t("subscriptions.dynamicStandards.active")
+                  : t("subscriptions.dynamicStandards.inactive")}
               </span>
             </div>
-          </div>
 
-          <div className="grid gap-px bg-gray-100 sm:grid-cols-2 xl:grid-cols-4">
-            {documentAlignment.map((item) => {
-              const isMatch = item.status === "match";
-              const isMissing = item.status === "missing";
+            {/* Plan Details */}
+            <div className="mt-2">
+              <h3 className="truncate text-sm font-bold text-secondary">
+                {plan.name}
+              </h3>
 
-              const translated = getTranslatedBaseline(item, t);
-
-              return (
-                <article
-                  key={item.tier}
-                  className="group relative bg-white p-4 transition hover:bg-gray-50/60 sm:p-5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <h3 className="text-sm font-bold text-gray-900 sm:text-base">
-                          {t(`subscriptions.plans.${item.tier}`)}
-                        </h3>
-
-                        <span className="text-[11px] font-semibold text-gray-500 sm:text-xs">
-                          {item.monthlyPrice === 0
-                            ? t("subscriptions.plans.free")
-                            : `ETB ${formatEtb(item.monthlyPrice)}/mo`}
-                        </span>
-                      </div>
-
-                      <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
-                        {translated.positioning}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset sm:px-2.5 sm:py-1 ${
-                        isMatch
-                          ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
-                          : isMissing
-                            ? "bg-gray-50 text-gray-500 ring-gray-300"
-                            : "bg-amber-50 text-amber-700 ring-amber-600/20"
-                      }`}
-                    >
-                      {isMatch ? (
-                        <>
-                          <Check className="h-3 w-3" />
-                          {t("subscriptions.standards.aligned")}
-                        </>
-                      ) : isMissing ? (
-                        t("subscriptions.standards.missing")
-                      ) : (
-                        t("subscriptions.standards.review")
-                      )}
-                    </span>
-                  </div>
-
-                  <dl className="mt-4 space-y-2 text-[11px] sm:text-xs">
-                    {[
-                      [
-                        t("subscriptions.standards.products"),
-                        translated.productListing,
-                      ],
-                      [
-                        t("subscriptions.standards.staff"),
-                        translated.staff,
-                      ],
-                      [
-                        t("subscriptions.standards.featured"),
-                        translated.featuredProducts,
-                      ],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="flex items-start justify-between gap-3 border-b border-dashed border-gray-100 pb-2 last:border-0 last:pb-0"
-                      >
-                        <dt className="shrink-0 text-gray-400">
-                          {label}
-                        </dt>
-
-                        <dd className="text-right font-semibold text-gray-700">
-                          {value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  {item.status === "review" &&
-                    item.issues.length > 0 && (
-                      <div className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50/60 px-2.5 py-2 sm:px-3 sm:py-2.5">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-
-                          <p className="text-[10.5px] leading-relaxed text-amber-800 sm:text-[11px]">
-                            {item.issues.join(" · ")}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                </article>
-              );
-            })}
-          </div>
-        </section>
-        ) : (
-          <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/80 bg-white px-4 py-3.5 shadow-sm sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">
-                  Service Plans
-                </h2>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Service companies start on the free Starter plan (15 active services, 5 staff). Add paid service tiers with custom ETB pricing using &ldquo;Add Service Plan&rdquo;.
-                </p>
-              </div>
+              <p className=" line-clamp-2 min-h-[32px] text-xs leading-relaxed text-gray-500">
+                {plan.description ||
+                  t("subscriptions.dynamicStandards.noDescription")}
+              </p>
             </div>
-          </section>
-        )}
+
+            {/* Price */}
+            <div className="mt-1 border-gray-100 pb-1">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                {t("subscriptions.dynamicStandards.price")}
+              </p>
+
+              <p className="mt-1 text-xl font-bold tracking-tight text-secondary">
+                {Number(plan.price) === 0
+                  ? t("subscriptions.plans.free")
+                  : `ETB ${formatEtb(Number(plan.price))}`}
+              </p>
+
+              {Number(plan.price) > 0 && (
+                <p className="mt-0.5 text-[10px] text-gray-400">
+                  / {t("subscriptions.dynamicStandards.month")}
+                </p>
+              )}
+            </div>
+
+            {/* Plan Limits */}
+            <dl className="mt-2 flex-1 space-y-3">
+              {[
+                {
+                  label: t("subscriptions.standards.products"),
+                  value: productLimit,
+                },
+                {
+                  label: t("subscriptions.standards.staff"),
+                  value: staffLimit,
+                },
+                {
+                  label: t("subscriptions.standards.featured"),
+                  value: featuredLimit,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <dt className="text-xs text-gray-500">
+                    {item.label}
+                  </dt>
+
+                  <dd className="text-xs font-bold text-gray-800">
+                    {item.value === -1
+                      ? t("subscriptions.dynamicStandards.unlimited")
+                      : item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </article>
+        );
+      })}
+    </div>
+  </section>
+) : (
+  <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+    {/* Service Plans Header */}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-secondary/[0.06] text-secondary sm:h-9 sm:w-9">
+          <Sparkles className="h-4 w-4" />
+        </div>
+
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">
+            {t("subscriptions.dynamicStandards.serviceTitle")}
+          </h2>
+
+          <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
+            {t("subscriptions.dynamicStandards.subtitle")}
+          </p>
+        </div>
+      </div>
+
+      <span className="inline-flex items-center rounded-full bg-secondary/[0.06] px-3 py-1 text-xs font-semibold text-secondary">
+        {modeScopedPlans.length} {t("subscriptions.dynamicStandards.plans")}
+      </span>
+    </div>
+
+    {/* Loading State */}
+    {isLoading ? (
+      <div className="grid gap-px bg-gray-100 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="animate-pulse space-y-4 bg-white p-5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-28 rounded bg-gray-200" />
+              <div className="h-5 w-16 rounded-full bg-gray-200" />
+            </div>
+
+            <div className="h-6 w-32 rounded bg-gray-200" />
+
+            <div className="space-y-3">
+              <div className="h-3 w-full rounded bg-gray-100" />
+              <div className="h-3 w-full rounded bg-gray-100" />
+              <div className="h-3 w-full rounded bg-gray-100" />
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : modeScopedPlans.length === 0 ? (
+      /* Empty State */
+      <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-50 text-gray-400">
+          <Sparkles className="h-6 w-6" />
+        </div>
+
+        <h3 className="text-sm font-semibold text-gray-800">
+          {t("subscriptions.dynamicStandards.emptyTitle")}
+        </h3>
+
+        <p className="mt-1 max-w-sm text-xs leading-relaxed text-gray-500">
+          {t("subscriptions.dynamicStandards.emptyDescription")}
+        </p>
+      </div>
+    ) : (
+      /* Dynamic Service Plans */
+      <div className="grid gap-3 bg-white p-3 sm:grid-cols-2 sm:p-5 xl:grid-cols-5">
+        {modeScopedPlans.map((plan) => {
+          const subscribers = modeScopedSubscriptions.filter(
+            (sub) => sub.plan?.id === plan.id,
+          ).length;
+
+          const serviceLimit = plan.max_services ?? 15;
+          const staffLimit = plan.max_staff_members ?? 5;
+          const isActive = plan.is_active;
+
+          return (
+            <article
+              key={plan.id}
+              className="group relative flex min-w-0 flex-col rounded-xl border border-gray-200/80 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/30 hover:shadow-md sm:p-5"
+            >
+              {/* Plan Name and Status */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-bold text-gray-900 sm:text-base">
+                    {plan.name}
+                  </h3>
+
+                  <p className="mt-1 text-[11px] text-gray-500 sm:text-xs">
+                    {plan.duration_days
+                      ? `${plan.duration_days} ${t("subscriptions.dynamicStandards.days")}`
+                      : t("subscriptions.dynamicStandards.flexibleDuration")}
+                  </p>
+                </div>
+
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${
+                    isActive
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                      : "bg-gray-50 text-gray-500 ring-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isActive ? "bg-emerald-500" : "bg-gray-400"
+                    }`}
+                  />
+                  {isActive
+                    ? t("subscriptions.dynamicStandards.active")
+                    : t("subscriptions.dynamicStandards.inactive")}
+                </span>
+              </div>
+
+              {/* Price */}
+              <div className="mt-4 border-b border-gray-100 pb-4">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                  {t("subscriptions.dynamicStandards.price")}
+                </p>
+
+                <div className="mt-1 flex flex-wrap items-baseline gap-1.5">
+                  <span className="text-xl font-bold tracking-tight text-gray-900">
+                    {Number(plan.price) === 0
+                      ? t("subscriptions.plans.free")
+                      : `ETB ${formatEtb(Number(plan.price))}`}
+                  </span>
+
+                  {Number(plan.price) > 0 && (
+                    <span className="text-[10px] text-gray-400">
+                      / {plan.duration_days || "plan"}{" "}
+                      {t("subscriptions.dynamicStandards.days")}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Plan Limits */}
+              <dl className="mt-4 flex-1 space-y-3 text-xs">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-2 text-gray-500">
+                    <Sparkles className="h-3.5 w-3.5 text-gray-400" />
+                    {t("subscriptions.dynamicStandards.services")}
+                  </dt>
+
+                  <dd className="font-semibold text-gray-800">
+                    {serviceLimit === -1
+                      ? t("subscriptions.dynamicStandards.unlimited")
+                      : serviceLimit}
+                  </dd>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-2 text-gray-500">
+                    <Users className="h-3.5 w-3.5 text-gray-400" />
+                    {t("subscriptions.standards.staff")}
+                  </dt>
+
+                  <dd className="font-semibold text-gray-800">
+                    {staffLimit === -1
+                      ? t("subscriptions.dynamicStandards.unlimited")
+                      : staffLimit}
+                  </dd>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="flex items-center gap-2 text-gray-500">
+                    <Users className="h-3.5 w-3.5 text-gray-400" />
+                    {t("subscriptions.dynamicStandards.subscribers")}
+                  </dt>
+
+                  <dd className="font-semibold text-gray-800">
+                    {subscribers}
+                  </dd>
+                </div>
+              </dl>
+
+              {/* Description */}
+              {plan.description && (
+                <p className="mt-4 border-t border-gray-100 pt-3 text-[11px] leading-relaxed text-gray-500">
+                  {plan.description}
+                </p>
+              )}
+
+              {/* Edit Plan */}
+              <div className="mt-auto pt-5">
+                <button
+                  type="button"
+                  onClick={() => handleEditClick(plan)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-semibold text-gray-700 transition hover:border-secondary/30 hover:bg-secondary/[0.04] hover:text-secondary"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {t("subscriptions.dynamicStandards.editPlan")}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )}
+  </section>
+)}
+
 
         {/* ========== PLANS ========== */}
         <section className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
@@ -2339,310 +2498,407 @@ export default function SuperadminSubscriptions() {
       )}
 
       {/* ========== DEAL MODAL ========== */}
-      {dealModalOpen && selectedSub && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() =>
-              !isSavingDeal && setDealModalOpen(false)
-            }
-          />
+   
+{dealModalOpen && selectedSub && (
+  <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4 lg:p-6">
+    {/* Backdrop */}
+    <div
+      className="fixed inset-0 bg-gray-950/50 backdrop-blur-sm transition-opacity"
+      onClick={() => !isSavingDeal && setDealModalOpen(false)}
+    />
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative z-10 flex max-h-[95vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl"
-          >
-            {/* DEAL MODAL HEADER */}
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5 sm:px-6 sm:py-4">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/[0.08] text-secondary sm:h-10 sm:w-10">
-                  <Gift className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-bold text-gray-900 sm:text-base">
-                    {t("subscriptions.dealModal.title")}
-                  </h3>
-
-                  <p className="truncate text-[11px] text-gray-500 sm:text-xs">
-                    {selectedSub.company_name}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setDealModalOpen(false)}
-                aria-label={t("subscriptions.planModal.close")}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </button>
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="relative z-10 flex max-h-[96vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-2xl lg:max-w-3xl"
+    >
+      {/* HEADER */}
+      <div className="relative shrink-0 overflow-hidden border-b border-gray-100 bg-gradient-to-r from-secondary/[0.07] via-white to-white px-5 py-4 sm:px-7 sm:py-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary text-white shadow-sm shadow-secondary/20">
+              <Gift className="h-6 w-6" />
             </div>
 
-            <form
-              onSubmit={handleSaveDeal}
-              className="flex-1 overflow-y-auto"
-            >
-              <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
-                {dealError && (
-                  <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                    {dealError}
-                  </div>
-                )}
+            <div className="min-w-0">
+              <h3 className="text-base font-bold tracking-tight text-gray-900 sm:text-lg">
+                {t("subscriptions.dealModal.title")}
+              </h3>
 
-                {/* CURRENT SUBSCRIPTION INFORMATION */}
-                <div className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 text-xs text-gray-600 sm:p-4">
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">
-                      {t("subscriptions.dealModal.currentPlan")}
-                    </span>
+              <p className="mt-0.5 truncate text-xs text-gray-500 sm:text-sm">
+                {selectedSub.company_name}
+              </p>
+            </div>
+          </div>
 
-                    <span className="font-semibold text-gray-800">
-                      {selectedSub.plan?.name}
-                    </span>
-                  </div>
+          <button
+            type="button"
+            onClick={() => setDealModalOpen(false)}
+            disabled={isSavingDeal}
+            aria-label={t("subscriptions.planModal.close")}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">
-                      {t("subscriptions.dealModal.started")}
-                    </span>
+      <form
+        onSubmit={handleSaveDeal}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        {/* SCROLLABLE CONTENT */}
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          {/* ERROR */}
+          {dealError && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+              <span>{dealError}</span>
+            </div>
+          )}
 
-                    <span className="font-semibold text-gray-800">
-                      {/* ✅ Shared timezone-aware formatter */}
-                      {formatShortDate(selectedSub.start_date, language)}
-                    </span>
-                  </div>
+          {/* CURRENT SUBSCRIPTION */}
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/[0.08] text-secondary">
+                <ClipboardList className="h-4 w-4" />
+              </div>
 
-                  <div className="flex justify-between gap-2">
-                    <span className="text-gray-400">
-                      {t("subscriptions.dealModal.storeStatus")}
-                    </span>
+              <h4 className="text-sm font-bold text-gray-900">
+                {t("subscriptions.dealModal.currentSubscription")}
+              </h4>
+            </div>
 
-                    <span
-                      className={`font-semibold ${
-                        selectedSub.company_is_active
-                          ? "text-emerald-700"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {selectedSub.company_is_active
-                        ? t("subscriptions.dealModal.activeLive")
-                        : t("subscriptions.dealModal.inactiveHidden")}
-                    </span>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50/60 p-4 sm:grid-cols-3 sm:gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {t("subscriptions.dealModal.currentPlan")}
+                </p>
 
-                {/* ASSIGN PLAN */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">
-                    {t("subscriptions.dealModal.assignPlan")}
-                  </label>
+                <p className="mt-1 truncate text-sm font-bold text-gray-900">
+                  {selectedSub.plan?.name || "—"}
+                </p>
+              </div>
 
-                  <select
-                    value={dealFormData.plan_id}
-                    onChange={(e) =>
-                      setDealFormData({
-                        ...dealFormData,
-                        plan_id: e.target.value,
-                      })
-                    }
-                    className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
-                  >
-                    {modeScopedPlans.map((p) => (
-                      <option key={p.id} value={String(p.id)}>
-                        {p.name} (
-                        {Number(p.price) === 0
-                          ? t("subscriptions.plans.free")
-                          : `ETB ${p.price}`}{" "}
-                        · {p.duration_days ?? 30}{" "}
-                        {t("subscriptions.plans.days")})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {t("subscriptions.dealModal.started")}
+                </p>
 
-                {/* EXTRA FREE DAYS */}
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <label className="text-xs font-semibold text-gray-700">
-                      {t("subscriptions.dealModal.extraFreeDays")}
-                    </label>
+                <p className="mt-1 text-sm font-semibold text-gray-800">
+                  {formatShortDate(selectedSub.start_date, language)}
+                </p>
+              </div>
 
-                    <span className="text-[11px] text-gray-400">
-                      {t("subscriptions.dealModal.negotiatedBonus")}
-                    </span>
-                  </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  {t("subscriptions.dealModal.storeStatus")}
+                </p>
 
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={dealFormData.additional_free_days}
-                    onChange={(e) =>
-                      setDealFormData({
-                        ...dealFormData,
-                        additional_free_days: Math.max(
-                          0,
-                          parseInt(e.target.value, 10) || 0,
-                        ),
-                      })
-                    }
-                    className="h-10 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15 sm:h-11"
+                <span
+                  className={`mt-1 inline-flex items-center gap-1.5 text-sm font-semibold ${
+                    selectedSub.company_is_active
+                      ? "text-emerald-700"
+                      : "text-red-600"
+                  }`}
+                >
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      selectedSub.company_is_active
+                        ? "bg-emerald-500"
+                        : "bg-red-500"
+                    }`}
                   />
 
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {[7, 14, 30, 45, 60].map((days) => (
-                      <button
-                        key={days}
-                        type="button"
-                        onClick={() =>
-                          setDealFormData({
-                            ...dealFormData,
-                            additional_free_days:
-                              (Number(dealFormData.additional_free_days) ||
-                                0) + days,
-                          })
-                        }
-                        className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-700 transition hover:bg-secondary/10 hover:text-secondary"
-                      >
-                        +{days}d
-                      </button>
-                    ))}
+                  {selectedSub.company_is_active
+                    ? t("subscriptions.dealModal.activeLive")
+                    : t("subscriptions.dealModal.inactiveHidden")}
+                </span>
+              </div>
+            </div>
+          </div>
 
+          {/* DEAL CONFIGURATION */}
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary/[0.08] text-secondary">
+                <Gift className="h-4 w-4" />
+              </div>
+
+              <h4 className="text-sm font-bold text-gray-900">
+                {t("subscriptions.dealModal.dealConfiguration")}
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* ASSIGN PLAN */}
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                  {t("subscriptions.dealModal.assignPlan")}
+                </label>
+
+                <select
+                  value={dealFormData.plan_id}
+                  onChange={(e) =>
+                    setDealFormData({
+                      ...dealFormData,
+                      plan_id: e.target.value,
+                    })
+                  }
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 text-sm text-gray-800 outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                >
+                  {modeScopedPlans.map((p) => (
+                    <option key={p.id} value={String(p.id)}>
+                      {p.name} (
+                      {Number(p.price) === 0
+                        ? t("subscriptions.plans.free")
+                        : `ETB ${p.price}`}{" "}
+                      · {p.duration_days ?? 30}{" "}
+                      {t("subscriptions.plans.days")})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* EXTRA FREE DAYS */}
+              <div className="sm:col-span-2">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-gray-700">
+                    {t("subscriptions.dealModal.extraFreeDays")}
+                  </label>
+
+                  <span className="rounded-full bg-secondary/[0.07] px-2.5 py-1 text-[10px] font-semibold text-secondary">
+                    {t("subscriptions.dealModal.negotiatedBonus")}
+                  </span>
+                </div>
+
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={dealFormData.additional_free_days}
+                  onChange={(e) =>
+                    setDealFormData({
+                      ...dealFormData,
+                      additional_free_days: Math.max(
+                        0,
+                        parseInt(e.target.value, 10) || 0,
+                      ),
+                    })
+                  }
+                  className="h-11 w-full rounded-xl border border-gray-200 px-3.5 text-sm outline-none transition focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                />
+
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  {[7, 14, 30, 45, 60].map((days) => (
                     <button
+                      key={days}
                       type="button"
                       onClick={() =>
                         setDealFormData({
                           ...dealFormData,
-                          additional_free_days: 0,
+                          additional_free_days:
+                            (Number(dealFormData.additional_free_days) || 0) +
+                            days,
                         })
                       }
-                      className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100"
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-600 transition hover:border-secondary/30 hover:bg-secondary/[0.06] hover:text-secondary"
                     >
-                      {t("subscriptions.dealModal.resetToZero")}
+                      +{days} {t("subscriptions.dealModal.days")}
                     </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDealFormData({
+                        ...dealFormData,
+                        additional_free_days: 0,
+                      })
+                    }
+                    className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-semibold text-gray-500 transition hover:bg-gray-100"
+                  >
+                    {t("subscriptions.dealModal.resetToZero")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* EXPIRATION PREVIEW */}
+          {(() => {
+            const planObj =
+              plans.find(
+                (p) => String(p.id) === dealFormData.plan_id,
+              ) || selectedSub.plan;
+
+            const pDays = planObj?.duration_days ?? 30;
+
+            const totalD =
+              pDays +
+              (Number(dealFormData.additional_free_days) || 0);
+
+            const startD = new Date(selectedSub.start_date);
+
+            const previewEndD = new Date(
+              startD.getTime() + totalD * 24 * 60 * 60 * 1000,
+            );
+
+            const remainingD = Math.max(
+              0,
+              Math.ceil(
+                (previewEndD.getTime() - Date.now()) /
+                  (24 * 60 * 60 * 1000),
+              ),
+            );
+
+            return (
+              <div className="overflow-hidden rounded-xl border border-secondary/20 bg-secondary/[0.035]">
+                <div className="flex items-center gap-2 border-b border-secondary/10 px-4 py-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/[0.10] text-secondary">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900">
+                      {t("subscriptions.dealModal.calculatedPreview")}
+                    </h4>
+
+                    <p className="text-[10px] text-gray-500">
+                      {t("subscriptions.dealModal.expiryPreviewDescription")}
+                    </p>
                   </div>
                 </div>
 
-                {/* EXPIRATION PREVIEW */}
-                {(() => {
-                  const planObj =
-                    plans.find(
-                      (p) => String(p.id) === dealFormData.plan_id,
-                    ) || selectedSub.plan;
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:gap-4">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      {t("subscriptions.dealModal.planDuration")}
+                    </p>
 
-                  const pDays = planObj?.duration_days ?? 30;
-
-                  const totalD =
-                    pDays +
-                    (Number(dealFormData.additional_free_days) || 0);
-
-                  const startD = new Date(selectedSub.start_date);
-
-                  const previewEndD = new Date(
-                    startD.getTime() +
-                      totalD * 24 * 60 * 60 * 1000,
-                  );
-
-                  const remainingD = Math.max(
-                    0,
-                    Math.ceil(
-                      (previewEndD.getTime() - Date.now()) /
-                        (24 * 60 * 60 * 1000),
-                    ),
-                  );
-
-                  return (
-                    <div className="rounded-xl border border-secondary/15 bg-secondary/[0.03] p-3.5 text-xs">
-                      <div className="mb-1 flex items-center gap-2 font-bold text-secondary">
-                        <Sparkles className="h-4 w-4" />
-
-                        <span>
-                          {t("subscriptions.dealModal.calculatedPreview")}
-                        </span>
-                      </div>
-
-                      <p className="text-gray-700">
-                        {t("subscriptions.dealModal.totalPeriod")}:{" "}
-                        <strong>
-                          {totalD} {t("subscriptions.dealModal.days")}
-                        </strong>{" "}
-                        ({pDays}d plan +{" "}
-                        {dealFormData.additional_free_days}d bonus)
-                      </p>
-
-                      <p className="mt-1 text-gray-700">
-                        {t("subscriptions.dealModal.newExpiry")}:{" "}
-                        <strong>
-                          {/* ✅ Shared timezone-aware formatter */}
-                          {formatShortDate(previewEndD, language)}
-                        </strong>{" "}
-                        (
-                        {t("subscriptions.dealModal.daysFromNow", {
-                          count: remainingD,
-                        })}
-                        )
-                      </p>
-                    </div>
-                  );
-                })()}
-
-                {/* COMPANY STORE STATUS */}
-                <div className="rounded-xl border border-gray-200 p-3.5">
-                  <label className="flex cursor-pointer items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="block text-xs font-semibold text-gray-900">
-                        {t("subscriptions.dealModal.companyStoreActive")}
+                    <p className="mt-1 text-lg font-bold text-gray-900">
+                      {pDays}{" "}
+                      <span className="text-xs font-medium text-gray-500">
+                        {t("subscriptions.dealModal.days")}
                       </span>
+                    </p>
+                  </div>
 
-                      <span className="text-[11px] text-gray-500">
-                        {t("subscriptions.dealModal.storeVisibility")}
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      {t("subscriptions.dealModal.extraFreeDays")}
+                    </p>
+
+                    <p className="mt-1 text-lg font-bold text-secondary">
+                      +{Number(dealFormData.additional_free_days) || 0}{" "}
+                      <span className="text-xs font-medium text-gray-500">
+                        {t("subscriptions.dealModal.days")}
                       </span>
-                    </div>
+                    </p>
+                  </div>
 
-                    <input
-                      type="checkbox"
-                      checked={dealFormData.set_company_active}
-                      onChange={(e) =>
-                        setDealFormData({
-                          ...dealFormData,
-                          set_company_active: e.target.checked,
-                        })
-                      }
-                      className="h-4 w-4 shrink-0 rounded border-gray-300 text-secondary focus:ring-secondary"
-                    />
-                  </label>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      {t("subscriptions.dealModal.totalPeriod")}
+                    </p>
+
+                    <p className="mt-1 text-lg font-bold text-gray-900">
+                      {totalD}{" "}
+                      <span className="text-xs font-medium text-gray-500">
+                        {t("subscriptions.dealModal.days")}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-secondary/10 bg-white/70 px-4 py-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      {t("subscriptions.dealModal.newExpiry")}
+                    </p>
+
+                    <p className="mt-1 text-sm font-bold text-gray-900">
+                      {formatShortDate(previewEndD, language)}
+                    </p>
+                  </div>
+
+                  <span className="rounded-full bg-secondary/[0.08] px-3 py-1.5 text-xs font-semibold text-secondary">
+                    {t("subscriptions.dealModal.daysFromNow", {
+                      count: remainingD,
+                    })}
+                  </span>
                 </div>
               </div>
+            );
+          })()}
 
-              {/* DEAL MODAL FOOTER */}
-              <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3.5 backdrop-blur sm:static sm:px-6 sm:py-4">
-                <button
-                  type="button"
-                  onClick={() => setDealModalOpen(false)}
-                  disabled={isSavingDeal}
-                  className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {t("subscriptions.dealModal.cancel")}
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSavingDeal}
-                  className="h-10 rounded-xl bg-secondary px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-secondary/90 disabled:opacity-60"
-                >
-                  {isSavingDeal
-                    ? t("subscriptions.dealModal.applying")
-                    : t("subscriptions.dealModal.applyAndSave")}
-                </button>
+          {/* COMPANY STORE STATUS */}
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 transition hover:border-secondary/20">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
+                <Building2 className="h-4 w-4" />
               </div>
-            </form>
-          </motion.div>
+
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-gray-900">
+                  {t("subscriptions.dealModal.companyStoreActive")}
+                </p>
+
+                <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">
+                  {t("subscriptions.dealModal.storeVisibility")}
+                </p>
+              </div>
+            </div>
+
+            <input
+              type="checkbox"
+              checked={dealFormData.set_company_active}
+              onChange={(e) =>
+                setDealFormData({
+                  ...dealFormData,
+                  set_company_active: e.target.checked,
+                })
+              }
+              className="h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 text-secondary accent-secondary focus:ring-secondary"
+            />
+          </div>
         </div>
-      )}
+
+        {/* FOOTER */}
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/90 px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+          <button
+            type="button"
+            onClick={() => setDealModalOpen(false)}
+            disabled={isSavingDeal}
+            className="h-11 rounded-xl border border-gray-200 bg-white px-5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+          >
+            {t("subscriptions.dealModal.cancel")}
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSavingDeal}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-6 text-sm font-semibold text-white shadow-sm shadow-secondary/20 transition hover:bg-secondary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSavingDeal ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("subscriptions.dealModal.applying")}
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                {t("subscriptions.dealModal.applyAndSave")}
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </motion.div>
+  </div>
+)}
+
     </div>
   );
 }

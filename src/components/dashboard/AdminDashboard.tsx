@@ -1194,7 +1194,7 @@ export default function AdminDashboard() {
               {isSuperAdmin && (
                 <SidebarItem
                   icon={<FileCheck className="h-5 w-5" />}
-                  label="Vendor Applications"
+                  label={t("VendorApplications")}
                   active={activeTab === "vendorApplications"}
                   collapsed={sidebarCollapsed}
                   onClick={() => navigate("vendorApplications")}

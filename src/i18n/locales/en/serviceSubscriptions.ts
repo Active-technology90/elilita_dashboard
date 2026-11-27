@@ -199,6 +199,26 @@ export default {
       premium: "Premium",
       enterprise: "Enterprise",
     },
+    dynamicStandards: {
+      subtitle: "Overview of configured subscription plans and their limits",
+      serviceTitle: "Service Plan Standards",
+      plans: "Plans",
+      price: "Plan Price",
+      active: "Active",
+      inactive: "Inactive",
+      unlimited: "Unlimited",
+      month: "month",
+      days: "days",
+      services: "Active Services",
+      subscribers: "Subscribers",
+      editPlan: "Edit Plan",
+      flexibleDuration: "Flexible duration",
+      emptyTitle: "No Plans Found",
+      emptyDescription:
+        "No service subscription plans are currently available. Add a plan to configure pricing and service limits.",
+      noDescription: "No description provided",
+    },
+    
     companySubscriptions: {
       title: "Company subscriptions",
       total: "{{count}} total",
@@ -300,6 +320,10 @@ export default {
       applying: "Applying Deal…",
       applyAndSave: "Apply Deal & Save",
       couldNotUpdate: "Could not update company subscription.",
+      currentSubscription: "Current Subscription",
+    dealConfiguration: "Deal Configuration",
+    expiryPreviewDescription: "Estimated subscription period and expiry date",
+    planDuration: "Plan Duration",
     },
 
     errors: {

@@ -31,6 +31,7 @@ export default {
   userManagement: "የተጠቃሚ አስተዳደር",
   marketingAgents: "የማርኬቲንግ ወኪሎች",
   adsManagement: "የማስታወቂያ አስተዳደር",
+  VendorApplications:"የአቅራቢዎች ማመልከቻዎች",
   bankAccounts: "የባንክ ሂሳቦች",
   platformFees: "የመድረክ ክፍያዎች",
   allProducts: "ሁሉም ምርቶች",
